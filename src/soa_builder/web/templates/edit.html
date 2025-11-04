@@ -48,16 +48,24 @@
   {% for a in activities %}
   <tr>
     <td>{{ a.name }}</td>
-    {% for v in visits %}
-    {% set status = cell_map.get((v.id, a.id), '') %}
-    <td hx-post="/ui/soa/{{ soa_id }}/set_cell" hx-include="closest tr" hx-vals='{"visit_id": {{ v.id }}, "activity_id": {{ a.id }}, "status": "{{ 'X' if status == '' else ('O' if status == 'X' else '') }}"}' class="cell">{{ status }}</td>
-    {% endfor %}
+  {% for v in visits %}
+  {% set raw_status = cell_map.get((v.id, a.id), '') %}
+  {% set display = 'X' if raw_status == 'X' else '' %}
+  <td hx-post="/ui/soa/{{ soa_id }}/toggle_cell" hx-vals='{"visit_id": {{ v.id }}, "activity_id": {{ a.id }} }' hx-swap="outerHTML" class="cell">{{ display }}</td>
+  {% endfor %}
   </tr>
   {% endfor %}
 </table>
 <p><a href="/soa/{{ soa_id }}/normalized" target="_blank">Generate Normalized Summary (JSON)</a></p>
+<div class="export-buttons">
+  <a class="btn" href="/soa/{{ soa_id }}/export/xlsx" title="Download Excel workbook">⬇ XLSX</a>
+  <a class="btn" href="/soa/{{ soa_id }}/export/pdf" title="Download PDF matrix">⬇ PDF</a>
+</div>
 <style>
   .delete-btn { background:#c62828; color:#fff; border:none; padding:0 6px; cursor:pointer; }
   .delete-btn:hover { background:#b71c1c; }
+  .export-buttons { margin-top:8px; }
+  .export-buttons .btn { display:inline-block; margin-right:10px; background:#1976d2; color:#fff; padding:4px 10px; text-decoration:none; border-radius:3px; font-size:0.9em; }
+  .export-buttons .btn:hover { background:#125aa0; }
 </style>
 {% endblock %}

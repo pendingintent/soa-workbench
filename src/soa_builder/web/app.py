@@ -15,12 +15,17 @@ Data persisted in SQLite (file: soa_builder_web.db by default).
 from __future__ import annotations
 import os, sqlite3, csv, tempfile, json
 from fastapi import FastAPI, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, timezone
+import io
+import pandas as pd
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
 from ..normalization import normalize_soa
 
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
@@ -82,6 +87,26 @@ class CellCreate(BaseModel):
     visit_id: int
     activity_id: int
     status: str
+
+
+class BulkActivities(BaseModel):
+    names: List[str]
+
+
+class MatrixVisit(BaseModel):
+    name: str
+    raw_header: Optional[str] = None
+
+
+class MatrixActivity(BaseModel):
+    name: str
+    statuses: List[str]
+
+
+class MatrixImport(BaseModel):
+    visits: List[MatrixVisit]
+    activities: List[MatrixActivity]
+    reset: bool = True
 
 
 # --------------------- Helpers ---------------------
@@ -154,6 +179,20 @@ def _generate_wide_csv(soa_id: int) -> str:
     return path
 
 
+def _matrix_arrays(soa_id: int):
+    """Return visit headers list and rows (activity name + statuses)."""
+    visits, activities, cells = _fetch_matrix(soa_id)
+    visit_headers = [v["raw_header"] or v["name"] for v in visits]
+    cell_lookup = {(c["visit_id"], c["activity_id"]): c["status"] for c in cells}
+    rows = []
+    for a in activities:
+        row = [a["name"]]
+        for v in visits:
+            row.append(cell_lookup.get((v["id"], a["id"]), ""))
+        rows.append(row)
+    return visit_headers, rows
+
+
 # --------------------- API Endpoints ---------------------
 
 
@@ -215,6 +254,44 @@ def add_activity(soa_id: int, payload: ActivityCreate):
     return {"activity_id": aid, "order_index": order_index}
 
 
+@app.post("/soa/{soa_id}/activities/bulk")
+def add_activities_bulk(soa_id: int, payload: BulkActivities):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    names = [n.strip() for n in payload.names if n and n.strip()]
+    if not names:
+        return {"added": 0, "skipped": 0, "details": []}
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM activity WHERE soa_id=?", (soa_id,))
+    existing = set(r[0].lower() for r in cur.fetchall())
+    added = []
+    skipped = []
+    # get current count for order_index start
+    cur.execute("SELECT COUNT(*) FROM activity WHERE soa_id=?", (soa_id,))
+    count = cur.fetchone()[0]
+    order_index = count
+    for name in names:
+        lname = name.lower()
+        if lname in existing:
+            skipped.append(name)
+            continue
+        order_index += 1
+        cur.execute(
+            "INSERT INTO activity (soa_id,name,order_index) VALUES (?,?,?)",
+            (soa_id, name, order_index),
+        )
+        added.append(name)
+        existing.add(lname)
+    conn.commit()
+    conn.close()
+    return {
+        "added": len(added),
+        "skipped": len(skipped),
+        "details": {"added": added, "skipped": skipped},
+    }
+
+
 @app.post("/soa/{soa_id}/cells")
 def set_cell(soa_id: int, payload: CellCreate):
     if not _soa_exists(soa_id):
@@ -227,6 +304,16 @@ def set_cell(soa_id: int, payload: CellCreate):
         (soa_id, payload.visit_id, payload.activity_id),
     )
     row = cur.fetchone()
+    # If blank status => delete existing cell (clear) and do not create new row
+    if payload.status.strip() == "":
+        if row:
+            cur.execute("DELETE FROM cell WHERE id=?", (row[0],))
+            cid = row[0]
+            conn.commit()
+            conn.close()
+            return {"cell_id": cid, "status": "", "deleted": True}
+        conn.close()
+        return {"cell_id": None, "status": "", "deleted": False}
     if row:
         cur.execute("UPDATE cell SET status=? WHERE id=?", (payload.status, row[0]))
         cid = row[0]
@@ -249,6 +336,65 @@ def get_matrix(soa_id: int):
     return {"visits": visits, "activities": activities, "cells": cells}
 
 
+@app.get("/soa/{soa_id}/export/xlsx")
+def export_xlsx(soa_id: int):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    visits, activities, cells = _fetch_matrix(soa_id)
+    if not visits or not activities:
+        raise HTTPException(
+            400, "Cannot export empty matrix (need visits and activities)"
+        )
+    headers, rows = _matrix_arrays(soa_id)
+    # Build DataFrame
+    df = pd.DataFrame(rows, columns=["Activity"] + headers)
+    bio = io.BytesIO()
+    with pd.ExcelWriter(bio, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="SoA")
+    bio.seek(0)
+    filename = f"soa_{soa_id}_matrix.xlsx"
+    return StreamingResponse(
+        bio,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/soa/{soa_id}/export/pdf")
+def export_pdf(soa_id: int):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    visits, activities, cells = _fetch_matrix(soa_id)
+    if not visits or not activities:
+        raise HTTPException(
+            400, "Cannot export empty matrix (need visits and activities)"
+        )
+    headers, rows = _matrix_arrays(soa_id)
+    data = [["Activity"] + headers] + rows
+    bio = io.BytesIO()
+    doc = SimpleDocTemplate(bio, pagesize=letter)
+    table = Table(data, repeatRows=1)
+    style = TableStyle(
+        [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+        ]
+    )
+    table.setStyle(style)
+    doc.build([table])
+    bio.seek(0)
+    filename = f"soa_{soa_id}_matrix.pdf"
+    return StreamingResponse(
+        bio,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @app.get("/soa/{soa_id}/normalized")
 def get_normalized(soa_id: int):
     if not _soa_exists(soa_id):
@@ -260,6 +406,77 @@ def get_normalized(soa_id: int):
         csv_path, out_dir, sqlite_path=os.path.join(out_dir, "soa.db")
     )
     return {"summary": summary, "artifacts_dir": out_dir}
+
+
+@app.post("/soa/{soa_id}/matrix/import")
+def import_matrix(soa_id: int, payload: MatrixImport):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    if not payload.visits:
+        raise HTTPException(400, "visits list empty")
+    if not payload.activities:
+        raise HTTPException(400, "activities list empty")
+    visit_count = len(payload.visits)
+    # Validate statuses length for each activity
+    for act in payload.activities:
+        if len(act.statuses) != visit_count:
+            raise HTTPException(
+                400,
+                f"Activity '{act.name}' statuses length {len(act.statuses)} != visits length {visit_count}",
+            )
+    conn = _connect()
+    cur = conn.cursor()
+    if payload.reset:
+        cur.execute("DELETE FROM cell WHERE soa_id=?", (soa_id,))
+        cur.execute("DELETE FROM visit WHERE soa_id=?", (soa_id,))
+        cur.execute("DELETE FROM activity WHERE soa_id=?", (soa_id,))
+    # Insert visits respecting order
+    cur.execute("SELECT COUNT(*) FROM visit WHERE soa_id=?", (soa_id,))
+    vstart = cur.fetchone()[0]
+    v_index = vstart
+    visit_id_map = []
+    for v in payload.visits:
+        v_index += 1
+        cur.execute(
+            "INSERT INTO visit (soa_id,name,raw_header,order_index) VALUES (?,?,?,?)",
+            (soa_id, v.name, v.raw_header or v.name, v_index),
+        )
+        visit_id_map.append(cur.lastrowid)
+    # Insert activities
+    cur.execute("SELECT COUNT(*) FROM activity WHERE soa_id=?", (soa_id,))
+    astart = cur.fetchone()[0]
+    a_index = astart
+    activity_id_map = []
+    for a in payload.activities:
+        a_index += 1
+        cur.execute(
+            "INSERT INTO activity (soa_id,name,order_index) VALUES (?,?,?)",
+            (soa_id, a.name, a_index),
+        )
+        activity_id_map.append(cur.lastrowid)
+    # Insert cells
+    for a_idx, a in enumerate(payload.activities):
+        aid = activity_id_map[a_idx]
+        for v_idx, status in enumerate(a.statuses):
+            if status is None:
+                status = ""
+            status_str = str(status).strip()
+            if status_str == "":
+                continue
+            vid = visit_id_map[v_idx]
+            cur.execute(
+                "INSERT INTO cell (soa_id, visit_id, activity_id, status) VALUES (?,?,?,?)",
+                (soa_id, vid, aid, status_str),
+            )
+    conn.commit()
+    conn.close()
+    return {
+        "visits_added": len(payload.visits),
+        "activities_added": len(payload.activities),
+        "cells_inserted": sum(
+            1 for a in payload.activities for s in a.statuses if str(s).strip() != ""
+        ),
+    }
 
 
 # --------------------- Deletion API Endpoints ---------------------
@@ -391,10 +608,56 @@ def ui_set_cell(
     activity_id: int = Form(...),
     status: str = Form("X"),
 ):
-    set_cell(
+    result = set_cell(
         soa_id, CellCreate(visit_id=visit_id, activity_id=activity_id, status=status)
     )
-    return HTMLResponse(status)
+    return HTMLResponse(result.get("status", ""))
+
+
+@app.post("/ui/soa/{soa_id}/toggle_cell", response_class=HTMLResponse)
+def ui_toggle_cell(
+    request: Request,
+    soa_id: int,
+    visit_id: int = Form(...),
+    activity_id: int = Form(...),
+):
+    """Toggle logic: blank -> X, X -> blank (delete row). Returns updated <td> snippet with next action encoded.
+    This avoids stale hx-vals attributes after a partial swap."""
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    # Determine current status
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT status,id FROM cell WHERE soa_id=? AND visit_id=? AND activity_id=?",
+        (soa_id, visit_id, activity_id),
+    )
+    row = cur.fetchone()
+    if row and row[0] == "X":
+        # clear
+        cur.execute("DELETE FROM cell WHERE id=?", (row[1],))
+        conn.commit()
+        conn.close()
+        current = ""
+    elif row:
+        # Any non-blank treated as blank visually, remove
+        cur.execute("DELETE FROM cell WHERE id=?", (row[1],))
+        conn.commit()
+        conn.close()
+        current = ""
+    else:
+        # create X
+        cur.execute(
+            "INSERT INTO cell (soa_id, visit_id, activity_id, status) VALUES (?,?,?,?)",
+            (soa_id, visit_id, activity_id, "X"),
+        )
+        conn.commit()
+        conn.close()
+        current = "X"
+    # Next status (for hx-vals) depends on current
+    next_status = "X" if current == "" else ""
+    cell_html = f'<td hx-post="/ui/soa/{soa_id}/toggle_cell" hx-vals=\'{{"visit_id": {visit_id}, "activity_id": {activity_id}}}\' hx-swap="outerHTML" class="cell">{current}</td>'
+    return HTMLResponse(cell_html)
 
 
 @app.post("/ui/soa/{soa_id}/delete_visit", response_class=HTMLResponse)

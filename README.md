@@ -145,6 +145,33 @@ Endpoints:
 - GET  /soa/{id}/normalized -> Runs normalization pipeline; returns summary
  - DELETE /soa/{id}/visits/{visit_id} -> Remove a visit and all its cells; remaining visits reindexed
  - DELETE /soa/{id}/activities/{activity_id} -> Remove an activity and all its cells; remaining activities reindexed
+ - POST /soa/{id}/activities/bulk {"names": ["Hematology", "Chemistry", "ECG"]} -> create multiple activities (skips duplicates & blanks)
+ - POST /soa/{id}/matrix/import -> Ingest wide matrix JSON body
+ - GET  /soa/{id}/export/xlsx -> Download current matrix as Excel workbook (sheet: SoA)
+ - GET  /soa/{id}/export/pdf  -> Download current matrix as PDF table
+
+### Wide Matrix Import Format
+`POST /soa/{id}/matrix/import`
+```jsonc
+{
+	"visits": [
+		{"name": "C1D1", "raw_header": "Cycle 1 Day 1 (C1D1)"},
+		{"name": "C1D8"},
+		{"name": "C1D15"}
+	],
+	"activities": [
+		{"name": "Hematology", "statuses": ["X", "X", "O"]},
+		{"name": "Chemistry", "statuses": ["", "X", ""]},
+		{"name": "ECG", "statuses": ["O", "", "O"]}
+	],
+	"reset": true
+}
+```
+Rules:
+- `statuses` array length must equal number of `visits`.
+- Blank / empty status strings are ignored (no cell row created).
+- When `reset` is true existing visits, activities, and cells for the SoA are cleared first.
+- All inserts preserve provided order for indexing.
 
 Run server:
 ```bash
@@ -163,9 +190,11 @@ curl http://localhost:8000/soa/1/normalized
 
 HTML UI:
 - Open http://localhost:8000/ in a browser.
-- Add visits and activities; click cells to toggle status (X -> O -> blank).
+- Add visits and activities; click cells to toggle status (blank -> X -> blank). 'O' values are not surfaced in the UI; clearing removes the cell row.
 - Use "Generate Normalized Summary" link to produce artifacts.
+ - Use export buttons (to be added) or hit endpoints directly for XLSX/PDF output.
  - Delete a visit or activity using the ✕ button next to its name (confirmation dialog). Deletion cascades to associated cells and automatically reorders remaining items.
+ - (Upcoming) Bulk add activities and matrix import could be surfaced via a textarea or JSON upload panel.
 
 Notes:
 - HTMX is loaded via CDN; no build step required.
