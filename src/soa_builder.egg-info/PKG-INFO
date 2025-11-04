@@ -12,6 +12,8 @@ Requires-Dist: fastapi>=0.110.0
 Requires-Dist: uvicorn>=0.23.0
 Requires-Dist: openpyxl>=3.1.0
 Requires-Dist: reportlab>=4.0.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: python-dotenv>=1.0.0
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0.0; extra == "dev"
 Requires-Dist: ruff>=0.5.0; extra == "dev"

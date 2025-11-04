@@ -27,11 +27,31 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 from ..normalization import normalize_soa
+import requests, time, logging
+from dotenv import load_dotenv
 
+load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 NORMALIZED_ROOT = os.environ.get("SOA_BUILDER_NORMALIZED_ROOT", "normalized")
 
+
+def _get_cdisc_api_key():
+    return os.environ.get("CDISC_API_KEY")
+
+
+def _get_concepts_override():
+    return os.environ.get("CDISC_CONCEPTS_JSON")
+
+
+_concept_cache = {"data": None, "fetched_at": 0}
+_CONCEPT_CACHE_TTL = 60 * 60  # 1 hour TTL
 app = FastAPI(title="SoA Builder API", version="0.1.0")
+logger = logging.getLogger("soa_builder.concepts")
+if not logger.handlers:
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))
+    logger.addHandler(_h)
+logger.setLevel(logging.INFO)
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
@@ -61,6 +81,10 @@ def _init_db():
     cur.execute(
         """CREATE TABLE IF NOT EXISTS cell (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, visit_id INTEGER, activity_id INTEGER, status TEXT)"""
     )
+    # Mapping table linking activities to biomedical concepts (concept_code + title stored for snapshot purposes)
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS activity_concept (id INTEGER PRIMARY KEY AUTOINCREMENT, activity_id INTEGER, concept_code TEXT, concept_title TEXT)"""
+    )
     conn.commit()
     conn.close()
 
@@ -81,6 +105,10 @@ class VisitCreate(BaseModel):
 
 class ActivityCreate(BaseModel):
     name: str
+
+
+class ConceptsUpdate(BaseModel):
+    concept_codes: List[str]
 
 
 class CellCreate(BaseModel):
@@ -143,6 +171,188 @@ def _fetch_matrix(soa_id: int):
     cells = [dict(visit_id=r[0], activity_id=r[1], status=r[2]) for r in cur.fetchall()]
     conn.close()
     return visits, activities, cells
+
+
+def fetch_biomedical_concepts(force: bool = False):
+    """Return list of biomedical concepts as [{'code':..., 'title':...}].
+    Precedence: CDISC_CONCEPTS_JSON env override (for tests/offline) > cached remote fetch > empty list.
+    Remote fetch uses CDISC_API_KEY header if present. Caches for TTL duration.
+    """
+    now = time.time()
+    if (
+        not force
+        and _concept_cache["data"]
+        and now - _concept_cache["fetched_at"] < _CONCEPT_CACHE_TTL
+    ):
+        return _concept_cache["data"]
+    # Environment override
+    override_json = _get_concepts_override()
+    if override_json:
+        try:
+            raw = json.loads(override_json)
+            items = (
+                raw.get("items") if isinstance(raw, dict) and "items" in raw else raw
+            )
+            concepts = []
+            for it in items:
+                code = (
+                    it.get("concept_code")
+                    or it.get("code")
+                    or it.get("conceptId")
+                    or it.get("id")
+                    or it.get("identifier")
+                )
+                title = it.get("title") or it.get("name") or it.get("label") or code
+                if code:
+                    concepts.append({"code": str(code), "title": str(title)})
+            _concept_cache.update(data=concepts, fetched_at=now)
+            logger.info("Loaded %d concepts from env override", len(concepts))
+            return concepts
+        except Exception:
+            pass
+    # Remote
+    if os.environ.get("CDISC_SKIP_REMOTE") == "1":
+        _concept_cache.update(data=[], fetched_at=now)
+        logger.warning("CDISC_SKIP_REMOTE=1; concept list empty")
+        return []
+    url = "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts"
+    headers = {"Accept": "application/json"}
+    api_key = _get_cdisc_api_key()
+    if api_key:
+        headers["api-key"] = api_key  # primary documented header
+        # also include Authorization variant in case gateway expects it
+        headers["Authorization"] = f"ApiKey {api_key}"
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+        _concept_cache["last_status"] = resp.status_code
+        _concept_cache["last_url"] = url
+        _concept_cache["last_error"] = None
+        _concept_cache["raw_snippet"] = resp.text[:400]
+        if resp.status_code == 200:
+            try:
+                data = resp.json()
+            except ValueError:
+                # Not JSON, likely HTML error despite 200
+                _concept_cache["last_error"] = "200 but non-JSON response"
+                logger.error(
+                    "Concept fetch 200 but non-JSON body (snippet: %s)", resp.text[:200]
+                )
+                return []
+
+            # If JSON is a string, attempt second decode
+            if isinstance(data, str):
+                try:
+                    data = json.loads(data)
+                except Exception:
+                    _concept_cache["last_error"] = (
+                        "JSON value was a raw string; secondary parse failed"
+                    )
+                    logger.error(
+                        "Concept fetch raw string JSON secondary parse failed (snippet: %s)",
+                        str(data)[:200],
+                    )
+                    return []
+
+            # Normalize possible shapes
+            # Primary shapes: list of concept objects, dict with 'items', or HAL-style _links
+            if (
+                isinstance(data, dict)
+                and "items" in data
+                and isinstance(data["items"], list)
+            ):
+                items = data["items"]
+            elif (
+                isinstance(data, dict)
+                and "_links" in data
+                and isinstance(data["_links"], dict)
+            ):
+                # Extract from biomedicalConcepts links list
+                links_list = data["_links"].get("biomedicalConcepts") or []
+                items = []
+                for link in links_list:
+                    if not isinstance(link, dict):
+                        continue
+                    href = link.get("href")
+                    title = link.get("title") or href
+                    # Concept code may be last path segment
+                    code = None
+                    if href:
+                        code = href.strip("/").split("/")[-1]
+                    if code:
+                        items.append({"concept_code": code, "title": title})
+            elif isinstance(data, list):
+                items = data
+            elif isinstance(data, dict):
+                # single concept object
+                items = [data]
+            else:
+                _concept_cache["last_error"] = (
+                    f"Unexpected JSON root type: {type(data).__name__}"
+                )
+                logger.error("Concept fetch unexpected JSON root type: %s", type(data))
+                return []
+
+            concepts = []
+            for it in items:
+                if not isinstance(it, dict):
+                    continue  # skip non-dict entries
+                code = (
+                    it.get("concept_code")
+                    or it.get("code")
+                    or it.get("conceptId")
+                    or it.get("id")
+                    or it.get("identifier")
+                )
+                title = it.get("title") or it.get("name") or it.get("label") or code
+                if code:
+                    concepts.append({"code": str(code), "title": str(title)})
+            _concept_cache.update(data=concepts, fetched_at=now)
+            logger.info("Fetched %d concepts from remote API", len(concepts))
+            return concepts
+        else:
+            _concept_cache["last_error"] = f"HTTP {resp.status_code}: {resp.text[:200]}"
+    except Exception as e:
+        logger.error("Concept fetch error: %s", e)
+        _concept_cache["last_error"] = str(e)
+    _concept_cache.update(data=[], fetched_at=now)
+    logger.warning("Concept list empty after fetch attempts")
+    return []
+
+
+@app.on_event("startup")
+def preload_concepts():  # pragma: no cover (covered indirectly via tests reload)
+    try:
+        concepts = fetch_biomedical_concepts(force=True)
+        logger.info("Startup preload concepts count=%d", len(concepts))
+    except Exception as e:
+        logger.error("Startup concept preload failed: %s", e)
+
+
+@app.post("/ui/soa/{soa_id}/concepts_refresh", response_class=HTMLResponse)
+def ui_refresh_concepts(request: Request, soa_id: int):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    fetch_biomedical_concepts(force=True)
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.get("/concepts/status")
+def concepts_status():
+    return {
+        "count": len(_concept_cache.get("data") or []),
+        "fetched_at": _concept_cache.get("fetched_at"),
+        "cache_age_sec": (
+            (time.time() - _concept_cache.get("fetched_at", 0))
+            if _concept_cache.get("fetched_at")
+            else None
+        ),
+        "last_status": _concept_cache.get("last_status"),
+        "last_error": _concept_cache.get("last_error"),
+        "raw_snippet": _concept_cache.get("raw_snippet"),
+        "api_key_present": bool(_get_cdisc_api_key()),
+        "override_present": bool(_get_concepts_override()),
+        "skip_remote": os.environ.get("CDISC_SKIP_REMOTE") == "1",
+    }
 
 
 def _wide_csv_path(soa_id: int) -> str:
@@ -252,6 +462,36 @@ def add_activity(soa_id: int, payload: ActivityCreate):
     conn.commit()
     conn.close()
     return {"activity_id": aid, "order_index": order_index}
+
+
+@app.post("/soa/{soa_id}/activities/{activity_id}/concepts")
+def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM activity WHERE id=? AND soa_id=?", (activity_id, soa_id))
+    if not cur.fetchone():
+        conn.close()
+        raise HTTPException(404, "Activity not found")
+    # Clear existing mappings
+    cur.execute("DELETE FROM activity_concept WHERE activity_id=?", (activity_id,))
+    concepts = fetch_biomedical_concepts()
+    lookup = {c["code"]: c["title"] for c in concepts}
+    inserted = 0
+    for code in payload.concept_codes:
+        ccode = code.strip()
+        if not ccode:
+            continue
+        title = lookup.get(ccode, ccode)
+        cur.execute(
+            "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
+            (activity_id, ccode, title),
+        )
+        inserted += 1
+    conn.commit()
+    conn.close()
+    return {"activity_id": activity_id, "concepts_set": inserted}
 
 
 @app.post("/soa/{soa_id}/activities/bulk")
@@ -574,6 +814,28 @@ def ui_edit(request: Request, soa_id: int):
     visits, activities, cells = _fetch_matrix(soa_id)
     # Build cell lookup
     cell_map = {(c["visit_id"], c["activity_id"]): c["status"] for c in cells}
+    concepts = fetch_biomedical_concepts()
+    activity_ids = [a["id"] for a in activities]
+    activity_concepts = {}
+    if activity_ids:
+        conn = _connect()
+        cur = conn.cursor()
+        placeholders = ",".join("?" for _ in activity_ids)
+        cur.execute(
+            f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE activity_id IN ({placeholders})",
+            activity_ids,
+        )
+        for aid, code, title in cur.fetchall():
+            activity_concepts.setdefault(aid, []).append({"code": code, "title": title})
+        conn.close()
+    concepts_diag = {
+        "count": len(_concept_cache.get("data") or []),
+        "last_status": _concept_cache.get("last_status"),
+        "last_error": _concept_cache.get("last_error"),
+        "api_key_present": bool(_get_cdisc_api_key()),
+        "override_present": bool(_get_concepts_override()),
+        "skip_remote": os.environ.get("CDISC_SKIP_REMOTE") == "1",
+    }
     return templates.TemplateResponse(
         "edit.html",
         {
@@ -582,6 +844,10 @@ def ui_edit(request: Request, soa_id: int):
             "visits": visits,
             "activities": activities,
             "cell_map": cell_map,
+            "concepts": concepts,
+            "activity_concepts": activity_concepts,
+            "concepts_empty": len(concepts) == 0,
+            "concepts_diag": concepts_diag,
         },
     )
 
@@ -597,6 +863,17 @@ def ui_add_visit(
 @app.post("/ui/soa/{soa_id}/add_activity", response_class=HTMLResponse)
 def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
     add_activity(soa_id, ActivityCreate(name=name))
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.post(
+    "/ui/soa/{soa_id}/activity/{activity_id}/concepts", response_class=HTMLResponse
+)
+def ui_set_activity_concepts(
+    request: Request, soa_id: int, activity_id: int, concept_codes: List[str] = Form([])
+):
+    payload = ConceptsUpdate(concept_codes=list(dict.fromkeys(concept_codes)))
+    set_activity_concepts(soa_id, activity_id, payload)
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
 

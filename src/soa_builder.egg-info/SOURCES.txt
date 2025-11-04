@@ -12,9 +12,13 @@ src/soa_builder.egg-info/entry_points.txt
 src/soa_builder.egg-info/requires.txt
 src/soa_builder.egg-info/top_level.txt
 src/soa_builder/web/app.py
+tests/test_activity_concepts.py
 tests/test_bulk_import.py
 tests/test_cell_clear.py
+tests/test_concepts_refresh.py
 tests/test_deletion.py
+tests/test_empty_concepts_state.py
+tests/test_env_dotenv_load.py
 tests/test_exports.py
 tests/test_normalization.py
 tests/test_schedule.py
