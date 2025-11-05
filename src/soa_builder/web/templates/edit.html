@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Editing SoA {{ soa_id }}</h2>
+<div class="freeze-bar" style="margin-bottom:12px;display:flex;flex-direction:column;gap:6px;">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <form hx-post="/ui/soa/{{ soa_id }}/freeze" hx-target="#freeze-feedback" hx-swap="innerHTML" style="display:flex;align-items:center;gap:4px;">
+      <input name="version_label" placeholder="Version label (optional)" style="font-size:0.75em;padding:2px 4px;" />
+      <button type="submit" style="background:#6a1b9a;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.75em;">Freeze</button>
+    </form>
+    <div id="freeze-feedback" style="font-size:0.65em;color:#c62828;"></div>
+    <div style="font-size:0.6em;color:#444;">
+      Count: {{ freeze_count }}
+      {% if last_frozen_at %} • Last: <span title="{{ last_frozen_at }}">{{ last_frozen_at }}</span>{% endif %}
+    </div>
+  </div>
+  {% if freezes %}
+    <div class="freeze-list" style="font-size:0.65em;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <strong>Versions:</strong>
+      {% for f in freezes %}
+        <div style="display:flex;align-items:center;gap:3px;">
+          <span style="background:#eee;padding:2px 6px;border-radius:3px;color:#333;">{{ f.version_label }}</span>
+          <button hx-get="/ui/soa/{{ soa_id }}/freeze/{{ f.id }}/view" hx-target="#modal-host" hx-swap="innerHTML" style="background:#455a64;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">View</button>
+        </div>
+      {% endfor %}
+    </div>
+    <div style="font-size:0.6em;margin-top:4px;">
+      <button hx-get="/ui/soa/{{ soa_id }}/rollback_audit" hx-target="#modal-host" hx-swap="innerHTML" style="background:#37474f;color:#fff;border:none;padding:3px 8px;border-radius:4px;cursor:pointer;">Rollback Audit Log</button>
+      <a href="/soa/{{ soa_id }}/rollback_audit/export/xlsx" style="background:#1976d2;color:#fff;text-decoration:none;padding:3px 8px;border-radius:4px;">Export Audit XLSX</a>
+    </div>
+    <div class="freeze-diff" style="font-size:0.65em;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
+      <strong>Diff:</strong>
+      <select id="diff-left" name="left" style="font-size:0.7em;">
+        {% for f in freezes %}<option value="{{ f.id }}">{{ f.version_label }}</option>{% endfor %}
+      </select>
+      <select id="diff-right" name="right" style="font-size:0.7em;">
+        {% for f in freezes %}<option value="{{ f.id }}">{{ f.version_label }}</option>{% endfor %}
+      </select>
+      <button hx-get="/ui/soa/{{ soa_id }}/freeze/diff" hx-include="#diff-left,#diff-right" hx-target="#modal-host" hx-swap="innerHTML" style="background:#2e7d32;color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;">Compare</button>
+    </div>
+  {% else %}
+    <div style="font-size:0.6em;color:#777;">No versions frozen yet.</div>
+  {% endif %}
+</div>
+<div id="modal-host"></div>
+<div class="concepts-global-refresh" style="margin:4px 0 12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <form hx-post="/ui/soa/{{ soa_id }}/concepts_refresh" style="display:inline;">
+    <button type="submit" style="background:#455a64;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8em;">↻ Refresh Biomedical Concepts</button>
+  </form>
+  <div style="font-size:0.7em;color:#444;">
+    Last fetch:
+    {% if concepts_last_fetch_relative %}
+      <span title="{{ concepts_last_fetch_iso }}">{{ concepts_last_fetch_relative }}</span>
+    {% else %}
+      <span>n/a</span>
+    {% endif %}
+  </div>
+  <small style="color:#555;">(forces remote re-fetch & cache reset)</small>
+</div>
+<div class="flex">
+  <div>
+    <h3>Visits</h3>
+    <ul>
+      {% for v in visits %}
+      <li>{{ v.order_index }}. {{ v.name }} ({{ v.raw_header }})
+        <form hx-post="/ui/soa/{{ soa_id }}/delete_visit" hx-confirm="Delete visit '{{ v.name }}' and its cells?" style="display:inline">
+          <input type="hidden" name="visit_id" value="{{ v.id }}" />
+          <button type="submit" class="delete-btn">✕</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="/ui/soa/{{ soa_id }}/add_visit">
+      <input name="name" placeholder="Visit Name" required />
+      <input name="raw_header" placeholder="Raw Header (optional)" />
+      <button>Add Visit</button>
+    </form>
+  </div>
+  <div>
+    <h3>Activities</h3>
+    <ul>
+      {% for a in activities %}
+      <li>{{ a.order_index }}. {{ a.name }}
+        <form hx-post="/ui/soa/{{ soa_id }}/delete_activity" hx-confirm="Delete activity '{{ a.name }}' and its cells?" style="display:inline">
+          <input type="hidden" name="activity_id" value="{{ a.id }}" />
+          <button type="submit" class="delete-btn">✕</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="/ui/soa/{{ soa_id }}/add_activity">
+      <input name="name" placeholder="Activity Name" required />
+      <button>Add Activity</button>
+    </form>
+  </div>
+</div>
+<hr />
+<h3>Matrix</h3>
+<table class="matrix">
+  <tr>
+    <th>Activity</th>
+    <th>Concepts</th>
+    {% for v in visits %}<th>{{ v.name }}</th>{% endfor %}
+  </tr>
+  {% for a in activities %}
+  <tr>
+    <td>{{ a.name }}</td>
+  {% set concepts_list = activity_concepts.get(a.id, []) %}
+  {% set selected_list = concepts_list %}
+  {% set selected_codes = concepts_list | map(attribute='code') | list %}
+  {% set activity_id = a.id %}
+  {% include 'concepts_cell.html' %}
+    {% for v in visits %}
+      {% set raw_status = cell_map.get((v.id, a.id), '') %}
+      {% set display = 'X' if raw_status == 'X' else '' %}
+      <td hx-post="/ui/soa/{{ soa_id }}/toggle_cell" hx-vals='{"visit_id": {{ v.id }}, "activity_id": {{ a.id }} }' hx-swap="outerHTML" class="cell">{{ display }}</td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+<p><a href="/soa/{{ soa_id }}/normalized" target="_blank">Generate Normalized Summary (JSON)</a></p>
+<div class="export-buttons">
+  <a class="btn" href="/soa/{{ soa_id }}/export/xlsx" title="Download Excel workbook">⬇ XLSX</a>
+</div>
+<style>
+  .delete-btn { background:#c62828; color:#fff; border:none; padding:0 6px; cursor:pointer; }
+  .delete-btn:hover { background:#b71c1c; }
+  .export-buttons { margin-top:8px; }
+  .export-buttons .btn { display:inline-block; margin-right:10px; background:#1976d2; color:#fff; padding:4px 10px; text-decoration:none; border-radius:3px; font-size:0.9em; }
+  .export-buttons .btn:hover { background:#125aa0; }
+  .small-btn { background:#2e7d32; color:#fff; border:none; padding:2px 8px; margin-top:4px; cursor:pointer; font-size:0.75em; }
+  .small-btn:hover { background:#1b5e20; }
+  /* Removed per-activity concept editor styles */
+</style>
+<script>
+function refreshConcepts(){
+  fetch('/ui/soa/{{ soa_id }}/concepts_refresh', {method:'POST'})
+    .then(()=>window.location='/ui/soa/{{ soa_id }}/edit');
+}
+// Per-activity concept multi-select removed.
+</script>
+{% endblock %}
