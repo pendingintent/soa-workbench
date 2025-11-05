@@ -92,23 +92,30 @@ _init_db()
 
 # --------------------- Migrations ---------------------
 
+
 def _drop_unused_override_table():
     """Drop legacy activity_concept_override table if it still exists.
     This table supported mutable concept titles which are no longer allowed.
     Safe to run repeatedly; will no-op if table absent."""
     try:
-        conn = _connect(); cur = conn.cursor()
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='activity_concept_override'")
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='activity_concept_override'"
+        )
         if cur.fetchone():
             try:
                 cur.execute("DROP TABLE activity_concept_override")
                 conn.commit()
                 logger.info("Dropped obsolete table activity_concept_override")
             except Exception as e:
-                logger.warning("Failed to drop obsolete table activity_concept_override: %s", e)
+                logger.warning(
+                    "Failed to drop obsolete table activity_concept_override: %s", e
+                )
         conn.close()
     except Exception as e:
         logger.warning("Migration check for activity_concept_override failed: %s", e)
+
 
 _drop_unused_override_table()
 
@@ -351,11 +358,15 @@ def preload_concepts():  # pragma: no cover (covered indirectly via tests reload
         logger.error("Startup concept preload failed: %s", e)
 
 
-@app.post("/ui/soa/{soa_id}/concepts_refresh", response_class=HTMLResponse)
+@app.post("/ui/soa/{soa_id}/concepts_refresh")
 def ui_refresh_concepts(request: Request, soa_id: int):
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     fetch_biomedical_concepts(force=True)
+    # If HTMX request, use HX-Redirect header for clean redirect without injecting script
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
+    # Fallback: plain form POST non-htmx redirect via script
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
 
@@ -519,15 +530,23 @@ def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate
 
 def _get_activity_concepts(activity_id: int):
     """Return list of concepts (immutable: stored snapshot)."""
-    conn = _connect(); cur = conn.cursor()
-    cur.execute("SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?", (activity_id,))
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+        (activity_id,),
+    )
     rows = [{"code": c, "title": t} for c, t in cur.fetchall()]
     conn.close()
     return rows
 
 
-@app.post("/ui/soa/{soa_id}/activity/{activity_id}/concepts/add", response_class=HTMLResponse)
-def ui_add_activity_concept(request: Request, soa_id: int, activity_id: int, concept_code: str = Form(...)):
+@app.post(
+    "/ui/soa/{soa_id}/activity/{activity_id}/concepts/add", response_class=HTMLResponse
+)
+def ui_add_activity_concept(
+    request: Request, soa_id: int, activity_id: int, concept_code: str = Form(...)
+):
     if not activity_id:
         raise HTTPException(400, "Missing activity_id")
     if not _soa_exists(soa_id):
@@ -538,13 +557,21 @@ def ui_add_activity_concept(request: Request, soa_id: int, activity_id: int, con
     concepts = fetch_biomedical_concepts()
     lookup = {c["code"]: c["title"] for c in concepts}
     title = lookup.get(code, code)
-    conn = _connect(); cur = conn.cursor()
+    conn = _connect()
+    cur = conn.cursor()
     cur.execute("SELECT 1 FROM activity WHERE id=? AND soa_id=?", (activity_id, soa_id))
     if not cur.fetchone():
-        conn.close(); raise HTTPException(404, "Activity not found")
-    cur.execute("SELECT 1 FROM activity_concept WHERE activity_id=? AND concept_code=?", (activity_id, code))
+        conn.close()
+        raise HTTPException(404, "Activity not found")
+    cur.execute(
+        "SELECT 1 FROM activity_concept WHERE activity_id=? AND concept_code=?",
+        (activity_id, code),
+    )
     if not cur.fetchone():
-        cur.execute("INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)", (activity_id, code, title))
+        cur.execute(
+            "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
+            (activity_id, code, title),
+        )
         conn.commit()
     conn.close()
     selected = _get_activity_concepts(activity_id)
@@ -560,8 +587,13 @@ def ui_add_activity_concept(request: Request, soa_id: int, activity_id: int, con
     return HTMLResponse(html)
 
 
-@app.post("/ui/soa/{soa_id}/activity/{activity_id}/concepts/remove", response_class=HTMLResponse)
-def ui_remove_activity_concept(request: Request, soa_id: int, activity_id: int, concept_code: str = Form(...)):
+@app.post(
+    "/ui/soa/{soa_id}/activity/{activity_id}/concepts/remove",
+    response_class=HTMLResponse,
+)
+def ui_remove_activity_concept(
+    request: Request, soa_id: int, activity_id: int, concept_code: str = Form(...)
+):
     if not activity_id:
         raise HTTPException(400, "Missing activity_id")
     if not _soa_exists(soa_id):
@@ -569,10 +601,16 @@ def ui_remove_activity_concept(request: Request, soa_id: int, activity_id: int, 
     code = concept_code.strip()
     if not code:
         raise HTTPException(400, "Empty concept_code")
-    conn = _connect(); cur = conn.cursor()
-    cur.execute("DELETE FROM activity_concept WHERE activity_id=? AND concept_code=?", (activity_id, code))
-    conn.commit(); conn.close()
-    concepts = fetch_biomedical_concepts(); selected = _get_activity_concepts(activity_id)
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM activity_concept WHERE activity_id=? AND concept_code=?",
+        (activity_id, code),
+    )
+    conn.commit()
+    conn.close()
+    concepts = fetch_biomedical_concepts()
+    selected = _get_activity_concepts(activity_id)
     html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
@@ -583,8 +621,6 @@ def ui_remove_activity_concept(request: Request, soa_id: int, activity_id: int, 
         edit=False,
     )
     return HTMLResponse(html)
-
-
 
 
 @app.post("/soa/{soa_id}/activities/bulk")
@@ -682,14 +718,15 @@ def export_xlsx(soa_id: int):
     # Build DataFrame, then inject Concepts column (second position)
     df = pd.DataFrame(rows, columns=["Activity"] + headers)
     # Fetch concepts only (immutable snapshot titles)
-    conn = _connect(); cur = conn.cursor()
+    conn = _connect()
+    cur = conn.cursor()
     cur.execute("SELECT activity_id, concept_code, concept_title FROM activity_concept")
     concepts_map = {}
     for aid, code, title in cur.fetchall():
         concepts_map.setdefault(aid, {})[code] = title
     conn.close()
     visits, activities, _cells = _fetch_matrix(soa_id)
-    activity_ids_in_order = [a['id'] for a in activities]
+    activity_ids_in_order = [a["id"] for a in activities]
     # Build display strings using EffectiveTitle (override if present) and show code in parentheses
     concepts_strings = []
     for aid in activity_ids_in_order:
@@ -698,16 +735,22 @@ def export_xlsx(soa_id: int):
             concepts_strings.append("")
             continue
         items = sorted(cmap.items(), key=lambda kv: kv[1].lower())
-        concepts_strings.append("; ".join([f"{title} ({code})" for code, title in items]))
+        concepts_strings.append(
+            "; ".join([f"{title} ({code})" for code, title in items])
+        )
     if len(concepts_strings) == len(df):
         df.insert(1, "Concepts", concepts_strings)
     # Build concept mappings sheet data
     mapping_rows = []
     for a in activities:
-        aid = a['id']; cmap = concepts_map.get(aid, {})
+        aid = a["id"]
+        cmap = concepts_map.get(aid, {})
         for code, title in cmap.items():
-            mapping_rows.append([aid, a['name'], code, title])
-    mapping_df = pd.DataFrame(mapping_rows, columns=["ActivityID","ActivityName","ConceptCode","ConceptTitle"]) 
+            mapping_rows.append([aid, a["name"], code, title])
+    mapping_df = pd.DataFrame(
+        mapping_rows,
+        columns=["ActivityID", "ActivityName", "ConceptCode", "ConceptTitle"],
+    )
     bio = io.BytesIO()
     with pd.ExcelWriter(bio, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="SoA")
@@ -719,8 +762,6 @@ def export_xlsx(soa_id: int):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
-
-
 
 
 @app.get("/soa/{soa_id}/normalized")
@@ -926,6 +967,21 @@ def ui_edit(request: Request, soa_id: int):
         "override_present": bool(_get_concepts_override()),
         "skip_remote": os.environ.get("CDISC_SKIP_REMOTE") == "1",
     }
+    fetched_at = _concept_cache.get("fetched_at")
+    last_fetch_iso = None
+    last_fetch_relative = None
+    if fetched_at:
+        dt = datetime.fromtimestamp(fetched_at, tz=timezone.utc)
+        last_fetch_iso = dt.isoformat()
+        # Simple relative string (seconds/minutes/hours)
+        delta = datetime.now(timezone.utc) - dt
+        secs = int(delta.total_seconds())
+        if secs < 60:
+            last_fetch_relative = f"{secs}s ago"
+        elif secs < 3600:
+            last_fetch_relative = f"{secs//60}m ago"
+        else:
+            last_fetch_relative = f"{secs//3600}h ago"
     return templates.TemplateResponse(
         "edit.html",
         {
@@ -938,6 +994,8 @@ def ui_edit(request: Request, soa_id: int):
             "activity_concepts": activity_concepts,
             "concepts_empty": len(concepts) == 0,
             "concepts_diag": concepts_diag,
+            "concepts_last_fetch_iso": last_fetch_iso,
+            "concepts_last_fetch_relative": last_fetch_relative,
         },
     )
 
@@ -956,7 +1014,9 @@ def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
 
-@app.post("/ui/soa/{soa_id}/activity/{activity_id}/concepts", response_class=HTMLResponse)
+@app.post(
+    "/ui/soa/{soa_id}/activity/{activity_id}/concepts", response_class=HTMLResponse
+)
 def ui_set_activity_concepts(
     request: Request,
     soa_id: int,
@@ -968,8 +1028,12 @@ def ui_set_activity_concepts(
     # HTMX inline update support
     if request.headers.get("HX-Request") == "true":
         concepts = fetch_biomedical_concepts()
-        conn = _connect(); cur = conn.cursor()
-        cur.execute("SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?", (activity_id,))
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+            (activity_id,),
+        )
         selected = [{"code": c, "title": t} for c, t in cur.fetchall()]
         conn.close()
         html = templates.get_template("concepts_cell.html").render(
@@ -984,8 +1048,13 @@ def ui_set_activity_concepts(
         return HTMLResponse(html)
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
-@app.get("/ui/soa/{soa_id}/activity/{activity_id}/concepts_cell", response_class=HTMLResponse)
-def ui_activity_concepts_cell(request: Request, soa_id: int, activity_id: int, edit: int = 0):
+
+@app.get(
+    "/ui/soa/{soa_id}/activity/{activity_id}/concepts_cell", response_class=HTMLResponse
+)
+def ui_activity_concepts_cell(
+    request: Request, soa_id: int, activity_id: int, edit: int = 0
+):
     # Defensive guard: if activity_id is somehow falsy (should not happen for valid int path param)
     # surface a clear 400 error rather than proceeding and causing confusing downstream behavior.
     if not activity_id:
@@ -993,19 +1062,25 @@ def ui_activity_concepts_cell(request: Request, soa_id: int, activity_id: int, e
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     concepts = fetch_biomedical_concepts()
-    conn = _connect(); cur = conn.cursor()
-    cur.execute("SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?", (activity_id,))
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+        (activity_id,),
+    )
     selected = [{"code": c, "title": t} for c, t in cur.fetchall()]
     conn.close()
-    return HTMLResponse(templates.get_template("concepts_cell.html").render(
-        request=request,
-        soa_id=soa_id,
-        activity_id=activity_id,
-        concepts=concepts,
-        selected_codes=[s["code"] for s in selected],
-        selected_list=selected,
-        edit=bool(edit),
-    ))
+    return HTMLResponse(
+        templates.get_template("concepts_cell.html").render(
+            request=request,
+            soa_id=soa_id,
+            activity_id=activity_id,
+            concepts=concepts,
+            selected_codes=[s["code"] for s in selected],
+            selected_list=selected,
+            edit=bool(edit),
+        )
+    )
 
 
 @app.post("/ui/soa/{soa_id}/set_cell", response_class=HTMLResponse)

@@ -1,6 +1,20 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Editing SoA {{ soa_id }}</h2>
+<div class="concepts-global-refresh" style="margin:4px 0 12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <form hx-post="/ui/soa/{{ soa_id }}/concepts_refresh" style="display:inline;">
+    <button type="submit" style="background:#455a64;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8em;">↻ Refresh Biomedical Concepts</button>
+  </form>
+  <div style="font-size:0.7em;color:#444;">
+    Last fetch:
+    {% if concepts_last_fetch_relative %}
+      <span title="{{ concepts_last_fetch_iso }}">{{ concepts_last_fetch_relative }}</span>
+    {% else %}
+      <span>n/a</span>
+    {% endif %}
+  </div>
+  <small style="color:#555;">(forces remote re-fetch & cache reset)</small>
+</div>
 <div class="flex">
   <div>
     <h3>Visits</h3>
