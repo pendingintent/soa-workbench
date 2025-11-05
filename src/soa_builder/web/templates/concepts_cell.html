@@ -32,32 +32,36 @@
       })();
     </script>
   {% else %}
-    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px;max-width:320px;">
+    <div style="max-width:320px;">
       {% if selected_list %}
+        <div style="display:block;">
         {% for ac in selected_list %}
-          <span class="tag" style="background:#eef;color:#224;margin:2px;display:inline-flex;align-items:center;gap:4px;padding:2px 5px;border-radius:3px;font-size:0.6em;">
-            <span class="tag-title" title="{{ ac.code }}">{{ ac.title }}</span>
-            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/remove" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="display:inline;">
+          <div class="concept-line" style="display:flex;align-items:center;justify-content:space-between;background:#eef;color:#224;margin:2px 0;padding:2px 5px;border-radius:3px;font-size:0.6em;">
+            <span class="concept-title" title="{{ ac.code }}" style="flex:1;">{{ ac.title }}</span>
+            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/remove" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="margin:0;">
               <input type="hidden" name="concept_code" value="{{ ac.code }}" />
-              <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 2px;" title="Remove">×</button>
+              <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
             </form>
-          </span>
+          </div>
         {% endfor %}
+        </div>
       {% else %}
-        <span class="no-concepts" style="color:#888;font-size:0.6em;">–</span>
+        <div class="no-concepts" style="color:#888;font-size:0.6em;">–</div>
       {% endif %}
-      <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/add" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="display:flex;align-items:center;gap:4px;margin:2px;">
-        <select name="concept_code" style="font-size:0.6em;max-width:160px;">
-          <option value="" disabled selected>Add concept...</option>
-          {% for c in concepts %}
-            {% if c.code not in selected_codes %}
-              <option value="{{ c.code }}">{{ c.title }}</option>
-            {% endif %}
-          {% endfor %}
-        </select>
-        <button type="submit" style="font-size:0.55em;">+</button>
-      </form>
-  <button type="button" class="edit-concepts-btn" hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell?edit=1" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="background:#455a64;color:#fff;border:none;padding:2px 5px;margin:2px;cursor:pointer;font-size:0.55em;border-radius:3px;" title="Bulk select concepts">Bulk</button>
+      <div style="margin-top:4px;display:flex;align-items:center;gap:4px;">
+        <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/add" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="display:flex;align-items:center;gap:4px;margin:0;">
+          <select name="concept_code" style="font-size:0.6em;max-width:160px;">
+            <option value="" disabled selected>Add concept...</option>
+            {% for c in concepts %}
+              {% if c.code not in selected_codes %}
+                <option value="{{ c.code }}">{{ c.title }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          <button type="submit" style="font-size:0.55em;">+</button>
+        </form>
+        <button type="button" class="edit-concepts-btn" hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell?edit=1" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="background:#455a64;color:#fff;border:none;padding:2px 5px;cursor:pointer;font-size:0.55em;border-radius:3px;" title="Bulk select concepts">Bulk</button>
+      </div>
     </div>
   {% endif %}
 </td>

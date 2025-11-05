@@ -43,38 +43,6 @@
           <input type="hidden" name="activity_id" value="{{ a.id }}" />
           <button type="submit" class="delete-btn">✕</button>
         </form>
-        <form method="post" action="/ui/soa/{{ soa_id }}/activity/{{ a.id }}/concepts" class="concept-form">
-          <label style="font-size:0.8em;display:block;margin-top:4px;">Biomedical Concepts:
-            <button type="button" onclick="refreshConcepts()" class="refresh-btn" title="Force reload concept list">↻</button>
-          </label>
-          {% if concepts_empty %}
-          <div class="empty-concepts">No biomedical concepts loaded. Provide CDISC_API_KEY in .env or set CDISC_CONCEPTS_JSON override.</div>
-          {% if concepts_diag %}
-          <div class="concepts-diagnostics">
-            <strong>Diagnostics</strong><br/>
-            status: {{ concepts_diag.last_status if concepts_diag.last_status else 'n/a' }} | count: {{ concepts_diag.count }}<br/>
-            api_key_present: {{ 'yes' if concepts_diag.api_key_present else 'no' }} | override_present: {{ 'yes' if concepts_diag.override_present else 'no' }} | skip_remote: {{ 'yes' if concepts_diag.skip_remote else 'no' }}<br/>
-            {% if concepts_diag.last_error %}last_error: <code style="white-space:pre-wrap">{{ concepts_diag.last_error }}</code>{% endif %}
-            {% if concepts_diag.raw_snippet %}<br/>raw_snippet:<code style="white-space:pre-wrap">{{ concepts_diag.raw_snippet }}</code>{% endif %}
-            <a href="/concepts/status" target="_blank" style="font-size:0.7em;">raw status endpoint</a>
-          </div>
-          {% endif %}
-          {% endif %}
-          <input type="text" class="concept-search" placeholder="Search concepts..." style="width:220px;margin:4px 0;padding:2px 4px;font-size:0.7em;" />
-          <select name="concept_codes" class="concept-select" multiple size="6">
-            {% for c in concepts %}
-              {% set selected_list = activity_concepts.get(a.id, []) %}
-              {% set codes = selected_list | map(attribute='code') | list %}
-              <option value="{{ c.code }}" {% if c.code in codes %}selected{% endif %}>{{ c.title }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="small-btn">Save Concepts</button>
-          {% if activity_concepts.get(a.id) %}
-            <div class="concept-tags">
-              {% for ac in activity_concepts.get(a.id) %}<span class="tag">{{ ac.title }}</span>{% endfor %}
-            </div>
-          {% endif %}
-        </form>
       </li>
       {% endfor %}
     </ul>
@@ -118,36 +86,15 @@
   .export-buttons { margin-top:8px; }
   .export-buttons .btn { display:inline-block; margin-right:10px; background:#1976d2; color:#fff; padding:4px 10px; text-decoration:none; border-radius:3px; font-size:0.9em; }
   .export-buttons .btn:hover { background:#125aa0; }
-  .concept-form { margin-top:4px; margin-bottom:6px; }
-  .concept-form select { min-width:220px; }
   .small-btn { background:#2e7d32; color:#fff; border:none; padding:2px 8px; margin-top:4px; cursor:pointer; font-size:0.75em; }
   .small-btn:hover { background:#1b5e20; }
-  .concept-tags { margin-top:4px; }
-  .concept-tags .tag { display:inline-block; background:#eee; padding:2px 6px; margin:2px; border-radius:3px; font-size:0.7em; }
-  .empty-concepts { background:#ffecb3; color:#795548; padding:4px 6px; border-radius:3px; font-size:0.7em; margin-bottom:4px; }
-  .concepts-diagnostics { background:#f5f5f5; color:#333; padding:4px 6px; border-radius:3px; font-size:0.65em; margin-bottom:4px; border:1px solid #ddd; }
-  .refresh-btn { background:#455a64; color:#fff; border:none; padding:2px 6px; margin-left:6px; cursor:pointer; font-size:0.7em; border-radius:3px; }
-  .refresh-btn:hover { background:#263238; }
+  /* Removed per-activity concept editor styles */
 </style>
 <script>
 function refreshConcepts(){
   fetch('/ui/soa/{{ soa_id }}/concepts_refresh', {method:'POST'})
     .then(()=>window.location='/ui/soa/{{ soa_id }}/edit');
 }
-// Attach live filtering to each concept-select via its preceding input
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.concept-form').forEach(form => {
-    const search = form.querySelector('.concept-search');
-    const select = form.querySelector('.concept-select');
-    if(!search || !select) return;
-    search.addEventListener('input', () => {
-      const q = search.value.trim().toLowerCase();
-      Array.from(select.options).forEach(opt => {
-        const text = opt.textContent.toLowerCase();
-        opt.hidden = q && !text.includes(q);
-      });
-    });
-  });
-});
+// Per-activity concept multi-select removed.
 </script>
 {% endblock %}
