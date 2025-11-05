@@ -488,7 +488,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     # Reinsert concepts
     inserted_concepts = 0
     for old_aid, concept_list in concepts_map.items():
-        new_aid = activity_id_map.get(old_aid)
+        new_aid = activity_id_map.get(int(old_aid))
         if not new_aid:
             continue
         for c in concept_list:
