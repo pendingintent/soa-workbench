@@ -86,4 +86,7 @@ normalized/*.json
 # VSCode Python settings
 .python-version
 
+# App specific
+normalized/
+
 # End of file

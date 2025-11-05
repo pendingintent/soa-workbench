@@ -13,6 +13,8 @@ Data persisted in SQLite (file: soa_builder_web.db by default).
 """
 
 from __future__ import annotations
+
+PAGE_SIZE_ACTIVITIES = 10
 import os, sqlite3, csv, tempfile, json
 from fastapi import FastAPI, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -205,6 +207,7 @@ def fetch_biomedical_concepts(force: bool = False):
                 title = it.get("title") or it.get("name") or it.get("label") or code
                 if code:
                     concepts.append({"code": str(code), "title": str(title)})
+            concepts.sort(key=lambda c: c["title"].lower())
             _concept_cache.update(data=concepts, fetched_at=now)
             logger.info("Loaded %d concepts from env override", len(concepts))
             return concepts
@@ -306,6 +309,7 @@ def fetch_biomedical_concepts(force: bool = False):
                 title = it.get("title") or it.get("name") or it.get("label") or code
                 if code:
                     concepts.append({"code": str(code), "title": str(title)})
+            concepts.sort(key=lambda c: c["title"].lower())
             _concept_cache.update(data=concepts, fetched_at=now)
             logger.info("Fetched %d concepts from remote API", len(concepts))
             return concepts
@@ -808,14 +812,25 @@ def ui_create_soa(request: Request, name: str = Form(...)):
 
 
 @app.get("/ui/soa/{soa_id}/edit", response_class=HTMLResponse)
-def ui_edit(request: Request, soa_id: int):
+def ui_edit(request: Request, soa_id: int, page: int = 1):
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     visits, activities, cells = _fetch_matrix(soa_id)
+    # Activity pagination
+    total_activities = len(activities)
+    page_size = PAGE_SIZE_ACTIVITIES
+    total_pages = max(1, (total_activities + page_size - 1) // page_size)
+    if page < 1:
+        page = 1
+    if page > total_pages:
+        page = total_pages
+    start = (page - 1) * page_size
+    end = start + page_size
+    activities_page = activities[start:end]
     # Build cell lookup
     cell_map = {(c["visit_id"], c["activity_id"]): c["status"] for c in cells}
     concepts = fetch_biomedical_concepts()
-    activity_ids = [a["id"] for a in activities]
+    activity_ids = [a["id"] for a in activities_page]
     activity_concepts = {}
     if activity_ids:
         conn = _connect()
@@ -842,12 +857,16 @@ def ui_edit(request: Request, soa_id: int):
             "request": request,
             "soa_id": soa_id,
             "visits": visits,
-            "activities": activities,
+            "activities": activities_page,
             "cell_map": cell_map,
             "concepts": concepts,
             "activity_concepts": activity_concepts,
             "concepts_empty": len(concepts) == 0,
             "concepts_diag": concepts_diag,
+            "activity_page": page,
+            "activity_total_pages": total_pages,
+            "activity_total": total_activities,
+            "activity_page_size": page_size,
         },
     )
 
@@ -861,20 +880,30 @@ def ui_add_visit(
 
 
 @app.post("/ui/soa/{soa_id}/add_activity", response_class=HTMLResponse)
-def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
+def ui_add_activity(
+    request: Request, soa_id: int, name: str = Form(...), page: int = Form(1)
+):
     add_activity(soa_id, ActivityCreate(name=name))
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{soa_id}/edit?page={page}';</script>"
+    )
 
 
 @app.post(
     "/ui/soa/{soa_id}/activity/{activity_id}/concepts", response_class=HTMLResponse
 )
 def ui_set_activity_concepts(
-    request: Request, soa_id: int, activity_id: int, concept_codes: List[str] = Form([])
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    concept_codes: List[str] = Form([]),
+    page: int = Form(1),
 ):
     payload = ConceptsUpdate(concept_codes=list(dict.fromkeys(concept_codes)))
     set_activity_concepts(soa_id, activity_id, payload)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{soa_id}/edit?page={page}';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/set_cell", response_class=HTMLResponse)
@@ -944,9 +973,13 @@ def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
 
 
 @app.post("/ui/soa/{soa_id}/delete_activity", response_class=HTMLResponse)
-def ui_delete_activity(request: Request, soa_id: int, activity_id: int = Form(...)):
+def ui_delete_activity(
+    request: Request, soa_id: int, activity_id: int = Form(...), page: int = Form(1)
+):
     delete_activity(soa_id, activity_id)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{soa_id}/edit?page={page}';</script>"
+    )
 
 
 # --------------------- Entry ---------------------
