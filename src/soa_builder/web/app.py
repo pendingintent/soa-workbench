@@ -118,7 +118,7 @@ def _init_db():
         """CREATE TABLE IF NOT EXISTS reorder_audit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             soa_id INTEGER NOT NULL,
-            entity_type TEXT NOT NULL, -- 'visit' | 'activity'
+            entity_type TEXT NOT NULL, -- 'visit' | 'activity' | 'epoch'
             old_order_json TEXT NOT NULL,
             new_order_json TEXT NOT NULL,
             performed_at TEXT NOT NULL
@@ -742,7 +742,7 @@ def _record_reorder_audit(
 
     Parameters:
       soa_id: owning SoA id
-      entity_type: 'visit' | 'activity'
+            entity_type: 'visit' | 'activity' | 'epoch'
       old_order: list of IDs before reorder (ascending order_index)
       new_order: list of IDs after reorder (ascending order_index)
     """

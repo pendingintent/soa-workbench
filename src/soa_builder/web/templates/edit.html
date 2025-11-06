@@ -235,6 +235,7 @@ function persistSection(sectionId){
 }
 persistSection('visits-section');
 persistSection('activities-section');
+persistSection('epochs-section');
 
 // --- Drag & drop reorder utility ---
 function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){
@@ -284,6 +285,9 @@ function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){
 enableDragList('epochs-list', '/ui/soa/{{ soa_id }}/reorder_epochs', '.ord', 'epoch');
 enableDragList('visits-list', '/ui/soa/{{ soa_id }}/reorder_visits', '.ord', 'visit');
 enableDragList('activities-list', '/ui/soa/{{ soa_id }}/reorder_activities', '.ord', 'activity');
+// NOTE: kind === 'epoch' intentionally has no corresponding reorderMatrixEpochs call.
+// Epochs are a higher-level grouping that does not alter matrix axes (columns are visits, rows are activities).
+// We still record reorder audit events for epochs, but no DOM matrix reflow is required.
 
 function reorderMatrixVisits(newOrder){
   const table = document.querySelector('table.matrix'); if(!table) return;
