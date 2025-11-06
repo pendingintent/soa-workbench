@@ -274,7 +274,7 @@ function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){
     // Update displayed ordinal
     [...list.querySelectorAll('.drag-item')].forEach((li,i)=>{
       const ord = li.querySelector(ordSelector); if(ord) ord.textContent = i+1; });
-    fetch(submitUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: 'order='+encodeURIComponent(ids.join(','))})
+    fetch(submitUrl, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({order: ids.join(',')})})
       .then(r=>{ if(!r.ok){ console.warn('Reorder failed'); } else {
           if(kind==='visit'){ reorderMatrixVisits(ids.map(x=>parseInt(x))); }
           if(kind==='activity'){ reorderMatrixActivities(ids.map(x=>parseInt(x))); }
