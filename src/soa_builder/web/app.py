@@ -81,6 +81,32 @@ def _init_db():
     cur.execute(
         """CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, order_index INTEGER)"""
     )
+    # Elements: finer-grained structural units (optional) that can also be ordered
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS element (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            label TEXT,
+            description TEXT,
+            testrl TEXT,
+            teenrl TEXT,
+            order_index INTEGER,
+            created_at TEXT
+        )"""
+    )
+    # Element audit table capturing create/update/delete operations
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS element_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            element_id INTEGER,
+            action TEXT NOT NULL, -- create|update|delete|reorder
+            before_json TEXT,
+            after_json TEXT,
+            performed_at TEXT NOT NULL
+        )"""
+    )
     # Epochs: high-level study phase grouping (optional). Behaves like visits/activities list ordering.
     cur.execute(
         """CREATE TABLE IF NOT EXISTS epoch (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, order_index INTEGER)"""
@@ -110,7 +136,8 @@ def _init_db():
             visits_restored INTEGER,
             activities_restored INTEGER,
             cells_restored INTEGER,
-            concepts_restored INTEGER
+            concepts_restored INTEGER,
+            elements_restored INTEGER
         )"""
     )
     # Reorder audit (tracks manual drag reorder operations for visits & activities)
@@ -295,6 +322,87 @@ def _drop_unused_override_table():
 
 _drop_unused_override_table()
 
+
+# --------------------- Migration: ensure element table columns ---------------------
+def _migrate_element_table():
+    """Ensure element table has full expected schema (order_index, label, description, testrl, teenrl, created_at).
+    Backfills order_index sequentially by id if missing.
+    Safe to run repeatedly."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='element'"
+        )
+        if not cur.fetchone():
+            conn.close()
+            return  # table does not exist yet (fresh init will create with full schema)
+        cur.execute("PRAGMA table_info(element)")
+        cols = {r[1] for r in cur.fetchall()}
+        alters = []
+        # Add missing columns
+        if "order_index" not in cols:
+            alters.append("ALTER TABLE element ADD COLUMN order_index INTEGER")
+        if "label" not in cols:
+            alters.append("ALTER TABLE element ADD COLUMN label TEXT")
+        if "description" not in cols:
+            alters.append("ALTER TABLE element ADD COLUMN description TEXT")
+        if "testrl" not in cols:
+            alters.append("ALTER TABLE element ADD COLUMN testrl TEXT")
+        if "teenrl" not in cols:
+            alters.append("ALTER TABLE element ADD COLUMN teenrl TEXT")
+        if "created_at" not in cols:
+            alters.append("ALTER TABLE element ADD COLUMN created_at TEXT")
+        for stmt in alters:
+            try:
+                cur.execute(stmt)
+            except Exception as e:  # pragma: no cover
+                logger.warning("Element migration failed executing '%s': %s", stmt, e)
+        if alters:
+            conn.commit()
+        # Backfill order_index if newly added
+        if "order_index" not in cols:
+            cur.execute("SELECT id FROM element ORDER BY id")
+            ids = [r[0] for r in cur.fetchall()]
+            for idx, eid in enumerate(ids, start=1):
+                cur.execute("UPDATE element SET order_index=? WHERE id=?", (idx, eid))
+        # Backfill created_at
+        if "created_at" not in cols:
+            now = datetime.utcnow().isoformat()
+            cur.execute(
+                "UPDATE element SET created_at=? WHERE created_at IS NULL", (now,)
+            )
+        conn.commit()
+        conn.close()
+        if alters:
+            logger.info("Applied element table migration: %s", ", ".join(alters))
+    except Exception as e:  # pragma: no cover
+        logger.warning("Element table migration encountered error: %s", e)
+
+
+_migrate_element_table()
+
+
+# --------------------- Migration: add elements_restored to rollback_audit ---------------------
+def _migrate_rollback_add_elements_restored():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(rollback_audit)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "elements_restored" not in cols:
+            cur.execute(
+                "ALTER TABLE rollback_audit ADD COLUMN elements_restored INTEGER"
+            )
+            conn.commit()
+            logger.info("Added elements_restored column to rollback_audit")
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.warning("rollback_audit migration failed: %s", e)
+
+
+_migrate_rollback_add_elements_restored()
+
 # --------------------- Models ---------------------
 
 
@@ -319,6 +427,111 @@ class VisitCreate(BaseModel):
 
 class ActivityCreate(BaseModel):
     name: str
+
+
+class ElementCreate(BaseModel):
+    name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    testrl: Optional[str] = None  # start rule (optional)
+    teenrl: Optional[str] = None  # end rule (optional)
+
+
+class ElementUpdate(BaseModel):
+    name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    testrl: Optional[str] = None
+    teenrl: Optional[str] = None
+
+
+def _record_element_audit(
+    soa_id: int,
+    action: str,
+    element_id: Optional[int],
+    before: Optional[dict] = None,
+    after: Optional[dict] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO element_audit (soa_id, element_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                element_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.warning("Failed recording element audit: %s", e)
+
+
+# --------------------- Element REST Endpoints ---------------------
+@app.get("/soa/{soa_id}/elements", response_class=JSONResponse)
+def list_elements(soa_id: int):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,label,description,testrl,teenrl,order_index,created_at FROM element WHERE soa_id=? ORDER BY order_index",
+        (soa_id,),
+    )
+    rows = [
+        {
+            "id": r[0],
+            "name": r[1],
+            "label": r[2],
+            "description": r[3],
+            "testrl": r[4],
+            "teenrl": r[5],
+            "order_index": r[6],
+            "created_at": r[7],
+        }
+        for r in cur.fetchall()
+    ]
+    conn.close()
+    return JSONResponse(rows)
+
+
+@app.get("/soa/{soa_id}/element_audit", response_class=JSONResponse)
+def list_element_audit(soa_id: int):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, element_id, action, before_json, after_json, performed_at FROM element_audit WHERE soa_id=? ORDER BY id DESC",
+        (soa_id,),
+    )
+    rows = []
+    for r in cur.fetchall():
+        try:
+            before = json.loads(r[3]) if r[3] else None
+        except Exception:
+            before = None
+        try:
+            after = json.loads(r[4]) if r[4] else None
+        except Exception:
+            after = None
+        rows.append(
+            {
+                "id": r[0],
+                "element_id": r[1],
+                "action": r[2],
+                "before": before,
+                "after": after,
+                "performed_at": r[5],
+            }
+        )
+    conn.close()
+    return JSONResponse(rows)
 
 
 class EpochCreate(BaseModel):
@@ -424,6 +637,26 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
         for r in cur2.fetchall()
     ]
     conn2.close()
+    # Elements snapshot (ordered)
+    conn_el = _connect()
+    cur_el = conn_el.cursor()
+    cur_el.execute(
+        "SELECT id,name,label,description,testrl,teenrl,order_index FROM element WHERE soa_id=? ORDER BY order_index",
+        (soa_id,),
+    )
+    elements = [
+        dict(
+            id=r[0],
+            name=r[1],
+            label=r[2],
+            description=r[3],
+            testrl=r[4],
+            teenrl=r[5],
+            order_index=r[6],
+        )
+        for r in cur_el.fetchall()
+    ]
+    conn_el.close()
     # Concept mapping
     activity_ids = [a["id"] for a in activities]
     concepts_map = {}
@@ -444,6 +677,7 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
         "version_label": version_label,
         "frozen_at": datetime.now(timezone.utc).isoformat(),
         "epochs": epochs,
+        "elements": elements,
         "visits": visits,
         "activities": activities,
         "cells": cells,
@@ -638,6 +872,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     visits = snap.get("visits", [])
     activities = snap.get("activities", [])
     cells = snap.get("cells", [])
+    elements = snap.get("elements", [])
     concepts_map = snap.get("activity_concepts", {}) or {}
     conn = _connect()
     cur = conn.cursor()
@@ -650,6 +885,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     )
     cur.execute("DELETE FROM activity WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM visit WHERE soa_id=?", (soa_id,))
+    cur.execute("DELETE FROM element WHERE soa_id=?", (soa_id,))
     # Reinsert visits mapping old id->new id
     visit_id_map = {}
     for v in sorted(visits, key=lambda x: x.get("order_index", 0)):
@@ -690,6 +926,23 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
             )
             inserted_cells += 1
     # Reinsert concepts
+    # Reinsert elements
+    elements_restored = 0
+    for el in sorted(elements, key=lambda x: x.get("order_index", 0)):
+        cur.execute(
+            "INSERT INTO element (soa_id,name,label,description,testrl,teenrl,order_index,created_at) VALUES (?,?,?,?,?,?,?,?)",
+            (
+                soa_id,
+                el.get("name"),
+                el.get("label"),
+                el.get("description"),
+                el.get("testrl"),
+                el.get("teenrl"),
+                el.get("order_index"),
+                datetime.utcnow().isoformat(),
+            ),
+        )
+        elements_restored += 1
     inserted_concepts = 0
     for old_aid, concept_list in concepts_map.items():
         new_aid = activity_id_map.get(int(old_aid))
@@ -713,6 +966,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         "activities_restored": len(activities),
         "cells_restored": inserted_cells,
         "concept_mappings_restored": inserted_concepts,
+        "elements_restored": elements_restored,
     }
 
 
@@ -720,7 +974,7 @@ def _record_rollback_audit(soa_id: int, freeze_id: int, stats: dict):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO rollback_audit (soa_id, freeze_id, performed_at, visits_restored, activities_restored, cells_restored, concepts_restored) VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO rollback_audit (soa_id, freeze_id, performed_at, visits_restored, activities_restored, cells_restored, concepts_restored, elements_restored) VALUES (?,?,?,?,?,?,?,?)",
         (
             soa_id,
             freeze_id,
@@ -729,6 +983,7 @@ def _record_rollback_audit(soa_id: int, freeze_id: int, stats: dict):
             stats.get("activities_restored"),
             stats.get("cells_restored"),
             stats.get("concept_mappings_restored"),
+            stats.get("elements_restored"),
         ),
     )
     conn.commit()
@@ -2406,6 +2661,27 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_ep.fetchall()
     ]
     conn_ep.close()
+    # Elements list
+    conn_el = _connect()
+    cur_el = conn_el.cursor()
+    cur_el.execute(
+        "SELECT id,name,label,description,testrl,teenrl,order_index,created_at FROM element WHERE soa_id=? ORDER BY order_index",
+        (soa_id,),
+    )
+    elements = [
+        dict(
+            id=r[0],
+            name=r[1],
+            label=r[2],
+            description=r[3],
+            testrl=r[4],
+            teenrl=r[5],
+            order_index=r[6],
+            created_at=r[7],
+        )
+        for r in cur_el.fetchall()
+    ]
+    conn_el.close()
     # No pagination: use all activities
     activities_page = activities
     # Build cell lookup
@@ -2470,6 +2746,7 @@ def ui_edit(request: Request, soa_id: int):
             "epochs": epochs,
             "visits": visits,
             "activities": activities_page,
+            "elements": elements,
             "cell_map": cell_map,
             "concepts": concepts,
             "activity_concepts": activity_concepts,
@@ -2497,6 +2774,168 @@ def ui_add_visit(
         soa_id, VisitCreate(name=name, raw_header=raw_header or name, epoch_id=epoch_id)
     )
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.post("/ui/soa/{soa_id}/add_element", response_class=HTMLResponse)
+def ui_add_element(
+    request: Request,
+    soa_id: int,
+    name: str = Form(...),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    testrl: Optional[str] = Form(None),
+    teenrl: Optional[str] = Form(None),
+):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    name = (name or "").strip()
+    if not name:
+        raise HTTPException(400, "Name required")
+    conn = _connect()
+    cur = conn.cursor()
+    # Determine next order index
+    cur.execute(
+        "SELECT COALESCE(MAX(order_index),0) FROM element WHERE soa_id=?", (soa_id,)
+    )
+    next_ord = (cur.fetchone() or [0])[0] + 1
+    now = datetime.utcnow().isoformat()
+    cur.execute(
+        """INSERT INTO element (soa_id,name,label,description,testrl,teenrl,order_index,created_at)
+        VALUES (?,?,?,?,?,?,?,?)""",
+        (
+            soa_id,
+            name,
+            (label or "").strip() or None,
+            (description or "").strip() or None,
+            (testrl or "").strip() or None,
+            (teenrl or "").strip() or None,
+            next_ord,
+            now,
+        ),
+    )
+    eid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    _record_element_audit(
+        soa_id,
+        "create",
+        eid,
+        before=None,
+        after={
+            "id": eid,
+            "name": name,
+            "label": (label or "").strip() or None,
+            "description": (description or "").strip() or None,
+            "testrl": (testrl or "").strip() or None,
+            "teenrl": (teenrl or "").strip() or None,
+            "order_index": next_ord,
+        },
+    )
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.post("/ui/soa/{soa_id}/update_element", response_class=HTMLResponse)
+def ui_update_element(
+    request: Request,
+    soa_id: int,
+    element_id: int = Form(...),
+    name: Optional[str] = Form(None),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    testrl: Optional[str] = Form(None),
+    teenrl: Optional[str] = Form(None),
+):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM element WHERE id=? AND soa_id=?", (element_id, soa_id))
+    if not cur.fetchone():
+        conn.close()
+        raise HTTPException(404, "Element not found")
+    cur.execute(
+        "UPDATE element SET name=?, label=?, description=?, testrl=?, teenrl=? WHERE id=?",
+        (
+            (name or "").strip() or None,
+            (label or "").strip() or None,
+            (description or "").strip() or None,
+            (testrl or "").strip() or None,
+            (teenrl or "").strip() or None,
+            element_id,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    _record_element_audit(
+        soa_id,
+        "update",
+        element_id,
+        before=None,  # Could capture previous if needed; omitted for brevity
+        after={
+            "id": element_id,
+            "name": (name or "").strip() or None,
+            "label": (label or "").strip() or None,
+            "description": (description or "").strip() or None,
+            "testrl": (testrl or "").strip() or None,
+            "teenrl": (teenrl or "").strip() or None,
+        },
+    )
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.post("/ui/soa/{soa_id}/delete_element", response_class=HTMLResponse)
+def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM element WHERE id=? AND soa_id=?", (element_id, soa_id))
+    conn.commit()
+    conn.close()
+    _record_element_audit(
+        soa_id, "delete", element_id, before={"id": element_id}, after=None
+    )
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.post("/ui/soa/{soa_id}/reorder_elements", response_class=HTMLResponse)
+def ui_reorder_elements(request: Request, soa_id: int, order: str = Form("")):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
+    if not ids:
+        return HTMLResponse("Invalid order", status_code=400)
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM element WHERE soa_id=?", (soa_id,))
+    existing = {r[0] for r in cur.fetchall()}
+    if set(ids) - existing:
+        conn.close()
+        return HTMLResponse("Order contains invalid element id", status_code=400)
+    for idx, eid in enumerate(ids, start=1):
+        cur.execute("UPDATE element SET order_index=? WHERE id=?", (idx, eid))
+    conn.commit()
+    conn.close()
+    # reorder audit stored separately; still record element_audit for traceability
+    # Capture previous order
+    try:
+        conn2 = _connect()
+        cur2 = conn2.cursor()
+        cur2.execute(
+            "SELECT id FROM element WHERE soa_id=? ORDER BY order_index", (soa_id,)
+        )
+        old_order = [r[0] for r in cur2.fetchall()]
+        conn2.close()
+    except Exception:
+        old_order = []
+    _record_element_audit(
+        soa_id,
+        "reorder",
+        element_id=None,
+        before={"old_order": old_order},
+        after={"new_order": ids},
+    )
+    return HTMLResponse("OK")
 
 
 @app.post("/ui/soa/{soa_id}/add_activity", response_class=HTMLResponse)
