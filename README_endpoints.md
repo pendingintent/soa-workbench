@@ -90,6 +90,23 @@ Reorder API (JSON) not implemented for visits yet (only form version).
 
 ---
 ## Elements (New)
+## Arms (New)
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| GET | `/soa/{soa_id}/arms` | List arms (ordered) |
+| GET | `/soa/{soa_id}/arms/{arm_id}` | Fetch arm detail (includes immutable `arm_uid`) |
+| POST | `/soa/{soa_id}/arms` | Create arm `{ name, label?, description? }` (auto assigns next `arm_uid` = `StudyArm_<n>`) |
+| PATCH | `/soa/{soa_id}/arms/{arm_id}` | Update arm (partial) returns `updated_fields` (arm_uid immutable) |
+| DELETE | `/soa/{soa_id}/arms/{arm_id}` | Delete arm |
+| POST | `/soa/{soa_id}/arms/reorder` | Reorder (body JSON array of IDs) |
+| GET | `/soa/{soa_id}/arm_audit` | Arm audit log (create/update/delete/reorder entries) |
+| (UI) POST | `/ui/soa/{soa_id}/add_arm` | Form create |
+| (UI) POST | `/ui/soa/{soa_id}/update_arm` | Form update |
+| (UI) POST | `/ui/soa/{soa_id}/delete_arm` | Form delete |
+| (UI) POST | `/ui/soa/{soa_id}/reorder_arms` | Drag reorder (form) |
+
+Arm rows include immutable `arm_uid` (unique per study). Element linkage has been removed; a migration now physically drops the legacy `element_id` and `etcd` columns from existing databases. Fresh installs never create these columns.
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
@@ -187,6 +204,7 @@ Snapshot includes keys: `epochs`, `elements`, `visits`, `activities`, `cells`, `
 | GET | `/soa/{soa_id}/visit_audit` | Visit audit log (create/update/delete) |
 | GET | `/soa/{soa_id}/activity_audit` | Activity audit log (create/update/delete) |
 | GET | `/soa/{soa_id}/epoch_audit` | Epoch audit log (create/update/delete/reorder) |
+| GET | `/soa/{soa_id}/arm_audit` | Arm audit log (create/update/delete/reorder) |
 
 Rollback audit row fields: `id, soa_id, freeze_id, performed_at, visits_restored, activities_restored, cells_restored, concepts_restored, elements_restored`.
 
@@ -234,6 +252,7 @@ These endpoints render or redirect; they are not intended for API clients.
 | Visits | POST `/soa/{soa_id}/visits/reorder` | POST `/ui/soa/{soa_id}/reorder_visits` | JSON array / form `order` |
 | Activities | POST `/soa/{soa_id}/activities/reorder` | POST `/ui/soa/{soa_id}/reorder_activities` | JSON array / form `order` |
 | Epochs | POST `/soa/{soa_id}/epochs/reorder` | POST `/ui/soa/{soa_id}/reorder_epochs` | JSON array / form `order` |
+| Arms | POST `/soa/{soa_id}/arms/reorder` | POST `/ui/soa/{soa_id}/reorder_arms` | JSON array / form `order` |
 
 ---
 ## Error Handling
@@ -260,6 +279,7 @@ Example error:
 Create SoA         POST /soa
 Get Visit Detail   GET  /soa/{id}/visits/{visit_id}
 Get Activity Detail GET /soa/{id}/activities/{activity_id}
+Get Arm Detail     GET  /soa/{id}/arms/{arm_id}
 List Elements      GET  /soa/{id}/elements
 Create Element     POST /soa/{id}/elements
 Update Element     PATCH /soa/{id}/elements/{element_id}
@@ -267,6 +287,7 @@ Reorder Elements   POST /soa/{id}/elements/reorder   (JSON array)
 Reorder Visits     POST /soa/{id}/visits/reorder     (JSON array)
 Reorder Activities POST /soa/{id}/activities/reorder (JSON array)
 Reorder Epochs     POST /soa/{id}/epochs/reorder     (JSON array)
+Reorder Arms       POST /soa/{id}/arms/reorder       (JSON array)
 Freeze Version     POST /ui/soa/{id}/freeze (form)
 Rollback           POST /ui/soa/{id}/freeze/{freeze_id}/rollback
 Element Audit      GET  /soa/{id}/element_audit

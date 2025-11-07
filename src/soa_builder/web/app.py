@@ -24,7 +24,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import io
 import pandas as pd
@@ -81,6 +81,18 @@ def _init_db():
     cur.execute(
         """CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, order_index INTEGER)"""
     )
+    # Arms: groupings similar to Visits with optional linkage to an Element by element_id. etcd stores the chosen element.name snapshot.
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS arm (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            label TEXT,
+            description TEXT,
+            order_index INTEGER,
+            arm_uid TEXT -- immutable StudyArm_N identifier unique within an SOA
+        )"""
+    )
     # Elements: finer-grained structural units (optional) that can also be ordered
     cur.execute(
         """CREATE TABLE IF NOT EXISTS element (
@@ -125,6 +137,18 @@ def _init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             soa_id INTEGER NOT NULL,
             activity_id INTEGER,
+            action TEXT NOT NULL, -- create|update|delete|reorder
+            before_json TEXT,
+            after_json TEXT,
+            performed_at TEXT NOT NULL
+        )"""
+    )
+    # Arm audit table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS arm_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            arm_id INTEGER,
             action TEXT NOT NULL, -- create|update|delete|reorder
             before_json TEXT,
             after_json TEXT,
@@ -181,7 +205,7 @@ def _init_db():
         """CREATE TABLE IF NOT EXISTS reorder_audit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             soa_id INTEGER NOT NULL,
-            entity_type TEXT NOT NULL, -- 'visit' | 'activity' | 'epoch'
+            entity_type TEXT NOT NULL, -- 'visit' | 'activity' | 'epoch' | 'arm' | 'element'
             old_order_json TEXT NOT NULL,
             new_order_json TEXT NOT NULL,
             performed_at TEXT NOT NULL
@@ -192,6 +216,135 @@ def _init_db():
 
 
 _init_db()
+
+
+# --------------------- Migration: add arm_uid to arm ---------------------
+def _migrate_add_arm_uid():
+    """Ensure arm_uid column exists and is populated with StudyArm_<n> unique per soa.
+    Backfills existing arms sequentially by id order if missing. Creates unique index (soa_id, arm_uid).
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(arm)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "arm_uid" not in cols:
+            cur.execute("ALTER TABLE arm ADD COLUMN arm_uid TEXT")
+            conn.commit()
+        # Backfill any NULL arm_uid values
+        cur.execute("SELECT DISTINCT soa_id FROM arm WHERE arm_uid IS NULL")
+        soa_ids = [r[0] for r in cur.fetchall()]
+        for sid in soa_ids:
+            cur.execute(
+                "SELECT id FROM arm WHERE soa_id=? AND arm_uid IS NULL ORDER BY id",
+                (sid,),
+            )
+            ids = [r[0] for r in cur.fetchall()]
+            # Determine existing numbers to avoid collision (if partial data present)
+            cur.execute(
+                "SELECT arm_uid FROM arm WHERE soa_id=? AND arm_uid IS NOT NULL", (sid,)
+            )
+            existing_uids = {r[0] for r in cur.fetchall() if r[0]}
+            used_nums = set()
+            for uid in existing_uids:
+                if uid.startswith("StudyArm_"):
+                    try:
+                        used_nums.add(int(uid.split("StudyArm_")[-1]))
+                    except Exception:
+                        pass
+            next_n = 1
+            for arm_id in ids:
+                while next_n in used_nums:
+                    next_n += 1
+                new_uid = f"StudyArm_{next_n}"
+                used_nums.add(next_n)
+                next_n += 1
+                cur.execute("UPDATE arm SET arm_uid=? WHERE id=?", (new_uid, arm_id))
+        # Create unique index
+        try:
+            cur.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_arm_soaid_uid ON arm(soa_id, arm_uid)"
+            )
+            conn.commit()
+        except Exception:
+            pass
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("arm_uid migration failed: %s", e)
+
+
+_migrate_add_arm_uid()
+
+
+# --------------------- Migration: drop deprecated arm linkage columns ---------------------
+def _migrate_drop_arm_element_link():
+    """If legacy columns (element_id, etcd) exist in arm, rebuild table without them.
+    SQLite cannot drop columns directly; we create new table, copy data, replace.
+    Safe to run multiple times (idempotent)."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(arm)")
+        cols = [r[1] for r in cur.fetchall()]
+        if "element_id" in cols or "etcd" in cols:
+            logger.info(
+                "Rebuilding arm table to drop deprecated columns element_id, etcd"
+            )
+            # Determine if arm_uid index exists to recreate later
+            cur.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_arm_soaid_uid'"
+            )
+            has_uid_index = cur.fetchone() is not None
+            # Create new table
+            cur.execute(
+                """
+                CREATE TABLE arm_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    soa_id INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    label TEXT,
+                    description TEXT,
+                    order_index INTEGER,
+                    arm_uid TEXT
+                )
+            """
+            )
+            # Copy data (ignore legacy columns)
+            # Only select columns that persist
+            select_cols = [
+                c
+                for c in [
+                    "id",
+                    "soa_id",
+                    "name",
+                    "label",
+                    "description",
+                    "order_index",
+                    "arm_uid",
+                ]
+                if c in cols
+            ]
+            cur.execute(
+                f"INSERT INTO arm_new (id,soa_id,name,label,description,order_index,arm_uid) SELECT id,soa_id,name,label,description,order_index,arm_uid FROM arm"
+            )
+            # Drop old table, rename
+            cur.execute("DROP TABLE arm")
+            cur.execute("ALTER TABLE arm_new RENAME TO arm")
+            if has_uid_index:
+                try:
+                    cur.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS idx_arm_soaid_uid ON arm(soa_id, arm_uid)"
+                    )
+                except Exception:
+                    pass
+            conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("arm linkage drop migration failed: %s", e)
+
+
+_migrate_drop_arm_element_link()
 
 
 # --------------------- Migration: add epoch_id to visit ---------------------
@@ -491,6 +644,20 @@ class ActivityUpdate(BaseModel):
     name: Optional[str] = None
 
 
+class ArmCreate(BaseModel):
+    name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    # element linkage removed; arms are now independent of elements.
+
+
+class ArmUpdate(BaseModel):
+    name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    # element linkage removed
+
+
 def _record_element_audit(
     soa_id: int,
     action: str,
@@ -597,6 +764,33 @@ def _record_epoch_audit(
         conn.close()
     except Exception as e:  # pragma: no cover
         logger.warning("Failed recording epoch audit: %s", e)
+
+
+def _record_arm_audit(
+    soa_id: int,
+    action: str,
+    arm_id: Optional[int],
+    before: Optional[dict] = None,
+    after: Optional[dict] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO arm_audit (soa_id, arm_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                arm_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.warning("Failed recording arm audit: %s", e)
 
 
 # --------------------- Element REST Endpoints ---------------------
@@ -864,6 +1058,250 @@ def reorder_elements_api(soa_id: int, order: List[int]):
         after={"new_order": order},
     )
     return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})
+
+
+# --------------------- Arm REST Endpoints ---------------------
+@app.get("/soa/{soa_id}/arms", response_class=JSONResponse)
+def list_arms(soa_id: int):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,label,description,order_index,arm_uid FROM arm WHERE soa_id=? ORDER BY order_index",
+        (soa_id,),
+    )
+    rows = [
+        {
+            "id": r[0],
+            "name": r[1],
+            "label": r[2],
+            "description": r[3],
+            "order_index": r[4],
+            "arm_uid": r[5],
+        }
+        for r in cur.fetchall()
+    ]
+    conn.close()
+    return rows
+
+
+@app.get("/soa/{soa_id}/arm_audit", response_class=JSONResponse)
+def list_arm_audit(soa_id: int):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, arm_id, action, before_json, after_json, performed_at FROM arm_audit WHERE soa_id=? ORDER BY id DESC",
+        (soa_id,),
+    )
+    rows = []
+    for r in cur.fetchall():
+        try:
+            before = json.loads(r[3]) if r[3] else None
+        except Exception:
+            before = None
+        try:
+            after = json.loads(r[4]) if r[4] else None
+        except Exception:
+            after = None
+        rows.append(
+            {
+                "id": r[0],
+                "arm_id": r[1],
+                "action": r[2],
+                "before": before,
+                "after": after,
+                "performed_at": r[5],
+            }
+        )
+    conn.close()
+    return rows
+
+
+@app.post("/soa/{soa_id}/arms", response_class=JSONResponse, status_code=201)
+def create_arm(soa_id: int, payload: ArmCreate):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(400, "Name required")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT COALESCE(MAX(order_index),0) FROM arm WHERE soa_id=?", (soa_id,)
+    )
+    next_ord = (cur.fetchone() or [0])[0] + 1
+    # Generate next arm_uid (StudyArm_N) unique within this SoA
+    cur.execute(
+        "SELECT arm_uid FROM arm WHERE soa_id=? AND arm_uid LIKE 'StudyArm_%'",
+        (soa_id,),
+    )
+    existing_uids = [r[0] for r in cur.fetchall() if r[0]]
+    used_nums = set()
+    for uid in existing_uids:
+        try:
+            used_nums.add(int(uid.split("StudyArm_")[-1]))
+        except Exception:
+            pass
+    next_n = 1
+    while next_n in used_nums:
+        next_n += 1
+    new_uid = f"StudyArm_{next_n}"
+    # element linkage removed: etcd always NULL
+    etcd_val = None
+    cur.execute(
+        """INSERT INTO arm (soa_id,name,label,description,etcd,element_id,order_index,arm_uid)
+            VALUES (?,?,?,?,?,?,?,?)""",
+        (
+            soa_id,
+            name,
+            (payload.label or "").strip() or None,
+            (payload.description or "").strip() or None,
+            etcd_val,
+            None,  # element_id deprecated
+            next_ord,
+            new_uid,
+        ),
+    )
+    arm_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    row = {
+        "id": arm_id,
+        "name": name,
+        "label": (payload.label or "").strip() or None,
+        "description": (payload.description or "").strip() or None,
+        "order_index": next_ord,
+        "arm_uid": new_uid,
+    }
+    _record_arm_audit(soa_id, "create", arm_id, before=None, after=row)
+    return row
+
+
+@app.patch("/soa/{soa_id}/arms/{arm_id}", response_class=JSONResponse)
+def update_arm(soa_id: int, arm_id: int, payload: ArmUpdate):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,label,description,order_index,arm_uid FROM arm WHERE id=? AND soa_id=?",
+        (arm_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Arm not found")
+    before = {
+        "id": row[0],
+        "name": row[1],
+        "label": row[2],
+        "description": row[3],
+        "order_index": row[6],
+        "arm_uid": row[7],
+    }
+    new_name = (payload.name if payload.name is not None else before["name"]) or ""
+    new_label = payload.label if payload.label is not None else before["label"]
+    new_desc = (
+        payload.description
+        if payload.description is not None
+        else before["description"]
+    )
+    cur.execute(
+        "UPDATE arm SET name=?, label=?, description=? WHERE id=?",
+        (
+            (new_name or "").strip() or None,
+            (new_label or "").strip() or None,
+            (new_desc or "").strip() or None,
+            arm_id,
+        ),
+    )
+    conn.commit()
+    cur.execute(
+        "SELECT id,name,label,description,order_index,arm_uid FROM arm WHERE id=?",
+        (arm_id,),
+    )
+    r = cur.fetchone()
+    conn.close()
+    after = {
+        "id": r[0],
+        "name": r[1],
+        "label": r[2],
+        "description": r[3],
+        "order_index": r[4],
+        "arm_uid": r[5],
+    }
+    mutable = ["name", "label", "description"]  # arm_uid immutable; linkage removed
+    updated_fields = [f for f in mutable if before.get(f) != after.get(f)]
+    _record_arm_audit(
+        soa_id,
+        "update",
+        arm_id,
+        before=before,
+        after={**after, "updated_fields": updated_fields},
+    )
+    return {**after, "updated_fields": updated_fields}
+
+
+@app.delete("/soa/{soa_id}/arms/{arm_id}", response_class=JSONResponse)
+def delete_arm(soa_id: int, arm_id: int):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,label,description,order_index,arm_uid FROM arm WHERE id=? AND soa_id=?",
+        (arm_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Arm not found")
+    before = {
+        "id": row[0],
+        "name": row[1],
+        "label": row[2],
+        "description": row[3],
+        "order_index": row[4],
+        "arm_uid": row[5],
+    }
+    cur.execute("DELETE FROM arm WHERE id=?", (arm_id,))
+    conn.commit()
+    conn.close()
+    _record_arm_audit(soa_id, "delete", arm_id, before=before, after=None)
+    return {"deleted": True, "id": arm_id}
+
+
+@app.post("/soa/{soa_id}/arms/reorder", response_class=JSONResponse)
+def reorder_arms_api(soa_id: int, order: List[int]):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    if not order:
+        raise HTTPException(400, "Order list required")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM arm WHERE soa_id=? ORDER BY order_index", (soa_id,))
+    old_order = [r[0] for r in cur.fetchall()]
+    cur.execute("SELECT id FROM arm WHERE soa_id=?", (soa_id,))
+    existing = {r[0] for r in cur.fetchall()}
+    if set(order) - existing:
+        conn.close()
+        raise HTTPException(400, "Order contains invalid arm id")
+    for idx, aid in enumerate(order, start=1):
+        cur.execute("UPDATE arm SET order_index=? WHERE id=?", (idx, aid))
+    conn.commit()
+    conn.close()
+    _record_reorder_audit(soa_id, "arm", old_order, order)
+    _record_arm_audit(
+        soa_id,
+        "reorder",
+        arm_id=None,
+        before={"old_order": old_order},
+        after={"new_order": order},
+    )
+    return {"ok": True, "old_order": old_order, "new_order": order}
 
 
 @app.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
@@ -1457,6 +1895,31 @@ def _list_reorder_audit(soa_id: int) -> list[dict]:
     ]
     conn.close()
     return rows
+
+
+def _fetch_arms_for_edit(soa_id: int) -> list[dict]:
+    """Return ordered arms for edit template."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id,name,label,description,order_index FROM arm WHERE soa_id=? ORDER BY order_index",
+            (soa_id,),
+        )
+        rows = [
+            {
+                "id": r[0],
+                "name": r[1],
+                "label": r[2],
+                "description": r[3],
+                "order_index": r[4],
+            }
+            for r in cur.fetchall()
+        ]
+        conn.close()
+        return rows
+    except Exception:
+        return []
 
 
 def _list_rollback_audit(soa_id: int) -> list[dict]:
@@ -2536,8 +2999,8 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
             "epoch_label": b[4],
             "epoch_description": b[5],
         }
-    sets = []
-    vals = []
+    sets: List[str] = []
+    vals: List[Any] = []
     if payload.name is not None:
         sets.append("name=?")
         vals.append((payload.name or "").strip() or None)
@@ -3420,6 +3883,7 @@ def ui_edit(request: Request, soa_id: int):
             "visits": visits,
             "activities": activities_page,
             "elements": elements,
+            "arms": _fetch_arms_for_edit(soa_id),
             "cell_map": cell_map,
             "concepts": concepts,
             "activity_concepts": activity_concepts,
@@ -3447,6 +3911,81 @@ def ui_add_visit(
         soa_id, VisitCreate(name=name, raw_header=raw_header or name, epoch_id=epoch_id)
     )
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.post("/ui/soa/{soa_id}/add_arm", response_class=HTMLResponse)
+def ui_add_arm(
+    request: Request,
+    soa_id: int,
+    name: str = Form(...),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    element_id: Optional[str] = Form(None),
+):
+    """Form handler to create a new Arm."""
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    # Accept blank/empty element selection gracefully. The form may submit "" which would 422 with Optional[int].
+    eid = int(element_id) if element_id and element_id.strip().isdigit() else None
+    payload = ArmCreate(name=name, label=label, description=description, element_id=eid)
+    create_arm(soa_id, payload)
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.post("/ui/soa/{soa_id}/update_arm", response_class=HTMLResponse)
+def ui_update_arm(
+    request: Request,
+    soa_id: int,
+    arm_id: int = Form(...),
+    name: Optional[str] = Form(None),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    element_id: Optional[str] = Form(None),
+):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    # Coerce possible blank element selection to None; avoid 422 validation error from string "" into Optional[int].
+    eid = int(element_id) if element_id and element_id.strip().isdigit() else None
+    payload = ArmUpdate(name=name, label=label, description=description, element_id=eid)
+    update_arm(soa_id, arm_id, payload)
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.post("/ui/soa/{soa_id}/delete_arm", response_class=HTMLResponse)
+def ui_delete_arm(request: Request, soa_id: int, arm_id: int = Form(...)):
+    delete_arm(soa_id, arm_id)
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+
+
+@app.post("/ui/soa/{soa_id}/reorder_arms", response_class=HTMLResponse)
+def ui_reorder_arms(request: Request, soa_id: int, order: str = Form("")):
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
+    if not ids:
+        return HTMLResponse("Invalid order", status_code=400)
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM arm WHERE soa_id=? ORDER BY order_index", (soa_id,))
+    old_order = [r[0] for r in cur.fetchall()]
+    cur.execute("SELECT id FROM arm WHERE soa_id=?", (soa_id,))
+    existing = {r[0] for r in cur.fetchall()}
+    if set(ids) - existing:
+        conn.close()
+        return HTMLResponse("Order contains invalid arm id", status_code=400)
+    for idx, aid in enumerate(ids, start=1):
+        cur.execute("UPDATE arm SET order_index=? WHERE id=?", (idx, aid))
+    conn.commit()
+    conn.close()
+    _record_reorder_audit(soa_id, "arm", old_order, ids)
+    _record_arm_audit(
+        soa_id,
+        "reorder",
+        arm_id=None,
+        before={"old_order": old_order},
+        after={"new_order": ids},
+    )
+    return HTMLResponse("OK")
 
 
 @app.post("/ui/soa/{soa_id}/add_element", response_class=HTMLResponse)

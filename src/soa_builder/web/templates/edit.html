@@ -197,6 +197,34 @@
         <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Element</button>
       </form>
     </details>
+    <details id="arms-section" open class="collapsible" style="margin-top:10px;">
+      <summary>Arms ({{ arms|length }}) <span class="hint">(drag to reorder)</span></summary>
+      <ul id="arms-list" class="drag-list">
+        {% for arm in arms %}
+        <li class="drag-item" draggable="true" data-id="{{ arm.id }}" title="{{ arm.description or '' }}">
+          <span class="ord">{{ arm.order_index }}</span>. <strong>{{ arm.arm_uid }}</strong> {{ arm.name }}
+          {% if arm.label %}<em style="color:#555;font-size:0.7em;">[{{ arm.label }}]</em>{% endif %}
+          <form hx-post="/ui/soa/{{ soa_id }}/delete_arm" hx-confirm="Delete arm '{{ arm.name }}'?" style="display:inline">
+            <input type="hidden" name="arm_id" value="{{ arm.id }}" />
+            <button type="submit" class="delete-btn">✕</button>
+          </form>
+          <form method="post" action="/ui/soa/{{ soa_id }}/update_arm" style="display:inline;margin-left:6px;font-size:0.6em;">
+            <input type="hidden" name="arm_id" value="{{ arm.id }}" />
+            <input name="name" value="{{ arm.name }}" placeholder="Name" style="width:90px;" />
+            <input name="label" value="{{ arm.label or '' }}" placeholder="Label" style="width:70px;" />
+            <input name="description" value="{{ arm.description or '' }}" placeholder="Desc" style="width:120px;" />
+            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="/ui/soa/{{ soa_id }}/add_arm" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+        <input name="name" placeholder="Arm Name" required style="flex:1;min-width:120px;" />
+        <input name="label" placeholder="Label" style="flex:1;min-width:90px;" />
+        <input name="description" placeholder="Description" style="flex:2;min-width:160px;" />
+        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Arm (auto StudyArm_N)</button>
+      </form>
+    </details>
   </div>
 </div>
 <hr />
@@ -269,6 +297,7 @@ function persistSection(sectionId){
 persistSection('visits-section');
 persistSection('activities-section');
 persistSection('epochs-section');
+persistSection('arms-section');
 
 // --- Drag & drop reorder utility ---
 function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){
@@ -319,6 +348,7 @@ enableDragList('epochs-list', '/ui/soa/{{ soa_id }}/reorder_epochs', '.ord', 'ep
 enableDragList('visits-list', '/ui/soa/{{ soa_id }}/reorder_visits', '.ord', 'visit');
 enableDragList('activities-list', '/ui/soa/{{ soa_id }}/reorder_activities', '.ord', 'activity');
 enableDragList('elements-list', '/ui/soa/{{ soa_id }}/reorder_elements', '.ord', 'element');
+enableDragList('arms-list', '/ui/soa/{{ soa_id }}/reorder_arms', '.ord', 'arm');
 // NOTE: kind === 'epoch' intentionally has no corresponding reorderMatrixEpochs call.
 // Epochs are a higher-level grouping that does not alter matrix axes (columns are visits, rows are activities).
 // We still record reorder audit events for epochs, but no DOM matrix reflow is required.
