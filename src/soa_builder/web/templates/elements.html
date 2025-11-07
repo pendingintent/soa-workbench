@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Elements for SoA {{ soa_id }}</h2>
+<p style="font-size:0.8em;color:#555;">Define generic elements with immutable IDs (auto-assigned as <code>ElementId_N</code>). Name, label, and description are required.</p>
+<div style="margin:12px 0;padding:10px;border:1px solid #ddd;background:#fafafa;border-radius:4px;">
+  <form method="post" action="/ui/soa/{{ soa_id }}/add_element" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;">
+    <input name="name" placeholder="Name *" required style="flex:1;min-width:140px;" />
+    <input name="label" placeholder="Label *" required style="flex:1;min-width:120px;" />
+    <input name="description" placeholder="Description *" required style="flex:2;min-width:200px;" />
+    <input name="testrl" placeholder="Start Rule (optional)" style="flex:1;min-width:160px;" maxlength="200" />
+    <input name="teenrl" placeholder="End Rule (optional)" style="flex:1;min-width:160px;" maxlength="200" />
+    <button style="background:#1976d2;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;">Add Element</button>
+  </form>
+</div>
+{% if elements %}
+<table style="width:100%;border-collapse:collapse;font-size:0.85em;">
+  <thead>
+    <tr style="background:#eceff1;">
+      <th style="text-align:left;padding:4px 6px;border:1px solid #ccc;">Element ID</th>
+      <th style="text-align:left;padding:4px 6px;border:1px solid #ccc;">Name</th>
+      <th style="text-align:left;padding:4px 6px;border:1px solid #ccc;">Label</th>
+  <th style="text-align:left;padding:4px 6px;border:1px solid #ccc;">Description</th>
+  <th style="text-align:left;padding:4px 6px;border:1px solid #ccc;">Start Rule</th>
+  <th style="text-align:left;padding:4px 6px;border:1px solid #ccc;">End Rule</th>
+  <th style="text-align:left;padding:4px 6px;border:1px solid #ccc;">Created At (UTC)</th>
+      <th style="text-align:left;padding:4px 6px;border:1px solid #ccc;">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for el in elements %}
+    <tr>
+      <td style="padding:4px 6px;border:1px solid #ddd;font-family:monospace;">{{ el.element_id }}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;">{{ el.name }}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;">{{ el.label or '' }}</td>
+  <td style="padding:4px 6px;border:1px solid #ddd;">{{ el.description or '' }}</td>
+  <td style="padding:4px 6px;border:1px solid #ddd;font-size:0.75em;">{{ el.testrl or '' }}</td>
+  <td style="padding:4px 6px;border:1px solid #ddd;font-size:0.75em;">{{ el.teenrl or '' }}</td>
+  <td style="padding:4px 6px;border:1px solid #ddd;font-size:0.75em;">{{ el.created_at }}</td>
+      <td style="padding:4px 6px;border:1px solid #ddd;font-size:0.7em;">
+        <details>
+          <summary style="cursor:pointer;">Edit</summary>
+          <form method="post" action="/ui/soa/{{ soa_id }}/update_element" style="display:flex;flex-direction:column;gap:4px;margin-top:4px;">
+            <input type="hidden" name="element_id" value="{{ el.element_id }}" />
+            <input name="name" value="{{ el.name }}" required placeholder="Name" style="font-size:0.75em;padding:4px;" />
+            <input name="label" value="{{ el.label or '' }}" required placeholder="Label" style="font-size:0.75em;padding:4px;" />
+            <textarea name="description" rows="2" required placeholder="Description" style="font-size:0.75em;padding:4px;">{{ el.description or '' }}</textarea>
+            <input name="testrl" value="{{ el.testrl or '' }}" placeholder="Start Rule (optional)" maxlength="200" style="font-size:0.75em;padding:4px;" />
+            <input name="teenrl" value="{{ el.teenrl or '' }}" placeholder="End Rule (optional)" maxlength="200" style="font-size:0.75em;padding:4px;" />
+            <div style="display:flex;gap:6px;">
+              <button style="background:#2e7d32;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;">Save</button>
+              <button formaction="/ui/soa/{{ soa_id }}/delete_element" name="element_id" value="{{ el.element_id }}" onclick="return confirm('Delete element {{ el.element_id }}?');" style="background:#c62828;color:#fff;border:none;padding:4px 10px;border-radius:3px;cursor:pointer;">Delete</button>
+            </div>
+          </form>
+        </details>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <div style="font-size:0.75em;color:#777;">No elements defined yet.</div>
+{% endif %}
+<p style="margin-top:14px;"><a href="/ui/soa/{{ soa_id }}/edit">← Back to Edit SoA</a></p>
+{% endblock %}

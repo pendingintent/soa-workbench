@@ -136,6 +136,8 @@ pytest
 ## Web Application (Experimental)
 An initial FastAPI backend (`soa_builder.web.app`) allows creating an SoA interactively via REST:
 
+> Full, continuously updated endpoint reference (including Elements, freezes, audits, JSON CRUD and UI helpers) lives in `README_endpoints.md`. Consult that file for detailed request/response examples, curl snippets, and future enhancement notes.
+
 Endpoints:
 - POST /soa {"name": "Breast Cancer Phase 2"}
 - POST /soa/{id}/visits {"name": "C1D1", "raw_header": "Cycle 1 Day 1 (C1D1)"}
