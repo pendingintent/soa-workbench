@@ -3074,6 +3074,10 @@ def ui_reorder_elements(request: Request, soa_id: int, order: str = Form("")):
         return HTMLResponse("Invalid order", status_code=400)
     conn = _connect()
     cur = conn.cursor()
+    # Capture existing order BEFORE modifying
+    cur.execute("SELECT id FROM element WHERE soa_id=? ORDER BY order_index", (soa_id,))
+    old_order = [r[0] for r in cur.fetchall()]
+    # Validate membership
     cur.execute("SELECT id FROM element WHERE soa_id=?", (soa_id,))
     existing = {r[0] for r in cur.fetchall()}
     if set(ids) - existing:
@@ -3083,18 +3087,7 @@ def ui_reorder_elements(request: Request, soa_id: int, order: str = Form("")):
         cur.execute("UPDATE element SET order_index=? WHERE id=?", (idx, eid))
     conn.commit()
     conn.close()
-    # reorder audit stored separately; still record element_audit for traceability
-    # Capture previous order
-    try:
-        conn2 = _connect()
-        cur2 = conn2.cursor()
-        cur2.execute(
-            "SELECT id FROM element WHERE soa_id=? ORDER BY order_index", (soa_id,)
-        )
-        old_order = [r[0] for r in cur2.fetchall()]
-        conn2.close()
-    except Exception:
-        old_order = []
+    # Record audit with before/after order
     _record_element_audit(
         soa_id,
         "reorder",
