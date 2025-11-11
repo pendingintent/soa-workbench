@@ -79,7 +79,7 @@ def _init_db():
         """CREATE TABLE IF NOT EXISTS visit (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, raw_header TEXT, order_index INTEGER)"""
     )
     cur.execute(
-    """CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, order_index INTEGER, activity_uid TEXT)"""
+        """CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, order_index INTEGER, activity_uid TEXT)"""
     )
     # Arms: groupings similar to Visits. (Legacy element linkage removed; schema now only stores intrinsic fields.)
     cur.execute(
@@ -592,11 +592,13 @@ def _migrate_rollback_add_elements_restored():
 
 _migrate_rollback_add_elements_restored()
 
+
 # --------------------- Migration: add activity_uid to activity ---------------------
 def _migrate_activity_add_uid():
     """Add activity_uid column if missing; backfill as Activity_<order_index>."""
     try:
-        conn = _connect(); cur = conn.cursor()
+        conn = _connect()
+        cur = conn.cursor()
         cur.execute("PRAGMA table_info(activity)")
         cols = {r[1] for r in cur.fetchall()}
         if "activity_uid" not in cols:
@@ -604,7 +606,10 @@ def _migrate_activity_add_uid():
             # backfill
             cur.execute("SELECT id, order_index FROM activity")
             for rid, oi in cur.fetchall():
-                cur.execute("UPDATE activity SET activity_uid=? WHERE id=?", (f"Activity_{oi}", rid))
+                cur.execute(
+                    "UPDATE activity SET activity_uid=? WHERE id=?",
+                    (f"Activity_{oi}", rid),
+                )
             # create unique index scoped per soa
             cur.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_soa_uid ON activity(soa_id, activity_uid)"
@@ -619,6 +624,7 @@ def _migrate_activity_add_uid():
         conn.close()
     except Exception as e:  # pragma: no cover
         logger.warning("activity_uid migration failed: %s", e)
+
 
 _migrate_activity_add_uid()
 
@@ -1375,15 +1381,21 @@ def reorder_activities_api(soa_id: int, order: List[int]):
         conn.close()
         raise HTTPException(400, "Order contains invalid activity id")
     # Capture before state for audit detail (id -> order_index)
-    before_rows = {r[0]: r[1] for r in cur.execute(
-        "SELECT id, order_index FROM activity WHERE soa_id=?", (soa_id,)
-    ).fetchall()}
+    before_rows = {
+        r[0]: r[1]
+        for r in cur.execute(
+            "SELECT id, order_index FROM activity WHERE soa_id=?", (soa_id,)
+        ).fetchall()
+    }
     for idx, aid in enumerate(order, start=1):
         cur.execute("UPDATE activity SET order_index=? WHERE id=?", (idx, aid))
     # Prepare after state mapping prior to UID refresh
-    after_rows = {r[0]: r[1] for r in cur.execute(
-        "SELECT id, order_index FROM activity WHERE soa_id=?", (soa_id,)
-    ).fetchall()}
+    after_rows = {
+        r[0]: r[1]
+        for r in cur.execute(
+            "SELECT id, order_index FROM activity WHERE soa_id=?", (soa_id,)
+        ).fetchall()
+    }
     # Two-phase UID reassignment to avoid UNIQUE constraint collisions during in-place changes
     cur.execute(
         "UPDATE activity SET activity_uid = 'TMP_' || id WHERE soa_id=?",
@@ -2871,13 +2883,22 @@ def add_activity(soa_id: int, payload: ActivityCreate):
     aid = cur.lastrowid
     conn.commit()
     conn.close()
-    result = {"activity_id": aid, "order_index": order_index, "activity_uid": f"Activity_{order_index}"}
+    result = {
+        "activity_id": aid,
+        "order_index": order_index,
+        "activity_uid": f"Activity_{order_index}",
+    }
     _record_activity_audit(
         soa_id,
         "create",
         aid,
         before=None,
-        after={"id": aid, "name": payload.name, "order_index": order_index, "activity_uid": f"Activity_{order_index}"},
+        after={
+            "id": aid,
+            "name": payload.name,
+            "order_index": order_index,
+            "activity_uid": f"Activity_{order_index}",
+        },
     )
     return result
 
@@ -3973,6 +3994,7 @@ def ui_edit(request: Request, soa_id: int):
         },
     )
 
+
 @app.get("/ui/concepts", response_class=HTMLResponse)
 def ui_concepts_list(request: Request):
     """Render table listing biomedical concepts (title + href)."""
@@ -3990,8 +4012,14 @@ def ui_concepts_list(request: Request):
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or _get_cdisc_api_key()
     return templates.TemplateResponse(
         "concepts_list.html",
-        {"request": request, "rows": rows, "count": len(rows), "missing_key": subscription_key is None},
+        {
+            "request": request,
+            "rows": rows,
+            "count": len(rows),
+            "missing_key": subscription_key is None,
+        },
     )
+
 
 @app.get("/ui/concepts/{code}", response_class=HTMLResponse)
 def ui_concept_detail(code: str, request: Request):
@@ -3999,17 +4027,19 @@ def ui_concept_detail(code: str, request: Request):
     extracts title, canonical href, parentBiomedicalConcept href (if any), and parentPackage href.
     """
     # Build concept API URL
-    api_href = f"https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/{code}"
+    api_href = (
+        f"https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/{code}"
+    )
     headers = {}
     api_key = _get_cdisc_api_key()
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     # Some deployments use a single key; if only one provided, reuse it for both header styles
     unified_key = subscription_key or api_key
     if unified_key:
-        headers['Ocp-Apim-Subscription-Key'] = unified_key
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
     if api_key:
-        headers['Authorization'] = f"Bearer {api_key}"
-        headers['api-key'] = api_key
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
     concept_json = None
     parent_bc_href = None
     parent_pkg_href = None
@@ -4021,21 +4051,34 @@ def ui_concept_detail(code: str, request: Request):
         if resp.status_code == 200:
             concept_json = resp.json()
             # Extract parent biomedical concept link if present
-            parent_bc_href = concept_json.get('parentBiomedicalConcept') or concept_json.get('parent_biomedical_concept')
+            parent_bc_href = concept_json.get(
+                "parentBiomedicalConcept"
+            ) or concept_json.get("parent_biomedical_concept")
             if isinstance(parent_bc_href, dict):
-                parent_bc_title = parent_bc_href.get('title') or parent_bc_href.get('name')
-                parent_bc_href = parent_bc_href.get('href') or parent_bc_href.get('url')
+                parent_bc_title = parent_bc_href.get("title") or parent_bc_href.get(
+                    "name"
+                )
+                parent_bc_href = parent_bc_href.get("href") or parent_bc_href.get("url")
             # Extract parent package link
-            parent_pkg_href = concept_json.get('parentPackage') or concept_json.get('parent_package')
+            parent_pkg_href = concept_json.get("parentPackage") or concept_json.get(
+                "parent_package"
+            )
             if isinstance(parent_pkg_href, dict):
-                parent_pkg_href = parent_pkg_href.get('href') or parent_pkg_href.get('url')
+                parent_pkg_href = parent_pkg_href.get("href") or parent_pkg_href.get(
+                    "url"
+                )
         else:
             concept_json = {"error": f"Upstream returned {resp.status_code}"}
     except Exception as e:  # pragma: no cover
         concept_json = {"error": f"Request failed: {e}"}
     title = None
     if concept_json:
-        title = concept_json.get('title') or concept_json.get('concept_title') or concept_json.get('name') or code
+        title = (
+            concept_json.get("title")
+            or concept_json.get("concept_title")
+            or concept_json.get("name")
+            or code
+        )
     return templates.TemplateResponse(
         "concept_detail.html",
         {
