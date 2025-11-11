@@ -118,7 +118,7 @@ pytest
 - Console script entry point publication via `pyproject.toml`
 - Enriched rule grammar (e.g. conditional frequency changes)
 - SDTM domain mapping utilities
- - Web application for interactive SoA authoring (initial FastAPI scaffold added)
+ - Web application for interactive SoA authoring (FastAPI + HTMX) extended with biomedical concept browsing and stable activity UIDs
 
 ## Assumptions & Heuristics
 - All non-first header columns are considered visits.
@@ -197,6 +197,11 @@ HTML UI:
  - Use export buttons (to be added) or hit endpoints directly for XLSX/PDF output.
  - Delete a visit or activity using the ✕ button next to its name (confirmation dialog). Deletion cascades to associated cells and automatically reorders remaining items.
  - (Upcoming) Bulk add activities and matrix import could be surfaced via a textarea or JSON upload panel.
+ - View biomedical concepts via the "Concepts" navigation link (`GET /ui/concepts`): renders a table of concept codes, titles and API links (cached; force refresh per study using `POST /ui/soa/{id}/concepts_refresh`).
+
+Activity Identifiers:
+- Each activity now has a stable `activity_uid` (format `Activity_<n>` unique within a study) maintained during reorder using a two-phase temporary renaming to avoid uniqueness collisions.
+- Unique index `(soa_id, activity_uid)` enforces stability for exports, snapshots and audit trails.
 
 Notes:
 - HTMX is loaded via CDN; no build step required.

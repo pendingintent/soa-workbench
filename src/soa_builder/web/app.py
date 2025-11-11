@@ -3970,6 +3970,25 @@ def ui_edit(request: Request, soa_id: int):
         },
     )
 
+@app.get("/ui/concepts", response_class=HTMLResponse)
+def ui_concepts_list(request: Request):
+    """Render table listing biomedical concepts (title + href)."""
+    concepts = fetch_biomedical_concepts(force=True) or []
+    rows = []
+    for c in concepts:
+        code = c.get("concept_code") or c.get("code")
+        title = c.get("title") or c.get("concept_title") or c.get("name") or code
+        href = (
+            f"https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/{code}"
+            if code
+            else None
+        )
+        rows.append({"code": code, "title": title, "href": href})
+    return templates.TemplateResponse(
+        "concepts_list.html",
+        {"request": request, "rows": rows, "count": len(rows)},
+    )
+
 
 @app.post("/ui/soa/{soa_id}/add_visit", response_class=HTMLResponse)
 def ui_add_visit(
