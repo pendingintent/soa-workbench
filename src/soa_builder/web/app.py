@@ -2370,7 +2370,11 @@ def fetch_sdtm_specializations(force: bool = False):
                             + str(id_val)
                         )
                 # Normalize relative/partial href to absolute
-                if href and not href.startswith("http://") and not href.startswith("https://"):
+                if (
+                    href
+                    and not href.startswith("http://")
+                    and not href.startswith("https://")
+                ):
                     if href.startswith("/"):
                         href = base_prefix + href
                     else:
@@ -2441,7 +2445,11 @@ def fetch_sdtm_specializations(force: bool = False):
                             continue
                         href = link.get("href")
                         title = link.get("title") or href
-                        if href and not href.startswith("http://") and not href.startswith("https://"):
+                        if (
+                            href
+                            and not href.startswith("http://")
+                            and not href.startswith("https://")
+                        ):
                             if href.startswith("/"):
                                 href = base_prefix + href
                             else:
@@ -2480,7 +2488,11 @@ def fetch_sdtm_specializations(force: bool = False):
                         )
                         if id_val:
                             href = f"{url}/{id_val}"
-                    if href and not href.startswith("http://") and not href.startswith("https://"):
+                    if (
+                        href
+                        and not href.startswith("http://")
+                        and not href.startswith("https://")
+                    ):
                         if href.startswith("/"):
                             href = base_prefix + href
                         else:
