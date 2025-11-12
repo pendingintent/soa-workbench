@@ -326,4 +326,167 @@ curl -s 'localhost:8000/soa/1/freeze/diff.json?left=5&right=7' | jq
 ```
 
 ---
-Generated on: 2025-11-07
+---
+## Terminology (DDF & Protocol)
+
+Two parallel terminology domains are supported: DDF Terminology and Protocol Terminology. Each provides identical capabilities: load Excel sheet, query with filters, upload new sheet via UI, audit loads (with filtering and CSV/JSON export).
+
+| Domain | Method | Path | Purpose |
+|--------|--------|------|---------|
+| DDF | POST | `/admin/load_ddf_terminology` | (Re)load default DDF Excel from `files/DDF_Terminology_2025-09-26.xls` |
+| DDF | GET | `/ddf/terminology` | Query rows (filters: `search`, `code`, `codelist_name`, `codelist_code`, pagination `limit`,`offset`) |
+| DDF | GET | `/ui/ddf/terminology` | HTML UI page (same filters + upload status) |
+| DDF | POST | `/ui/ddf/terminology/upload` | Upload Excel (.xls/.xlsx) and reload table (form fields: `file`, `sheet_name`) |
+| DDF | GET | `/ddf/terminology/audit` | List audit entries (filters: `source`, `start`, `end`) |
+| DDF | GET | `/ddf/terminology/audit/export.csv` | Export filtered audit rows as CSV |
+| DDF | GET | `/ddf/terminology/audit/export.json` | Export filtered audit rows as JSON |
+| DDF | GET | `/ui/ddf/terminology/audit` | HTML audit listing with filters + export links |
+| Protocol | POST | `/admin/load_protocol_terminology` | (Re)load default Protocol Excel from `files/Protocol_Terminology_2025-09-26.xls` |
+| Protocol | GET | `/protocol/terminology` | Query rows (filters: `search`, `code`, `codelist_name`, `codelist_code`, pagination) |
+| Protocol | GET | `/ui/protocol/terminology` | HTML UI page (same filters + upload status) |
+| Protocol | POST | `/ui/protocol/terminology/upload` | Upload & reload Protocol terminology |
+| Protocol | GET | `/protocol/terminology/audit` | Audit entries (filters: `source`, `start`, `end`) |
+| Protocol | GET | `/protocol/terminology/audit/export.csv` | CSV export of filtered Protocol audit |
+| Protocol | GET | `/protocol/terminology/audit/export.json` | JSON export of filtered Protocol audit |
+| Protocol | GET | `/ui/protocol/terminology/audit` | HTML audit listing + export links |
+
+### Terminology Query Parameters
+`search` performs case-insensitive substring across key text columns (`code`, `cdisc_submission_value`, `cdisc_definition`, `cdisc_synonym_s`, `nci_preferred_term`, `codelist_name`, `codelist_code`). Exact-match filters (`code`, `codelist_name`, `codelist_code`) narrow before search is applied. Pagination: `limit` (1–200), `offset` (>=0).
+
+### Audit Entry Fields
+`id, loaded_at (UTC ISO), file_path, original_filename, sheet_name, row_count, column_count, columns_json, source (admin|upload), file_hash (sha256), error (nullable)`
+
+Error rows have `row_count=0` and `error` populated (e.g. read or missing file). Successful loads have `error=null`.
+
+### Sample Terminology Queries
+```bash
+# DDF: find by codelist_code
+curl -s --get 'http://localhost:8000/ddf/terminology' \
+  --data-urlencode 'codelist_code=C139020' | jq '.matched_count'
+
+# Protocol: search within definition text
+curl -s --get 'http://localhost:8000/protocol/terminology' \
+  --data-urlencode 'search=trial' \
+  --data-urlencode 'limit=5' | jq '.rows[].code'
+
+# Audit export (Protocol, last 7 days)
+curl -s --get 'http://localhost:8000/protocol/terminology/audit/export.csv' \
+  --data-urlencode 'start=2025-11-05' \
+  --data-urlencode 'end=2025-11-12' > protocol_audit.csv
+```
+
+### Upload via UI Forms
+- DDF: `/ui/ddf/terminology` (sheet name default: `DDF Terminology 2025-09-26`)
+- Protocol: `/ui/protocol/terminology` (sheet name default: `Protocol Terminology 2025-09-26`)
+
+Both accept `.xls` or `.xlsx`. A SHA-256 hash is computed and stored in audit for integrity tracking.
+
+---
+Generated on: 2025-11-12
+
+## Full Endpoint Inventory (Auto-Generated 2025-11-12)
+
+| Method | Path | Type | Notes |
+|--------|------|------|-------|
+| GET | `/` | HTML | Index & create form |
+| GET | `/concepts/status` | JSON | Concepts cache diagnostics |
+| POST | `/soa` | JSON | Create study |
+| GET | `/soa/{soa_id}` | JSON | Study summary |
+| POST | `/soa/{soa_id}/metadata` | JSON | Update study metadata |
+| GET | `/soa/{soa_id}/normalized` | JSON | Normalized SoA export |
+| GET | `/soa/{soa_id}/matrix` | JSON | Raw matrix (visits/activities/cells) |
+| POST | `/soa/{soa_id}/matrix/import` | JSON | Bulk import matrix |
+| GET | `/soa/{soa_id}/export/xlsx` | Binary | Excel workbook export |
+| POST | `/soa/{soa_id}/visits` | JSON | Create visit |
+| PATCH | `/soa/{soa_id}/visits/{visit_id}` | JSON | Update visit |
+| GET | `/soa/{soa_id}/visits/{visit_id}` | JSON | Visit detail |
+| DELETE | `/soa/{soa_id}/visits/{visit_id}` | JSON | Delete visit |
+| POST | `/soa/{soa_id}/activities` | JSON | Create activity |
+| PATCH | `/soa/{soa_id}/activities/{activity_id}` | JSON | Update activity |
+| GET | `/soa/{soa_id}/activities/{activity_id}` | JSON | Activity detail |
+| DELETE | `/soa/{soa_id}/activities/{activity_id}` | JSON | Delete activity |
+| POST | `/soa/{soa_id}/activities/{activity_id}/concepts` | JSON | Assign concepts to activity |
+| POST | `/soa/{soa_id}/activities/bulk` | JSON | Bulk add activities |
+| POST | `/soa/{soa_id}/activities/reorder` | JSON | Reorder activities (global audit) |
+| POST | `/soa/{soa_id}/epochs` | JSON | Create epoch |
+| GET | `/soa/{soa_id}/epochs` | JSON | List epochs |
+| GET | `/soa/{soa_id}/epochs/{epoch_id}` | JSON | Epoch detail |
+| POST | `/soa/{soa_id}/epochs/{epoch_id}/metadata` | JSON | Update epoch metadata |
+| DELETE | `/soa/{soa_id}/epochs/{epoch_id}` | JSON | Delete epoch |
+| POST | `/soa/{soa_id}/epochs/reorder` | JSON | Reorder epochs |
+| GET | `/soa/{soa_id}/elements` | JSON | List elements |
+| GET | `/soa/{soa_id}/elements/{element_id}` | JSON | Element detail |
+| POST | `/soa/{soa_id}/elements` | JSON | Create element |
+| PATCH | `/soa/{soa_id}/elements/{element_id}` | JSON | Update element |
+| DELETE | `/soa/{soa_id}/elements/{element_id}` | JSON | Delete element |
+| POST | `/soa/{soa_id}/elements/reorder` | JSON | Reorder elements |
+| GET | `/soa/{soa_id}/element_audit` | JSON | Element audit log |
+| GET | `/soa/{soa_id}/arms` | JSON | List arms |
+| POST | `/soa/{soa_id}/arms` | JSON | Create arm |
+| PATCH | `/soa/{soa_id}/arms/{arm_id}` | JSON | Update arm |
+| DELETE | `/soa/{soa_id}/arms/{arm_id}` | JSON | Delete arm |
+| POST | `/soa/{soa_id}/arms/reorder` | JSON | Reorder arms |
+| GET | `/soa/{soa_id}/arm_audit` | JSON | Arm audit log |
+| POST | `/soa/{soa_id}/visits/reorder` | JSON | Reorder visits |
+| POST | `/soa/{soa_id}/activities/reorder` | JSON | Reorder activities |
+| POST | `/soa/{soa_id}/epochs/reorder` | JSON | Reorder epochs |
+| GET | `/soa/{soa_id}/rollback_audit` | JSON | Rollback audit log |
+| GET | `/soa/{soa_id}/reorder_audit` | JSON | Global reorder audit log |
+| GET | `/soa/{soa_id}/rollback_audit/export/xlsx` | Binary | Rollback audit Excel |
+| GET | `/soa/{soa_id}/reorder_audit/export/xlsx` | Binary | Reorder audit Excel |
+| GET | `/soa/{soa_id}/reorder_audit/export/csv` | CSV | Reorder audit CSV |
+| POST | `/soa/{soa_id}/cells` | JSON | Upsert cell |
+| GET | `/soa/{soa_id}/matrix` | JSON | (Duplicate listing for completeness) |
+| GET | `/soa/{soa_id}/normalized` | JSON | (Duplicate listing for completeness) |
+| POST | `/soa/{soa_id}/freeze/{freeze_id}/rollback` | HTML | Rollback via UI |
+| GET | `/soa/{soa_id}/freeze/{freeze_id}` | JSON | Freeze snapshot |
+| GET | `/ui/soa/{soa_id}/freeze/{freeze_id}/view` | HTML | Modal freeze view |
+| GET | `/ui/soa/{soa_id}/freeze/diff` | HTML | Freeze diff view |
+| GET | `/soa/{soa_id}/freeze/diff.json` | JSON | Freeze diff JSON |
+| POST | `/ui/soa/{soa_id}/freeze` | HTML | Create freeze (form) |
+| POST | `/ui/soa/{soa_id}/concepts_refresh` | HTML | Force concepts refresh |
+| GET | `/ui/concepts` | HTML | Concepts list |
+| GET | `/ui/concepts/{code}` | HTML | Concept detail |
+| GET | `/ddf/terminology` | JSON | DDF terminology query |
+| POST | `/admin/load_ddf_terminology` | JSON | Load DDF terminology |
+| GET | `/ui/ddf/terminology` | HTML | DDF terminology UI |
+| POST | `/ui/ddf/terminology/upload` | HTML | Upload DDF terminology |
+| GET | `/ddf/terminology/audit` | JSON | DDF audit list |
+| GET | `/ddf/terminology/audit/export.csv` | CSV | DDF audit CSV export |
+| GET | `/ddf/terminology/audit/export.json` | JSON | DDF audit JSON export |
+| GET | `/ui/ddf/terminology/audit` | HTML | DDF audit UI |
+| GET | `/protocol/terminology` | JSON | Protocol terminology query |
+| POST | `/admin/load_protocol_terminology` | JSON | Load Protocol terminology |
+| GET | `/ui/protocol/terminology` | HTML | Protocol terminology UI |
+| POST | `/ui/protocol/terminology/upload` | HTML | Upload Protocol terminology |
+| GET | `/protocol/terminology/audit` | JSON | Protocol audit list |
+| GET | `/protocol/terminology/audit/export.csv` | CSV | Protocol audit CSV export |
+| GET | `/protocol/terminology/audit/export.json` | JSON | Protocol audit JSON export |
+| GET | `/ui/protocol/terminology/audit` | HTML | Protocol audit UI |
+| POST | `/ui/soa/create` | HTML | Create study (form) |
+| POST | `/ui/soa/{soa_id}/update_meta` | HTML | Update metadata (form) |
+| GET | `/ui/soa/{soa_id}/edit` | HTML | Editing interface |
+| POST | `/ui/soa/{soa_id}/add_visit` | HTML | Add visit (form) |
+| POST | `/ui/soa/{soa_id}/delete_visit` | HTML | Delete visit (HTMX) |
+| POST | `/ui/soa/{soa_id}/reorder_visits` | HTML | Reorder visits (form) |
+| POST | `/ui/soa/{soa_id}/set_visit_epoch` | HTML | Assign epoch to visit |
+| POST | `/ui/soa/{soa_id}/add_activity` | HTML | Add activity (form) |
+| POST | `/ui/soa/{soa_id}/delete_activity` | HTML | Delete activity (HTMX) |
+| POST | `/ui/soa/{soa_id}/reorder_activities` | HTML | Reorder activities (form) |
+| POST | `/ui/soa/{soa_id}/add_epoch` | HTML | Add epoch (form) |
+| POST | `/ui/soa/{soa_id}/update_epoch` | HTML | Update epoch (form) |
+| POST | `/ui/soa/{soa_id}/delete_epoch` | HTML | Delete epoch (form) |
+| POST | `/ui/soa/{soa_id}/reorder_epochs` | HTML | Reorder epochs (form) |
+| POST | `/ui/soa/{soa_id}/add_element` | HTML | Add element (form) |
+| POST | `/ui/soa/{soa_id}/update_element` | HTML | Update element (form) |
+| POST | `/ui/soa/{soa_id}/delete_element` | HTML | Delete element (form) |
+| POST | `/ui/soa/{soa_id}/reorder_elements` | HTML | Reorder elements (form) |
+| POST | `/ui/soa/{soa_id}/add_arm` | HTML | Add arm (form) |
+| POST | `/ui/soa/{soa_id}/update_arm` | HTML | Update arm (form) |
+| POST | `/ui/soa/{soa_id}/delete_arm` | HTML | Delete arm (form) |
+| POST | `/ui/soa/{soa_id}/reorder_arms` | HTML | Reorder arms (form) |
+| POST | `/ui/soa/{soa_id}/toggle_cell` | HTML | Toggle cell (HTMX) |
+| POST | `/ui/soa/{soa_id}/set_cell` | HTML | Set cell status (HTMX) |
+
+> Not Implemented Endpoints (listed earlier conceptually): per-entity JSON audit endpoints for visits, activities, and epochs (`/soa/{soa_id}/visit_audit`, `/soa/{soa_id}/activity_audit`, `/soa/{soa_id}/epoch_audit`) were described but are not present in code as of this generation.
+
