@@ -2326,6 +2326,7 @@ def fetch_sdtm_specializations(force: bool = False):
         return _sdtm_specializations_cache["data"]
 
     override_json = os.environ.get("CDISC_SDTM_SPECIALIZATIONS_JSON")
+    base_prefix = "https://api.library.cdisc.org/api/cosmos/v2"
     if override_json:
         try:
             raw = json.loads(override_json)
@@ -2368,6 +2369,12 @@ def fetch_sdtm_specializations(force: bool = False):
                             "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/datasetspecializations/"
                             + str(id_val)
                         )
+                # Normalize relative/partial href to absolute
+                if href and not href.startswith("http://") and not href.startswith("https://"):
+                    if href.startswith("/"):
+                        href = base_prefix + href
+                    else:
+                        href = base_prefix + "/" + href
                 packages.append({"title": title, "href": href})
             packages.sort(key=lambda p: p.get("title", "").lower())
             _sdtm_specializations_cache.update(data=packages, fetched_at=now)
@@ -2434,6 +2441,11 @@ def fetch_sdtm_specializations(force: bool = False):
                             continue
                         href = link.get("href")
                         title = link.get("title") or href
+                        if href and not href.startswith("http://") and not href.startswith("https://"):
+                            if href.startswith("/"):
+                                href = base_prefix + href
+                            else:
+                                href = base_prefix + "/" + href
                         packages.append({"title": title, "href": href})
                 elif "datasetSpecializations" in data and isinstance(
                     data["datasetSpecializations"], dict
@@ -2468,6 +2480,11 @@ def fetch_sdtm_specializations(force: bool = False):
                         )
                         if id_val:
                             href = f"{url}/{id_val}"
+                    if href and not href.startswith("http://") and not href.startswith("https://"):
+                        if href.startswith("/"):
+                            href = base_prefix + href
+                        else:
+                            href = base_prefix + "/" + href
                     packages.append({"title": title, "href": href})
         else:
             _sdtm_specializations_cache["last_error"] = (
@@ -4320,6 +4337,75 @@ def ui_sdtm_specializations_list(request: Request):
             "last_status": last_status,
             "last_error": last_error,
             "last_url": last_url,
+        },
+    )
+
+
+@app.get("/ui/sdtm/specializations/{idx}", response_class=HTMLResponse)
+def ui_sdtm_specialization_detail(idx: int, request: Request):
+    """Detail page for a single SDTM dataset specialization.
+
+    Lookup by index into the cached list (stable for current request lifecycle).
+    Fetches raw JSON from the specialization's href and pretty-prints result.
+    Handles missing index, absent href, network or JSON parse errors gracefully.
+    """
+    packages = fetch_sdtm_specializations(force=True) or []
+    if idx < 0 or idx >= len(packages):
+        raise HTTPException(status_code=404, detail="Specialization index out of range")
+    spec = packages[idx]
+    title = spec.get("title") or "(untitled)"
+    href = spec.get("href")
+
+    api_key = _get_cdisc_api_key()
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    unified_key = subscription_key or api_key
+    headers: dict[str, str] = {}
+    if unified_key:
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    status = None
+    error = None
+    pretty_json = None
+    raw_text_snippet = None
+    if href:
+        try:
+            resp = requests.get(href, headers=headers, timeout=15)
+            status = resp.status_code
+            raw_text_snippet = resp.text[:500]
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                except ValueError:
+                    error = "200 OK but response was not valid JSON"
+                    data = None
+                if data is not None:
+                    try:
+                        pretty_json = json.dumps(data, indent=2, sort_keys=True)
+                    except Exception:
+                        pretty_json = json.dumps(data, indent=2)
+            else:
+                error = f"HTTP {resp.status_code} retrieving specialization"
+        except Exception as e:
+            error = f"Fetch error: {e}"[:300]
+    else:
+        error = "No href available for this specialization entry."
+
+    return templates.TemplateResponse(
+        "sdtm_specialization_detail.html",
+        {
+            "request": request,
+            "index": idx,
+            "title": title,
+            "href": href,
+            "status": status,
+            "error": error,
+            "pretty_json": pretty_json,
+            "raw_text_snippet": raw_text_snippet,
+            "missing_key": unified_key is None,
+            "total": len(packages),
         },
     )
 

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>SDTM Dataset Specialization Detail</h2>
+<p><strong>Title:</strong> {{ title }}<br/>
+<strong>Index:</strong> {{ index }} of {{ total }}<br/>
+{% if href %}<strong>API HREF:</strong> <a href="{{ href }}" target="_blank" rel="noopener">{{ href }}</a>{% else %}<em>No href available</em>{% endif %}</p>
+{% if missing_key %}
+<div style="padding:0.5em;margin:0.5em 0;border:1px solid #cc9;background:#ffd;color:#660;font-size:0.85em;">
+  <strong>Notice:</strong> No API key detected; set <code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code> to retrieve live JSON.
+</div>
+{% endif %}
+{% if error %}
+<div style="padding:0.5em;margin:0.5em 0;border:1px solid #c33;background:#fee;color:#900;font-size:0.85em;">
+  <strong>Error:</strong> {{ error }}<br/>
+  {% if raw_text_snippet %}<details style="margin-top:0.5em;">
+    <summary>Raw response snippet</summary>
+    <pre style="max-height:200px;overflow:auto;white-space:pre-wrap;">{{ raw_text_snippet }}</pre>
+  </details>{% endif %}
+</div>
+{% elif pretty_json %}
+<div style="margin:0.75em 0;">
+  <details open>
+    <summary style="cursor:pointer;font-weight:bold;">Raw JSON</summary>
+    <pre style="max-height:600px;overflow:auto; font-size:0.8em; background:#f7f7f7; padding:0.75em; border:1px solid #ccc;">{{ pretty_json }}</pre>
+  </details>
+</div>
+{% else %}
+<p><em>No JSON payload available.</em></p>
+{% endif %}
+<p style="margin-top:1em;"><a href="/ui/sdtm/specializations">Back to list</a></p>
+{% endblock %}

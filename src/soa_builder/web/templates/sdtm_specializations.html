@@ -27,14 +27,14 @@
   <thead>
     <tr>
       <th style="text-align:left;">Title</th>
-      <th style="text-align:left;">API</th>
+      <th style="text-align:left;">HREF</th>
     </tr>
   </thead>
   <tbody>
   {% for r in rows %}
     <tr>
       <td>{{ r.title }}</td>
-      <td>{% if r.href %}<a href="{{ r.href }}" target="_blank" rel="noopener">Link</a>{% else %}<em>n/a</em>{% endif %}</td>
+      <td>{% if r.href %}<a href="/ui/sdtm/specializations/{{ loop.index0 }}" title="View raw JSON detail">Link</a>{% else %}<em>n/a</em>{% endif %}</td>
     </tr>
   {% endfor %}
   </tbody>
