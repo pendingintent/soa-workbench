@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>DDF Terminology</h2>
+{% if uploaded %}<div style="padding:0.5em;background:#e0ffe0;border:1px solid #8bc34a;margin-bottom:0.75em;">Upload successful: table reloaded.</div>{% endif %}
+{% if error %}<div style="padding:0.5em;background:#ffe0e0;border:1px solid #e53935;margin-bottom:0.75em;">Error: {{ error }}</div>{% endif %}
+<form method="post" action="/ui/ddf/terminology/upload" enctype="multipart/form-data" style="margin-bottom:1em;border:1px solid #ccc;padding:0.5em;">
+  <strong>Upload new terminology file:</strong><br>
+  <input type="file" name="file" accept=".xls,.xlsx" required />
+  <label style="margin-left:1em;">Sheet: <input type="text" name="sheet_name" value="DDF Terminology 2025-09-26" /></label>
+  <button type="submit">Upload & Reload</button>
+</form>
+<form method="get" action="/ui/ddf/terminology" style="margin-bottom:1em;">
+  <label>Search substring: <input type="text" name="search" value="{{ search }}" /></label>
+  <label style="margin-left:1em;">Code: <input type="text" name="code" value="{{ code }}" /></label>
+  <label style="margin-left:1em;">Codelist Name: <input type="text" name="codelist_name" value="{{ codelist_name }}" /></label>
+  <label style="margin-left:1em;">Limit: <input type="number" min="1" max="200" name="limit" value="{{ limit }}" style="width:5em;" /></label>
+  <input type="hidden" name="offset" value="0" />
+  <button type="submit">Apply</button>
+</form>
+<p><small>Total Rows: {{ total_count }} | Matched: {{ matched_count }} | Showing limit {{ limit }} offset {{ offset }}</small></p>
+{% if rows %}
+<table border="1" cellspacing="0" cellpadding="4" style="font-size:0.85em;">
+  <thead>
+    <tr>
+      {% for col in columns %}<th>{{ col }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      {% for col in columns %}
+        <td>{{ r[col] }}</td>
+      {% endfor %}
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p><em>No rows match current filters.</em></p>
+{% endif %}
+{% if matched_count > limit %}
+  <div style="margin-top:0.75em;">
+    {% set next_offset = offset + limit %}
+    {% if next_offset < matched_count %}
+      <form method="get" action="/ui/ddf/terminology" style="display:inline;">
+        <input type="hidden" name="search" value="{{ search }}" />
+        <input type="hidden" name="code" value="{{ code }}" />
+        <input type="hidden" name="codelist_name" value="{{ codelist_name }}" />
+        <input type="hidden" name="limit" value="{{ limit }}" />
+        <input type="hidden" name="offset" value="{{ next_offset }}" />
+        <button type="submit">Next Page &raquo;</button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}
