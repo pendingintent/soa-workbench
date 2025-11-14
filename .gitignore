@@ -90,5 +90,6 @@ normalized/*.json
 normalized/
 old-tests/
 *.bkp
+*.db-corrupt
 
 # End of file
