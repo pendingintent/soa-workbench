@@ -31,7 +31,7 @@ detailedDescription:
     library with activities defined in the SoA.  Diff reporting is supported for impact analysis. Multiple AI solutions are
     used in the implementation of this project.  copilot is also used in GitHub pull requests and code reviews.
   openSourceConsiderations: |- 
-    This project is concsered fully open-source and is available for cloning, branching, and forking.  This project is in 
+    This project is considered fully open-source and is available for cloning, branching, and forking.  This project is in 
     its early stages and, by making it open-source, the hope is other developers and volunteers will get involved to help 
     create a more robust solution that adds additional benefits to the industry.
   maintenanceModel: |- 
