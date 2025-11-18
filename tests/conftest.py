@@ -7,7 +7,7 @@ all test connections use a separate SQLite file, preserving existing studies.
 import os
 from pathlib import Path
 
-# Use a test-specific database file in the workspace root
+# Use a test-specific database file in the current working directory (where pytest is invoked)
 TEST_DB_PATH = Path("soa_builder_web_tests.db").absolute()
 # Only set if not already overridden externally
 os.environ.setdefault("SOA_BUILDER_DB", str(TEST_DB_PATH))
