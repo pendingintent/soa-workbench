@@ -3581,26 +3581,53 @@ def ui_add_visit(
     soa_id: int,
     name: str = Form(...),
     raw_header: str = Form(""),
-    epoch_id: Optional[int] = Form(None),
+    epoch_id_raw: str = Form(""),  # new flexible field name
+    epoch_id: str = Form(""),  # legacy field name still used in template
 ):
+    """Create a visit (UI form).
+
+    Accepts either form field name `epoch_id_raw` (new) or `epoch_id` (legacy).
+    Blank selection is treated as None without triggering 422 validation.
+    """
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
+    # Determine which raw epoch string was provided
+    provided = (epoch_id_raw or "").strip() or (epoch_id or "").strip()
+    parsed_epoch: Optional[int] = None
+    if provided:
+        if provided.isdigit():
+            parsed_epoch = int(provided)
+        else:
+            raise HTTPException(400, "Invalid epoch_id value")
     conn = _connect()
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM visit WHERE soa_id=?", (soa_id,))
     order_index = cur.fetchone()[0] + 1
-    if epoch_id is not None:
-        cur.execute("SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (epoch_id, soa_id))
+    if parsed_epoch is not None:
+        cur.execute(
+            "SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (parsed_epoch, soa_id)
+        )
         if not cur.fetchone():
             conn.close()
             raise HTTPException(400, "Invalid epoch_id for this SOA")
     cur.execute(
         "INSERT INTO visit (soa_id,name,raw_header,order_index,epoch_id) VALUES (?,?,?,?,?)",
-        (soa_id, name, raw_header or name, order_index, epoch_id),
+        (soa_id, name, raw_header or name, order_index, parsed_epoch),
     )
     vid = cur.lastrowid
     conn.commit()
+    # Debug verification query
+    cur.execute("SELECT COUNT(*) FROM visit WHERE soa_id=?", (soa_id,))
+    _total_visits = cur.fetchone()[0]
     conn.close()
+    logger.info(
+        "ui_add_visit inserted visit id=%s soa_id=%s total_visits_now=%s epoch_raw='%s' db_path=%s",
+        vid,
+        soa_id,
+        _total_visits,
+        provided,
+        DB_PATH,
+    )
     _record_visit_audit(
         soa_id,
         "create",
@@ -3611,7 +3638,7 @@ def ui_add_visit(
             "name": name,
             "raw_header": raw_header or name,
             "order_index": order_index,
-            "epoch_id": epoch_id,
+            "epoch_id": parsed_epoch,
         },
     )
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
@@ -3841,69 +3868,6 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
     conn.close()
     _record_element_audit(
         soa_id, "delete", element_id, before={"id": element_id}, after=None
-    )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
-
-
-@app.post("/ui/soa/{soa_id}/reorder_elements", response_class=HTMLResponse)
-def ui_reorder_elements(request: Request, soa_id: int, order: str = Form("")):
-    if not _soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
-    if not ids:
-        return HTMLResponse("Invalid order", status_code=400)
-    conn = _connect()
-    cur = conn.cursor()
-    # Capture existing order BEFORE modifying
-    cur.execute("SELECT id FROM element WHERE soa_id=? ORDER BY order_index", (soa_id,))
-    old_order = [r[0] for r in cur.fetchall()]
-    # Validate membership
-    cur.execute("SELECT id FROM element WHERE soa_id=?", (soa_id,))
-    existing = {r[0] for r in cur.fetchall()}
-    if set(ids) - existing:
-        conn.close()
-        return HTMLResponse("Order contains invalid element id", status_code=400)
-    for idx, eid in enumerate(ids, start=1):
-        cur.execute("UPDATE element SET order_index=? WHERE id=?", (idx, eid))
-    conn.commit()
-    conn.close()
-    # Record audit with before/after order
-    _record_element_audit(
-        soa_id,
-        "reorder",
-        element_id=None,
-        before={"old_order": old_order},
-        after={"new_order": ids},
-    )
-    return HTMLResponse("OK")
-
-
-@app.post("/ui/soa/{soa_id}/add_activity", response_class=HTMLResponse)
-def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
-    if not _soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM activity WHERE soa_id=?", (soa_id,))
-    order_index = cur.fetchone()[0] + 1
-    cur.execute(
-        "INSERT INTO activity (soa_id,name,order_index,activity_uid) VALUES (?,?,?,?)",
-        (soa_id, name, order_index, f"Activity_{order_index}"),
-    )
-    aid = cur.lastrowid
-    conn.commit()
-    conn.close()
-    _record_activity_audit(
-        soa_id,
-        "create",
-        aid,
-        before=None,
-        after={
-            "id": aid,
-            "name": name,
-            "order_index": order_index,
-            "activity_uid": f"Activity_{order_index}",
-        },
     )
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
@@ -4168,7 +4132,19 @@ def ui_toggle_cell(
 
 @app.post("/ui/soa/{soa_id}/delete_visit", response_class=HTMLResponse)
 def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
-    delete_visit(soa_id, visit_id)
+    # Use API logic to delete and log
+    try:
+        delete_visit(soa_id, visit_id)
+        logger.info(
+            "ui_delete_visit deleted visit id=%s soa_id=%s db_path=%s",
+            visit_id,
+            soa_id,
+            DB_PATH,
+        )
+    except Exception as e:
+        logger.error(
+            "ui_delete_visit failed visit_id=%s soa_id=%s error=%s", visit_id, soa_id, e
+        )
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
 
@@ -4177,24 +4153,42 @@ def ui_set_visit_epoch(
     request: Request,
     soa_id: int,
     visit_id: int = Form(...),
-    epoch_id: Optional[int] = Form(None),
+    epoch_id_raw: str = Form(""),  # new field name (blank means clear)
+    epoch_id: str = Form(""),  # legacy field name used by template select
 ):
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
+    # Determine provided raw value (prefer epoch_id_raw if non-blank)
+    raw_val = (epoch_id_raw or "").strip() or (epoch_id or "").strip()
+    parsed_epoch: Optional[int] = None
+    if raw_val:
+        if raw_val.isdigit():
+            parsed_epoch = int(raw_val)
+        else:
+            raise HTTPException(400, "Invalid epoch_id value")
     conn = _connect()
     cur = conn.cursor()
     cur.execute("SELECT id FROM visit WHERE id=? AND soa_id=?", (visit_id, soa_id))
     if not cur.fetchone():
         conn.close()
         raise HTTPException(404, "Visit not found")
-    # Validate epoch (allow clearing with None)
-    if epoch_id is not None:
-        cur.execute("SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (epoch_id, soa_id))
+    if parsed_epoch is not None:
+        cur.execute(
+            "SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (parsed_epoch, soa_id)
+        )
         if not cur.fetchone():
             conn.close()
             raise HTTPException(400, "Invalid epoch_id for this SOA")
-    cur.execute("UPDATE visit SET epoch_id=? WHERE id=?", (epoch_id, visit_id))
+    cur.execute("UPDATE visit SET epoch_id=? WHERE id=?", (parsed_epoch, visit_id))
     conn.commit()
+    logger.info(
+        "ui_set_visit_epoch updated visit id=%s soa_id=%s epoch_id=%s raw_val='%s' db_path=%s",
+        visit_id,
+        soa_id,
+        parsed_epoch,
+        raw_val,
+        DB_PATH,
+    )
     conn.close()
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
