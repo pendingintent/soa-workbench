@@ -632,6 +632,98 @@ def _migrate_element_table():
 _migrate_element_table()
 
 
+# --------------------- Migration: ensure element_id column with unique StudyElement_<n> values ---------------------
+def _migrate_element_id():
+    """Ensure element.element_id column exists and values follow prefix 'StudyElement_<n>' unique per SOA.
+
+    Steps per SOA:
+      - Add column if missing (nullable initially)
+      - Collect existing values; parse numbers from well-formed prefixes StudyElement_<n>
+      - Reassign malformed/NULL/duplicate values to next available sequential numbers starting at 1.
+      - Create unique index (soa_id, element_id).
+    Safe to run multiple times; idempotent aside from normalizing malformed values."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(element)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "element" not in cols and not cols:  # table missing entirely
+            conn.close()
+            return
+        if "element_id" not in cols:
+            try:
+                cur.execute("ALTER TABLE element ADD COLUMN element_id TEXT")
+                conn.commit()
+                logger.info("Added element_id column to element table")
+            except Exception as e:  # pragma: no cover
+                logger.warning("Failed adding element_id column: %s", e)
+        # Backfill / normalize per SOA
+        cur.execute("SELECT DISTINCT soa_id FROM element")
+        soa_ids = [r[0] for r in cur.fetchall()]
+        for sid in soa_ids:
+            cur.execute(
+                "SELECT id, element_id FROM element WHERE soa_id=? ORDER BY id", (sid,)
+            )
+            rows = cur.fetchall()
+            used_nums = set()
+            # Capture already valid numbers
+            for _id, _eid in rows:
+                if _eid and isinstance(_eid, str) and _eid.startswith("StudyElement_"):
+                    try:
+                        n = int(_eid.split("StudyElement_")[-1])
+                        if n > 0:
+                            if n not in used_nums:
+                                used_nums.add(n)
+                            else:
+                                # mark duplicate for reassignment by blanking
+                                cur.execute(
+                                    "UPDATE element SET element_id=NULL WHERE id=?",
+                                    (_id,),
+                                )
+                    except Exception:  # pragma: no cover
+                        pass
+            # Re-fetch after clearing duplicates
+            cur.execute(
+                "SELECT id, element_id FROM element WHERE soa_id=? ORDER BY id", (sid,)
+            )
+            rows = cur.fetchall()
+            next_n = 1
+            for _id, _eid in rows:
+                valid = (
+                    _eid
+                    and isinstance(_eid, str)
+                    and _eid.startswith("StudyElement_")
+                    and _eid.split("StudyElement_")[-1].isdigit()
+                )
+                if valid:
+                    continue  # leave intact
+                while next_n in used_nums:
+                    next_n += 1
+                new_val = f"StudyElement_{next_n}"
+                used_nums.add(next_n)
+                next_n += 1
+                cur.execute(
+                    "UPDATE element SET element_id=? WHERE id=?", (new_val, _id)
+                )
+        # Create unique index
+        try:
+            cur.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_element_soaid_elementid ON element(soa_id, element_id)"
+            )
+            conn.commit()
+        except Exception as e:  # pragma: no cover
+            logger.warning(
+                "Failed creating unique index idx_element_soaid_elementid: %s", e
+            )
+        conn.commit()
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.warning("element_id migration encountered error: %s", e)
+
+
+_migrate_element_id()
+
+
 # --------------------- Migration: add elements_restored to rollback_audit ---------------------
 def _migrate_rollback_add_elements_restored():
     try:
@@ -3742,20 +3834,54 @@ def ui_add_element(
     )
     next_ord = (cur.fetchone() or [0])[0] + 1
     now = datetime.now(timezone.utc).isoformat()
-    cur.execute(
-        """INSERT INTO element (soa_id,name,label,description,testrl,teenrl,order_index,created_at)
-        VALUES (?,?,?,?,?,?,?,?)""",
-        (
-            soa_id,
-            name,
-            (label or "").strip() or None,
-            (description or "").strip() or None,
-            (testrl or "").strip() or None,
-            (teenrl or "").strip() or None,
-            next_ord,
-            now,
-        ),
-    )
+    # Check if legacy/non-standard element_id column exists and populate if required
+    cur.execute("PRAGMA table_info(element)")
+    element_cols = {r[1] for r in cur.fetchall()}
+    element_identifier: Optional[str] = None
+    if "element_id" in element_cols:
+        # Generate StudyElement_<n> where n is next unused integer for this SOA
+        cur.execute("SELECT element_id FROM element WHERE soa_id=?", (soa_id,))
+        existing_raw = [r[0] for r in cur.fetchall() if r[0]]
+        used_nums = set()
+        for val in existing_raw:
+            if val.startswith("StudyElement_"):
+                tail = val.split("StudyElement_")[-1]
+                if tail.isdigit():
+                    used_nums.add(int(tail))
+        next_n = 1
+        while next_n in used_nums:
+            next_n += 1
+        element_identifier = f"StudyElement_{next_n}"
+        cur.execute(
+            """INSERT INTO element (soa_id,name,label,description,testrl,teenrl,order_index,created_at,element_id)
+            VALUES (?,?,?,?,?,?,?,?,?)""",
+            (
+                soa_id,
+                name,
+                (label or "").strip() or None,
+                (description or "").strip() or None,
+                (testrl or "").strip() or None,
+                (teenrl or "").strip() or None,
+                next_ord,
+                now,
+                element_identifier,
+            ),
+        )
+    else:
+        cur.execute(
+            """INSERT INTO element (soa_id,name,label,description,testrl,teenrl,order_index,created_at)
+            VALUES (?,?,?,?,?,?,?,?)""",
+            (
+                soa_id,
+                name,
+                (label or "").strip() or None,
+                (description or "").strip() or None,
+                (testrl or "").strip() or None,
+                (teenrl or "").strip() or None,
+                next_ord,
+                now,
+            ),
+        )
     eid = cur.lastrowid
     conn.commit()
     conn.close()
@@ -3772,6 +3898,7 @@ def ui_add_element(
             "testrl": (testrl or "").strip() or None,
             "teenrl": (teenrl or "").strip() or None,
             "order_index": next_ord,
+            "element_id": element_identifier,
         },
     )
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
