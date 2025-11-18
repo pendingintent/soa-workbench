@@ -118,7 +118,7 @@ pytest
 - Console script entry point publication via `pyproject.toml`
 - Enriched rule grammar (e.g. conditional frequency changes)
 - SDTM domain mapping utilities
- - Web application for interactive SoA authoring (initial FastAPI scaffold added)
+ - Web application for interactive SoA authoring (FastAPI + HTMX) extended with biomedical concept browsing and stable activity UIDs
 
 ## Assumptions & Heuristics
 - All non-first header columns are considered visits.
@@ -197,6 +197,21 @@ HTML UI:
  - Use export buttons (to be added) or hit endpoints directly for XLSX/PDF output.
  - Delete a visit or activity using the ✕ button next to its name (confirmation dialog). Deletion cascades to associated cells and automatically reorders remaining items.
  - (Upcoming) Bulk add activities and matrix import could be surfaced via a textarea or JSON upload panel.
+ - View biomedical concepts via the "Concepts" navigation link (`GET /ui/concepts`): renders a table of concept codes, titles and API links (cached; force refresh per study using `POST /ui/soa/{id}/concepts_refresh`).
+
+Activity Identifiers:
+- Each activity now has a stable `activity_uid` (format `Activity_<n>` unique within a study) maintained during reorder using a two-phase temporary renaming to avoid uniqueness collisions.
+- Unique index `(soa_id, activity_uid)` enforces stability for exports, snapshots and audit trails.
+ 
+Biomedical Concepts API Access:
+- The concepts list and detail pages call the CDISC Library API.
+- Set one (or both) of: `CDISC_SUBSCRIPTION_KEY`, `CDISC_API_KEY`.
+- The server will send all of these headers when possible:
+	- `Ocp-Apim-Subscription-Key: <key>`
+	- `Authorization: Bearer <key>` (when `CDISC_API_KEY` provided)
+	- `api-key: <key>` (legacy fallback)
+- If only one key is defined it is reused across header variants.
+- Directly opening the API URL in the browser will 401 because the browser does not attach the required headers; use the internal detail page or an API client (curl/Postman) with the headers above.
 
 Notes:
 - HTMX is loaded via CDN; no build step required.

@@ -9,13 +9,8 @@ client = TestClient(app)
 
 
 def reset_db():
-    if os.path.exists(DB_PATH):
-        os.remove(DB_PATH)
-    # Re-import app to re-init DB not needed; call internal init
-    from importlib import reload
-    import soa_builder.web.app as webapp
-
-    reload(webapp)
+    # Disabled: preserve persistent DB across tests
+    return
 
 
 def test_create_and_normalize_flow():
@@ -35,7 +30,7 @@ def test_create_and_normalize_flow():
     ra = client.post(f"/soa/{soa_id}/activities", json={"name": "Hematology"})
     assert ra.status_code == 200
     activity_id = ra.json()["activity_id"]
-    # set cell
+    # set matrix_cell
     rc = client.post(
         f"/soa/{soa_id}/cells",
         json={"visit_id": visit_id, "activity_id": activity_id, "status": "X"},

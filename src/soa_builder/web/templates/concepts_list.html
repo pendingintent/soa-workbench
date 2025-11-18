@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Biomedical Concepts (<span id="conceptTotal">{{ count }}</span>)</h2>
+<p>This list is derived from the CDISC Library API. Each link points to the concept's API resource.</p>
+<div style="margin:0.5em 0 1em;">
+  <label for="conceptSearch"><strong>Search:</strong></label>
+  <input id="conceptSearch" type="text" placeholder="Filter concepts..." style="width:280px;" oninput="filterConcepts()" />
+  <span id="searchCount" style="margin-left:1em;color:#555;"></span>
+</div>
+{% if rows %}
+<table border="1" cellspacing="0" cellpadding="4" id="conceptsTable">
+  <thead>
+    <tr>
+      <th style="text-align:left;">Title</th>
+      <th style="text-align:left;">Code</th>
+      <th style="text-align:left;">Href</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.title }}</td>
+      <td>{{ r.code }}</td>
+  <td>{% if r.code %}<a href="/ui/concepts/{{ r.code }}">Detail</a>{% else %}<em>n/a</em>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<script>
+function filterConcepts(){
+  const q = document.getElementById('conceptSearch').value.toLowerCase();
+  const rows = document.querySelectorAll('#conceptsTable tbody tr');
+  let visible = 0;
+  rows.forEach(tr => {
+    const text = tr.innerText.toLowerCase();
+    if(!q || text.indexOf(q) !== -1){
+      tr.style.display='';
+      visible++;
+    } else {
+      tr.style.display='none';
+    }
+  });
+  const sc = document.getElementById('searchCount');
+  if(q){
+    sc.textContent = visible + ' match' + (visible===1?'':'es');
+  } else {
+    sc.textContent = '';
+  }
+}
+</script>
+{% else %}
+  <p><em>No biomedical concepts available (empty list).</em></p>
+{% endif %}
+<p><a href="/">Return Home</a></p>
+{% endblock %}

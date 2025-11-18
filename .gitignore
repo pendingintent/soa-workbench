@@ -88,5 +88,10 @@ normalized/*.json
 
 # App specific
 normalized/
+old-tests/
+*.bkp
+*.db-corrupt
+docs/~*
+files/~*
 
 # End of file

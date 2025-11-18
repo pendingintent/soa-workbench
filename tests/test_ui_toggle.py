@@ -8,9 +8,8 @@ client = TestClient(app)
 
 
 def reset_db():
-    if os.path.exists(DB_PATH):
-        os.remove(DB_PATH)
-    reload(webapp)
+    # Disabled: preserve persistent DB across tests
+    return
 
 
 def extract_cell_text(html: str) -> str:
