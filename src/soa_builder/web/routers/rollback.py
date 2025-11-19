@@ -3,16 +3,13 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from datetime import datetime, timezone
+from ..db import _connect
 
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 router = APIRouter()
-
-
-def _connect():
-    return sqlite3.connect(DB_PATH)
 
 
 def _soa_exists(soa_id: int) -> bool:

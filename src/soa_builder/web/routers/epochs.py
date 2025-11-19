@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Any
 import sqlite3, os, json
 from datetime import datetime, timezone
+from ..schemas import EpochCreate, EpochUpdate
 
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 
@@ -48,18 +49,6 @@ def _record_epoch_audit(
         conn.close()
     except Exception:
         pass
-
-
-class EpochCreate(BaseModel):
-    name: str
-    epoch_label: Optional[str] = None
-    epoch_description: Optional[str] = None
-
-
-class EpochUpdate(BaseModel):
-    name: Optional[str] = None
-    epoch_label: Optional[str] = None
-    epoch_description: Optional[str] = None
 
 
 @router.post("/soa/{soa_id}/epochs")
