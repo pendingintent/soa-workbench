@@ -53,7 +53,6 @@ from .migrate_database import (
     _migrate_activity_add_uid,
     _migrate_arm_add_type_fields,
     _backfill_dataset_date,
-    _backfill_dataset_date,
 )
 from .routers import arms as arms_router
 from .routers import elements as elements_router
