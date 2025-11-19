@@ -1,11 +1,8 @@
-"""
-Database migration functions
-"""
-
 import sqlite3
 from dotenv import load_dotenv
 import os
 import logging
+from datetime import datetime, timezone
 from .db import _connect
 
 
@@ -173,7 +170,7 @@ def _migrate_drop_arm_element_link():
         logger.warning("arm linkage drop migration failed: %s", e)
 
 
-# --------------------- Migration: add epoch_id to visit ---------------------
+# Migration: add epoch_id to visit
 def _migrate_add_epoch_id_to_visit():
     """Add epoch_id column to visit table if missing."""
     try:
@@ -190,7 +187,7 @@ def _migrate_add_epoch_id_to_visit():
         logger.warning("epoch_id migration failed: %s", e)
 
 
-# --------------------- Migration: add epoch_seq to epoch ---------------------
+# Migration: add epoch_seq to epoch
 def _migrate_add_epoch_seq():
     """Ensure epoch_seq (immutable sequence per SoA) exists; backfill sequential values per study.
     Creates unique index (soa_id, epoch_seq) to guarantee uniqueness inside a study.
@@ -226,7 +223,7 @@ def _migrate_add_epoch_seq():
         logger.warning("epoch_seq migration failed: %s", e)
 
 
-# --------------------- Migration: add epoch label/description ---------------------
+# Migration: add epoch label/description
 def _migrate_add_epoch_label_desc():
     """Add optional epoch_label and epoch_description columns if missing."""
     try:
@@ -569,7 +566,7 @@ def _migrate_rollback_add_elements_restored():
         logger.warning("rollback_audit migration failed: %s", e)
 
 
-# --------------------- Migration: add activity_uid to activity ---------------------
+# Migration: Add activity_uid to activity
 def _migrate_activity_add_uid():
     """Add activity_uid column if missing; backfill as Activity_<order_index>."""
     try:
@@ -602,7 +599,7 @@ def _migrate_activity_add_uid():
         logger.warning("activity_uid migration failed: %s", e)
 
 
-# --------------------- Migration: add type & data_origin_type to arm ---------------------
+# Migration: Add type & data_origin_type to arm
 def _migrate_arm_add_type_fields():
     """Ensure arm table has type and data_origin_type columns.
     Safe to run multiple times; adds columns if missing. No backfill logic (NULL acceptable).
@@ -632,7 +629,7 @@ def _migrate_arm_add_type_fields():
         logger.warning("Arm type/data_origin_type migration failed: %s", e)
 
 
-# --------------------- Backfill dataset_date for existing terminology tables ---------------------
+# Backfill dataset_date for existing terminology tables
 def _backfill_dataset_date(table: str, audit_table: str):
     """If terminology table exists and has dataset_date (or sheet_dataset_date) column with blank values,
     attempt to backfill from the latest audit row that has a non-null dataset_date.
