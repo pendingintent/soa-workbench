@@ -6,20 +6,9 @@ from datetime import datetime, timezone
 
 from ..db import _connect
 from ..audit import _record_visit_audit, _record_reorder_audit
+from ..schemas import VisitCreate, VisitUpdate
 
 router = APIRouter(prefix="/soa/{soa_id}")
-
-
-class VisitCreate(BaseModel):
-    name: str
-    raw_header: Optional[str] = None
-    epoch_id: Optional[int] = None
-
-
-class VisitUpdate(BaseModel):
-    name: Optional[str] = None
-    raw_header: Optional[str] = None
-    epoch_id: Optional[int] = None
 
 
 def _soa_exists(soa_id: int) -> bool:

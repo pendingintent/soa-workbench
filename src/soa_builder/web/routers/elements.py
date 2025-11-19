@@ -6,25 +6,10 @@ import json
 
 from ..db import _connect
 from ..audit import _record_element_audit
+from ..schemas import ElementCreate, ElementUpdate
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/soa/{soa_id}")
-
-
-class ElementCreate(BaseModel):
-    name: str
-    label: Optional[str] = None
-    description: Optional[str] = None
-    testrl: Optional[str] = None
-    teenrl: Optional[str] = None
-
-
-class ElementUpdate(BaseModel):
-    name: Optional[str] = None
-    label: Optional[str] = None
-    description: Optional[str] = None
-    testrl: Optional[str] = None
-    teenrl: Optional[str] = None
 
 
 def _soa_exists(soa_id: int) -> bool:

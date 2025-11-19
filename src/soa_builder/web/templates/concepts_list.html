@@ -14,6 +14,7 @@
       <th style="text-align:left;">Title</th>
       <th style="text-align:left;">Code</th>
       <th style="text-align:left;">Href</th>
+      <th style="text-align:left;">Related DSS</th>
     </tr>
   </thead>
   <tbody>
@@ -21,7 +22,8 @@
     <tr>
       <td>{{ r.title }}</td>
       <td>{{ r.code }}</td>
-  <td>{% if r.code %}<a href="/ui/concepts/{{ r.code }}">Detail</a>{% else %}<em>n/a</em>{% endif %}</td>
+      <td>{% if r.code %}<a href="/ui/concepts/{{ r.code }}">Detail</a>{% else %}<em>n/a</em>{% endif %}</td>
+      <td>{{ r.code }}</td>
     </tr>
   {% endfor %}
   </tbody>

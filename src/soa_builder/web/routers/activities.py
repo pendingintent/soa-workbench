@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from ..db import _connect
 from ..audit import _record_activity_audit, _record_reorder_audit
+from ..schemas import BulkActivities, ActivityCreate, ActivityUpdate
 
 # Lightweight concept fetcher to avoid circular import with app.py
 import os, json, time
@@ -67,18 +68,6 @@ def fetch_biomedical_concepts(force: bool = False):
 
 
 router = APIRouter(prefix="/soa/{soa_id}")
-
-
-class ActivityCreate(BaseModel):
-    name: str
-
-
-class ActivityUpdate(BaseModel):
-    name: Optional[str] = None
-
-
-class BulkActivities(BaseModel):
-    names: List[str]
 
 
 def _soa_exists(soa_id: int) -> bool:
