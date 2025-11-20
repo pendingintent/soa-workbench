@@ -30,6 +30,7 @@ tests/test_cell_clear.py
 tests/test_deletion.py
 tests/test_element_id_generation.py
 tests/test_exports.py
+tests/test_fetch_sdtm_specializations.py
 tests/test_terminology_date.py
 tests/test_ui_add_element.py
 tests/test_ui_export_buttons.py

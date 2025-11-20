@@ -23,7 +23,13 @@
       <td>{{ r.title }}</td>
       <td>{{ r.code }}</td>
       <td>{% if r.code %}<a href="/ui/concepts/{{ r.code }}">Detail</a>{% else %}<em>n/a</em>{% endif %}</td>
-      <td>{{ r.code }}</td>
+      <td>
+        {% if r.code %}
+          <a href="/ui/sdtm/specializations?code={{ r.code }}">Related DSS</a>
+        {% else %}
+          <em>n/a</em>
+        {% endif %}
+      </td>
     </tr>
   {% endfor %}
   </tbody>

@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>SDTM Specializations Status</h2>
+<ul>
+  <li><strong>Count:</strong> {{ count }}</li>
+  <li><strong>Fetched at:</strong> {{ fetched_at }}</li>
+  <li><strong>Cache age (sec):</strong> {{ cache_age_sec }}</li>
+  <li><strong>Last status:</strong> {{ last_status }}</li>
+  <li><strong>Last error:</strong> {{ last_error }}</li>
+  <li><strong>Last URL:</strong> {{ last_url }}</li>
+  <li><strong>API key present:</strong> {{ api_key_present }}</li>
+  <li><strong>Skip remote:</strong> {{ skip_remote }}</li>
+  <li><strong>Override present:</strong> {{ override_present }}</li>
+</ul>
+<h3>Sample</h3>
+<pre>{{ sample | tojson(indent=2) }}</pre>
+<p><a href="/ui/sdtm/specializations">Back to SDTM Specializations</a></p>
+{% endblock %}

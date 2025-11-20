@@ -34,7 +34,11 @@
   {% for r in rows %}
     <tr>
       <td>{{ r.title }}</td>
-      <td>{% if r.href %}<a href="/ui/sdtm/specializations/{{ loop.index0 }}" title="View raw JSON detail">Link</a>{% else %}<em>n/a</em>{% endif %}</td>
+      <td>
+        <a href="/ui/sdtm/specializations/{{ loop.index0 }}{% if code %}?code={{ code }}{% endif %}">
+          Detail
+        </a> 
+      </td>
     </tr>
   {% endfor %}
   </tbody>
