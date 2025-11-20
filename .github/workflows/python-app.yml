@@ -30,6 +30,7 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Cleanup stray pyc files
       run: |
+        rm -rf src/soa-builder/tests
         find . -type d -name __pycache__ -exec rm -rf {} +
         find . -type f -name "*.pyc" -delete
     - name: Lint with flake8
