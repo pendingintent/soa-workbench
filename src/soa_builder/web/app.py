@@ -34,7 +34,12 @@ from ..normalization import normalize_soa
 import requests, time, logging
 from dotenv import load_dotenv
 import re as _re
-from .schemas import ArmCreate, ArmUpdate, SOACreate, SOAMetadataUpdate
+from .schemas import (
+    ArmCreate,
+    ArmUpdate,
+    SOACreate,
+    SOAMetadataUpdate,
+)
 from .initialize_database import _connect, _init_db
 from .migrate_database import (
     _migrate_add_arm_uid,
@@ -1153,12 +1158,103 @@ def fetch_biomedical_concepts(force: bool = False):
     return []
 
 
-def fetch_sdtm_specializations(force: bool = False):
+def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
     """Return list of SDTM dataset specializations as [{'title':..., 'href':...}].
-    Remote precedence similar to concepts. Supports optional env override CDISC_SDTM_SPECIALIZATIONS_JSON for tests/offline.
-    Dates removed for simpler UI; results sorted alphabetically by title.
+
+    When `code` is None:
+      - Fetch the full SDTM dataset specializations list.
+      - Cache the normalized list in _sdtm_specializations_cache.
+
+    When `code` is provided (e.g. 'C105585'):
+      - Call the generic dataset specializations endpoint with
+        ?biomedicalconcept={code}, which returns a HAL-style document.
+      - Extract the SDTM subset from _links.datasetSpecializations.sdtm.
+      - Do NOT use or update the main cache (code-specific result only).
     """
     now = time.time()
+    base_prefix = "https://api.library.cdisc.org/api/cosmos/v2"
+
+    def _normalize_href(h: Optional[str]) -> Optional[str]:
+        if not h:
+            return None
+        if h.startswith("http://") or h.startswith("https://"):
+            return h
+        if h.startswith("/"):
+            return base_prefix + h
+        return base_prefix + "/" + h
+
+    # --------- code-specific branch (use generic endpoint) ----------
+    if code:
+        url = (
+            f"{base_prefix}/mdr/specializations/datasetspecializations"
+            f"?biomedicalconcept={code}"
+        )
+        headers = {"Accept": "application/json"}
+        api_key = _get_cdisc_api_key()
+        subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+        if subscription_key:
+            headers["Ocp-Apim-Subscription-Key"] = subscription_key
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+            headers["api-key"] = api_key
+
+        try:
+            resp = requests.get(url, headers=headers, timeout=20)
+            _sdtm_specializations_cache["last_status"] = resp.status_code
+            _sdtm_specializations_cache["last_url"] = url
+            _sdtm_specializations_cache["last_error"] = None
+            _sdtm_specializations_cache["raw_snippet"] = resp.text[:400]
+            if resp.status_code != 200:
+                _sdtm_specializations_cache["last_error"] = (
+                    f"HTTP {resp.status_code}: {resp.text[:180]}"
+                )
+                logger.warning(
+                    "SDTM specializations by BC code fetch HTTP %s for code=%s",
+                    resp.status_code,
+                    code,
+                )
+                return []
+            try:
+                data = resp.json()
+            except ValueError:
+                _sdtm_specializations_cache["last_error"] = "200 but non-JSON response"
+                logger.warning(
+                    "SDTM specializations by BC code non-JSON body for code=%s", code
+                )
+                return []
+
+            # Expect HAL-style: _links.datasetSpecializations.sdtm is list of links
+            packages: list[dict] = []
+            if (
+                isinstance(data, dict)
+                and "_links" in data
+                and isinstance(data["_links"], dict)
+            ):
+                ds = data["_links"].get("datasetSpecializations")
+                if isinstance(ds, dict):
+                    sdtm_links = ds.get("sdtm")
+                    if isinstance(sdtm_links, list):
+                        for link in sdtm_links:
+                            if not isinstance(link, dict):
+                                continue
+                            href = _normalize_href(link.get("href"))
+                            title = link.get("title") or href
+                            packages.append({"title": title, "href": href})
+            packages.sort(key=lambda p: p.get("title", "").lower())
+            logger.info(
+                "Fetched %d SDTM dataset specializations for biomedical concept %s",
+                len(packages),
+                code,
+            )
+            return packages
+        except Exception as e:
+            logger.error(
+                "SDTM specializations by BC code fetch error for %s: %s", code, e
+            )
+            _sdtm_specializations_cache["last_error"] = str(e)
+            return []
+
+    # Cache only applies to full list
     if (
         not force
         and _sdtm_specializations_cache["data"]
@@ -1167,8 +1263,8 @@ def fetch_sdtm_specializations(force: bool = False):
     ):
         return _sdtm_specializations_cache["data"]
 
+    # Env override branch
     override_json = os.environ.get("CDISC_SDTM_SPECIALIZATIONS_JSON")
-    base_prefix = "https://api.library.cdisc.org/api/cosmos/v2"
     if override_json:
         try:
             raw = json.loads(override_json)
@@ -1207,20 +1303,8 @@ def fetch_sdtm_specializations(force: bool = False):
                         or it.get("code")
                     )
                     if id_val:
-                        href = (
-                            "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/datasetspecializations/"
-                            + str(id_val)
-                        )
-                # Normalize relative/partial href to absolute
-                if (
-                    href
-                    and not href.startswith("http://")
-                    and not href.startswith("https://")
-                ):
-                    if href.startswith("/"):
-                        href = base_prefix + href
-                    else:
-                        href = base_prefix + "/" + href
+                        href = f"{base_prefix}/mdr/specializations/sdtm/datasetspecializations/{id_val}"
+                href = _normalize_href(href)
                 packages.append({"title": title, "href": href})
             packages.sort(key=lambda p: p.get("title", "").lower())
             _sdtm_specializations_cache.update(data=packages, fetched_at=now)
@@ -1228,15 +1312,16 @@ def fetch_sdtm_specializations(force: bool = False):
                 "Loaded %d SDTM dataset specializations from override", len(packages)
             )
             return packages
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("SDTM override parse failed: %s", e)
 
+    # Remote full-list branch
     if os.environ.get("CDISC_SKIP_REMOTE") == "1":
         _sdtm_specializations_cache.update(data=[], fetched_at=now)
         logger.warning("CDISC_SKIP_REMOTE=1; SDTM dataset specializations list empty")
         return []
 
-    url = "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/datasetspecializations"
+    url = f"{base_prefix}/mdr/specializations/sdtm/datasetspecializations"  # full SDTM list
     headers = {"Accept": "application/json"}
     api_key = _get_cdisc_api_key()
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
@@ -1267,11 +1352,12 @@ def fetch_sdtm_specializations(force: bool = False):
                         "Raw string JSON secondary parse failed"
                     )
                     data = None
-            items = []
+            items: list[dict] = []
             if isinstance(data, dict):
                 if "items" in data and isinstance(data["items"], list):
                     items = data["items"]
                 elif "_links" in data and isinstance(data["_links"], dict):
+                    # HAL-style list via links
                     link_list = []
                     for key in (
                         "datasetSpecializations",
@@ -1285,17 +1371,8 @@ def fetch_sdtm_specializations(force: bool = False):
                     for link in link_list:
                         if not isinstance(link, dict):
                             continue
-                        href = link.get("href")
+                        href = _normalize_href(link.get("href"))
                         title = link.get("title") or href
-                        if (
-                            href
-                            and not href.startswith("http://")
-                            and not href.startswith("https://")
-                        ):
-                            if href.startswith("/"):
-                                href = base_prefix + href
-                            else:
-                                href = base_prefix + "/" + href
                         packages.append({"title": title, "href": href})
                 elif "datasetSpecializations" in data and isinstance(
                     data["datasetSpecializations"], dict
@@ -1305,6 +1382,7 @@ def fetch_sdtm_specializations(force: bool = False):
                     items = [data]
             elif isinstance(data, list):
                 items = data
+
             if items:
                 for it in items:
                     if not isinstance(it, dict):
@@ -1330,15 +1408,7 @@ def fetch_sdtm_specializations(force: bool = False):
                         )
                         if id_val:
                             href = f"{url}/{id_val}"
-                    if (
-                        href
-                        and not href.startswith("http://")
-                        and not href.startswith("https://")
-                    ):
-                        if href.startswith("/"):
-                            href = base_prefix + href
-                        else:
-                            href = base_prefix + "/" + href
+                    href = _normalize_href(href)
                     packages.append({"title": title, "href": href})
         else:
             _sdtm_specializations_cache["last_error"] = (
@@ -1351,7 +1421,8 @@ def fetch_sdtm_specializations(force: bool = False):
     packages.sort(key=lambda p: p.get("title", "").lower())
     _sdtm_specializations_cache.update(data=packages, fetched_at=now)
     logger.info(
-        "Fetched %d SDTM dataset specializations from remote API", len(packages)
+        "Fetched %d SDTM dataset specializations from remote API (full list)",
+        len(packages),
     )
     return packages
 
@@ -1475,6 +1546,17 @@ def sdtm_specializations_status():
         "override_present": bool(os.environ.get("CDISC_SDTM_SPECIALIZATIONS_JSON")),
         "sample": sample,
     }
+
+
+@app.get("/ui/sdtm/specializations/status", response_class=HTMLResponse)
+def ui_sdtm_specializations_status(request: Request):
+    """HTML wrapper for SDTM specializations diagnostics."""
+    data = sdtm_specializations_status()
+    return templates.TemplateResponse(
+        request,
+        "sdtm_specializations_status.html",
+        data,
+    )
 
 
 @app.post("/ui/sdtm/specializations/refresh", response_class=HTMLResponse)
@@ -2755,9 +2837,13 @@ def ui_concepts_list(request: Request):
 
 
 @app.get("/ui/sdtm/specializations", response_class=HTMLResponse)
-def ui_sdtm_specializations_list(request: Request):
-    """Render table listing SDTM dataset specializations (title + API link)."""
-    packages = fetch_sdtm_specializations(force=True) or []
+def ui_sdtm_specializations_list(request: Request, code: Optional[str] = None):
+    """Render table listing SDTM dataset specializations (title + API link).
+
+    If `code` is provided as a query parameter, each href will include
+    ?biomedicalconcept={code} (or &biomedicalconcept=... when a query string already exists).
+    """
+    packages = fetch_sdtm_specializations(force=True, code=code) or []
     rows = [
         {"title": p.get("title") or "(untitled)", "href": p.get("href")}
         for p in packages
@@ -2777,19 +2863,22 @@ def ui_sdtm_specializations_list(request: Request):
             "last_status": last_status,
             "last_error": last_error,
             "last_url": last_url,
+            "code": code,
         },
     )
 
 
 @app.get("/ui/sdtm/specializations/{idx}", response_class=HTMLResponse)
-def ui_sdtm_specialization_detail(idx: int, request: Request):
+def ui_sdtm_specialization_detail(
+    idx: int,
+    request: Request,
+    code: Optional[str] = None,  # NEW: propagate code filter from query string
+):
     """Detail page for a single SDTM dataset specialization.
 
-    Lookup by index into the cached list (stable for current request lifecycle).
-    Fetches raw JSON from the specialization's href and pretty-prints result.
-    Handles missing index, absent href, network or JSON parse errors gracefully.
+    Lookup by index into the (optionally filtered) list.
     """
-    packages = fetch_sdtm_specializations(force=True) or []
+    packages = fetch_sdtm_specializations(force=True, code=code) or []  # <-- pass code
     if idx < 0 or idx >= len(packages):
         raise HTTPException(status_code=404, detail="Specialization index out of range")
     spec = packages[idx]
@@ -2846,6 +2935,7 @@ def ui_sdtm_specialization_detail(idx: int, request: Request):
             "raw_text_snippet": raw_text_snippet,
             "missing_key": unified_key is None,
             "total": len(packages),
+            "code": code,  # optional: for breadcrumb/back link
         },
     )
 
