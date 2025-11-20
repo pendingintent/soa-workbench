@@ -1254,11 +1254,6 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
             _sdtm_specializations_cache["last_error"] = str(e)
             return []
 
-    # --------- full-list branch (no code filter) ----------
-    def _with_biomedical_param(h: Optional[str]) -> Optional[str]:
-        # kept for backward-compatibility; not used when code is None
-        return h
-
     # Cache only applies to full list
     if (
         not force
