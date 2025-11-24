@@ -1659,6 +1659,7 @@ app.router.lifespan_context = lifespan
 
 @app.post("/ui/soa/{soa_id}/concepts_refresh")
 def ui_refresh_concepts(request: Request, soa_id: int):
+    """Fetch Biomedical Concepts; refresh cache"""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     fetch_biomedical_concepts(force=True)
@@ -1713,6 +1714,7 @@ def export_reorder_audit_csv(soa_id: int):
 
 @app.get("/concepts/status")
 def concepts_status():
+    """Return diagnostics for Biomedical Concepts fetch/cache."""
     return {
         "count": len(_concept_cache.get("data") or []),
         "fetched_at": _concept_cache.get("fetched_at"),
@@ -1826,6 +1828,7 @@ def _matrix_arrays(soa_id: int):
 
 @app.post("/soa")
 def create_soa(payload: SOACreate):
+    """Create new Schedule of Activities"""
     conn = _connect()
     cur = conn.cursor()
     # Enforce unique study_id if provided
@@ -1858,6 +1861,7 @@ def create_soa(payload: SOACreate):
 
 @app.get("/soa/{soa_id}")
 def get_soa(soa_id: int):
+    """Return SoA by ID"""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     visits, activities, cells = _fetch_matrix(soa_id)
@@ -1909,6 +1913,7 @@ def get_soa(soa_id: int):
 
 @app.post("/soa/{soa_id}/metadata")
 def update_soa_metadata(soa_id: int, payload: SOAMetadataUpdate):
+    """Update metadata for SoA/Study."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -1971,6 +1976,7 @@ def update_soa_metadata(soa_id: int, payload: SOAMetadataUpdate):
 
 @app.post("/soa/{soa_id}/activities/{activity_id}/concepts")
 def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate):
+    """Update Biomedical Concept assigned to an Activity."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -2018,6 +2024,7 @@ def _get_activity_concepts(activity_id: int):
 def ui_add_activity_concept(
     request: Request, soa_id: int, activity_id: int, concept_code: str = Form(...)
 ):
+    """Add Biomedical Concept to an Activity."""
     if not activity_id:
         raise HTTPException(400, "Missing activity_id")
     if not _soa_exists(soa_id):
@@ -2065,6 +2072,7 @@ def ui_add_activity_concept(
 def ui_remove_activity_concept(
     request: Request, soa_id: int, activity_id: int, concept_code: str = Form(...)
 ):
+    """Remove Biomedical Concept from Activity."""
     if not activity_id:
         raise HTTPException(400, "Missing activity_id")
     if not _soa_exists(soa_id):
@@ -2099,6 +2107,7 @@ def ui_remove_activity_concept(
 
 @app.post("/soa/{soa_id}/cells")
 def set_cell(soa_id: int, payload: CellCreate):
+    """Set 'X' in SoA Matrix cell."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -2135,6 +2144,7 @@ def set_cell(soa_id: int, payload: CellCreate):
 
 @app.get("/soa/{soa_id}/matrix")
 def get_matrix(soa_id: int):
+    """Return SoA Matrix for Visits, Activities and assigned Matrix Cells."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     visits, activities, cells = _fetch_matrix(soa_id)
@@ -2143,6 +2153,7 @@ def get_matrix(soa_id: int):
 
 @app.get("/soa/{soa_id}/export/xlsx")
 def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = None):
+    """Export SoA Matrix to XLSX."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     visits, activities, cells = _fetch_matrix(soa_id)
@@ -2357,7 +2368,7 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
 
 @app.get("/soa/{soa_id}/export/pdf")
 def export_pdf(soa_id: int):
-    """Generate a lightweight PDF summary of the SOA (arms, visits, activities, concept mappings).
+    """Export lightweight PDF summary of the SOA (arms, visits, activities, concept mappings).
 
     The PDF is intentionally simple and produced without external dependencies to avoid
     introducing new packages. It uses a single page with monospaced layout style commands.
@@ -2544,6 +2555,7 @@ def get_normalized(soa_id: int):
 
 @app.post("/soa/{soa_id}/matrix/import")
 def import_matrix(soa_id: int, payload: MatrixImport):
+    """Import SoA Matrix."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not payload.visits:
@@ -2642,6 +2654,7 @@ def _reindex(table: str, soa_id: int):
 
 @app.delete("/soa/{soa_id}/visits/{visit_id}")
 def delete_visit(soa_id: int, visit_id: int):
+    """Delete Visit from an SoA."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -2679,6 +2692,7 @@ def delete_visit(soa_id: int, visit_id: int):
 
 @app.delete("/soa/{soa_id}/activities/{activity_id}")
 def delete_activity(soa_id: int, activity_id: int):
+    """Delete Activity from an SoA."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -2709,6 +2723,7 @@ def delete_activity(soa_id: int, activity_id: int):
 
 @app.delete("/soa/{soa_id}/epochs/{epoch_id}")
 def delete_epoch(soa_id: int, epoch_id: int):
+    """Delete an Epoch from an SoA."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -2745,6 +2760,7 @@ def delete_epoch(soa_id: int, epoch_id: int):
 
 @app.get("/", response_class=HTMLResponse)
 def ui_index(request: Request):
+    """Render home page for the SoA Workbench."""
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -2773,6 +2789,7 @@ def ui_index(request: Request):
 
 @app.post("/ui/soa/{soa_id}/add_activity", response_class=HTMLResponse)
 def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
+    """Add an Activity to an SoA."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     nm = (name or "").strip()
@@ -2812,6 +2829,7 @@ def ui_create_soa(
     study_label: Optional[str] = Form(None),
     study_description: Optional[str] = Form(None),
 ):
+    """Create a new SoA."""
     conn = _connect()
     cur = conn.cursor()
     # Uniqueness check
@@ -2846,6 +2864,7 @@ def ui_update_meta(
     study_label: Optional[str] = Form(None),
     study_description: Optional[str] = Form(None),
 ):
+    """Update the metadata for an SoA."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -2890,6 +2909,7 @@ def ui_update_meta(
 
 @app.get("/ui/soa/{soa_id}/edit", response_class=HTMLResponse)
 def ui_edit(request: Request, soa_id: int):
+    """Render edit HTML page for an SoA."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     visits, activities, cells = _fetch_matrix(soa_id)
@@ -3373,6 +3393,7 @@ def ui_update_arm(
     description: Optional[str] = Form(None),
     element_id: Optional[str] = Form(None),
 ):
+    """Form handler to update an existing Arm."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     # Coerce possible blank element selection to None; avoid 422 validation error from string "" into Optional[int].
@@ -3390,6 +3411,7 @@ def ui_delete_arm(request: Request, soa_id: int, arm_id: int = Form(...)):
 
 @app.post("/ui/soa/{soa_id}/reorder_arms", response_class=HTMLResponse)
 def ui_reorder_arms(request: Request, soa_id: int, order: str = Form("")):
+    """Form handler to reorder existing Arms."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
@@ -3429,6 +3451,7 @@ def ui_add_element(
     testrl: Optional[str] = Form(None),
     teenrl: Optional[str] = Form(None),
 ):
+    """Form handler to add an element."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     name = (name or "").strip()
@@ -3523,6 +3546,7 @@ def ui_update_element(
     testrl: Optional[str] = Form(None),
     teenrl: Optional[str] = Form(None),
 ):
+    """Form handler to update an existing Element."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -3594,6 +3618,7 @@ def ui_update_element(
 
 @app.post("/ui/soa/{soa_id}/delete_element", response_class=HTMLResponse)
 def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)):
+    """Form handler to delete an existing Element."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -3615,6 +3640,7 @@ def ui_add_epoch(
     epoch_label: Optional[str] = Form(None),
     epoch_description: Optional[str] = Form(None),
 ):
+    """Form handler to add an Epoch."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -3664,6 +3690,7 @@ def ui_update_epoch(
     epoch_label: Optional[str] = Form(None),
     epoch_description: Optional[str] = Form(None),
 ):
+    """Form handler to update an existing Epoch."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -3745,6 +3772,7 @@ def ui_set_activity_concepts(
     activity_id: int,
     concept_codes: List[str] = Form([]),
 ):
+    """Form handler to set Biomedical Concepts related to an Activity."""
     payload = ConceptsUpdate(concept_codes=list(dict.fromkeys(concept_codes)))
     set_activity_concepts(soa_id, activity_id, payload)
     # HTMX inline update support
@@ -3777,6 +3805,7 @@ def ui_set_activity_concepts(
 def ui_activity_concepts_cell(
     request: Request, soa_id: int, activity_id: int, edit: int = 0
 ):
+    """Form handler to return Biomedical Concepts related to an Activity"""
     # Defensive guard: if activity_id is somehow falsy (should not happen for valid int path param)
     # surface a clear 400 error rather than proceeding and causing confusing downstream behavior.
     if not activity_id:
@@ -3813,6 +3842,7 @@ def ui_set_cell(
     activity_id: int = Form(...),
     status: str = Form("X"),
 ):
+    """Form handler to set 'X' in SoA Matrix Cell."""
     result = set_cell(
         soa_id, CellCreate(visit_id=visit_id, activity_id=activity_id, status=status)
     )
@@ -3867,6 +3897,7 @@ def ui_toggle_cell(
 
 @app.post("/ui/soa/{soa_id}/delete_visit", response_class=HTMLResponse)
 def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
+    """Form handler to delete a visit."""
     # Use API logic to delete and log
     try:
         delete_visit(soa_id, visit_id)
@@ -3891,6 +3922,7 @@ def ui_set_visit_epoch(
     epoch_id_raw: str = Form(""),  # new field name (blank means clear)
     epoch_id: str = Form(""),  # legacy field name used by template select
 ):
+    """Form handler to associate an Epoch with a Visit/Encounter."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     # Determine provided raw value (prefer epoch_id_raw if non-blank)
@@ -3930,12 +3962,14 @@ def ui_set_visit_epoch(
 
 @app.post("/ui/soa/{soa_id}/delete_activity", response_class=HTMLResponse)
 def ui_delete_activity(request: Request, soa_id: int, activity_id: int = Form(...)):
+    """Form handler to delete an Activity"""
     delete_activity(soa_id, activity_id)
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
 
 @app.post("/ui/soa/{soa_id}/delete_epoch", response_class=HTMLResponse)
 def ui_delete_epoch(request: Request, soa_id: int, epoch_id: int = Form(...)):
+    """Form handler to delete an Epoch."""
     delete_epoch(soa_id, epoch_id)
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
@@ -3998,7 +4032,7 @@ def ui_reorder_activities(request: Request, soa_id: int, order: str = Form("")):
 
 @app.post("/ui/soa/{soa_id}/reorder_epochs", response_class=HTMLResponse)
 def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
-    """Persist new epoch ordering."""
+    """Form handler to persist new epoch ordering."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
@@ -4333,6 +4367,7 @@ def ui_ddf_terminology(
     uploaded: Optional[str] = None,
     error: Optional[str] = None,
 ):
+    """Detail page to display loaded DDF terminology from the SQLite table"""
     data = get_ddf_terminology(
         search=search,
         code=code,
@@ -4498,6 +4533,7 @@ def _get_ddf_sources() -> List[str]:
 def get_ddf_audit(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
 ):
+    """Return audit report of DDF Terminology loads."""
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -4556,6 +4592,7 @@ def get_ddf_audit(
 def export_ddf_audit_csv(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
 ):
+    """Export DDF terminology audit report in CSV format."""
     rows = get_ddf_audit(source=source, start=start, end=end)
     import csv
     import io
@@ -4603,6 +4640,7 @@ def export_ddf_audit_csv(
 def export_ddf_audit_json(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
 ):
+    """Export DDF terminology audit report in JSON format."""
     return get_ddf_audit(source=source, start=start, end=end)
 
 
@@ -4613,6 +4651,7 @@ def ui_ddf_audit(
     start: Optional[str] = None,
     end: Optional[str] = None,
 ):
+    """Display audit report of DDF Terminology loads"""
     rows = get_ddf_audit(source=source, start=start, end=end)
     sources = _get_ddf_sources()
     return templates.TemplateResponse(
@@ -4756,6 +4795,7 @@ def load_protocol_terminology(
 def admin_load_protocol(
     file_path: Optional[str] = None, sheet_name: str = "Protocol Terminology 2025-09-26"
 ):
+    """Load new Protocol Terminology XLS."""
     project_root = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     )
@@ -4802,6 +4842,7 @@ def get_protocol_terminology(
     limit: int = 50,
     offset: int = 0,
 ):
+    """Return latest rotocol Terminology loaded into SQLite database."""
     limit = max(1, min(limit, 200))
     offset = max(0, offset)
     conn = _connect()
@@ -4893,6 +4934,7 @@ def ui_protocol_terminology(
     uploaded: Optional[str] = None,
     error: Optional[str] = None,
 ):
+    """Form handler to display the latest loaded Protocol Terminology from the SQLite database."""
     data = get_protocol_terminology(
         search=search,
         code=code,
@@ -4922,6 +4964,7 @@ def ui_protocol_upload(
     sheet_name: str = Form("Protocol Terminology 2025-09-26"),
     file: UploadFile = File(...),
 ):
+    """Form handler for the upload of Protocol Terminology XLS."""
     filename = file.filename or "uploaded.xls"
     if not (filename.lower().endswith(".xls") or filename.lower().endswith(".xlsx")):
         return HTMLResponse(
@@ -5051,6 +5094,7 @@ def _get_protocol_sources() -> List[str]:
 def get_protocol_audit(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
 ):
+    """Return the Protocol Terminology audit report."""
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -5108,6 +5152,7 @@ def get_protocol_audit(
 def export_protocol_audit_csv(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
 ):
+    """Export the latest Protocol Terminology from the SQLite database in CSV format."""
     rows = get_protocol_audit(source=source, start=start, end=end)
     import csv
     import io
@@ -5155,6 +5200,7 @@ def export_protocol_audit_csv(
 def export_protocol_audit_json(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
 ):
+    """Export the latest Protocol Terminology from the SQLite database in JSON format."""
     return get_protocol_audit(source=source, start=start, end=end)
 
 
@@ -5165,6 +5211,7 @@ def ui_protocol_audit(
     start: Optional[str] = None,
     end: Optional[str] = None,
 ):
+    """Form handler for display of the Protocol Terminology audit report."""
     rows = get_protocol_audit(source=source, start=start, end=end)
     sources = _get_protocol_sources()
     return templates.TemplateResponse(
