@@ -65,8 +65,8 @@ from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
 from .routers import visits as visits_router
 from .routers.arms import create_arm  # re-export for backward compatibility
-from .routers.arms import delete_arm, update_arm
-from .schemas import ArmCreate, ArmUpdate, SOACreate, SOAMetadataUpdate
+from .routers.arms import delete_arm
+from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
 
 load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
@@ -881,7 +881,7 @@ def _fetch_arms_for_edit(soa_id: int) -> list[dict]:
         conn = _connect()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id,name,label,description,order_index FROM arm WHERE soa_id=? ORDER BY order_index",
+            "SELECT id,name,label,description,order_index,COALESCE(type,'') FROM arm WHERE soa_id=? ORDER BY order_index",
             (soa_id,),
         )
         rows = [
@@ -891,6 +891,7 @@ def _fetch_arms_for_edit(soa_id: int) -> list[dict]:
                 "label": r[2],
                 "description": r[3],
                 "order_index": r[4],
+                "type": r[5] or None,
             }
             for r in cur.fetchall()
         ]
@@ -3036,6 +3037,16 @@ def ui_edit(request: Request, soa_id: int):
         "study_label": meta_row[1] if meta_row else None,
         "study_description": meta_row[2] if meta_row else None,
     }
+    # Protocol terminology options for Arm Type (C174222)
+    conn_pt = _connect()
+    cur_pt = conn_pt.cursor()
+    cur_pt.execute(
+        "SELECT cdisc_submission_value FROM protocol_terminology WHERE codelist_code='C174222' ORDER BY cdisc_submission_value"
+    )
+    protocol_terminology_C174222 = [
+        {"cdisc_submission_value": r[0] or ""} for r in cur_pt.fetchall()
+    ]
+    conn_pt.close()
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -3045,7 +3056,64 @@ def ui_edit(request: Request, soa_id: int):
             "visits": visits,
             "activities": activities_page,
             "elements": elements,
-            "arms": _fetch_arms_for_edit(soa_id),
+            # Enrich arms with current type display (map Code_N -> cdisc_submission_value via protocol code)
+            "arms": (
+                lambda _arms: (
+                    (
+                        lambda mapping, submission_values: [
+                            (
+                                lambda _type: (
+                                    {
+                                        **a,
+                                        "type_display": (
+                                            mapping.get(_type)
+                                            if mapping.get(_type) is not None
+                                            else (
+                                                _type
+                                                if (_type in submission_values)
+                                                else None
+                                            )
+                                        ),
+                                    }
+                                )
+                            )(a.get("type"))
+                            for a in _arms
+                        ]
+                    )(
+                        (
+                            lambda: (
+                                (
+                                    lambda conn: (
+                                        (
+                                            lambda cur, rows: (
+                                                (lambda m: (conn.close(), m)[1])(
+                                                    {row[0]: row[2] for row in rows}
+                                                )
+                                            )
+                                        )(
+                                            conn.cursor(),
+                                            conn.cursor()
+                                            .execute(
+                                                "SELECT c.code_uid, c.code, pt.cdisc_submission_value "
+                                                "FROM code c JOIN protocol_terminology pt ON pt.code = c.code "
+                                                "WHERE c.soa_id=? AND c.codelist_code='C174222'",
+                                                (soa_id,),
+                                            )
+                                            .fetchall(),
+                                        )
+                                    )
+                                )(_connect())
+                            )
+                        )(),
+                        set(
+                            [
+                                opt.get("cdisc_submission_value") or ""
+                                for opt in protocol_terminology_C174222
+                            ]
+                        ),
+                    )
+                )
+            )(_fetch_arms_for_edit(soa_id)),
             "cell_map": cell_map,
             "concepts": concepts,
             "activity_concepts": activity_concepts,
@@ -3057,6 +3125,7 @@ def ui_edit(request: Request, soa_id: int):
             "freeze_count": len(freeze_list),
             "last_frozen_at": last_frozen_at,
             **study_meta,
+            "protocol_terminology_C174222": protocol_terminology_C174222,
         },
     )
 
@@ -3413,7 +3482,7 @@ def ui_add_arm(
 
 
 @app.post("/ui/soa/{soa_id}/update_arm", response_class=HTMLResponse)
-def ui_update_arm(
+async def ui_update_arm(
     request: Request,
     soa_id: int,
     arm_id: int = Form(...),
@@ -3425,10 +3494,87 @@ def ui_update_arm(
     """Form handler to update an existing Arm."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    # Coerce possible blank element selection to None; avoid 422 validation error from string "" into Optional[int].
-    eid = int(element_id) if element_id and element_id.strip().isdigit() else None
-    payload = ArmUpdate(name=name, label=label, description=description, element_id=eid)
-    update_arm(soa_id, arm_id, payload)
+
+    # Read raw form to capture field name with hyphen: 'arm-type'
+    try:
+        form_data = await request.form()
+        arm_type_submission = (form_data.get("arm-type") or "").strip()
+    except Exception:
+        arm_type_submission = ""
+
+    # Fetch current arm (including existing type code_uid if any)
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, name, label, description, COALESCE(type,''), COALESCE(data_origin_type,'') FROM arm WHERE id=? AND soa_id=?",
+        (arm_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Arm not found")
+    current_code_uid = row[4] or None
+
+    # Resolve submission value to protocol terminology code (C174222)
+    resolved_code: Optional[str] = None
+    if arm_type_submission:
+        cur.execute(
+            "SELECT code FROM protocol_terminology WHERE codelist_code='C174222' AND (cdisc_submission_value=? OR LOWER(TRIM(cdisc_submission_value))=LOWER(TRIM(?)))",
+            (arm_type_submission, arm_type_submission),
+        )
+        r = cur.fetchone()
+        resolved_code = r[0] if r else None
+        if resolved_code is None:
+            conn.close()
+            return HTMLResponse(
+                f"<script>alert('Unknown Arm Type selection: {arm_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
+                status_code=400,
+            )
+
+    # Maintain code table row with immutable code_uid (Code_N unique per SoA)
+    new_code_uid = current_code_uid
+    if resolved_code is not None:
+        if current_code_uid:
+            # Update existing junction row for this code_uid
+            cur.execute(
+                "UPDATE code SET code=?, codelist_code='C174222', codelist_table='protocol_terminology' WHERE soa_id=? AND code_uid=?",
+                (resolved_code, soa_id, current_code_uid),
+            )
+        else:
+            # Create new Code_N within this SoA
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                (soa_id,),
+            )
+            existing = [x[0] for x in cur.fetchall() if x[0]]
+            n = 1
+            if existing:
+                try:
+                    n = max(int(x.split("_")[1]) for x in existing) + 1
+                except Exception:
+                    n = len(existing) + 1
+            new_code_uid = f"Code_{n}"
+            cur.execute(
+                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                (
+                    soa_id,
+                    new_code_uid,
+                    "protocol_terminology",
+                    "C174222",
+                    resolved_code,
+                ),
+            )
+
+    # Apply arm field updates (including setting type to code_uid if resolved)
+    new_name = name if name is not None else row[1]
+    new_label = label if label is not None else row[2]
+    new_desc = description if description is not None else row[3]
+    cur.execute(
+        "UPDATE arm SET name=?, label=?, description=?, type=? WHERE id=? AND soa_id=?",
+        (new_name, new_label, new_desc, new_code_uid, arm_id, soa_id),
+    )
+    conn.commit()
+    conn.close()
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
 

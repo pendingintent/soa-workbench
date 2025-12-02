@@ -146,5 +146,18 @@ def _init_db():
             performed_at TEXT NOT NULL
         )"""
     )
+
+    # create the code table to store unique Code_uid values associated with study objects
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS code (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            code_uid TEXT, -- immutable Code_N identifier unique within an SOA
+            codelist_table TEXT,
+            codelist_code TEXT NOT NULL,
+            code TEXT NOT NULL
+        )"""
+    )
+
     conn.commit()
     conn.close()

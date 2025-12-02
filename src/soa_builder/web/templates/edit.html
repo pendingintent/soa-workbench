@@ -213,6 +213,22 @@
             <input name="name" value="{{ arm.name }}" placeholder="Name" style="width:90px;" />
             <input name="label" value="{{ arm.label or '' }}" placeholder="Label" style="width:70px;" />
             <input name="description" value="{{ arm.description or '' }}" placeholder="Desc" style="width:120px;" />
+            {# Type selection from protocol terminology C174222 #}
+            {% if protocol_terminology_C174222 %}
+            <select name="arm-type" style="width:200px;" title="Type">
+              <option value="">Type</option>
+              {% for opt in protocol_terminology_C174222 %}
+                {% set text = (opt.cdisc_submission_value or '') %}
+                {% set td = (arm.type_display or '') %}
+                <option value="{{ text }}" {% if td|trim|lower == text|trim|lower and td != '' %}selected{% endif %}>{{ text }}</option>
+              {% endfor %}
+            </select>
+            {% if arm.type_display %}
+              <span style="font-size:0.65em;color:#2e7d32;margin-left:4px;" title="Resolved display from arm.type">[type: {{ arm.type_display }}]</span>
+            {% else %}
+              <span style="font-size:0.65em;color:#c62828;margin-left:4px;" title="No resolved type available">[type: n/a]</span>
+            {% endif %}
+            {% endif %}
             <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
           </form>
         </li>
