@@ -78,6 +78,12 @@ _CONCEPT_CACHE_TTL = 60 * 60  # 1 hour TTL
 # SDTM dataset specializations cache (similar TTL)
 _sdtm_specializations_cache = {"data": None, "fetched_at": 0}
 _SDTM_SPECIALIZATIONS_CACHE_TTL = 60 * 60
+# Category-specific biomedical concepts cache (per category key)
+_category_concepts_cache: dict[str, dict] = {}
+_CATEGORY_CONCEPTS_CACHE_TTL = 60 * 60  # 1 hour
+# Biomedical concept categories cache (whole list)
+_bc_categories_cache = {"data": None, "fetched_at": 0}
+_BC_CATEGORIES_CACHE_TTL = 60 * 60  # 1 hour
 app = FastAPI(title="SoA Builder API", version="0.1.0")
 logger = logging.getLogger("soa_builder.concepts")
 if not logger.handlers:
@@ -1000,7 +1006,7 @@ def _fetch_matrix(soa_id: int):
     return visits, activities, cells
 
 
-def fetch_biomedical_concept_categories() -> list[dict]:
+def fetch_biomedical_concept_categories(force: bool = False) -> list[dict]:
     """Return list of Biomedical Concept Categories from CDISC Library.
 
     Normalized shape:
@@ -1026,6 +1032,15 @@ def fetch_biomedical_concept_categories() -> list[dict]:
         if h.startswith("/"):
             return base_prefix + h
         return base_prefix + "/" + h
+
+    # Cache lookup
+    now = time.time()
+    if (
+        not force
+        and _bc_categories_cache.get("data")
+        and now - _bc_categories_cache.get("fetched_at", 0) < _BC_CATEGORIES_CACHE_TTL
+    ):
+        return _bc_categories_cache.get("data") or []
 
     try:
         resp = requests.get(url, headers=headers, timeout=15)
@@ -1069,13 +1084,15 @@ def fetch_biomedical_concept_categories() -> list[dict]:
                         )
         categories.sort(key=lambda c: (c["title"] or "").lower())
         logger.info("Fetched %d BC categories from remote API", len(categories))
+        _bc_categories_cache["data"] = categories
+        _bc_categories_cache["fetched_at"] = now
         return categories
     except Exception as e:  # pragma: no cover
         logger.error("BC categories fetch error: %s", e)
         return []
 
 
-def fetch_biomedical_concepts_by_category(name: str) -> list[dict]:
+def fetch_biomedical_concepts_by_category(name: str, force: bool = False) -> list[dict]:
     """Return biomedical concepts for a given category name.
 
     Uses category-specific endpoint: /mdr/bc/biomedicalconcepts?category=<name>
@@ -1107,6 +1124,14 @@ def fetch_biomedical_concepts_by_category(name: str) -> list[dict]:
         if h.startswith("/"):
             return base_prefix + h
         return base_prefix + "/" + h
+
+    # Cache lookup
+    now = time.time()
+    ckey = category.lower()
+    if not force:
+        cached = _category_concepts_cache.get(ckey)
+        if cached and now - cached.get("fetched_at", 0) < _CATEGORY_CONCEPTS_CACHE_TTL:
+            return cached.get("data", []) or []
 
     concepts: list[dict] = []
     try:
@@ -1205,6 +1230,8 @@ def fetch_biomedical_concepts_by_category(name: str) -> list[dict]:
         logger.info(
             "Fetched %d biomedical concepts for category '%s'", len(concepts), category
         )
+        # Populate cache
+        _category_concepts_cache[ckey] = {"data": concepts, "fetched_at": now}
         return concepts
     except Exception as e:  # pragma: no cover
         logger.error("BC concepts by category fetch error for '%s': %s", category, e)
@@ -3061,9 +3088,9 @@ def ui_concepts_list(request: Request):
 
 
 @app.get("/ui/concept_categories", response_class=HTMLResponse)
-def ui_categories_list(request: Request):
+def ui_categories_list(request: Request, force: bool = False):
     """Render table listing biomedical concept categories (name + title + href)."""
-    categories = fetch_biomedical_concept_categories() or []
+    categories = fetch_biomedical_concept_categories(force=force) or []
     rows = [
         {
             "name": c.get("name"),
@@ -3077,6 +3104,7 @@ def ui_categories_list(request: Request):
         request,
         "concept_categories.html",
         {
+            "force": force,
             "rows": rows,
             "count": len(rows),
             "missing_key": subscription_key is None,
@@ -3085,7 +3113,7 @@ def ui_categories_list(request: Request):
 
 
 @app.get("/ui/concept_categories/view", response_class=HTMLResponse)
-def ui_category_detail(request: Request, name: str = ""):
+def ui_category_detail(request: Request, name: str = "", force: bool = False):
     """Render list of biomedical concepts within a given category name.
 
     Query params:
@@ -3096,7 +3124,7 @@ def ui_category_detail(request: Request, name: str = ""):
         return HTMLResponse(
             "<p><em>Category name required.</em></p><p><a href='/ui/concept_categories'>Back</a></p>"
         )
-    concepts = fetch_biomedical_concepts_by_category(category_name) or []
+    concepts = fetch_biomedical_concepts_by_category(category_name, force=force) or []
     rows = [
         {
             "code": c.get("code"),
@@ -3110,6 +3138,7 @@ def ui_category_detail(request: Request, name: str = ""):
         "concept_category_detail.html",
         {
             "category": category_name,
+            "force": force,
             "rows": rows,
             "count": len(rows),
         },

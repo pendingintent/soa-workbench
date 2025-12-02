@@ -42,7 +42,7 @@ def test_helper_category_url_encoding(monkeypatch, raw_category, expected_url_fr
         return DummyResp(200, {"items": []})
 
     monkeypatch.setattr("requests.get", fake_get)
-    fetch_biomedical_concepts_by_category(raw_category)
+    fetch_biomedical_concepts_by_category(raw_category, force=True)
     assert len(captured_urls) == 1
     assert expected_url_fragment in captured_urls[0]
 
@@ -68,7 +68,7 @@ def test_helper_parses_items_list(monkeypatch):
         return DummyResp(200, payload)
 
     monkeypatch.setattr("requests.get", fake_get)
-    concepts = fetch_biomedical_concepts_by_category("Liver Findings")
+    concepts = fetch_biomedical_concepts_by_category("Liver Findings", force=True)
     assert {c["code"] for c in concepts} == {"ALT", "AST"}
     assert all(
         c["href"].startswith(
@@ -100,7 +100,7 @@ def test_helper_parses_hal_links(monkeypatch):
         return DummyResp(200, payload)
 
     monkeypatch.setattr("requests.get", fake_get)
-    concepts = fetch_biomedical_concepts_by_category("Liver Findings")
+    concepts = fetch_biomedical_concepts_by_category("Liver Findings", force=True)
     codes = {c["code"] for c in concepts}
     assert codes == {"ALT", "AST"}
     # Titles preserved
@@ -114,7 +114,7 @@ def test_helper_handles_non_200(monkeypatch):
         return DummyResp(404, {}, text="Not Found")
 
     monkeypatch.setattr("requests.get", fake_get)
-    concepts = fetch_biomedical_concepts_by_category("Liver Findings")
+    concepts = fetch_biomedical_concepts_by_category("Liver Findings", force=True)
     assert concepts == []
 
 
@@ -139,7 +139,9 @@ def test_category_ui_endpoint_renders_links(monkeypatch):
         return DummyResp(200, payload)
 
     monkeypatch.setattr("requests.get", fake_get)
-    resp = client.get("/ui/concept_categories/view", params={"name": "Liver Findings"})
+    resp = client.get(
+        "/ui/concept_categories/view", params={"name": "Liver Findings", "force": True}
+    )
     assert resp.status_code == 200
     text = resp.text
     # Internal links to concept detail page
@@ -156,6 +158,8 @@ def test_category_ui_endpoint_empty(monkeypatch):
         return DummyResp(200, {"items": []})
 
     monkeypatch.setattr("requests.get", fake_get)
-    resp = client.get("/ui/concept_categories/view", params={"name": "Liver Findings"})
+    resp = client.get(
+        "/ui/concept_categories/view", params={"name": "Liver Findings", "force": True}
+    )
     assert resp.status_code == 200
     assert "No concepts found for this category." in resp.text
