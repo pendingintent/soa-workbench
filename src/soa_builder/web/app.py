@@ -67,6 +67,7 @@ from .routers import visits as visits_router
 from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
 from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
+from .utils import get_next_code_uid as _get_next_code_uid
 
 load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
@@ -136,24 +137,6 @@ def _get_cdisc_api_key():
 
 def _get_concepts_override():
     return os.environ.get("CDISC_CONCEPTS_JSON")
-
-
-def _get_next_code_uid(cur, soa_id: int) -> str:
-    """Compute next unique Code_N for the given SOA.
-    Assumes `cur` is a sqlite cursor within an open transaction.
-    """
-    cur.execute(
-        "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-        (soa_id,),
-    )
-    existing = [x[0] for x in cur.fetchall() if x[0]]
-    n = 1
-    if existing:
-        try:
-            n = max(int(x.split("_")[1]) for x in existing) + 1
-        except Exception:
-            n = len(existing) + 1
-    return f"Code_{n}"
 
 
 # Audit functions
@@ -3614,18 +3597,7 @@ async def ui_add_arm(
                     status_code=400,
                 )
             # Create Code_N
-            cur.execute(
-                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-                (soa_id,),
-            )
-            existing = [x[0] for x in cur.fetchall() if x[0]]
-            n = 1
-            if existing:
-                try:
-                    n = max(int(x.split("_")[1]) for x in existing) + 1
-                except Exception:
-                    n = len(existing) + 1
-            new_type_uid = f"Code_{n}"
+            new_type_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
                 "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
@@ -3662,18 +3634,7 @@ async def ui_add_arm(
                     status_code=400,
                 )
             # Create Code_N (continue numbering)
-            cur.execute(
-                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-                (soa_id,),
-            )
-            existing = [x[0] for x in cur.fetchall() if x[0]]
-            n = 1
-            if existing:
-                try:
-                    n = max(int(x.split("_")[1]) for x in existing) + 1
-                except Exception:
-                    n = len(existing) + 1
-            new_data_origin_uid = f"Code_{n}"
+            new_data_origin_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
                 "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
