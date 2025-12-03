@@ -48,6 +48,8 @@ Thumbs.db
 
 # SQLite / local DBs
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 
 # Environment variables / secrets (add if created)
