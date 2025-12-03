@@ -3088,7 +3088,6 @@ def ui_edit(request: Request, soa_id: int):
         ddf_opt.get("cdisc_submission_value") or ""
         for ddf_opt in ddf_terminology_C188727
     }
-    # logger.info("DDF Data Origin Type submission values", ddf_submission_values)
 
     base_arms = _fetch_arms_for_edit(soa_id)
     arms_enriched = []
