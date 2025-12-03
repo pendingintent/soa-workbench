@@ -8,7 +8,7 @@ def setup_module(module):
     _init_db()
 
 
-def test_get_next_code_uid_empty_soA():
+def test_get_next_code_uid_empty_soa():
     conn = _connect()
     cur = conn.cursor()
     # create a dummy SOA
