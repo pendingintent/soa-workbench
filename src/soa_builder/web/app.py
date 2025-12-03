@@ -5397,7 +5397,7 @@ def get_protocol_terminology(
     limit: int = 50,
     offset: int = 0,
 ):
-    """Return latest rotocol Terminology loaded into SQLite database."""
+    """Return latest Protocol Terminology loaded into SQLite database."""
     limit = max(1, min(limit, 200))
     offset = max(0, offset)
     conn = _connect()
