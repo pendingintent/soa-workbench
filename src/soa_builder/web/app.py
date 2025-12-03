@@ -27,7 +27,6 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, List, Optional
-import html
 
 import pandas as pd
 import requests
@@ -3115,12 +3114,12 @@ def ui_edit(request: Request, soa_id: int):
     base_arms = _fetch_arms_for_edit(soa_id)
     arms_enriched = []
     for a in base_arms:
-        type = a.get("type")
-        type_display = code_to_submission.get(type)
+        arm_type = a.get("type")
+        type_display = code_to_submission.get(arm_type)
         data_origin_type = a.get("data_origin_type")
         data_origin_type_display = ddf_code_to_submission.get(data_origin_type)
-        if type_display is None and type:
-            type_display = type if type in submission_values else None
+        if type_display is None and arm_type:
+            type_display = arm_type if arm_type in submission_values else None
         if data_origin_type_display is None and data_origin_type:
             data_origin_type_display = (
                 data_origin_type if data_origin_type in ddf_submission_values else None
@@ -3594,7 +3593,7 @@ async def ui_add_arm(
                 )
                 conn.close()
                 return HTMLResponse(
-                    f"<script>alert('Unknown Arm Type selection: {html.escape(str(arm_type_submission))}');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
+                    f"<script>alert('Unknown Arm Type selection: {json.dumps(str(arm_type_submission))});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
                     status_code=400,
                 )
             # Create Code_N
@@ -3631,13 +3630,9 @@ async def ui_add_arm(
                 )
                 conn.close()
                 # Properly escape the value for safety in HTML/JS context
-                escaped_selection = (
-                    html.escape(data_origin_type_submission, quote=True)
-                    .replace("\\", "\\\\")
-                    .replace("'", "\\'")
-                )
+                escaped_selection = json.dumps(data_origin_type_submission)
                 return HTMLResponse(
-                    f"<script>alert('Unknown Data Origin Type selection: {escaped_selection}');window.location='/ui/soa/{soa_id}/edit';</script>",
+                    f"<script>alert({escaped_selection});window.location='/ui/soa/{soa_id}/edit';</script>",
                     status_code=400,
                 )
             # Create Code_N (continue numbering)
