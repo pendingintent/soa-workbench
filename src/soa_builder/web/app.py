@@ -27,6 +27,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, List, Optional
+import html
 
 import pandas as pd
 import requests
@@ -3553,7 +3554,7 @@ async def ui_add_arm(
             new_arm_id = None
     if not new_arm_id:
         return HTMLResponse(
-            f"<script>alert('Failed to create arm');window.location='/ui/soa/{soa_id}/edit';</script>",
+            f"<script>alert('Failed to create arm');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
             status_code=500,
         )
     # Read optional type fields with hyphenated names
@@ -3593,7 +3594,7 @@ async def ui_add_arm(
                 )
                 conn.close()
                 return HTMLResponse(
-                    f"<script>alert('Unknown Arm Type selection: {arm_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
+                    f"<script>alert('Unknown Arm Type selection: {html.escape(str(arm_type_submission))}');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
                     status_code=400,
                 )
             # Create Code_N
@@ -3629,8 +3630,14 @@ async def ui_add_arm(
                     soa_id,
                 )
                 conn.close()
+                # Properly escape the value for safety in HTML/JS context
+                escaped_selection = (
+                    html.escape(data_origin_type_submission, quote=True)
+                    .replace("\\", "\\\\")
+                    .replace("'", "\\'")
+                )
                 return HTMLResponse(
-                    f"<script>alert('Unknown Data Origin Type selection: {data_origin_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
+                    f"<script>alert('Unknown Data Origin Type selection: {escaped_selection}');window.location='/ui/soa/{soa_id}/edit';</script>",
                     status_code=400,
                 )
             # Create Code_N (continue numbering)
@@ -3757,7 +3764,7 @@ async def ui_update_arm(
             )
             conn.close()
             return HTMLResponse(
-                f"<script>alert('Unknown Arm Type selection: {arm_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
+                f"<script>alert({json.dumps('Unknown Arm Type selection: ' + arm_type_submission)});window.location='/ui/soa/{soa_id}/edit';</script>",
                 status_code=400,
             )
 
@@ -3817,7 +3824,7 @@ async def ui_update_arm(
             )
             conn.close()
             return HTMLResponse(
-                f"<script>alert('Unknown Data Origin Type selection: {data_origin_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
+                f"<script>alert({json.dumps(f'Unknown Data Origin Type selection: {data_origin_type_submission}')});window.location='/ui/soa/{soa_id}/edit';</script>",
                 status_code=400,
             )
         # Maintain/Upsert immutable Code_N for DDF mapping
