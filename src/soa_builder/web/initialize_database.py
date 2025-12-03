@@ -155,7 +155,8 @@ def _init_db():
             code_uid TEXT, -- immutable Code_N identifier unique within an SOA
             codelist_table TEXT,
             codelist_code TEXT NOT NULL,
-            code TEXT NOT NULL
+            code TEXT NOT NULL,
+            UNIQUE(soa_id, code_uid)
         )"""
     )
 
