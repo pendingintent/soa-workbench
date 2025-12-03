@@ -3494,7 +3494,7 @@ def ui_add_visit(
 
 
 @app.post("/ui/soa/{soa_id}/add_arm", response_class=HTMLResponse)
-def ui_add_arm(
+async def ui_add_arm(
     request: Request,
     soa_id: int,
     name: str = Form(...),
@@ -3508,7 +3508,168 @@ def ui_add_arm(
     # Accept blank/empty element selection gracefully. The form may submit "" which would 422 with Optional[int].
     eid = int(element_id) if element_id and element_id.strip().isdigit() else None
     payload = ArmCreate(name=name, label=label, description=description, element_id=eid)
-    create_arm(soa_id, payload)
+    # Create base arm (function may not return id; fetch if needed)
+    created = create_arm(soa_id, payload)
+    # routers.arms.create_arm returns a row dict; extract id
+    new_arm_id = None
+    try:
+        if isinstance(created, dict):
+            new_arm_id = created.get("id")
+        elif isinstance(created, int):
+            new_arm_id = created
+    except Exception:
+        new_arm_id = None
+    if not new_arm_id:
+        try:
+            conn_tmp = _connect()
+            cur_tmp = conn_tmp.cursor()
+            cur_tmp.execute(
+                "SELECT id FROM arm WHERE soa_id=? ORDER BY id DESC LIMIT 1",
+                (soa_id,),
+            )
+            rtmp = cur_tmp.fetchone()
+            new_arm_id = rtmp[0] if rtmp else None
+            conn_tmp.close()
+        except Exception:
+            new_arm_id = None
+    if not new_arm_id:
+        return HTMLResponse(
+            f"<script>alert('Failed to create arm');window.location='/ui/soa/{soa_id}/edit';</script>",
+            status_code=500,
+        )
+    # Read optional type fields with hyphenated names
+    try:
+        form_data = await request.form()
+        arm_type_submission = (form_data.get("arm-type") or "").strip()
+        data_origin_type_submission = (form_data.get("data-origin-type") or "").strip()
+    except Exception:
+        arm_type_submission = ""
+        data_origin_type_submission = ""
+
+    # If type selections provided, resolve to terminology codes and persist via junction table
+    if arm_type_submission or data_origin_type_submission:
+        conn = _connect()
+        cur = conn.cursor()
+        logger.info(
+            "ui_add_arm: received type selections arm-type='%s', data-origin-type='%s' for soa_id=%s arm_id=%s",
+            arm_type_submission,
+            data_origin_type_submission,
+            soa_id,
+            new_arm_id,
+        )
+        new_type_uid: Optional[str] = None
+        new_data_origin_uid: Optional[str] = None
+        if arm_type_submission:
+            cur.execute(
+                "SELECT code FROM protocol_terminology WHERE codelist_code='C174222' AND (cdisc_submission_value=? OR LOWER(TRIM(cdisc_submission_value))=LOWER(TRIM(?)))",
+                (arm_type_submission, arm_type_submission),
+            )
+            r = cur.fetchone()
+            resolved_code = r[0] if r else None
+            if resolved_code is None:
+                logger.warning(
+                    "ui_add_arm: unknown arm type submission '%s' for soa_id=%s",
+                    arm_type_submission,
+                    soa_id,
+                )
+                conn.close()
+                return HTMLResponse(
+                    f"<script>alert('Unknown Arm Type selection: {arm_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
+                    status_code=400,
+                )
+            # Create Code_N
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                (soa_id,),
+            )
+            existing = [x[0] for x in cur.fetchall() if x[0]]
+            n = 1
+            if existing:
+                try:
+                    n = max(int(x.split("_")[1]) for x in existing) + 1
+                except Exception:
+                    n = len(existing) + 1
+            new_type_uid = f"Code_{n}"
+            cur.execute(
+                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                (
+                    soa_id,
+                    new_type_uid,
+                    "protocol_terminology",
+                    "C174222",
+                    resolved_code,
+                ),
+            )
+            logger.info(
+                "ui_add_arm: created code junction %s -> table=%s list=%s code=%s",
+                new_type_uid,
+                "protocol_terminology",
+                "C174222",
+                resolved_code,
+            )
+        if data_origin_type_submission:
+            cur.execute(
+                "SELECT code FROM ddf_terminology WHERE codelist_code='C188727' AND (cdisc_submission_value=? OR LOWER(TRIM(cdisc_submission_value))=LOWER(TRIM(?)))",
+                (data_origin_type_submission, data_origin_type_submission),
+            )
+            r2 = cur.fetchone()
+            resolved_ddf_code = r2[0] if r2 else None
+            if resolved_ddf_code is None:
+                logger.warning(
+                    "ui_add_arm: unknown data origin type submission '%s' for soa_id=%s",
+                    data_origin_type_submission,
+                    soa_id,
+                )
+                conn.close()
+                return HTMLResponse(
+                    f"<script>alert('Unknown Data Origin Type selection: {data_origin_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
+                    status_code=400,
+                )
+            # Create Code_N (continue numbering)
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                (soa_id,),
+            )
+            existing = [x[0] for x in cur.fetchall() if x[0]]
+            n = 1
+            if existing:
+                try:
+                    n = max(int(x.split("_")[1]) for x in existing) + 1
+                except Exception:
+                    n = len(existing) + 1
+            new_data_origin_uid = f"Code_{n}"
+            cur.execute(
+                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                (
+                    soa_id,
+                    new_data_origin_uid,
+                    "ddf_terminology",
+                    "C188727",
+                    resolved_ddf_code,
+                ),
+            )
+            logger.info(
+                "ui_add_arm: created code junction %s -> table=%s list=%s code=%s",
+                new_data_origin_uid,
+                "ddf_terminology",
+                "C188727",
+                resolved_ddf_code,
+            )
+        # Update arm row with new code_uids
+        if new_type_uid or new_data_origin_uid:
+            cur.execute(
+                "UPDATE arm SET type=COALESCE(?, type), data_origin_type=COALESCE(?, data_origin_type) WHERE id=? AND soa_id=?",
+                (new_type_uid, new_data_origin_uid, new_arm_id, soa_id),
+            )
+            logger.info(
+                "ui_add_arm: updated arm id=%s set type=%s data_origin_type=%s",
+                new_arm_id,
+                new_type_uid,
+                new_data_origin_uid,
+            )
+        conn.commit()
+        # routers.arms.create_arm already records a create audit; avoid duplicating here
+        conn.close()
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
 
@@ -3534,6 +3695,13 @@ async def ui_update_arm(
     except Exception:
         arm_type_submission = ""
         data_origin_type_submission = ""
+    logger.info(
+        "ui_update_arm: arm_id=%s soa_id=%s incoming arm-type='%s' data-origin-type='%s'",
+        arm_id,
+        soa_id,
+        arm_type_submission,
+        data_origin_type_submission,
+    )
 
     # Fetch current arm (including existing type code_uid if any)
     conn = _connect()
@@ -3584,6 +3752,12 @@ async def ui_update_arm(
         r = cur.fetchone()
         resolved_code = r[0] if r else None
         if resolved_code is None:
+            logger.warning(
+                "ui_update_arm: unknown arm type submission '%s' for soa_id=%s arm_id=%s",
+                arm_type_submission,
+                soa_id,
+                arm_id,
+            )
             conn.close()
             return HTMLResponse(
                 f"<script>alert('Unknown Arm Type selection: {arm_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
@@ -3598,6 +3772,13 @@ async def ui_update_arm(
             cur.execute(
                 "UPDATE code SET code=?, codelist_code='C174222', codelist_table='protocol_terminology' WHERE soa_id=? AND code_uid=?",
                 (resolved_code, soa_id, current_code_uid),
+            )
+            logger.info(
+                "ui_update_arm: updated junction code_uid=%s -> table=%s list=%s code=%s",
+                current_code_uid,
+                "protocol_terminology",
+                "C174222",
+                resolved_code,
             )
         else:
             # Create new Code_N within this SoA
@@ -3623,6 +3804,13 @@ async def ui_update_arm(
                     resolved_code,
                 ),
             )
+            logger.info(
+                "ui_update_arm: created junction code_uid=%s -> table=%s list=%s code=%s",
+                new_code_uid,
+                "protocol_terminology",
+                "C174222",
+                resolved_code,
+            )
 
     # Resolve Data Origin Type submission value to DDF terminology code (C188727)
     resolved_ddf_code: Optional[str] = None
@@ -3635,6 +3823,12 @@ async def ui_update_arm(
         r2 = cur.fetchone()
         resolved_ddf_code = r2[0] if r2 else None
         if resolved_ddf_code is None:
+            logger.warning(
+                "ui_update_arm: unknown data origin type submission '%s' for soa_id=%s arm_id=%s",
+                data_origin_type_submission,
+                soa_id,
+                arm_id,
+            )
             conn.close()
             return HTMLResponse(
                 f"<script>alert('Unknown Data Origin Type selection: {data_origin_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
@@ -3647,6 +3841,13 @@ async def ui_update_arm(
                 (resolved_ddf_code, soa_id, current_data_origin_uid),
             )
             new_data_origin_uid = current_data_origin_uid
+            logger.info(
+                "ui_update_arm: updated junction code_uid=%s -> table=%s list=%s code=%s",
+                current_data_origin_uid,
+                "ddf_terminology",
+                "C188727",
+                resolved_ddf_code,
+            )
         else:
             # Create new Code_N, ensuring unique across this SoA
             cur.execute(
@@ -3671,6 +3872,13 @@ async def ui_update_arm(
                     resolved_ddf_code,
                 ),
             )
+            logger.info(
+                "ui_update_arm: created junction code_uid=%s -> table=%s list=%s code=%s",
+                new_data_origin_uid,
+                "ddf_terminology",
+                "C188727",
+                resolved_ddf_code,
+            )
 
     # Apply arm field updates (including setting type to code_uid if resolved)
     new_name = name if name is not None else row[1]
@@ -3687,6 +3895,14 @@ async def ui_update_arm(
             arm_id,
             soa_id,
         ),
+    )
+    logger.info(
+        "ui_update_arm: applied UPDATE arm id=%s set name='%s' label='%s' type=%s data_origin_type=%s",
+        arm_id,
+        new_name,
+        new_label,
+        new_code_uid,
+        new_data_origin_uid,
     )
     conn.commit()
     # Capture post-update code values
@@ -3736,6 +3952,11 @@ async def ui_update_arm(
             )
         except Exception:
             pass
+    else:
+        logger.info(
+            "ui_update_arm: no-op update detected for arm_id=%s (no field or code changes)",
+            arm_id,
+        )
     conn.close()
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 

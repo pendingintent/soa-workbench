@@ -244,6 +244,24 @@
         <input name="name" placeholder="Arm Name" required style="flex:1;min-width:120px;" />
         <input name="label" placeholder="Label" style="flex:1;min-width:90px;" />
         <input name="description" placeholder="Description" style="flex:2;min-width:160px;" />
+        {% if protocol_terminology_C174222 %}
+        <select name="arm-type" style="width:200px;" title="Type">
+          <option value="">Type</option>
+          {% for opt in protocol_terminology_C174222 %}
+            {% set text = (opt.cdisc_submission_value or '') %}
+            <option value="{{ text }}">{{ text }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+        {% if ddf_terminology_C188727 %}
+        <select name="data-origin-type" style="width:200px;" title="Data Origin Type">
+          <option value="">DataOriginType</option>
+          {% for ddf_opt in ddf_terminology_C188727 %}
+            {% set text = (ddf_opt.cdisc_submission_value or '') %}
+            <option value="{{ text }}">{{ text }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
         <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Arm (auto StudyArm_N)</button>
       </form>
     </details>
