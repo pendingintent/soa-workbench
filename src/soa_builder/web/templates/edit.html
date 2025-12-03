@@ -247,6 +247,36 @@
         <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Arm (auto StudyArm_N)</button>
       </form>
     </details>
+    
+  </div>
+  <div>
+    <details id="arm-audit-section" class="collapsible">
+      <summary>Arm Audit (latest {{ arm_audits|length }})</summary>
+      {% if arm_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Arm</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for au in arm_audits %}
+        <tr>
+          <td style="padding:4px;">{{ au.id }}</td>
+          <td style="padding:4px;">{{ au.arm_id }}</td>
+          <td style="padding:4px;">{{ au.action }}</td>
+          <td style="padding:4px;">{{ au.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No arm audit entries yet.</div>
+      {% endif %}
+    </details>
   </div>
 </div>
 <hr />

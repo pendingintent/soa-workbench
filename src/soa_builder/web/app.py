@@ -3113,6 +3113,26 @@ def ui_edit(request: Request, soa_id: int):
             }
         )
 
+    # Admin audit view: recent arm audits for this SOA
+    conn_audit = _connect()
+    cur_audit = conn_audit.cursor()
+    cur_audit.execute(
+        "SELECT id, arm_id, action, before_json, after_json, performed_at FROM arm_audit WHERE soa_id=? ORDER BY id DESC LIMIT 50",
+        (soa_id,),
+    )
+    arm_audits = [
+        {
+            "id": r[0],
+            "arm_id": r[1],
+            "action": r[2],
+            "before_json": r[3],
+            "after_json": r[4],
+            "performed_at": r[5],
+        }
+        for r in cur_audit.fetchall()
+    ]
+    conn_audit.close()
+
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -3136,6 +3156,7 @@ def ui_edit(request: Request, soa_id: int):
             **study_meta,
             "protocol_terminology_C174222": protocol_terminology_C174222,
             "ddf_terminology_C188727": ddf_terminology_C188727,
+            "arm_audits": arm_audits,
         },
     )
 
