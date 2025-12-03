@@ -3073,8 +3073,6 @@ def ui_edit(request: Request, soa_id: int):
         {"cdisc_submission_value": r[0] or ""} for r in cur_ddft.fetchall()
     ]
     conn_ddft.close()
-    # logger.info("DDF Terminology values: ", ddf_terminology_C188727)
-
     # Build mapping code_uid -> submission value (Arm dataOriginType C188727)
     conn_ddf_map = _connect()
     cur_ddf_map = conn_ddf_map.cursor()
