@@ -138,6 +138,24 @@ def _get_concepts_override():
     return os.environ.get("CDISC_CONCEPTS_JSON")
 
 
+def _get_next_code_uid(cur, soa_id: int) -> str:
+    """Compute next unique Code_N for the given SOA.
+    Assumes `cur` is a sqlite cursor within an open transaction.
+    """
+    cur.execute(
+        "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+        (soa_id,),
+    )
+    existing = [x[0] for x in cur.fetchall() if x[0]]
+    n = 1
+    if existing:
+        try:
+            n = max(int(x.split("_")[1]) for x in existing) + 1
+        except Exception:
+            n = len(existing) + 1
+    return f"Code_{n}"
+
+
 # Audit functions
 def _record_element_audit(
     soa_id: int,
@@ -2250,23 +2268,23 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     conn_info = _connect()
     cur_info = conn_info.cursor()
     cur_info.execute(
-        "SELECT name, created_at, study_id, study_label, study_description FROM soa WHERE id=?",
+        "SELECT name, study_id, study_label, study_description, created_at FROM soa WHERE id=?",
         (soa_id,),
     )
-    info_row = cur_info.fetchone()
-    conn_info.close()
-    if info_row:
-        soa_name_val, created_at_val, study_id_val, study_label_val, study_desc_val = (
-            info_row
+    row_info = cur_info.fetchone()
+    if row_info:
+        soa_name_val, study_id_val, study_label_val, study_desc_val, created_at_val = (
+            row_info
         )
     else:
-        soa_name_val, created_at_val, study_id_val, study_label_val, study_desc_val = (
+        soa_name_val, study_id_val, study_label_val, study_desc_val, created_at_val = (
             f"SOA {soa_id}",
             None,
             None,
             None,
             None,
         )
+    conn_info.close()
     freezes = _list_freezes(soa_id)
     last_freeze_label = freezes[0]["version_label"] if freezes else None
     last_freeze_time = freezes[0]["created_at"] if freezes else None
@@ -3029,16 +3047,37 @@ def ui_edit(request: Request, soa_id: int):
     conn_meta = _connect()
     cur_meta = conn_meta.cursor()
     cur_meta.execute(
-        "SELECT study_id, study_label, study_description FROM soa WHERE id=?", (soa_id,)
+        "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
+        (soa_id,),
     )
     meta_row = cur_meta.fetchone()
     conn_meta.close()
+    if meta_row:
+        study_id_val, study_label_val, study_desc_val, soa_name_val, created_at_val = (
+            meta_row
+        )
+    else:
+        study_id_val, study_label_val, study_desc_val, soa_name_val, created_at_val = (
+            None,
+            None,
+            None,
+            f"SOA {soa_id}",
+            None,
+        )
     study_meta = {
-        "study_id": meta_row[0] if meta_row else None,
-        "study_label": meta_row[1] if meta_row else None,
-        "study_description": meta_row[2] if meta_row else None,
+        "study_id": study_id_val,
+        "study_label": study_label_val,
+        "study_description": study_desc_val,
+        "soa_name": soa_name_val,
+        "created_at": created_at_val,
     }
-    # Protocol terminology options for Arm Type (C174222)
+    # Compute next Code_N using a fresh cursor
+    conn_codes = _connect()
+    cur_codes = conn_codes.cursor()
+    # Precompute next Code_N if needed for UI defaults (currently not displayed)
+    _ = _get_next_code_uid(cur_codes, soa_id)
+    conn_codes.close()
+    # Load Protocol Terminology (C174222) options
     conn_pt = _connect()
     cur_pt = conn_pt.cursor()
     cur_pt.execute(
@@ -3779,18 +3818,7 @@ async def ui_update_arm(
             )
         else:
             # Create new Code_N within this SoA
-            cur.execute(
-                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-                (soa_id,),
-            )
-            existing = [x[0] for x in cur.fetchall() if x[0]]
-            n = 1
-            if existing:
-                try:
-                    n = max(int(x.split("_")[1]) for x in existing) + 1
-                except Exception:
-                    n = len(existing) + 1
-            new_code_uid = f"Code_{n}"
+            new_code_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
                 "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
@@ -3847,18 +3875,7 @@ async def ui_update_arm(
             )
         else:
             # Create new Code_N, ensuring unique across this SoA
-            cur.execute(
-                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-                (soa_id,),
-            )
-            existing = [x[0] for x in cur.fetchall() if x[0]]
-            n = 1
-            if existing:
-                try:
-                    n = max(int(x.split("_")[1]) for x in existing) + 1
-                except Exception:
-                    n = len(existing) + 1
-            new_data_origin_uid = f"Code_{n}"
+            new_data_origin_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
                 "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
