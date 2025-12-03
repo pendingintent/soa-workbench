@@ -5,6 +5,10 @@
   This list is derived from the CDISC Library API. Each link points to the
   category's API resource (which lists biomedical concepts in that category).
 </p>
+<p>
+  <a href="/ui/concept_categories?force=1">Refresh Categories (bypass cache)</a>
+  {% if force %}<small style="color:#555;">Cache refreshed</small>{% endif %}
+</p>
 <div style="margin:0.5em 0 1em;">
   <label for="categorySearch"><strong>Search:</strong></label>
   <input id="categorySearch" type="text" placeholder="Filter categories..." style="width:280px;" oninput="filterCategories()" />
@@ -14,7 +18,7 @@
 {% if rows %}
 <table border="1" cellspacing="0" cellpadding="4" id="categoriesTable">
   <thead>
-    <tr>
+      <th style="text-align:left;">Concepts</th>
       <th style="text-align:left;">Name</th>
       <th style="text-align:left;">Title</th>
     </tr>
@@ -25,11 +29,12 @@
       <td>
         {% if r.name %}
           <!-- Pass raw name; backend will encode once to avoid double-encoding -->
-          <a href="/ui/concept_categories/view?name={{ r.name }}">{{ r.name }}</a>
+          <a href="/ui/concept_categories/view?name={{ r.name }}">View Concepts</a>
         {% else %}
           <em>n/a</em>
         {% endif %}
       </td>
+      <td>{{ r.name }}</td>
       <td>{{ r.title }}</td>
     </tr>
   {% endfor %}

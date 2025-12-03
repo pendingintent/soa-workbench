@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Biomedical Concepts in Category: {{ category }}</h2>
+<p>
+  <a href="/ui/concept_categories/view?name={{ category }}&force=1">Refresh (bypass cache)</a>
+  {% if force %}<small style="color:#555;">Cache bypassed</small>{% endif %}
+  | <a href="/ui/concept_categories">Back to Categories</a>
+</p>
 <p>Total concepts: <strong>{{ count }}</strong></p>
 
 {% if rows %}

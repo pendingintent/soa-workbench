@@ -37,7 +37,6 @@ import argparse
 import csv
 import os
 import re
-import sys
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional
 
@@ -259,7 +258,6 @@ def build_visit_activities(
     vas: List[VisitActivity] = []
     next_id = 1
     for a_idx, r in enumerate(rows, start=1):
-        activity_name = r[0]
         for v_idx, visit in enumerate(visits, start=1):
             if v_idx >= len(r):
                 continue
