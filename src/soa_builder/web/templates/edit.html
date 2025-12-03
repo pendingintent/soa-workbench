@@ -223,13 +223,17 @@
                 <option value="{{ text }}" {% if td|trim|lower == text|trim|lower and td != '' %}selected{% endif %}>{{ text }}</option>
               {% endfor %}
             </select>
-            {# --DEBUG
-            {% if arm.type_display %}
-              <span style="font-size:0.65em;color:#2e7d32;margin-left:4px;" title="Resolved display from arm.type">[type: {{ arm.type_display }}]</span>
-            {% else %}
-              <span style="font-size:0.65em;color:#c62828;margin-left:4px;" title="No resolved type available">[type: n/a]</span>
             {% endif %}
-            --END_DEBUG #}
+            {# Type selection from ddf terminology C188727 #}
+            {% if ddf_terminology_C188727 %}
+            <select name="data-origin-type" style="width:200px;" title="Data Origin Type">
+              <option value="">DataOriginType</option>
+              {% for ddf_opt in ddf_terminology_C188727 %}
+                {% set text = (ddf_opt.cdisc_submission_value or '') %}
+                {% set td = (arm.data_origin_type_display or '') %}
+                <option value="{{ text }}" {% if td|trim|lower == text|trim|lower and td != '' %}selected{% endif %}>{{ text }}</option>
+              {% endfor %}
+            </select>
             {% endif %}
             <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
           </form>

@@ -881,7 +881,7 @@ def _fetch_arms_for_edit(soa_id: int) -> list[dict]:
         conn = _connect()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id,name,label,description,order_index,COALESCE(type,'') FROM arm WHERE soa_id=? ORDER BY order_index",
+            "SELECT id,name,label,description,order_index,COALESCE(type,''),COALESCE(data_origin_type,'') FROM arm WHERE soa_id=? ORDER BY order_index",
             (soa_id,),
         )
         rows = [
@@ -892,6 +892,7 @@ def _fetch_arms_for_edit(soa_id: int) -> list[dict]:
                 "description": r[3],
                 "order_index": r[4],
                 "type": r[5] or None,
+                "data_origin_type": r[6] or None,
             }
             for r in cur.fetchall()
         ]
@@ -3047,6 +3048,71 @@ def ui_edit(request: Request, soa_id: int):
         {"cdisc_submission_value": r[0] or ""} for r in cur_pt.fetchall()
     ]
     conn_pt.close()
+    # Build mapping code_uid -> submission value (Arm Type C174222)
+    conn_map = _connect()
+    cur_map = conn_map.cursor()
+    cur_map.execute(
+        "SELECT c.code_uid, pt.cdisc_submission_value "
+        "FROM code c JOIN protocol_terminology pt ON pt.code = c.code "
+        "WHERE c.soa_id=? AND c.codelist_code='C174222'",
+        (soa_id,),
+    )
+    code_to_submission = {row[0]: row[1] for row in cur_map.fetchall()}
+    conn_map.close()
+    submission_values = {
+        opt.get("cdisc_submission_value") or "" for opt in protocol_terminology_C174222
+    }
+
+    # DDF Terminology options for Arm type (C188727)
+    conn_ddft = _connect()
+    cur_ddft = conn_ddft.cursor()
+    cur_ddft.execute(
+        "SELECT cdisc_submission_value FROM ddf_terminology WHERE codelist_code = 'C188727' ORDER BY cdisc_submission_value"
+    )
+    ddf_terminology_C188727 = [
+        {"cdisc_submission_value": r[0] or ""} for r in cur_ddft.fetchall()
+    ]
+    conn_ddft.close()
+    # logger.info("DDF Terminology values: ", ddf_terminology_C188727)
+
+    # Build mapping code_uid -> submission value (Arm dataOriginType C188727)
+    conn_ddf_map = _connect()
+    cur_ddf_map = conn_ddf_map.cursor()
+    cur_ddf_map.execute(
+        "SELECT c.code_uid, dt.cdisc_submission_value "
+        "FROM code c JOIN ddf_terminology dt ON dt.code = c.code "
+        "WHERE c.soa_id=? AND c.codelist_code='C188727'",
+        (soa_id,),
+    )
+    ddf_code_to_submission = {row[0]: row[1] for row in cur_ddf_map.fetchall()}
+    conn_ddf_map.close()
+    ddf_submission_values = {
+        ddf_opt.get("cdisc_submission_value") or ""
+        for ddf_opt in ddf_terminology_C188727
+    }
+    # logger.info("DDF Data Origin Type submission values", ddf_submission_values)
+
+    base_arms = _fetch_arms_for_edit(soa_id)
+    arms_enriched = []
+    for a in base_arms:
+        type = a.get("type")
+        type_display = code_to_submission.get(type)
+        data_origin_type = a.get("data_origin_type")
+        data_origin_type_display = ddf_code_to_submission.get(data_origin_type)
+        if type_display is None and type:
+            type_display = type if type in submission_values else None
+        if data_origin_type_display is None and data_origin_type:
+            data_origin_type_display = (
+                data_origin_type if data_origin_type in ddf_submission_values else None
+            )
+        arms_enriched.append(
+            {
+                **a,
+                "type_display": type_display,
+                "data_origin_type_display": data_origin_type_display,
+            }
+        )
+
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -3056,64 +3122,7 @@ def ui_edit(request: Request, soa_id: int):
             "visits": visits,
             "activities": activities_page,
             "elements": elements,
-            # Enrich arms with current type display (map Code_N -> cdisc_submission_value via protocol code)
-            "arms": (
-                lambda _arms: (
-                    (
-                        lambda mapping, submission_values: [
-                            (
-                                lambda _type: (
-                                    {
-                                        **a,
-                                        "type_display": (
-                                            mapping.get(_type)
-                                            if mapping.get(_type) is not None
-                                            else (
-                                                _type
-                                                if (_type in submission_values)
-                                                else None
-                                            )
-                                        ),
-                                    }
-                                )
-                            )(a.get("type"))
-                            for a in _arms
-                        ]
-                    )(
-                        (
-                            lambda: (
-                                (
-                                    lambda conn: (
-                                        (
-                                            lambda cur, rows: (
-                                                (lambda m: (conn.close(), m)[1])(
-                                                    {row[0]: row[2] for row in rows}
-                                                )
-                                            )
-                                        )(
-                                            conn.cursor(),
-                                            conn.cursor()
-                                            .execute(
-                                                "SELECT c.code_uid, c.code, pt.cdisc_submission_value "
-                                                "FROM code c JOIN protocol_terminology pt ON pt.code = c.code "
-                                                "WHERE c.soa_id=? AND c.codelist_code='C174222'",
-                                                (soa_id,),
-                                            )
-                                            .fetchall(),
-                                        )
-                                    )
-                                )(_connect())
-                            )
-                        )(),
-                        set(
-                            [
-                                opt.get("cdisc_submission_value") or ""
-                                for opt in protocol_terminology_C174222
-                            ]
-                        ),
-                    )
-                )
-            )(_fetch_arms_for_edit(soa_id)),
+            "arms": arms_enriched,
             "cell_map": cell_map,
             "concepts": concepts,
             "activity_concepts": activity_concepts,
@@ -3126,6 +3135,7 @@ def ui_edit(request: Request, soa_id: int):
             "last_frozen_at": last_frozen_at,
             **study_meta,
             "protocol_terminology_C174222": protocol_terminology_C174222,
+            "ddf_terminology_C188727": ddf_terminology_C188727,
         },
     )
 
@@ -3495,12 +3505,14 @@ async def ui_update_arm(
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
 
-    # Read raw form to capture field name with hyphen: 'arm-type'
+    # Read raw form to capture field names with hyphens: 'arm-type' and 'data-origin-type'
     try:
         form_data = await request.form()
         arm_type_submission = (form_data.get("arm-type") or "").strip()
+        data_origin_type_submission = (form_data.get("data-origin-type") or "").strip()
     except Exception:
         arm_type_submission = ""
+        data_origin_type_submission = ""
 
     # Fetch current arm (including existing type code_uid if any)
     conn = _connect()
@@ -3514,6 +3526,32 @@ async def ui_update_arm(
         conn.close()
         raise HTTPException(404, "Arm not found")
     current_code_uid = row[4] or None
+    current_data_origin_uid = row[5] or None
+    # Capture prior code values for audits when code mapping changes without uid change
+    prior_arm_type_code_value: Optional[str] = None
+    prior_data_origin_code_value: Optional[str] = None
+    if current_code_uid:
+        cur.execute(
+            "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+            (soa_id, current_code_uid),
+        )
+        rcv = cur.fetchone()
+        prior_arm_type_code_value = rcv[0] if rcv else None
+    if current_data_origin_uid:
+        cur.execute(
+            "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+            (soa_id, current_data_origin_uid),
+        )
+        rdv = cur.fetchone()
+        prior_data_origin_code_value = rdv[0] if rdv else None
+    before_state = {
+        "id": row[0],
+        "name": row[1],
+        "label": row[2],
+        "description": row[3],
+        "type": current_code_uid,
+        "data_origin_type": current_data_origin_uid,
+    }
 
     # Resolve submission value to protocol terminology code (C174222)
     resolved_code: Optional[str] = None
@@ -3565,15 +3603,118 @@ async def ui_update_arm(
                 ),
             )
 
+    # Resolve Data Origin Type submission value to DDF terminology code (C188727)
+    resolved_ddf_code: Optional[str] = None
+    new_data_origin_uid = current_data_origin_uid
+    if data_origin_type_submission:
+        cur.execute(
+            "SELECT code FROM ddf_terminology WHERE codelist_code='C188727' AND (cdisc_submission_value=? OR LOWER(TRIM(cdisc_submission_value))=LOWER(TRIM(?)))",
+            (data_origin_type_submission, data_origin_type_submission),
+        )
+        r2 = cur.fetchone()
+        resolved_ddf_code = r2[0] if r2 else None
+        if resolved_ddf_code is None:
+            conn.close()
+            return HTMLResponse(
+                f"<script>alert('Unknown Data Origin Type selection: {data_origin_type_submission}');window.location='/ui/soa/{soa_id}/edit';</script>",
+                status_code=400,
+            )
+        # Maintain/Upsert immutable Code_N for DDF mapping
+        if current_data_origin_uid:
+            cur.execute(
+                "UPDATE code SET code=?, codelist_code='C188727', codelist_table='ddf_terminology' WHERE soa_id=? AND code_uid=?",
+                (resolved_ddf_code, soa_id, current_data_origin_uid),
+            )
+            new_data_origin_uid = current_data_origin_uid
+        else:
+            # Create new Code_N, ensuring unique across this SoA
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                (soa_id,),
+            )
+            existing = [x[0] for x in cur.fetchall() if x[0]]
+            n = 1
+            if existing:
+                try:
+                    n = max(int(x.split("_")[1]) for x in existing) + 1
+                except Exception:
+                    n = len(existing) + 1
+            new_data_origin_uid = f"Code_{n}"
+            cur.execute(
+                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                (
+                    soa_id,
+                    new_data_origin_uid,
+                    "ddf_terminology",
+                    "C188727",
+                    resolved_ddf_code,
+                ),
+            )
+
     # Apply arm field updates (including setting type to code_uid if resolved)
     new_name = name if name is not None else row[1]
     new_label = label if label is not None else row[2]
     new_desc = description if description is not None else row[3]
     cur.execute(
-        "UPDATE arm SET name=?, label=?, description=?, type=? WHERE id=? AND soa_id=?",
-        (new_name, new_label, new_desc, new_code_uid, arm_id, soa_id),
+        "UPDATE arm SET name=?, label=?, description=?, type=?, data_origin_type=? WHERE id=? AND soa_id=?",
+        (
+            new_name,
+            new_label,
+            new_desc,
+            new_code_uid,
+            new_data_origin_uid,
+            arm_id,
+            soa_id,
+        ),
     )
     conn.commit()
+    # Capture post-update code values
+    post_arm_type_code_value: Optional[str] = None
+    post_data_origin_code_value: Optional[str] = None
+    if new_code_uid:
+        cur.execute(
+            "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+            (soa_id, new_code_uid),
+        )
+        rav = cur.fetchone()
+        post_arm_type_code_value = rav[0] if rav else None
+    if new_data_origin_uid:
+        cur.execute(
+            "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+            (soa_id, new_data_origin_uid),
+        )
+        rdv2 = cur.fetchone()
+        post_data_origin_code_value = rdv2[0] if rdv2 else None
+    after_state = {
+        "id": arm_id,
+        "name": new_name,
+        "label": new_label,
+        "description": new_desc,
+        "type": new_code_uid,
+        "data_origin_type": new_data_origin_uid,
+        "type_code": post_arm_type_code_value,
+        "data_origin_type_code": post_data_origin_code_value,
+    }
+    # Record audit if any relevant fields or underlying code mappings changed
+    if (
+        before_state["type"] != after_state["type"]
+        or before_state["data_origin_type"] != after_state["data_origin_type"]
+        or prior_arm_type_code_value != post_arm_type_code_value
+        or prior_data_origin_code_value != post_data_origin_code_value
+        or before_state["name"] != after_state["name"]
+        or before_state["label"] != after_state["label"]
+        or before_state["description"] != after_state["description"]
+    ):
+        try:
+            _record_arm_audit(
+                soa_id,
+                "update",
+                arm_id=arm_id,
+                before=before_state,
+                after=after_state,
+            )
+        except Exception:
+            pass
     conn.close()
     return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
 
