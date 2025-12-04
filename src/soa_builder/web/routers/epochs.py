@@ -84,7 +84,7 @@ def add_epoch(soa_id: int, payload: EpochCreate):
         soa_id,
         "create",
         eid,
-        before=None,
+        before={"type": None},
         after={
             "id": eid,
             "name": payload.name,
@@ -172,6 +172,14 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
             "epoch_label": b[4],
             "epoch_description": b[5],
         }
+    # Include current type in before snapshot
+    try:
+        cur.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
+        tr = cur.fetchone()
+        if before is not None:
+            before["type"] = tr[0] if tr else None
+    except Exception:
+        pass
     sets = []
     vals = []
     if payload.name is not None:
@@ -236,7 +244,23 @@ def reorder_epochs_api(soa_id: int, order: List[int]):
         soa_id,
         "reorder",
         epoch_id=None,
-        before={"old_order": old_order},
+        before={
+            "old_order": old_order,
+            "types": (lambda rows: [{"id": rid, "type": rtype} for rid, rtype in rows])(
+                (
+                    lambda conn: (
+                        lambda cur: (
+                            cur.execute(
+                                "SELECT id,type FROM epoch WHERE soa_id=? ORDER BY order_index",
+                                (soa_id,),
+                            ),
+                            cur.fetchall(),
+                            conn.close(),
+                        )[1]
+                    )(conn := _connect())
+                )
+            ),
+        },
         after={"new_order": order},
     )
     return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})

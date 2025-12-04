@@ -2779,6 +2779,14 @@ def delete_epoch(soa_id: int, epoch_id: int):
             "epoch_label": b[4],
             "epoch_description": b[5],
         }
+    # Include current type in before snapshot
+    try:
+        cur.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
+        tr = cur.fetchone()
+        if before is not None:
+            before["type"] = tr[0] if tr else None
+    except Exception:
+        pass
     # Clear visit epoch references to avoid dangling links
     try:
         cur.execute(
@@ -4301,7 +4309,7 @@ def ui_add_epoch(
         soa_id,
         "create",
         eid,
-        before=None,
+        before={"type": None},
         after={
             "id": eid,
             "name": name,
@@ -4356,6 +4364,17 @@ def ui_update_epoch(
             "epoch_label": b[4],
             "epoch_description": b[5],
         }
+    # Include current type in before snapshot for audit
+    try:
+        conn_bt = _connect()
+        cur_bt = conn_bt.cursor()
+        cur_bt.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
+        br = cur_bt.fetchone()
+        conn_bt.close()
+        if before is not None:
+            before["type"] = br[0] if br else None
+    except Exception:
+        pass
     sets = []
     vals: list[Any] = []
     if name is not None:
@@ -4756,7 +4775,28 @@ def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
         soa_id,
         "reorder",
         epoch_id=None,
-        before={"old_order": old_order},
+        before={
+            "old_order": old_order,
+            # Snapshot of id->type before reorder
+            "types": (
+                lambda: (
+                    (lambda rows: [{"id": rid, "type": rtype} for rid, rtype in rows])(
+                        (
+                            lambda conn: (
+                                lambda cur: (
+                                    cur.execute(
+                                        "SELECT id,type FROM epoch WHERE soa_id=? ORDER BY order_index",
+                                        (soa_id,),
+                                    ),
+                                    cur.fetchall(),
+                                    conn.close(),
+                                )[1]
+                            )(conn := _connect())
+                        )
+                    )
+                )
+            )(),
+        },
         after={"new_order": ids},
     )
     return HTMLResponse("OK")
