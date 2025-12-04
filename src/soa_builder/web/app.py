@@ -3151,10 +3151,30 @@ def ui_edit(request: Request, soa_id: int):
             }
         )
 
+    # Admin audit view: recent activity audits for this SOA
+    conn_activity_audit = _connect()
+    cur_activity_audit = conn_activity_audit.cursor()
+    cur_activity_audit.execute(
+        "SELECT id, activity_id, action, before_json, after_json, performed_at FROM activity_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
+        (soa_id,),
+    )
+    activity_audits = [
+        {
+            "id": r[0],
+            "arm_id": r[1],
+            "action": r[2],
+            "before_json": r[3],
+            "after_json": r[4],
+            "performed_at": r[5],
+        }
+        for r in cur_activity_audit.fetchall()
+    ]
+    conn_activity_audit.close()
+
     # Admin audit view: recent arm audits for this SOA
-    conn_audit = _connect()
-    cur_audit = conn_audit.cursor()
-    cur_audit.execute(
+    conn_arm_audit = _connect()
+    cur_arm_audit = conn_arm_audit.cursor()
+    cur_arm_audit.execute(
         "SELECT id, arm_id, action, before_json, after_json, performed_at FROM arm_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
         (soa_id,),
     )
@@ -3167,9 +3187,9 @@ def ui_edit(request: Request, soa_id: int):
             "after_json": r[4],
             "performed_at": r[5],
         }
-        for r in cur_audit.fetchall()
+        for r in cur_arm_audit.fetchall()
     ]
-    conn_audit.close()
+    conn_arm_audit.close()
 
     # Admin audit view: recent epoch audits for this SoA
     conn_epoch_audit = _connect()
@@ -3265,6 +3285,7 @@ def ui_edit(request: Request, soa_id: int):
             "ddf_terminology_C188727": ddf_terminology_C188727,
             "arm_audits": arm_audits,
             "epoch_audits": epoch_audits,
+            "activity_audits": activity_audits,
             # Epoch Type options (C99079)
             "epoch_type_options": epoch_type_options,
         },
