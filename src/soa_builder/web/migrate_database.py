@@ -255,6 +255,30 @@ def _migrate_add_epoch_label_desc():
         logger.warning("Epoch label/description migration failed: %s", e)
 
 
+# Migrate: add epoch type (options from SDTM CT codelist_code=C99079)
+def _migrate_add_epoch_type():
+    """Add optional epoch type column if missing"""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(epoch)")
+        cols = {r[1] for r in cur.fetchall()}
+        alters = []
+        if "type" not in cols:
+            alters.append("ALTER TABLE epoch ADD COLUMN type TEXT")
+        for statement in alters:
+            try:
+                cur.execute(statement)
+            except Exception as e:
+                logger.warning("Failed epoch type migration '%s': %s", statement, e)
+        if alters:
+            conn.commit()
+            logger.info("Applied epoch type migration: %s", ", ".join(alters))
+        conn.close()
+    except Exception as e:
+        logger.warning("Epoch type migration failed: %s", e)
+
+
 # Migration: create code_junction table
 def _migrate_create_code_junction():
     """Create code_junction linking table if absent.

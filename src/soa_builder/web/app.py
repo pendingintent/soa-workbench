@@ -56,6 +56,7 @@ from .migrate_database import (
     _migrate_element_table,
     _migrate_rename_cell_table,
     _migrate_rollback_add_elements_restored,
+    _migrate_add_epoch_type,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -105,6 +106,7 @@ _init_db()
 
 
 # Database migration steps
+_migrate_add_epoch_type()
 _migrate_add_arm_uid()
 _migrate_drop_arm_element_link()
 _migrate_add_epoch_id_to_visit()
