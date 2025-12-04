@@ -56,6 +56,7 @@ from .migrate_database import (
     _migrate_element_table,
     _migrate_rename_cell_table,
     _migrate_rollback_add_elements_restored,
+    _migrate_add_epoch_type,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -67,7 +68,7 @@ from .routers import visits as visits_router
 from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
 from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
-from .utils import get_next_code_uid as _get_next_code_uid
+from .utils import get_next_code_uid as _get_next_code_uid, load_epoch_type_options
 
 load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
@@ -105,6 +106,7 @@ _init_db()
 
 
 # Database migration steps
+_migrate_add_epoch_type()
 _migrate_add_arm_uid()
 _migrate_drop_arm_element_link()
 _migrate_add_epoch_id_to_visit()
@@ -1697,7 +1699,9 @@ def ui_refresh_concepts(request: Request, soa_id: int):
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
     # Fallback: plain form POST non-htmx redirect via script
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 """Freeze & rollback endpoints moved to routers/freezes.py and routers/rollback.py"""
@@ -2777,7 +2781,24 @@ def delete_epoch(soa_id: int, epoch_id: int):
             "epoch_label": b[4],
             "epoch_description": b[5],
         }
-    cur.execute("DELETE FROM epoch WHERE id=", (epoch_id,))
+    # Include current type in before snapshot
+    try:
+        cur.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
+        tr = cur.fetchone()
+        if before is not None:
+            before["type"] = tr[0] if tr else None
+    except Exception:
+        pass
+    # Clear visit epoch references to avoid dangling links
+    try:
+        cur.execute(
+            "UPDATE visit SET epoch_id=NULL WHERE soa_id=? AND epoch_id=?",
+            (soa_id, epoch_id),
+        )
+    except Exception:
+        pass
+    # Delete the epoch row
+    cur.execute("DELETE FROM epoch WHERE id=?", (epoch_id,))
     conn.commit()
     conn.close()
     _reindex("epoch", soa_id)
@@ -2848,7 +2869,9 @@ def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
             "activity_uid": f"Activity_{order_index}",
         },
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/create", response_class=HTMLResponse)
@@ -2934,7 +2957,9 @@ def ui_update_meta(
     )
     conn.commit()
     conn.close()
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.get("/ui/soa/{soa_id}/edit", response_class=HTMLResponse)
@@ -3132,11 +3157,31 @@ def ui_edit(request: Request, soa_id: int):
             }
         )
 
+    # Admin audit view: recent activity audits for this SOA
+    conn_activity_audit = _connect()
+    cur_activity_audit = conn_activity_audit.cursor()
+    cur_activity_audit.execute(
+        "SELECT id, activity_id, action, before_json, after_json, performed_at FROM activity_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
+        (soa_id,),
+    )
+    activity_audits = [
+        {
+            "id": r[0],
+            "activity_id": r[1],
+            "action": r[2],
+            "before_json": r[3],
+            "after_json": r[4],
+            "performed_at": r[5],
+        }
+        for r in cur_activity_audit.fetchall()
+    ]
+    conn_activity_audit.close()
+
     # Admin audit view: recent arm audits for this SOA
-    conn_audit = _connect()
-    cur_audit = conn_audit.cursor()
-    cur_audit.execute(
-        "SELECT id, arm_id, action, before_json, after_json, performed_at FROM arm_audit WHERE soa_id=? ORDER BY id DESC LIMIT 50",
+    conn_arm_audit = _connect()
+    cur_arm_audit = conn_arm_audit.cursor()
+    cur_arm_audit.execute(
+        "SELECT id, arm_id, action, before_json, after_json, performed_at FROM arm_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
         (soa_id,),
     )
     arm_audits = [
@@ -3148,9 +3193,78 @@ def ui_edit(request: Request, soa_id: int):
             "after_json": r[4],
             "performed_at": r[5],
         }
-        for r in cur_audit.fetchall()
+        for r in cur_arm_audit.fetchall()
     ]
-    conn_audit.close()
+    conn_arm_audit.close()
+
+    # Admin audit view: recent epoch audits for this SoA
+    conn_epoch_audit = _connect()
+    cur_epoch_audit = conn_epoch_audit.cursor()
+    cur_epoch_audit.execute(
+        "SELECT id, epoch_id, action, before_json, after_json, performed_at FROM epoch_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
+        (soa_id,),
+    )
+    epoch_audits = [
+        {
+            "id": r[0],
+            "epoch_id": r[1],
+            "action": r[2],
+            "before_json": r[3],
+            "after_json": r[4],
+            "performed_at": r[5],
+        }
+        for r in cur_epoch_audit.fetchall()
+    ]
+    conn_epoch_audit.close()
+
+    # Enrich epochs using API-only map: code -> submissionValue
+    # Resolve stored epoch.type (code_uid) to terminology code via code table, then map to submissionValue.
+    code_map: dict[int, str] = {}
+    conn_em = _connect()
+    cur_em = conn_em.cursor()
+    cur_em.execute(
+        "SELECT e.id, c.code FROM epoch e LEFT JOIN code c ON c.code_uid = e.type AND c.soa_id = e.soa_id WHERE e.soa_id=?",
+        (soa_id,),
+    )
+    for eid, code in cur_em.fetchall():
+        if eid is not None and code:
+            code_map[eid] = code
+    conn_em.close()
+    try:
+        from .utils import load_epoch_type_map
+
+        code_to_submission = load_epoch_type_map(force=False) or {}
+    except Exception:
+        code_to_submission = {}
+    epochs = [
+        {
+            **e,
+            "epoch_type_submission_value": code_to_submission.get(
+                code_map.get(e.get("id"), ""), None
+            ),
+        }
+        for e in epochs
+    ]
+
+    # Epoch Type options (C99079) must come from CDISC API only
+    epoch_type_options = load_epoch_type_options(force=False) or []
+    logger.info(
+        "Epoch Type options (API only) count=%d values=%s",
+        len(epoch_type_options),
+        ", ".join(epoch_type_options) if epoch_type_options else "<none>",
+    )
+    # Additional diagnostics
+    try:
+        from . import utils as _u
+
+        logger.info(
+            "Epoch Type diagnostics last_status=%s last_url=%s last_error=%s",
+            _u._epoch_type_cache.get("last_status"),
+            _u._epoch_type_cache.get("last_url"),
+            _u._epoch_type_cache.get("last_error"),
+        )
+    except Exception:
+        pass
 
     return templates.TemplateResponse(
         request,
@@ -3176,6 +3290,10 @@ def ui_edit(request: Request, soa_id: int):
             "protocol_terminology_C174222": protocol_terminology_C174222,
             "ddf_terminology_C188727": ddf_terminology_C188727,
             "arm_audits": arm_audits,
+            "epoch_audits": epoch_audits,
+            "activity_audits": activity_audits,
+            # Epoch Type options (C99079)
+            "epoch_type_options": epoch_type_options,
         },
     )
 
@@ -3509,7 +3627,9 @@ def ui_add_visit(
             "epoch_id": parsed_epoch,
         },
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/add_arm", response_class=HTMLResponse)
@@ -3632,7 +3752,7 @@ async def ui_add_arm(
                 # Properly escape the value for safety in HTML/JS context
                 escaped_selection = json.dumps(data_origin_type_submission)
                 return HTMLResponse(
-                    f"<script>alert({escaped_selection});window.location='/ui/soa/{soa_id}/edit';</script>",
+                    f"<script>alert({escaped_selection});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
                     status_code=400,
                 )
             # Create Code_N (continue numbering)
@@ -3759,7 +3879,7 @@ async def ui_update_arm(
             )
             conn.close()
             return HTMLResponse(
-                f"<script>alert({json.dumps('Unknown Arm Type selection: ' + arm_type_submission)});window.location='/ui/soa/{soa_id}/edit';</script>",
+                f"<script>alert({json.dumps('Unknown Arm Type selection: ' + arm_type_submission)});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
                 status_code=400,
             )
 
@@ -3819,7 +3939,7 @@ async def ui_update_arm(
             )
             conn.close()
             return HTMLResponse(
-                f"<script>alert({json.dumps(f'Unknown Data Origin Type selection: {data_origin_type_submission}')});window.location='/ui/soa/{soa_id}/edit';</script>",
+                f"<script>alert({json.dumps(f'Unknown Data Origin Type selection: {data_origin_type_submission}')});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
                 status_code=400,
             )
         # Maintain/Upsert immutable Code_N for DDF mapping
@@ -3935,13 +4055,17 @@ async def ui_update_arm(
             arm_id,
         )
     conn.close()
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/delete_arm", response_class=HTMLResponse)
 def ui_delete_arm(request: Request, soa_id: int, arm_id: int = Form(...)):
     delete_arm(soa_id, arm_id)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/reorder_arms", response_class=HTMLResponse)
@@ -4067,7 +4191,9 @@ def ui_add_element(
             "element_id": element_identifier,
         },
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/update_element", response_class=HTMLResponse)
@@ -4148,7 +4274,9 @@ def ui_update_element(
         before=before,
         after={**after, "updated_fields": updated_fields},
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/delete_element", response_class=HTMLResponse)
@@ -4164,7 +4292,9 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
     _record_element_audit(
         soa_id, "delete", element_id, before={"id": element_id}, after=None
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/add_epoch", response_class=HTMLResponse)
@@ -4174,6 +4304,7 @@ def ui_add_epoch(
     name: str = Form(...),
     epoch_label: Optional[str] = Form(None),
     epoch_description: Optional[str] = Form(None),
+    epoch_type_submission_value: Optional[str] = Form(None),
 ):
     """Form handler to add an Epoch."""
     if not _soa_exists(soa_id):
@@ -4185,8 +4316,42 @@ def ui_add_epoch(
     cur.execute("SELECT MAX(epoch_seq) FROM epoch WHERE soa_id=?", (soa_id,))
     row = cur.fetchone()
     next_seq = (row[0] or 0) + 1
+    # Optional epoch type mapping via code junction (C99079) using API-only map
+    epoch_type_submission_value = (epoch_type_submission_value or "").strip() or None
+    selected_code_uid = None
+    if epoch_type_submission_value:
+        try:
+            from .utils import load_epoch_type_map, get_epoch_parent_package_href_cached
+
+            epoch_map = load_epoch_type_map()
+        except Exception:
+            epoch_map = {}
+        # Invert map to find conceptId by submissionValue
+        concept_id = None
+        for cid, sv in (epoch_map or {}).items():
+            if sv and sv.strip().lower() == epoch_type_submission_value.strip().lower():
+                concept_id = cid
+                break
+        if concept_id:
+            # Create a new Code_N for this conceptId under C99079 (API-only)
+            code_uid = _get_next_code_uid(cur, soa_id)
+            try:
+                parent_href = get_epoch_parent_package_href_cached() or None
+            except Exception:
+                parent_href = None
+            cur.execute(
+                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                (
+                    soa_id,
+                    code_uid,
+                    parent_href,
+                    "C99079",
+                    concept_id,
+                ),
+            )
+            selected_code_uid = code_uid
     cur.execute(
-        "INSERT INTO epoch (soa_id,name,order_index,epoch_seq,epoch_label,epoch_description) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO epoch (soa_id,name,order_index,epoch_seq,epoch_label,epoch_description,type) VALUES (?,?,?,?,?,?,?)",
         (
             soa_id,
             name,
@@ -4194,6 +4359,7 @@ def ui_add_epoch(
             next_seq,
             (epoch_label or "").strip() or None,
             (epoch_description or "").strip() or None,
+            selected_code_uid,
         ),
     )
     eid = cur.lastrowid
@@ -4203,7 +4369,7 @@ def ui_add_epoch(
         soa_id,
         "create",
         eid,
-        before=None,
+        before={"type": None},
         after={
             "id": eid,
             "name": name,
@@ -4211,9 +4377,12 @@ def ui_add_epoch(
             "epoch_seq": next_seq,
             "epoch_label": (epoch_label or "").strip() or None,
             "epoch_description": (epoch_description or "").strip() or None,
+            "type": selected_code_uid,
         },
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/update_epoch", response_class=HTMLResponse)
@@ -4224,6 +4393,7 @@ def ui_update_epoch(
     name: Optional[str] = Form(None),
     epoch_label: Optional[str] = Form(None),
     epoch_description: Optional[str] = Form(None),
+    epoch_type_submission_value: Optional[str] = Form(None),
 ):
     """Form handler to update an existing Epoch."""
     if not _soa_exists(soa_id):
@@ -4254,6 +4424,17 @@ def ui_update_epoch(
             "epoch_label": b[4],
             "epoch_description": b[5],
         }
+    # Include current type in before snapshot for audit
+    try:
+        conn_bt = _connect()
+        cur_bt = conn_bt.cursor()
+        cur_bt.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
+        br = cur_bt.fetchone()
+        conn_bt.close()
+        if before is not None:
+            before["type"] = br[0] if br else None
+    except Exception:
+        pass
     sets = []
     vals: list[Any] = []
     if name is not None:
@@ -4265,6 +4446,59 @@ def ui_update_epoch(
     if epoch_description is not None:
         sets.append("epoch_description=?")
         vals.append((epoch_description or "").strip() or None)
+    # Handle epoch type mapping via code junction (C99079) using API-only map
+    epoch_type_submission_value = (epoch_type_submission_value or "").strip() or None
+    if epoch_type_submission_value is not None:
+        # If empty string provided, clear type
+        if epoch_type_submission_value == "":
+            sets.append("type=?")
+            vals.append(None)
+        else:
+            # Resolve submission value to conceptId via API-only map
+            try:
+                from .utils import (
+                    load_epoch_type_map,
+                    get_epoch_parent_package_href_cached,
+                )
+
+                epoch_map = load_epoch_type_map()
+            except Exception:
+                epoch_map = {}
+            concept_id = None
+            for cid, sv in (epoch_map or {}).items():
+                if (
+                    sv
+                    and sv.strip().lower()
+                    == epoch_type_submission_value.strip().lower()
+                ):
+                    concept_id = cid
+                    break
+            selected_code_uid = None
+            if concept_id:
+                conn_t = _connect()
+                cur_t = conn_t.cursor()
+                # Always create a new Code_N for C99079 selections (no reuse)
+                code_uid = _get_next_code_uid(cur_t, soa_id)
+                try:
+                    parent_href = get_epoch_parent_package_href_cached() or None
+                except Exception:
+                    parent_href = None
+                cur_t.execute(
+                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    (
+                        soa_id,
+                        code_uid,
+                        parent_href,
+                        "C99079",
+                        concept_id,
+                    ),
+                )
+                selected_code_uid = code_uid
+                conn_t.commit()
+                conn_t.close()
+            # Persist epoch.type even if concept_id not found will be None
+            sets.append("type=?")
+            vals.append(selected_code_uid)
     if sets:
         conn_u = _connect()
         cur_u = conn_u.cursor()
@@ -4287,7 +4521,16 @@ def ui_update_epoch(
         "epoch_seq": r[3],
         "epoch_label": r[4],
         "epoch_description": r[5],
+        "type": None,
     }
+    # Fetch type from epoch for audit after snapshot
+    conn_ta = _connect()
+    cur_ta = conn_ta.cursor()
+    cur_ta.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
+    tr_after = cur_ta.fetchone()
+    conn_ta.close()
+    if tr_after:
+        after_api["type"] = tr_after[0]
     _record_epoch_audit(
         soa_id,
         "update",
@@ -4295,7 +4538,9 @@ def ui_update_epoch(
         before=before,
         after=after_api,
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post(
@@ -4331,7 +4576,9 @@ def ui_set_activity_concepts(
             edit=False,
         )
         return HTMLResponse(html)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.get(
@@ -4446,7 +4693,9 @@ def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
         logger.error(
             "ui_delete_visit failed visit_id=%s soa_id=%s error=%s", visit_id, soa_id, e
         )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/set_visit_epoch", response_class=HTMLResponse)
@@ -4492,21 +4741,27 @@ def ui_set_visit_epoch(
         DB_PATH,
     )
     conn.close()
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/delete_activity", response_class=HTMLResponse)
 def ui_delete_activity(request: Request, soa_id: int, activity_id: int = Form(...)):
     """Form handler to delete an Activity"""
     delete_activity(soa_id, activity_id)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/delete_epoch", response_class=HTMLResponse)
 def ui_delete_epoch(request: Request, soa_id: int, epoch_id: int = Form(...)):
     """Form handler to delete an Epoch."""
     delete_epoch(soa_id, epoch_id)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/reorder_visits", response_class=HTMLResponse)
@@ -4587,12 +4842,27 @@ def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
     conn.commit()
     conn.close()
     _record_reorder_audit(soa_id, "epoch", old_order, ids)
+
     # Also record epoch-specific reorder audit for parity with JSON endpoint
+    def _epoch_types_snapshot(soa_id_int: int) -> list[dict]:
+        conn_s = _connect()
+        cur_s = conn_s.cursor()
+        cur_s.execute(
+            "SELECT id,type FROM epoch WHERE soa_id=? ORDER BY order_index",
+            (soa_id_int,),
+        )
+        rows = cur_s.fetchall()
+        conn_s.close()
+        return [{"id": rid, "type": rtype} for rid, rtype in rows]
+
     _record_epoch_audit(
         soa_id,
         "reorder",
         epoch_id=None,
-        before={"old_order": old_order},
+        before={
+            "old_order": old_order,
+            "types": _epoch_types_snapshot(soa_id),
+        },
         after={"new_order": ids},
     )
     return HTMLResponse("OK")

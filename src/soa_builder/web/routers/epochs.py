@@ -79,12 +79,13 @@ def add_epoch(soa_id: int, payload: EpochCreate):
     eid = cur.lastrowid
     conn.commit()
     conn.close()
-    result = {"epoch_id": eid, "order_index": order_index, "epoch_seq": next_seq}
+
+    # Correct audit for create (type not set via JSON API)
     _record_epoch_audit(
         soa_id,
         "create",
         eid,
-        before=None,
+        before={"type": None},
         after={
             "id": eid,
             "name": payload.name,
@@ -94,7 +95,6 @@ def add_epoch(soa_id: int, payload: EpochCreate):
             "epoch_description": (payload.epoch_description or "").strip() or None,
         },
     )
-    return result
 
 
 @router.get("/soa/{soa_id}/epochs")
@@ -172,6 +172,14 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
             "epoch_label": b[4],
             "epoch_description": b[5],
         }
+    # Include current type in before snapshot
+    try:
+        cur.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
+        tr = cur.fetchone()
+        if before is not None:
+            before["type"] = tr[0] if tr else None
+    except Exception:
+        pass
     sets = []
     vals = []
     if payload.name is not None:
@@ -232,11 +240,26 @@ def reorder_epochs_api(soa_id: int, order: List[int]):
         cur.execute("UPDATE epoch SET order_index=? WHERE id=?", (idx, eid))
     conn.commit()
     conn.close()
+
+    def _epoch_types_snapshot_router(soa_id_int: int) -> List[dict]:
+        conn_s = _connect()
+        cur_s = conn_s.cursor()
+        cur_s.execute(
+            "SELECT id,type FROM epoch WHERE soa_id=? ORDER BY order_index",
+            (soa_id_int,),
+        )
+        rows = cur_s.fetchall()
+        conn_s.close()
+        return [{"id": rid, "type": rtype} for rid, rtype in rows]
+
     _record_epoch_audit(
         soa_id,
         "reorder",
         epoch_id=None,
-        before={"old_order": old_order},
+        before={
+            "old_order": old_order,
+            "types": _epoch_types_snapshot_router(soa_id),
+        },
         after={"new_order": order},
     )
     return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})

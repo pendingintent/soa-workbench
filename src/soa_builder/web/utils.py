@@ -1,4 +1,213 @@
-from typing import Any
+from typing import Any, Dict, List
+import os
+import requests
+import time
+
+_epoch_type_cache: dict[str, Any] = {
+    "data": None,
+    "fetched_at": 0,
+    "last_status": None,
+    "last_url": None,
+    "last_error": None,
+    "parent_package_href": None,
+}
+_EPOCH_TYPE_CACHE_TTL = 60 * 60  # 1 hour
+
+
+def load_epoch_type_options(force: bool = False) -> list[str]:
+    """Fetch Epoch Type options from CDISC Library API codelist C99079.
+
+    Parses _links.terms[].submissionValue and returns a sorted, deduplicated list.
+    Uses env `CDISC_SUBSCRIPTION_KEY` and `_get_cdisc_api_key`-style headers when available.
+    Note: This module does not import app helpers; callers should provide headers if overriding.
+    """
+    now = time.time()
+    if (
+        not force
+        and _epoch_type_cache["data"]
+        and now - _epoch_type_cache["fetched_at"] < _EPOCH_TYPE_CACHE_TTL
+    ):
+        return _epoch_type_cache["data"] or []
+    # Use only the specified CDISC Library endpoint (per user requirement)
+    url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
+    headers: dict[str, str] = {"Accept": "application/json"}
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
+        "CDISC_SUBSCRIPTION_KEY"
+    )
+    unified_key = subscription_key or api_key
+    if unified_key:
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+    try:
+        values: list[str] = []
+        last_status = None
+        _epoch_type_cache.update(last_url=url, last_error=None)
+        resp = requests.get(url, headers=headers, timeout=10)
+        last_status = resp.status_code
+        if resp.status_code != 200:
+            data = {}
+            top_terms = []
+        else:
+            data = resp.json() or {}
+            # Preferred structure: top-level 'terms' list
+            top_terms = []
+            if isinstance(data, dict) and isinstance(data.get("terms"), list):
+                top_terms = data.get("terms") or []
+            elif isinstance(data, list):
+                top_terms = data
+            else:
+                # HAL-style fallbacks
+                embedded_terms = []
+                if isinstance(data.get("_embedded"), dict):
+                    embedded_terms = data.get("_embedded", {}).get("terms", []) or []
+                link_terms = data.get("_links", {}).get("terms", []) or []
+                top_terms = embedded_terms or link_terms
+            # Capture parent package href if present
+            try:
+                if isinstance(data, dict):
+                    pph = data.get("_links", {}).get("parentPackage", {}).get("href")
+                    if pph:
+                        _epoch_type_cache["parent_package_href"] = str(pph)
+            except Exception:
+                pass
+            # Collect embedded submissionValue
+            for t in top_terms:
+                if not isinstance(t, dict):
+                    continue
+                sv = t.get("submissionValue") or t.get("cdisc_submission_value")
+                if sv and str(sv).strip():
+                    values.append(str(sv).strip())
+            # If still none and we have term links, follow them
+            if not values:
+                for t in top_terms:
+                    href = None
+                    if isinstance(t, dict):
+                        href = t.get("href") or t.get("_href")
+                    if not href:
+                        continue
+                    try:
+                        _epoch_type_cache.update(last_url=href)
+                        term_resp = requests.get(href, headers=headers, timeout=10)
+                        if term_resp.status_code == 200:
+                            term_json = term_resp.json() or {}
+                            sv = term_json.get("submissionValue") or term_json.get(
+                                "cdisc_submission_value"
+                            )
+                            if sv and str(sv).strip():
+                                values.append(str(sv).strip())
+                    except Exception:
+                        continue
+        # Single endpoint only; no loop/break
+        result = sorted(list(dict.fromkeys(values)))
+        _epoch_type_cache.update(data=result, fetched_at=now, last_status=last_status)
+        return result
+    except Exception as e:
+        _epoch_type_cache.update(data=[], fetched_at=now, last_error=str(e))
+        return []
+
+
+def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
+    """Fetch Epoch Type term mapping from CDISC Library API for C99079.
+
+    Returns a dict of {term_code: submissionValue}. This enables UI preselection
+    by mapping stored epoch.type code_uid -> code -> submissionValue.
+    """
+    now = time.time()
+    # Simple TTL cache to avoid repeated remote calls
+    if not force and isinstance(_epoch_type_cache.get("_map"), dict):
+        cached_map = _epoch_type_cache.get("_map") or {}
+        fetched = _epoch_type_cache.get("_map_fetched_at") or 0
+        if cached_map and now - fetched < _EPOCH_TYPE_CACHE_TTL:
+            return cached_map
+
+    # Use only the specified CDISC Library endpoint (per user requirement)
+    headers: dict[str, str] = {"Accept": "application/json"}
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
+        "CDISC_SUBSCRIPTION_KEY"
+    )
+    unified_key = subscription_key or api_key
+    if unified_key:
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
+    code_to_submission: Dict[str, str] = {}
+    last_status = None
+    try:
+        _epoch_type_cache.update(last_url=url, last_error=None)
+        resp = requests.get(url, headers=headers, timeout=10)
+        last_status = resp.status_code
+        if resp.status_code != 200:
+            data = {}
+            terms = []
+        else:
+            data = resp.json() or {}
+            # Preferred structure: top-level 'terms' list
+            terms: List[dict] = []
+            if isinstance(data, dict) and isinstance(data.get("terms"), list):
+                terms = data.get("terms") or []
+            elif isinstance(data, list):
+                terms = data
+            else:
+                # HAL-style fallback
+                terms = data.get("_links", {}).get("terms", []) or []
+            # Capture parent package href if present
+            try:
+                if isinstance(data, dict):
+                    pph = data.get("_links", {}).get("parentPackage", {}).get("href")
+                    if pph:
+                        _epoch_type_cache["parent_package_href"] = str(pph)
+            except Exception:
+                pass
+            for t in terms:
+                if not isinstance(t, dict):
+                    continue
+                # CDISC Library returns conceptId + submissionValue in this package endpoint
+                code = t.get("conceptId") or t.get("code") or t.get("termCode")
+                sub = t.get("submissionValue") or t.get("cdisc_submission_value")
+                if code and sub:
+                    code_to_submission[str(code)] = str(sub).strip()
+                    continue
+                href = t.get("href") or t.get("_href")
+                if not href:
+                    # HAL style: try _links.self.href
+                    linkself = t.get("_links", {}).get("self", {})
+                    href = linkself.get("href") if isinstance(linkself, dict) else None
+                if href:
+                    try:
+                        _epoch_type_cache.update(last_url=href)
+                        term_resp = requests.get(href, headers=headers, timeout=10)
+                        if term_resp.status_code == 200:
+                            tj = term_resp.json() or {}
+                            sub2 = tj.get("submissionValue") or tj.get(
+                                "cdisc_submission_value"
+                            )
+                            code2 = tj.get("code") or code
+                            if code2 and sub2:
+                                code_to_submission[str(code2)] = str(sub2).strip()
+                    except Exception:
+                        pass
+        # Single endpoint only; no loop/break
+    except Exception as e:
+        _epoch_type_cache.update(last_error=str(e))
+    _epoch_type_cache.update(last_status=last_status)
+    _epoch_type_cache.update(_map=code_to_submission, _map_fetched_at=now)
+    return code_to_submission
+
+
+def get_epoch_parent_package_href_cached() -> str | None:
+    """Return cached parentPackage href from the last Epoch Type API fetch.
+
+    This depends on a prior call to load_epoch_type_options/map to populate the cache.
+    """
+    val = _epoch_type_cache.get("parent_package_href")
+    return str(val) if val else None
 
 
 def get_next_code_uid(cur: Any, soa_id: int) -> str:

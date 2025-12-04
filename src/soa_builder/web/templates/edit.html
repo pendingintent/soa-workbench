@@ -152,6 +152,12 @@
             <input name="name" value="{{ e.name }}" placeholder="Name" style="width:90px;" />
             <input name="epoch_label" value="{{ e.epoch_label or '' }}" placeholder="Label" style="width:70px;" />
             <input name="epoch_description" value="{{ e.epoch_description or '' }}" placeholder="Desc" style="width:120px;" />
+            <select name="epoch_type_submission_value" style="font-size:0.65em;">
+              <option value="">[Epoch Type]</option>
+              {% for opt in epoch_type_options or [] %}
+                <option value="{{ opt }}" {% if e.epoch_type_submission_value == opt %}selected{% endif %}>{{ opt }}</option>
+              {% endfor %}
+            </select>
             <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
           </form>
         </li>
@@ -161,6 +167,12 @@
         <input name="name" placeholder="Epoch Name" required style="flex:1;min-width:120px;" />
         <input name="epoch_label" placeholder="Label (optional)" style="flex:1;min-width:110px;" />
         <input name="epoch_description" placeholder="Description (optional)" style="flex:2;min-width:160px;" />
+        <select name="epoch_type_submission_value" style="font-size:0.7em;min-width:140px;">
+          <option value="">Epoch Type (C99079)</option>
+          {% for opt in epoch_type_options or [] %}
+            <option value="{{ opt }}">{{ opt }}</option>
+          {% endfor %}
+        </select>
         <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Epoch</button>
       </form>
     </details>
@@ -265,9 +277,35 @@
         <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Arm (auto StudyArm_N)</button>
       </form>
     </details>
-    
   </div>
   <div>
+    <details id="activity-audit-section" class="collapsible">
+      <summary>Activity Audit (latest {{ activity_audits|length }})</summary>
+      {% if activity_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Activity</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for au in activity_audits %}
+        <tr>
+          <td style="padding:4px;">{{ au.id }}</td>
+          <td style="padding:4px;">{{ au.activity_id }}</td>
+          <td style="padding:4px;">{{ au.action }}</td>
+          <td style="padding:4px;">{{ au.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div style="font-size:0.75em;color:#777;">No activity audit entries yet.</div>
+      {% endif %}
+    </details>
     <details id="arm-audit-section" class="collapsible">
       <summary>Arm Audit (latest {{ arm_audits|length }})</summary>
       {% if arm_audits %}
@@ -293,6 +331,33 @@
       </table>
       {% else %}
         <div style="font-size:0.75em;color:#777;">No arm audit entries yet.</div>
+      {% endif %}
+    </details>
+    <details id="epoch-audit-section" class="collapsible">
+      <summary>Epoch Audit (latest {{ epoch_audits|length }})</summary>
+      {% if epoch_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Epoch</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for au in epoch_audits %}
+        <tr>
+          <td style="padding:4px;">{{ au.id }}</td>
+          <td style="padding:4px;">{{ au.epoch_id }}</td>
+          <td style="padding:4px;">{{ au.action }}</td>
+          <td style="padding:4px;">{{ au.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No epoch audit entries yet.</div>
       {% endif %}
     </details>
   </div>
