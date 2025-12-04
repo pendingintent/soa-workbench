@@ -3155,7 +3155,7 @@ def ui_edit(request: Request, soa_id: int):
     conn_audit = _connect()
     cur_audit = conn_audit.cursor()
     cur_audit.execute(
-        "SELECT id, arm_id, action, before_json, after_json, performed_at FROM arm_audit WHERE soa_id=? ORDER BY id DESC LIMIT 50",
+        "SELECT id, arm_id, action, before_json, after_json, performed_at FROM arm_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
         (soa_id,),
     )
     arm_audits = [
@@ -3170,6 +3170,26 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_audit.fetchall()
     ]
     conn_audit.close()
+
+    # Admin audit view: recent epoch audits for this SoA
+    conn_epoch_audit = _connect()
+    cur_epoch_audit = conn_epoch_audit.cursor()
+    cur_epoch_audit.execute(
+        "SELECT id, epoch_id, action, before_json, after_json, performed_at FROM epoch_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
+        (soa_id,),
+    )
+    epoch_audits = [
+        {
+            "id": r[0],
+            "epoch_id": r[1],
+            "action": r[2],
+            "before_json": r[3],
+            "after_json": r[4],
+            "performed_at": r[5],
+        }
+        for r in cur_epoch_audit.fetchall()
+    ]
+    conn_epoch_audit.close()
 
     # Enrich epochs using API-only map: code -> submissionValue
     # Resolve stored epoch.type (code_uid) to terminology code via code table, then map to submissionValue.
@@ -3244,6 +3264,7 @@ def ui_edit(request: Request, soa_id: int):
             "protocol_terminology_C174222": protocol_terminology_C174222,
             "ddf_terminology_C188727": ddf_terminology_C188727,
             "arm_audits": arm_audits,
+            "epoch_audits": epoch_audits,
             # Epoch Type options (C99079)
             "epoch_type_options": epoch_type_options,
         },
