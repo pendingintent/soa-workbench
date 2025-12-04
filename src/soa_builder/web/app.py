@@ -1699,7 +1699,9 @@ def ui_refresh_concepts(request: Request, soa_id: int):
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
     # Fallback: plain form POST non-htmx redirect via script
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 """Freeze & rollback endpoints moved to routers/freezes.py and routers/rollback.py"""
@@ -2867,7 +2869,9 @@ def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
             "activity_uid": f"Activity_{order_index}",
         },
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/create", response_class=HTMLResponse)
@@ -2953,7 +2957,9 @@ def ui_update_meta(
     )
     conn.commit()
     conn.close()
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.get("/ui/soa/{soa_id}/edit", response_class=HTMLResponse)
@@ -3161,7 +3167,7 @@ def ui_edit(request: Request, soa_id: int):
     activity_audits = [
         {
             "id": r[0],
-            "arm_id": r[1],
+            "activity_id": r[1],
             "action": r[2],
             "before_json": r[3],
             "after_json": r[4],
@@ -3621,7 +3627,9 @@ def ui_add_visit(
             "epoch_id": parsed_epoch,
         },
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/add_arm", response_class=HTMLResponse)
@@ -3744,7 +3752,7 @@ async def ui_add_arm(
                 # Properly escape the value for safety in HTML/JS context
                 escaped_selection = json.dumps(data_origin_type_submission)
                 return HTMLResponse(
-                    f"<script>alert({escaped_selection});window.location='/ui/soa/{soa_id}/edit';</script>",
+                    f"<script>alert({escaped_selection});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
                     status_code=400,
                 )
             # Create Code_N (continue numbering)
@@ -3871,7 +3879,7 @@ async def ui_update_arm(
             )
             conn.close()
             return HTMLResponse(
-                f"<script>alert({json.dumps('Unknown Arm Type selection: ' + arm_type_submission)});window.location='/ui/soa/{soa_id}/edit';</script>",
+                f"<script>alert({json.dumps('Unknown Arm Type selection: ' + arm_type_submission)});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
                 status_code=400,
             )
 
@@ -3931,7 +3939,7 @@ async def ui_update_arm(
             )
             conn.close()
             return HTMLResponse(
-                f"<script>alert({json.dumps(f'Unknown Data Origin Type selection: {data_origin_type_submission}')});window.location='/ui/soa/{soa_id}/edit';</script>",
+                f"<script>alert({json.dumps(f'Unknown Data Origin Type selection: {data_origin_type_submission}')});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
                 status_code=400,
             )
         # Maintain/Upsert immutable Code_N for DDF mapping
@@ -4047,13 +4055,17 @@ async def ui_update_arm(
             arm_id,
         )
     conn.close()
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/delete_arm", response_class=HTMLResponse)
 def ui_delete_arm(request: Request, soa_id: int, arm_id: int = Form(...)):
     delete_arm(soa_id, arm_id)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/reorder_arms", response_class=HTMLResponse)
@@ -4179,7 +4191,9 @@ def ui_add_element(
             "element_id": element_identifier,
         },
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/update_element", response_class=HTMLResponse)
@@ -4260,7 +4274,9 @@ def ui_update_element(
         before=before,
         after={**after, "updated_fields": updated_fields},
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/delete_element", response_class=HTMLResponse)
@@ -4276,7 +4292,9 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
     _record_element_audit(
         soa_id, "delete", element_id, before={"id": element_id}, after=None
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/add_epoch", response_class=HTMLResponse)
@@ -4520,7 +4538,9 @@ def ui_update_epoch(
         before=before,
         after=after_api,
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post(
@@ -4556,7 +4576,9 @@ def ui_set_activity_concepts(
             edit=False,
         )
         return HTMLResponse(html)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.get(
@@ -4671,7 +4693,9 @@ def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
         logger.error(
             "ui_delete_visit failed visit_id=%s soa_id=%s error=%s", visit_id, soa_id, e
         )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/set_visit_epoch", response_class=HTMLResponse)
@@ -4717,21 +4741,27 @@ def ui_set_visit_epoch(
         DB_PATH,
     )
     conn.close()
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/delete_activity", response_class=HTMLResponse)
 def ui_delete_activity(request: Request, soa_id: int, activity_id: int = Form(...)):
     """Form handler to delete an Activity"""
     delete_activity(soa_id, activity_id)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/delete_epoch", response_class=HTMLResponse)
 def ui_delete_epoch(request: Request, soa_id: int, epoch_id: int = Form(...)):
     """Form handler to delete an Epoch."""
     delete_epoch(soa_id, epoch_id)
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/reorder_visits", response_class=HTMLResponse)
@@ -4812,32 +4842,26 @@ def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
     conn.commit()
     conn.close()
     _record_reorder_audit(soa_id, "epoch", old_order, ids)
+
     # Also record epoch-specific reorder audit for parity with JSON endpoint
+    def _epoch_types_snapshot(soa_id_int: int) -> list[dict]:
+        conn_s = _connect()
+        cur_s = conn_s.cursor()
+        cur_s.execute(
+            "SELECT id,type FROM epoch WHERE soa_id=? ORDER BY order_index",
+            (soa_id_int,),
+        )
+        rows = cur_s.fetchall()
+        conn_s.close()
+        return [{"id": rid, "type": rtype} for rid, rtype in rows]
+
     _record_epoch_audit(
         soa_id,
         "reorder",
         epoch_id=None,
         before={
             "old_order": old_order,
-            # Snapshot of id->type before reorder
-            "types": (
-                lambda: (
-                    (lambda rows: [{"id": rid, "type": rtype} for rid, rtype in rows])(
-                        (
-                            lambda conn: (
-                                lambda cur: (
-                                    cur.execute(
-                                        "SELECT id,type FROM epoch WHERE soa_id=? ORDER BY order_index",
-                                        (soa_id,),
-                                    ),
-                                    cur.fetchall(),
-                                    conn.close(),
-                                )[1]
-                            )(conn := _connect())
-                        )
-                    )
-                )
-            )(),
+            "types": _epoch_types_snapshot(soa_id),
         },
         after={"new_order": ids},
     )

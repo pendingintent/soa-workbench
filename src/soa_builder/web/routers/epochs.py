@@ -79,7 +79,8 @@ def add_epoch(soa_id: int, payload: EpochCreate):
     eid = cur.lastrowid
     conn.commit()
     conn.close()
-    result = {"epoch_id": eid, "order_index": order_index, "epoch_seq": next_seq}
+
+    # Correct audit for create (type not set via JSON API)
     _record_epoch_audit(
         soa_id,
         "create",
@@ -94,7 +95,6 @@ def add_epoch(soa_id: int, payload: EpochCreate):
             "epoch_description": (payload.epoch_description or "").strip() or None,
         },
     )
-    return result
 
 
 @router.get("/soa/{soa_id}/epochs")
@@ -240,26 +240,25 @@ def reorder_epochs_api(soa_id: int, order: List[int]):
         cur.execute("UPDATE epoch SET order_index=? WHERE id=?", (idx, eid))
     conn.commit()
     conn.close()
+
+    def _epoch_types_snapshot_router(soa_id_int: int) -> List[dict]:
+        conn_s = _connect()
+        cur_s = conn_s.cursor()
+        cur_s.execute(
+            "SELECT id,type FROM epoch WHERE soa_id=? ORDER BY order_index",
+            (soa_id_int,),
+        )
+        rows = cur_s.fetchall()
+        conn_s.close()
+        return [{"id": rid, "type": rtype} for rid, rtype in rows]
+
     _record_epoch_audit(
         soa_id,
         "reorder",
         epoch_id=None,
         before={
             "old_order": old_order,
-            "types": (lambda rows: [{"id": rid, "type": rtype} for rid, rtype in rows])(
-                (
-                    lambda conn: (
-                        lambda cur: (
-                            cur.execute(
-                                "SELECT id,type FROM epoch WHERE soa_id=? ORDER BY order_index",
-                                (soa_id,),
-                            ),
-                            cur.fetchall(),
-                            conn.close(),
-                        )[1]
-                    )(conn := _connect())
-                )
-            ),
+            "types": _epoch_types_snapshot_router(soa_id),
         },
         after={"new_order": order},
     )

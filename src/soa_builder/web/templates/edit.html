@@ -285,7 +285,7 @@
       <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
         <tr style="background:#eee;">
           <th style="text-align:left;padding:4px;">ID</th>
-          <th style="text-align:left;padding:4px;">Arm</th>
+          <th style="text-align:left;padding:4px;">Activity</th>
           <th style="text-align:left;padding:4px;">Action</th>
           <th style="text-align:left;padding:4px;">Performed</th>
           <th style="text-align:left;padding:4px;">Before</th>
@@ -294,7 +294,7 @@
         {% for au in activity_audits %}
         <tr>
           <td style="padding:4px;">{{ au.id }}</td>
-          <td style="padding:4px;">{{ au.arm_id }}</td>
+          <td style="padding:4px;">{{ au.activity_id }}</td>
           <td style="padding:4px;">{{ au.action }}</td>
           <td style="padding:4px;">{{ au.performed_at }}</td>
           <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
@@ -339,7 +339,7 @@
       <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
         <tr style="background:#eee;">
           <th style="text-align:left;padding:4px;">ID</th>
-          <th style="text-align:left;padding:4px;">Arm</th>
+          <th style="text-align:left;padding:4px;">Epoch</th>
           <th style="text-align:left;padding:4px;">Action</th>
           <th style="text-align:left;padding:4px;">Performed</th>
           <th style="text-align:left;padding:4px;">Before</th>
@@ -348,7 +348,7 @@
         {% for au in epoch_audits %}
         <tr>
           <td style="padding:4px;">{{ au.id }}</td>
-          <td style="padding:4px;">{{ au.arm_id }}</td>
+          <td style="padding:4px;">{{ au.epoch_id }}</td>
           <td style="padding:4px;">{{ au.action }}</td>
           <td style="padding:4px;">{{ au.performed_at }}</td>
           <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
