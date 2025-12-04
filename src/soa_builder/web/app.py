@@ -68,7 +68,7 @@ from .routers import visits as visits_router
 from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
 from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
-from .utils import get_next_code_uid as _get_next_code_uid
+from .utils import get_next_code_uid as _get_next_code_uid, load_epoch_type_options
 
 load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
@@ -2779,7 +2779,16 @@ def delete_epoch(soa_id: int, epoch_id: int):
             "epoch_label": b[4],
             "epoch_description": b[5],
         }
-    cur.execute("DELETE FROM epoch WHERE id=", (epoch_id,))
+    # Clear visit epoch references to avoid dangling links
+    try:
+        cur.execute(
+            "UPDATE visit SET epoch_id=NULL WHERE soa_id=? AND epoch_id=?",
+            (soa_id, epoch_id),
+        )
+    except Exception:
+        pass
+    # Delete the epoch row
+    cur.execute("DELETE FROM epoch WHERE id=?", (epoch_id,))
     conn.commit()
     conn.close()
     _reindex("epoch", soa_id)
@@ -3154,6 +3163,55 @@ def ui_edit(request: Request, soa_id: int):
     ]
     conn_audit.close()
 
+    # Enrich epochs using API-only map: code -> submissionValue
+    # Resolve stored epoch.type (code_uid) to terminology code via code table, then map to submissionValue.
+    code_map: dict[int, str] = {}
+    conn_em = _connect()
+    cur_em = conn_em.cursor()
+    cur_em.execute(
+        "SELECT e.id, c.code FROM epoch e LEFT JOIN code c ON c.code_uid = e.type AND c.soa_id = e.soa_id WHERE e.soa_id=?",
+        (soa_id,),
+    )
+    for eid, code in cur_em.fetchall():
+        if eid is not None and code:
+            code_map[eid] = code
+    conn_em.close()
+    try:
+        from .utils import load_epoch_type_map
+
+        code_to_submission = load_epoch_type_map(force=False) or {}
+    except Exception:
+        code_to_submission = {}
+    epochs = [
+        {
+            **e,
+            "epoch_type_submission_value": code_to_submission.get(
+                code_map.get(e.get("id"), ""), None
+            ),
+        }
+        for e in epochs
+    ]
+
+    # Epoch Type options (C99079) must come from CDISC API only
+    epoch_type_options = load_epoch_type_options(force=False) or []
+    logger.info(
+        "Epoch Type options (API only) count=%d values=%s",
+        len(epoch_type_options),
+        ", ".join(epoch_type_options) if epoch_type_options else "<none>",
+    )
+    # Additional diagnostics
+    try:
+        from . import utils as _u
+
+        logger.info(
+            "Epoch Type diagnostics last_status=%s last_url=%s last_error=%s",
+            _u._epoch_type_cache.get("last_status"),
+            _u._epoch_type_cache.get("last_url"),
+            _u._epoch_type_cache.get("last_error"),
+        )
+    except Exception:
+        pass
+
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -3178,6 +3236,8 @@ def ui_edit(request: Request, soa_id: int):
             "protocol_terminology_C174222": protocol_terminology_C174222,
             "ddf_terminology_C188727": ddf_terminology_C188727,
             "arm_audits": arm_audits,
+            # Epoch Type options (C99079)
+            "epoch_type_options": epoch_type_options,
         },
     )
 
@@ -4176,6 +4236,7 @@ def ui_add_epoch(
     name: str = Form(...),
     epoch_label: Optional[str] = Form(None),
     epoch_description: Optional[str] = Form(None),
+    epoch_type_submission_value: Optional[str] = Form(None),
 ):
     """Form handler to add an Epoch."""
     if not _soa_exists(soa_id):
@@ -4187,8 +4248,42 @@ def ui_add_epoch(
     cur.execute("SELECT MAX(epoch_seq) FROM epoch WHERE soa_id=?", (soa_id,))
     row = cur.fetchone()
     next_seq = (row[0] or 0) + 1
+    # Optional epoch type mapping via code junction (C99079) using API-only map
+    epoch_type_submission_value = (epoch_type_submission_value or "").strip() or None
+    selected_code_uid = None
+    if epoch_type_submission_value:
+        try:
+            from .utils import load_epoch_type_map, get_epoch_parent_package_href_cached
+
+            epoch_map = load_epoch_type_map()
+        except Exception:
+            epoch_map = {}
+        # Invert map to find conceptId by submissionValue
+        concept_id = None
+        for cid, sv in (epoch_map or {}).items():
+            if sv and sv.strip().lower() == epoch_type_submission_value.strip().lower():
+                concept_id = cid
+                break
+        if concept_id:
+            # Create a new Code_N for this conceptId under C99079 (API-only)
+            code_uid = _get_next_code_uid(cur, soa_id)
+            try:
+                parent_href = get_epoch_parent_package_href_cached() or None
+            except Exception:
+                parent_href = None
+            cur.execute(
+                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                (
+                    soa_id,
+                    code_uid,
+                    parent_href,
+                    "C99079",
+                    concept_id,
+                ),
+            )
+            selected_code_uid = code_uid
     cur.execute(
-        "INSERT INTO epoch (soa_id,name,order_index,epoch_seq,epoch_label,epoch_description) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO epoch (soa_id,name,order_index,epoch_seq,epoch_label,epoch_description,type) VALUES (?,?,?,?,?,?,?)",
         (
             soa_id,
             name,
@@ -4196,6 +4291,7 @@ def ui_add_epoch(
             next_seq,
             (epoch_label or "").strip() or None,
             (epoch_description or "").strip() or None,
+            selected_code_uid,
         ),
     )
     eid = cur.lastrowid
@@ -4213,9 +4309,12 @@ def ui_add_epoch(
             "epoch_seq": next_seq,
             "epoch_label": (epoch_label or "").strip() or None,
             "epoch_description": (epoch_description or "").strip() or None,
+            "type": selected_code_uid,
         },
     )
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/update_epoch", response_class=HTMLResponse)
@@ -4226,6 +4325,7 @@ def ui_update_epoch(
     name: Optional[str] = Form(None),
     epoch_label: Optional[str] = Form(None),
     epoch_description: Optional[str] = Form(None),
+    epoch_type_submission_value: Optional[str] = Form(None),
 ):
     """Form handler to update an existing Epoch."""
     if not _soa_exists(soa_id):
@@ -4267,6 +4367,59 @@ def ui_update_epoch(
     if epoch_description is not None:
         sets.append("epoch_description=?")
         vals.append((epoch_description or "").strip() or None)
+    # Handle epoch type mapping via code junction (C99079) using API-only map
+    epoch_type_submission_value = (epoch_type_submission_value or "").strip() or None
+    if epoch_type_submission_value is not None:
+        # If empty string provided, clear type
+        if epoch_type_submission_value == "":
+            sets.append("type=?")
+            vals.append(None)
+        else:
+            # Resolve submission value to conceptId via API-only map
+            try:
+                from .utils import (
+                    load_epoch_type_map,
+                    get_epoch_parent_package_href_cached,
+                )
+
+                epoch_map = load_epoch_type_map()
+            except Exception:
+                epoch_map = {}
+            concept_id = None
+            for cid, sv in (epoch_map or {}).items():
+                if (
+                    sv
+                    and sv.strip().lower()
+                    == epoch_type_submission_value.strip().lower()
+                ):
+                    concept_id = cid
+                    break
+            selected_code_uid = None
+            if concept_id:
+                conn_t = _connect()
+                cur_t = conn_t.cursor()
+                # Always create a new Code_N for C99079 selections (no reuse)
+                code_uid = _get_next_code_uid(cur_t, soa_id)
+                try:
+                    parent_href = get_epoch_parent_package_href_cached() or None
+                except Exception:
+                    parent_href = None
+                cur_t.execute(
+                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    (
+                        soa_id,
+                        code_uid,
+                        parent_href,
+                        "C99079",
+                        concept_id,
+                    ),
+                )
+                selected_code_uid = code_uid
+                conn_t.commit()
+                conn_t.close()
+            # Persist epoch.type even if concept_id not found will be None
+            sets.append("type=?")
+            vals.append(selected_code_uid)
     if sets:
         conn_u = _connect()
         cur_u = conn_u.cursor()
@@ -4289,7 +4442,16 @@ def ui_update_epoch(
         "epoch_seq": r[3],
         "epoch_label": r[4],
         "epoch_description": r[5],
+        "type": None,
     }
+    # Fetch type from epoch for audit after snapshot
+    conn_ta = _connect()
+    cur_ta = conn_ta.cursor()
+    cur_ta.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
+    tr_after = cur_ta.fetchone()
+    conn_ta.close()
+    if tr_after:
+        after_api["type"] = tr_after[0]
     _record_epoch_audit(
         soa_id,
         "update",
