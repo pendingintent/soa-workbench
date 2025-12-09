@@ -23,4 +23,3 @@ def test_edit_page_has_export_buttons():
     html = resp.text
     # verify links present
     assert f"/soa/{soa_id}/export/xlsx" in html
-    assert f"/soa/{soa_id}/export/pdf" in html

@@ -277,6 +277,67 @@
         <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Arm (auto StudyArm_N)</button>
       </form>
     </details>
+    <details id="study-cells-section" class="collapsible">
+      <summary>Study Cells ({{ study_cells|length }})</summary>
+      <form method="post" action="/ui/soa/{{ soa_id }}/add_study_cell" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;align-items:start;margin-top:6px;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label for="arm_uid">Arm</label>
+          <select id="arm_uid" name="arm_uid" required>
+            {% for arm in arms %}
+              {% if arm.arm_uid %}<option value="{{ arm.arm_uid }}">{{ arm.arm_uid }} — {{ arm.name }}</option>{% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label for="epoch_uid">Epoch</label>
+          <select id="epoch_uid" name="epoch_uid" required>
+            {% for e in epochs %}
+              {% set val = e.epoch_uid or ('Epoch_' ~ (e.epoch_seq or e.id)) %}
+              <option value="{{ val }}">{{ val }} — {{ e.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;grid-column:1/-1;">
+          <label for="element_uids">Elements</label>
+          <select id="element_uids" name="element_uids" multiple size="6" required>
+            {% for el in elements %}
+              {% if el.element_id %}<option value="{{ el.element_id }}">{{ el.element_id }} — {{ el.name }}</option>{% endif %}
+            {% endfor %}
+          </select>
+          <small>Select one or more elements (Cmd/Ctrl+Click).</small>
+        </div>
+        <div style="grid-column:1/-1;">
+          <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Study Cell(s)</button>
+        </div>
+      </form>
+      <div style="margin-top:8px;">
+        <table style="width:100%;font-size:0.8em;border-collapse:collapse;">
+          <tr style="background:#eee;">
+            <th style="text-align:left;padding:4px;">UID</th>
+            <th style="text-align:left;padding:4px;">Arm</th>
+            <th style="text-align:left;padding:4px;">Epoch</th>
+            <th style="text-align:left;padding:4px;">Element</th>
+            <th style="text-align:left;padding:4px;">Actions</th>
+          </tr>
+          {% for sc in study_cells %}
+            <tr>
+              <td style="padding:4px;">{{ sc.study_cell_uid }}</td>
+              <td style="padding:4px;">{{ sc.arm_uid }}</td>
+              <td style="padding:4px;">{{ sc.epoch_uid }}</td>
+              <td style="padding:4px;">{{ sc.element_name or sc.element_uid }}</td>
+              <td style="padding:4px;">
+                <form method="post" action="/ui/soa/{{ soa_id }}/delete_study_cell" style="display:inline;">
+                  <input type="hidden" name="study_cell_id" value="{{ sc.id }}" />
+                  <button class="delete-btn">✕</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" style="padding:6px;color:#777;">No study cells yet.</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </details>  
   </div>
   <div>
     <details id="activity-audit-section" class="collapsible">
@@ -437,6 +498,7 @@ persistSection('arms-section');
 persistSection('activity-audit-section');
 persistSection('arm-audit-section');
 persistSection('epoch-audit-section');
+persistSection('study-cells-section');
 
 // --- Drag & drop reorder utility ---
 function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){

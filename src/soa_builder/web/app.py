@@ -884,7 +884,7 @@ def _fetch_arms_for_edit(soa_id: int) -> list[dict]:
         conn = _connect()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id,name,label,description,order_index,COALESCE(type,''),COALESCE(data_origin_type,'') FROM arm WHERE soa_id=? ORDER BY order_index",
+            "SELECT id,name,label,description,order_index,arm_uid,COALESCE(type,''),COALESCE(data_origin_type,'') FROM arm WHERE soa_id=? ORDER BY order_index",
             (soa_id,),
         )
         rows = [
@@ -894,8 +894,9 @@ def _fetch_arms_for_edit(soa_id: int) -> list[dict]:
                 "label": r[2],
                 "description": r[3],
                 "order_index": r[4],
-                "type": r[5] or None,
-                "data_origin_type": r[6] or None,
+                "arm_uid": r[5],
+                "type": r[6] or None,
+                "data_origin_type": r[7] or None,
             }
             for r in cur.fetchall()
         ]
@@ -1009,6 +1010,34 @@ def _fetch_matrix(soa_id: int):
     cells = [dict(visit_id=r[0], activity_id=r[1], status=r[2]) for r in cur.fetchall()]
     conn.close()
     return visits, activities, cells
+
+
+def _list_study_cells(soa_id: int) -> list[dict]:
+    """List study_cell rows with element name via LEFT JOIN on element.element_id.
+
+    Returns: [{id, study_cell_uid, arm_uid, epoch_uid, element_uid, element_name}]
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT sc.id, sc.study_cell_uid, sc.arm_uid, sc.epoch_uid, sc.element_uid, e.name AS element_name "
+        "FROM study_cell sc LEFT JOIN element e ON e.element_id = sc.element_uid AND e.soa_id = sc.soa_id "
+        "WHERE sc.soa_id=? ORDER BY sc.id",
+        (soa_id,),
+    )
+    rows = [
+        {
+            "id": r[0],
+            "study_cell_uid": r[1],
+            "arm_uid": r[2],
+            "epoch_uid": r[3],
+            "element_uid": r[4],
+            "element_name": r[5],
+        }
+        for r in cur.fetchall()
+    ]
+    conn.close()
+    return rows
 
 
 def fetch_biomedical_concept_categories(force: bool = False) -> list[dict]:
@@ -2991,7 +3020,7 @@ def ui_edit(request: Request, soa_id: int):
     conn_el = _connect()
     cur_el = conn_el.cursor()
     cur_el.execute(
-        "SELECT id,name,label,description,testrl,teenrl,order_index,created_at FROM element WHERE soa_id=? ORDER BY order_index",
+        "SELECT id,name,label,description,testrl,teenrl,order_index,created_at,element_id FROM element WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
     elements = [
@@ -3004,6 +3033,7 @@ def ui_edit(request: Request, soa_id: int):
             teenrl=r[5],
             order_index=r[6],
             created_at=r[7],
+            element_id=r[8],
         )
         for r in cur_el.fetchall()
     ]
@@ -3266,6 +3296,7 @@ def ui_edit(request: Request, soa_id: int):
     except Exception:
         pass
 
+    study_cells = _list_study_cells(soa_id)
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -3294,6 +3325,8 @@ def ui_edit(request: Request, soa_id: int):
             "activity_audits": activity_audits,
             # Epoch Type options (C99079)
             "epoch_type_options": epoch_type_options,
+            # Study Cells
+            "study_cells": study_cells,
         },
     )
 
@@ -4292,6 +4325,168 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
     _record_element_audit(
         soa_id, "delete", element_id, before={"id": element_id}, after=None
     )
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+# --------------------- Study Cell UI Endpoints ---------------------
+
+
+def _next_study_cell_uid(cur, soa_id: int) -> str:
+    """Compute next StudyCell_N unique within an SoA."""
+    cur.execute("SELECT study_cell_uid FROM study_cell WHERE soa_id=?", (soa_id,))
+    max_n = 0
+    for (uid,) in cur.fetchall():
+        if isinstance(uid, str) and uid.startswith("StudyCell_"):
+            try:
+                n = int(uid.split("_")[-1])
+                if n > max_n:
+                    max_n = n
+            except Exception:
+                pass
+    return f"StudyCell_{max_n + 1}"
+
+
+@app.post("/ui/soa/{soa_id}/add_study_cell", response_class=HTMLResponse)
+def ui_add_study_cell(
+    request: Request,
+    soa_id: int,
+    arm_uid: str = Form(...),
+    epoch_uid: str = Form(...),
+    element_uids: List[str] = Form(...),
+):
+    """Add one or more Study Cell rows for Arm×Epoch×Elements.
+
+    Duplicate prevention enforced on (soa_id, arm_uid, epoch_uid, element_uid).
+    """
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    arm_uid = (arm_uid or "").strip()
+    epoch_uid = (epoch_uid or "").strip()
+    element_ids: list[str] = [
+        str(e).strip() for e in (element_uids or []) if str(e).strip()
+    ]
+    if not arm_uid or not epoch_uid or not element_ids:
+        return HTMLResponse(
+            f"<script>alert('Arm, Epoch and at least one Element are required');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
+            status_code=400,
+        )
+    conn = _connect()
+    cur = conn.cursor()
+    # basic existence checks (optional)
+    cur.execute("SELECT 1 FROM arm WHERE soa_id=? AND arm_uid=?", (soa_id, arm_uid))
+    if not cur.fetchone():
+        conn.close()
+        return HTMLResponse(
+            f"<script>alert('Arm not found');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
+            status_code=404,
+        )
+    cur.execute(
+        "SELECT 1 FROM epoch WHERE soa_id=? AND epoch_uid=?", (soa_id, epoch_uid)
+    )
+    if not cur.fetchone():
+        conn.close()
+        return HTMLResponse(
+            f"<script>alert('Epoch not found');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
+            status_code=404,
+        )
+    inserted = 0
+    for el_uid in element_ids:
+        # ensure element exists if element_id column present
+        cur.execute("PRAGMA table_info(element)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "element_id" in cols:
+            cur.execute(
+                "SELECT 1 FROM element WHERE soa_id=? AND element_id=?",
+                (soa_id, el_uid),
+            )
+            if not cur.fetchone():
+                # skip silently; or alert once (keeping UX simple)
+                continue
+        # duplicate prevention
+        cur.execute(
+            "SELECT id FROM study_cell WHERE soa_id=? AND arm_uid=? AND epoch_uid=? AND element_uid=?",
+            (soa_id, arm_uid, epoch_uid, el_uid),
+        )
+        if cur.fetchone():
+            continue
+        sc_uid = _next_study_cell_uid(cur, soa_id)
+        cur.execute(
+            "INSERT INTO study_cell (soa_id, study_cell_uid, arm_uid, epoch_uid, element_uid) VALUES (?,?,?,?,?)",
+            (soa_id, sc_uid, arm_uid, epoch_uid, el_uid),
+        )
+        inserted += 1
+    conn.commit()
+    conn.close()
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+@app.post("/ui/soa/{soa_id}/update_study_cell", response_class=HTMLResponse)
+def ui_update_study_cell(
+    request: Request,
+    soa_id: int,
+    study_cell_id: int = Form(...),
+    arm_uid: Optional[str] = Form(None),
+    epoch_uid: Optional[str] = Form(None),
+    element_uid: Optional[str] = Form(None),
+):
+    """Update a Study Cell's Arm/Epoch/Element values.
+
+    Duplicate prevention enforced; if update causes a duplicate, no change is applied.
+    """
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, arm_uid, epoch_uid, element_uid FROM study_cell WHERE id=? AND soa_id=?",
+        (study_cell_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Study Cell not found")
+    _, curr_arm, curr_epoch, curr_el = row
+    new_arm = (arm_uid or curr_arm or "").strip() or curr_arm
+    new_epoch = (epoch_uid or curr_epoch or "").strip() or curr_epoch
+    new_el = (element_uid or curr_el or "").strip() or curr_el
+    # duplicate check
+    cur.execute(
+        "SELECT id FROM study_cell WHERE soa_id=? AND arm_uid=? AND epoch_uid=? AND element_uid=? AND id<>?",
+        (soa_id, new_arm, new_epoch, new_el, study_cell_id),
+    )
+    if cur.fetchone():
+        conn.close()
+        return HTMLResponse(
+            f"<script>alert('Duplicate Study Cell exists');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
+            status_code=400,
+        )
+    cur.execute(
+        "UPDATE study_cell SET arm_uid=?, epoch_uid=?, element_uid=? WHERE id=? AND soa_id=?",
+        (new_arm, new_epoch, new_el, study_cell_id, soa_id),
+    )
+    conn.commit()
+    conn.close()
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+@app.post("/ui/soa/{soa_id}/delete_study_cell", response_class=HTMLResponse)
+def ui_delete_study_cell(request: Request, soa_id: int, study_cell_id: int = Form(...)):
+    """Delete a Study Cell by id."""
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM study_cell WHERE id=? AND soa_id=?", (study_cell_id, soa_id)
+    )
+    conn.commit()
+    conn.close()
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
