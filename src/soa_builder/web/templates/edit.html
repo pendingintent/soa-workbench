@@ -370,8 +370,8 @@
     <th>Concepts</th>
     {% for v in visits %}
       <th style="min-width:70px;" data-visit-id="{{ v.id }}">
-        <div>{{ v.name }}</div>
-        <div style="font-size:0.65em;color:#555;line-height:1.1;">{{ v.raw_header or v.name }}</div>
+        <div>{{ v.raw_header }}</div>
+        <div style="font-size:0.65em;color:#555;line-height:1.1;">Encounter: {{ v.name }}</div>
         {% if v.epoch_id %}
           {% set ep = (epochs | selectattr('id','equalto', v.epoch_id) | list) %}
           {% if ep and ep[0] %}<div style="font-size:0.6em;color:#2e7d32;line-height:1.1;">Epoch: {{ ep[0].name }}</div>{% endif %}
@@ -398,7 +398,6 @@
 <p><a href="/soa/{{ soa_id }}/normalized" target="_blank">Generate Normalized Summary (JSON)</a></p>
 <div class="export-buttons">
   <a class="btn" href="/soa/{{ soa_id }}/export/xlsx" title="Download Excel workbook">⬇ XLSX</a>
-  <a class="btn" href="/soa/{{ soa_id }}/export/pdf" title="Download PDF summary">⬇ PDF</a>
 </div>
 <style>
   .delete-btn { background:#c62828; color:#fff; border:none; padding:0 6px; cursor:pointer; }
@@ -435,6 +434,9 @@ persistSection('activities-section');
 persistSection('epochs-section');
 persistSection('elements-section');
 persistSection('arms-section');
+persistSection('activity-audit-section');
+persistSection('arm-audit-section');
+persistSection('epoch-audit-section');
 
 // --- Drag & drop reorder utility ---
 function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){
