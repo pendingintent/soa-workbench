@@ -160,5 +160,17 @@ def _init_db():
         )"""
     )
 
+    # create the study_cell table to store the relationship between Epoch, Arm and related elements
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS study_cell (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            study_cell_uid TEXT NOT NULL, --immutable StudyCell_N identifier unique iwthin SOA
+            arm_uid TEXT NOT NULL,
+            epoch_uid TEXT NOT NULL,
+            element_uid TEXT NOT NULL
+        )"""
+    )
+
     conn.commit()
     conn.close()
