@@ -1013,15 +1013,19 @@ def _fetch_matrix(soa_id: int):
 
 
 def _list_study_cells(soa_id: int) -> list[dict]:
-    """List study_cell rows with element name via LEFT JOIN on element.element_id.
+    """List study_cell rows, including element and arm names filtered by soa_id.
 
-    Returns: [{id, study_cell_uid, arm_uid, epoch_uid, element_uid, element_name}]
+    Returns: [{id, study_cell_uid, arm_uid, epoch_uid, element_uid, element_name, arm_name}]
     """
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT sc.id, sc.study_cell_uid, sc.arm_uid, sc.epoch_uid, sc.element_uid, e.name AS element_name "
-        "FROM study_cell sc LEFT JOIN element e ON e.element_id = sc.element_uid AND e.soa_id = sc.soa_id "
+        "SELECT sc.id, sc.study_cell_uid, sc.arm_uid, sc.epoch_uid, sc.element_uid, "
+        "       e.name AS element_name, a.name AS arm_name, ep.name AS epoch_name "
+        "FROM study_cell sc "
+        "LEFT JOIN element e ON e.element_id = sc.element_uid AND e.soa_id = sc.soa_id "
+        "LEFT JOIN arm a ON a.arm_uid = sc.arm_uid AND a.soa_id = sc.soa_id "
+        "LEFT JOIN epoch ep ON ep.epoch_uid = sc.epoch_uid AND ep.soa_id = sc.soa_id "
         "WHERE sc.soa_id=? ORDER BY sc.id",
         (soa_id,),
     )
@@ -1033,6 +1037,8 @@ def _list_study_cells(soa_id: int) -> list[dict]:
             "epoch_uid": r[3],
             "element_uid": r[4],
             "element_name": r[5],
+            "arm_name": r[6],
+            "epoch_name": r[7],
         }
         for r in cur.fetchall()
     ]

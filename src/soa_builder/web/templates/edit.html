@@ -322,8 +322,15 @@
           {% for sc in study_cells %}
             <tr>
               <td style="padding:4px;">{{ sc.study_cell_uid }}</td>
-              <td style="padding:4px;">{{ sc.arm_uid }}</td>
-              <td style="padding:4px;">{{ sc.epoch_uid }}</td>
+              <td style="padding:4px;">
+                {% set arm_match = arms | selectattr('arm_uid', 'equalto', sc.arm_uid) | list %}
+                {% if arm_match and arm_match[0] and arm_match[0].name %}
+                  {{ arm_match[0].name }}
+                {% else %}
+                  {{ sc.arm_uid }}
+                {% endif %}
+              </td>
+              <td style="padding:4px;">{{ sc.epoch_name or sc.epoch_uid }}</td>
               <td style="padding:4px;">{{ sc.element_name or sc.element_uid }}</td>
               <td style="padding:4px;">
                 <form method="post" action="/ui/soa/{{ soa_id }}/delete_study_cell" style="display:inline;">
