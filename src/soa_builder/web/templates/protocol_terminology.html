@@ -3,7 +3,7 @@
 <h2>Protocol Terminology</h2>
 {% if uploaded %}<div style="padding:0.5em;background:#e0ffe0;border:1px solid #8bc34a;margin-bottom:0.75em;">Upload successful: table reloaded.</div>{% endif %}
 {% if error %}<div style="padding:0.5em;background:#ffe0e0;border:1px solid #e53935;margin-bottom:0.75em;">Error: {{ error }}</div>{% endif %}
-<form method="post" action="/ui/protocol/terminology/upload" enctype="multipart/form-data" style="margin-bottom:1.5em;">
+<form method="post" action="/ui/protocol/terminology/upload" enctype="multipart/form-data" style="margin-bottom:1em;border:1px solid #ccc;padding:0.5em;">
   <fieldset style="display:inline-block; padding:0.5em 1em;">
     <legend>Upload Excel Workbook (.xls/.xlsx)</legend>
     <label style="margin-left:1em;">File: <input type="file" name="file" accept=".xls,.xlsx" required></label>
