@@ -1,24 +1,24 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Protocol Terminology</h2>
-{% if uploaded %}<p style="color:#090">Upload succeeded.</p>{% endif %}
-{% if error %}<p style="color:#900">Error: {{ error }}</p>{% endif %}
+{% if uploaded %}<div style="padding:0.5em;background:#e0ffe0;border:1px solid #8bc34a;margin-bottom:0.75em;">Upload successful: table reloaded.</div>{% endif %}
+{% if error %}<div style="padding:0.5em;background:#ffe0e0;border:1px solid #e53935;margin-bottom:0.75em;">Error: {{ error }}</div>{% endif %}
+<form method="post" action="/ui/protocol/terminology/upload" enctype="multipart/form-data" style="margin-bottom:1.5em;">
+  <fieldset style="display:inline-block; padding:0.5em 1em;">
+    <legend>Upload Excel Workbook (.xls/.xlsx)</legend>
+    <label style="margin-left:1em;">File: <input type="file" name="file" accept=".xls,.xlsx" required></label>
+    <label>Sheet Name: <input type="text" name="sheet_name" value="Enter name of worksheet..." size="28"></label>
+    <button type="submit" style="margin-left:1em;">Upload</button>
+  </fieldset>
+</form>
 <form method="get" action="/ui/protocol/terminology" style="margin-bottom:1em;">
-  <label>Search: <input type="text" name="search" value="{{ search }}" size="30"></label>
+  <label>Search Substring: <input type="text" name="search" value="{{ search }}" size="30"></label>
   <label style="margin-left:1em;">Code: <input type="text" name="code" value="{{ code }}" size="12"></label>
   <label style="margin-left:1em;">Codelist Name: <input type="text" name="codelist_name" value="{{ codelist_name }}" size="20"></label>
   <label style="margin-left:1em;">Codelist Code: <input type="text" name="codelist_code" value="{{ codelist_code }}" size="14"></label>
   <label style="margin-left:1em;">Limit: <input type="number" min="1" max="200" name="limit" value="{{ limit }}" style="width:70px;"></label>
   <input type="hidden" name="offset" value="0">
   <button type="submit" style="margin-left:1em;">Apply</button>
-</form>
-<form method="post" action="/ui/protocol/terminology/upload" enctype="multipart/form-data" style="margin-bottom:1.5em;">
-  <fieldset style="display:inline-block; padding:0.5em 1em;">
-    <legend>Upload Excel (.xls/.xlsx)</legend>
-    <label>Sheet Name: <input type="text" name="sheet_name" value="Protocol Terminology 2025-09-26" size="28"></label>
-    <label style="margin-left:1em;">File: <input type="file" name="file" accept=".xls,.xlsx" required></label>
-    <button type="submit" style="margin-left:1em;">Upload</button>
-  </fieldset>
 </form>
 <p><strong>Total Rows:</strong> {{ total_count }} | <strong>Matched:</strong> {{ matched_count }} | Page size {{ limit }} | Offset {{ offset }}</p>
 <table border="1" cellspacing="0" cellpadding="4">
