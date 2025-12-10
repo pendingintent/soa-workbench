@@ -428,6 +428,33 @@
         <div style="font-size:0.75em;color:#777;">No epoch audit entries yet.</div>
       {% endif %}
     </details>
+    <details id="study-cell-audit-section" class="collapsible">
+      <summary>Study Cell Audit (latest {{ study_cell_audits|length }})</summary>
+      {% if study_cell_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Study Cell</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for au in study_cell_audits %}
+        <tr>
+          <td style="padding:4px;">{{ au.id }}</td>
+          <td style="padding:4px;">{{ au.study_cell_id }}</td>
+          <td style="padding:4px;">{{ au.action }}</td>
+          <td style="padding:4px;">{{ au.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No study cell audit entries yet.</div>
+      {% endif %}
+    </details>
   </div>
 </div>
 <hr />
@@ -507,6 +534,7 @@ persistSection('activity-audit-section');
 persistSection('arm-audit-section');
 persistSection('epoch-audit-section');
 persistSection('study-cells-section');
+persistSection('study-cell-audit-section');
 
 // --- Drag & drop reorder utility ---
 function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){

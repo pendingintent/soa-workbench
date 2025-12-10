@@ -101,6 +101,18 @@ def _init_db():
             performed_at TEXT NOT NULL
         )"""
     )
+    # Study Cell audit table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS study_cell_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            study_cell_id INTEGER,
+            action TEXT NOT NULL, -- create|update|delete
+            before_json TEXT,
+            after_json TEXT,
+            performed_at TEXT NOT NULL
+        )"""
+    )
     # Epochs: high-level study phase grouping (optional). Behaves like visits/activities list ordering.
     cur.execute(
         """CREATE TABLE IF NOT EXISTS epoch (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, order_index INTEGER)"""

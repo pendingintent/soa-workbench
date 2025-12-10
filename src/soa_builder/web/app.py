@@ -3253,6 +3253,26 @@ def ui_edit(request: Request, soa_id: int):
     ]
     conn_epoch_audit.close()
 
+    # Admin audit view: recent study cell audits for this SoA
+    conn_sc_audit = _connect()
+    cur_sc_audit = conn_sc_audit.cursor()
+    cur_sc_audit.execute(
+        "SELECT id, study_cell_id, action, before_json, after_json, performed_at FROM study_cell_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
+        (soa_id,),
+    )
+    study_cell_audits = [
+        {
+            "id": r[0],
+            "study_cell_id": r[1],
+            "action": r[2],
+            "before_json": r[3],
+            "after_json": r[4],
+            "performed_at": r[5],
+        }
+        for r in cur_sc_audit.fetchall()
+    ]
+    conn_sc_audit.close()
+
     # Enrich epochs using API-only map: code -> submissionValue
     # Resolve stored epoch.type (code_uid) to terminology code via code table, then map to submissionValue.
     code_map: dict[int, str] = {}
@@ -3329,6 +3349,7 @@ def ui_edit(request: Request, soa_id: int):
             "arm_audits": arm_audits,
             "epoch_audits": epoch_audits,
             "activity_audits": activity_audits,
+            "study_cell_audits": study_cell_audits,
             # Epoch Type options (C99079)
             "epoch_type_options": epoch_type_options,
             # Study Cells
@@ -4422,6 +4443,26 @@ def ui_add_study_cell(
             "INSERT INTO study_cell (soa_id, study_cell_uid, arm_uid, epoch_uid, element_uid) VALUES (?,?,?,?,?)",
             (soa_id, sc_uid, arm_uid, epoch_uid, el_uid),
         )
+        sc_id = cur.lastrowid
+        # Inline audit write for reliability
+        cur.execute(
+            "INSERT INTO study_cell_audit (soa_id, study_cell_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                sc_id,
+                "create",
+                None,
+                json.dumps(
+                    {
+                        "study_cell_uid": sc_uid,
+                        "arm_uid": arm_uid,
+                        "epoch_uid": epoch_uid,
+                        "element_uid": el_uid,
+                    }
+                ),
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
         inserted += 1
     conn.commit()
     conn.close()
@@ -4470,9 +4511,32 @@ def ui_update_study_cell(
             f"<script>alert('Duplicate Study Cell exists');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
             status_code=400,
         )
+    before = {
+        "arm_uid": curr_arm,
+        "epoch_uid": curr_epoch,
+        "element_uid": curr_el,
+    }
     cur.execute(
         "UPDATE study_cell SET arm_uid=?, epoch_uid=?, element_uid=? WHERE id=? AND soa_id=?",
         (new_arm, new_epoch, new_el, study_cell_id, soa_id),
+    )
+    # Inline audit write for reliability
+    cur.execute(
+        "INSERT INTO study_cell_audit (soa_id, study_cell_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
+        (
+            soa_id,
+            study_cell_id,
+            "update",
+            json.dumps(before),
+            json.dumps(
+                {
+                    "arm_uid": new_arm,
+                    "epoch_uid": new_epoch,
+                    "element_uid": new_el,
+                }
+            ),
+            datetime.now(timezone.utc).isoformat(),
+        ),
     )
     conn.commit()
     conn.close()
@@ -4488,6 +4552,32 @@ def ui_delete_study_cell(request: Request, soa_id: int, study_cell_id: int = For
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
+    # capture before state for audit
+    cur.execute(
+        "SELECT study_cell_uid, arm_uid, epoch_uid, element_uid FROM study_cell WHERE id=? AND soa_id=?",
+        (study_cell_id, soa_id),
+    )
+    row = cur.fetchone()
+    before = None
+    if row:
+        before = {
+            "study_cell_uid": row[0],
+            "arm_uid": row[1],
+            "epoch_uid": row[2],
+            "element_uid": row[3],
+        }
+    # Inline audit write for reliability
+    cur.execute(
+        "INSERT INTO study_cell_audit (soa_id, study_cell_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
+        (
+            soa_id,
+            study_cell_id,
+            "delete",
+            json.dumps(before) if before else None,
+            None,
+            datetime.now(timezone.utc).isoformat(),
+        ),
+    )
     cur.execute(
         "DELETE FROM study_cell WHERE id=? AND soa_id=?", (study_cell_id, soa_id)
     )
