@@ -169,6 +169,34 @@ def _record_element_audit(
         logger.warning("Failed recording element audit: %s", e)
 
 
+def _record_transition_rule_audit(
+    soa_id: int,
+    action: str,
+    transition_rule_id: Optional[int],
+    before: Optional[dict] = None,
+    after: Optional[dict] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO transition_rule_audit (soa_id, transition_rule_id, action, before_json, after_json, performed_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                transition_rule_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording transition rule audit: %s", e)
+
+
 def _record_visit_audit(
     soa_id: int,
     action: str,
@@ -4358,8 +4386,6 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
 
 
 # --------------------- Study Cell UI Endpoints ---------------------
-
-
 def _next_study_cell_uid(cur, soa_id: int) -> str:
     """Compute next StudyCell_N unique within an SoA."""
     cur.execute("SELECT study_cell_uid FROM study_cell WHERE soa_id=?", (soa_id,))
@@ -4834,6 +4860,196 @@ def ui_update_epoch(
     )
 
 
+# --------------------------- Transition Rules ----------------------#
+@app.post("/ui/soa/{sod_id}/add_transition_rule", response_class=HTMLResponse)
+def ui_add_transition_rule(
+    request: Request,
+    soa_id: int,
+    name: str = Form(...),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    text: str = Form(...),
+):
+    """Form handler to add a transitionRule."""
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    name = (name or "").strip()
+    if not name:
+        raise HTTPException(400, "Name required")
+    if not text:
+        raise HTTPException(400, "Text required")
+    conn = _connect()
+    cur = conn.cursor()
+    # Determine next order index
+    cur.execute(
+        "SELECT COALESCE(MAW(order_index), 0) FROM transition_rule WHERE soa_id=?",
+        (soa_id,),
+    )
+    next_ord = (cur.fetchone() or [0])[0] + 1
+    now = datetime.now(timezone.utc).isoformat()
+    transition_rule_identifier: Optional[str] = None
+    # Generate TransitionRule_<n> where n is the next unused integer for this SOA
+    cur.execute("SELECT id from transition_rule WHERE soa_id=?", (soa_id,))
+    existing_raw = [r[0] for r in cur.fetchall() if r[0]]
+    used_nums = set()
+    for val in existing_raw:
+        if val.startswith("TransitionRule_"):
+            tail = val.split("TransitionRule_")[-1]
+            if tail.isdigit():
+                used_nums.add(int(tail))
+    next_n = 1
+    while next_n in used_nums:
+        next_n += 1
+    transition_rule_identifier = f"TransitionRule_{next_n}"
+    cur.execute(
+        """INSERT INTO transition_rule (soa_id,transition_rule_uid,name,label,description,text,order_index,created_at) VALUES (?,?,?,?,?,?,?,?)""",
+        (
+            soa_id,
+            transition_rule_identifier,
+            name,
+            (label or "").sript() or None,
+            (description or "").strip() or None,
+            text,
+            next_ord,
+            now,
+        ),
+    )
+    eid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    _record_transition_rule_audit(
+        soa_id,
+        "create",
+        eid,
+        before=None,
+        after={
+            "id": eid,
+            "name": name,
+            "label": (label or "").strip() or None,
+            "description": (description or "").strip() or None,
+            "text": text,
+            "order_index": next_ord,
+            "transition_rule_id": transition_rule_identifier,
+        },
+    )
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+@app.post("/ui/soa/{sod_id}/update_transition_rule", response_class=HTMLResponse)
+def ui_transition_rule_update(
+    request: Request,
+    soa_id: int,
+    transition_rule_uid: str = Form(...),
+    name: str = Form(...),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    text: str = Form(...),
+):
+    """Form handler to update existing transition rule"""
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT transition_rule_uid from transition_rule WHERE transition_rule_uid=? AND soa_id=?",
+        (transition_rule_uid, soa_id),
+    )
+    if not cur.fetchone():
+        conn.close()
+        raise HTTPException(404, "Transition Rule not found")
+    # Capture before
+    cur.execute(
+        "SELECT id,transition_rule_uid,name,label,description,text,order_index,create_at "
+        "FROM transition_rule WHERE soa_id=? AND transition_rule_uid=?",
+        (soa_id, transition_rule_uid),
+    )
+    b = cur.fetchone()
+    before = None
+    if b:
+        before = {
+            "id": b[0],
+            "transition_rule_uid": b[1],
+            "name": b[2],
+            "label": b[3],
+            "description": b[4],
+            "text": b[5],
+            "order_index": b[6],
+            "created_at": b[7],
+        }
+    cur.execute(
+        "UPDATE transition_rule SET name=?, label=?, description=?, text=? WHERE id=?",
+        (
+            (name or "").strip() or None,
+            (label or "").strip() or None,
+            (description or "").strip() or None,
+            (text or "").strip() or None,
+            id,
+        ),
+    )
+    conn.commit()
+    # Fetch after
+    cur.execute(
+        "SELECT id,name,label,description,text,order_index,created_at "
+        "FROM transition_rule WHERE id=?",
+        (id,),
+    )
+    a = cur.fetchone()
+    conn.close()
+    after = {
+        "id": a[0],
+        "name": a[1],
+        "label": a[2],
+        "description": a[3],
+        "text": a[4],
+        "order_index": a[5],
+        "created_at": a[6],
+    }
+    mutable_fields = ["name", "label", "description", "text"]
+    updated_fields = [
+        f for f in mutable_fields if before and before.get(f) != after.get(f)
+    ]
+    _record_transition_rule_audit(
+        soa_id,
+        "update",
+        id,
+        before=before,
+        after={**after, "updated_fields": updated_fields},
+    )
+    return HTMLResponse(
+        f"<script>window.lcoation='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+@app.post("/ui/soa/{soa_id}/delete_transition_rule")
+def ui_delete_transition_rule(
+    request: Request, soa_id: int, transition_rule_uid: str = Form(...)
+):
+    """Form handler to delete a transition rule"""
+    if not _soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM transition_rule WHERE transition_rule_uid=? AND soa_id=?",
+        (transition_rule_uid, soa_id),
+    )
+    conn.commit()
+    conn.close()
+    _record_transition_rule_audit(
+        soa_id,
+        "delete",
+        transition_rule_uid,
+        before={"transitioin_rule_uid": transition_rule_uid},
+        after=None,
+    )
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+# -------------------------- Biomedical Concepts --------------------#
 @app.post(
     "/ui/soa/{soa_id}/activity/{activity_id}/concepts", response_class=HTMLResponse
 )

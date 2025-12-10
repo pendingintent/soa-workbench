@@ -113,6 +113,18 @@ def _init_db():
             performed_at TEXT NOT NULL
         )"""
     )
+    # Transition rule audit table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS transition_rule_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            transition_rule_id INTEGER,
+            action TEXT NOT NULL, -- create|update|delete
+            before_json TEXT,
+            after_json TEXT,
+            performed_at TEXT NOT NULL
+        )"""
+    )
     # Epochs: high-level study phase grouping (optional). Behaves like visits/activities list ordering.
     cur.execute(
         """CREATE TABLE IF NOT EXISTS epoch (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, order_index INTEGER)"""
@@ -181,6 +193,22 @@ def _init_db():
             arm_uid TEXT NOT NULL,
             epoch_uid TEXT NOT NULL,
             element_uid TEXT NOT NULL
+        )"""
+    )
+
+    # create the transition_rule table to store the transition rules for elements, encounters
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS transition_rule (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            transition_rule_uid TEXT NOT NULL,  --immutable TransitionRule_N identifier uniquie within SOA
+            name TEXT NOT NULL,
+            label TEXT,
+            description TEXT,
+            text TEXT NOT NULL,
+            order_index INTEGER,
+            created_at TEXT,
+            UNIQUE(soa_id, transition_rule_uid)
         )"""
     )
 
