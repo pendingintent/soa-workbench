@@ -13,7 +13,7 @@ from ..schemas import ElementCreate, ElementUpdate
 router = APIRouter(prefix="/soa/{soa_id}")
 
 
-"""Shared SOA existence check imported from utils.so a_exists"""
+"""Shared SOA existence check imported from utils.soa_exists"""
 
 
 def _next_element_identifier(soa_id: int) -> str:
