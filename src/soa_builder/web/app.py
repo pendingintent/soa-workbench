@@ -2910,36 +2910,9 @@ def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
             "activity_uid": f"Activity_{order_index}",
         },
     )
+    # If HTMX, redirect back to edit page; otherwise script redirect
     if request.headers.get("HX-Request") == "true":
-        conn_ea = _connect()
-        cur_ea = conn_ea.cursor()
-        cur_ea.execute("PRAGMA table_info(element_audit)")
-        cols = [row[1] for row in cur_ea.fetchall()]
-        want = [
-            "id",
-            "element_id",
-            "action",
-            "before_json",
-            "after_json",
-            "performed_at",
-        ]
-        available = [c for c in want if c in cols]
-        element_audits = []
-        if available:
-            select_sql = f"SELECT {', '.join(available)} FROM element_audit WHERE soa_id=? ORDER BY id DESC"
-            cur_ea.execute(select_sql, (soa_id,))
-            for r in cur_ea.fetchall():
-                item = {}
-                for i, c in enumerate(available):
-                    item[c] = r[i]
-                for k in want:
-                    item.setdefault(k, None)
-                element_audits.append(item)
-        conn_ea.close()
-        html = templates.get_template("element_audit_section.html").render(
-            request=request, soa_id=soa_id, element_audits=element_audits
-        )
-        return HTMLResponse(html)
+        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
