@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 import os
 import requests
 import time
+from .db import _connect
 
 _epoch_type_cache: dict[str, Any] = {
     "data": None,
@@ -227,3 +228,16 @@ def get_next_code_uid(cur: Any, soa_id: int) -> str:
         except Exception:
             n = len(existing) + 1
     return f"Code_{n}"
+
+
+def soa_exists(soa_id: int) -> bool:
+    """Return True if an SOA row exists with the given id."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM soa WHERE id=?", (soa_id,))
+        ok = cur.fetchone() is not None
+        conn.close()
+        return ok
+    except Exception:
+        return False

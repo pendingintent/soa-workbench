@@ -1,0 +1,19 @@
+<ul id="transition-rule-list">
+  {% for rule in transition_rules %}
+  <li class="rule-item" data-id="{{ rule.transition_rule_uid }}" title="{{ rule.name or '' }}">
+    <span class="ord">{{ rule.order_index }}</span>. <strong>{{ rule.name }}</strong>
+    <form hx-post="/ui/soa/{{ soa_id }}/delete_transition_rule" hx-target="#transition-rule-list" hx-swap="outerHTML" hx-confirm="Delete transition rule '{{ rule.name }}'?" style="display:inline">
+      <input type="hidden" name="transition_rule_uid" value="{{ rule.transition_rule_uid }}" />
+      <button type="submit" class="delete-btn">x</button>
+    </form>
+    <form hx-post="/ui/soa/{{ soa_id }}/update_transition_rule" hx-target="#transition-rule-list" hx-swap="outerHTML" style="display:inline;margin-left:6px;font-size:0.6em;">
+      <input type="hidden" name="transition_rule_uid" value="{{ rule.transition_rule_uid }}" />
+      <input name="name" value="{{ rule.name }}" placeholder="Name" style="width:90px;" />
+      <input name="label" value="{{ rule.label or '' }}" placeholder="Label" style="width:70px;" />
+      <input name="description" value="{{ rule.description or '' }}" placeholder="Desc" style="width:120px;" />
+      <input name="text" value="{{ rule.text or '' }}" placeholder="Rule text" style="width:160px;" />
+      <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>

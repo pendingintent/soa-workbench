@@ -655,6 +655,62 @@ def _migrate_arm_add_type_fields():
         logger.warning("Arm type/data_origin_type migration failed: %s", e)
 
 
+# Migration: Ensure element_audit has before_json/after_json columns
+def _migrate_element_audit_columns():
+    """Add missing columns before_json and after_json to element_audit.
+
+    Handles legacy schemas that only had id, soa_id, element_id, action, performed_at.
+    Safe to run multiple times; idempotent via schema inspection.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        # Ensure table exists; if not present, create with full schema
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='element_audit'"
+        )
+        exists = cur.fetchone() is not None
+        if not exists:
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS element_audit (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    soa_id INTEGER NOT NULL,
+                    element_id INTEGER,
+                    action TEXT NOT NULL,
+                    before_json TEXT,
+                    after_json TEXT,
+                    performed_at TEXT NOT NULL
+                )"""
+            )
+            conn.commit()
+            logger.info("Created element_audit table with full schema")
+            conn.close()
+            return
+        # Add columns if missing
+        cur.execute("PRAGMA table_info(element_audit)")
+        cols = {r[1] for r in cur.fetchall()}
+        alters = []
+        if "before_json" not in cols:
+            alters.append("ALTER TABLE element_audit ADD COLUMN before_json TEXT")
+        if "after_json" not in cols:
+            alters.append("ALTER TABLE element_audit ADD COLUMN after_json TEXT")
+        for stmt in alters:
+            try:
+                cur.execute(stmt)
+            except Exception as e:  # pragma: no cover
+                logger.warning(
+                    "Failed element_audit column migration '%s': %s", stmt, e
+                )
+        if alters:
+            conn.commit()
+            logger.info(
+                "Applied element_audit column migrations: %s", ", ".join(alters)
+            )
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.warning("element_audit column migration failed: %s", e)
+
+
 # Backfill dataset_date for existing terminology tables
 def _backfill_dataset_date(table: str, audit_table: str):
     """If terminology table exists and has dataset_date (or sheet_dataset_date) column with blank values,

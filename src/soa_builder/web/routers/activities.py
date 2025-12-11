@@ -1,4 +1,5 @@
 import json
+import logging
 
 # Lightweight concept fetcher to avoid circular import with app.py
 import os
@@ -11,9 +12,13 @@ from fastapi.responses import JSONResponse
 from ..audit import _record_activity_audit, _record_reorder_audit
 from ..db import _connect
 from ..schemas import ActivityCreate, ActivityUpdate, BulkActivities
+from ..utils import soa_exists
 
 _ACT_CONCEPT_CACHE = {"data": None, "fetched_at": 0}
 _ACT_CONCEPT_TTL = 60 * 60
+
+router = APIRouter(prefix="/soa/{soa_id}")
+logger = logging.getLogger("soa_builder.web.routers.activities")
 
 
 def fetch_biomedical_concepts(force: bool = False):
@@ -53,7 +58,8 @@ def fetch_biomedical_concepts(force: bool = False):
                 if code:
                     concepts.append({"code": code, "title": title})
             return concepts
-        except Exception:
+        except Exception as e:
+            logger.debug("fetch_biomedical_concepts override JSON parse failed: %s", e)
             return []
     now = time.time()
     if (
@@ -68,21 +74,12 @@ def fetch_biomedical_concepts(force: bool = False):
     return []
 
 
-router = APIRouter(prefix="/soa/{soa_id}")
-
-
-def _soa_exists(soa_id: int) -> bool:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM soa WHERE id=?", (soa_id,))
-    ok = cur.fetchone() is not None
-    conn.close()
-    return ok
+# Removed local _soa_exists; using shared utils.soa_exists
 
 
 @router.get("/activities", response_class=JSONResponse)
 def list_activities(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -100,7 +97,7 @@ def list_activities(soa_id: int):
 
 @router.get("/activities/{activity_id}", response_class=JSONResponse)
 def get_activity(soa_id: int, activity_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -123,7 +120,7 @@ def get_activity(soa_id: int, activity_id: int):
 
 @router.post("/activities", response_class=JSONResponse)
 def add_activity(soa_id: int, payload: ActivityCreate):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -152,7 +149,7 @@ def add_activity(soa_id: int, payload: ActivityCreate):
 
 @router.patch("/activities/{activity_id}", response_class=JSONResponse)
 def update_activity(soa_id: int, activity_id: int, payload: ActivityUpdate):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -196,7 +193,7 @@ def update_activity(soa_id: int, activity_id: int, payload: ActivityUpdate):
 
 @router.post("/activities/reorder", response_class=JSONResponse)
 def reorder_activities_api(soa_id: int, order: List[int]):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not order:
         raise HTTPException(400, "Order list required")
@@ -256,7 +253,7 @@ def reorder_activities_api(soa_id: int, order: List[int]):
 
 @router.post("/activities/bulk", response_class=JSONResponse)
 def add_activities_bulk(soa_id: int, payload: BulkActivities):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     names = [n.strip() for n in payload.names if n and n.strip()]
     if not names:
@@ -293,7 +290,7 @@ def add_activities_bulk(soa_id: int, payload: BulkActivities):
 
 @router.post("/activities/{activity_id}/concepts", response_class=JSONResponse)
 def set_activity_concepts(soa_id: int, activity_id: int, concept_codes: List[str]):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()

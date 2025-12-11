@@ -4,10 +4,12 @@
 {% if uploaded %}<div style="padding:0.5em;background:#e0ffe0;border:1px solid #8bc34a;margin-bottom:0.75em;">Upload successful: table reloaded.</div>{% endif %}
 {% if error %}<div style="padding:0.5em;background:#ffe0e0;border:1px solid #e53935;margin-bottom:0.75em;">Error: {{ error }}</div>{% endif %}
 <form method="post" action="/ui/ddf/terminology/upload" enctype="multipart/form-data" style="margin-bottom:1em;border:1px solid #ccc;padding:0.5em;">
-  <strong>Upload new terminology file:</strong><br>
-  <input type="file" name="file" accept=".xls,.xlsx" required />
-  <label style="margin-left:1em;">Sheet: <input type="text" name="sheet_name" value="DDF Terminology 2025-09-26" /></label>
-  <button type="submit">Upload & Reload</button>
+  <fieldset style="display:inline-block; padding:0.5em 1em;">
+    <legend>Upload Excel Workbook (.xls/.xlsx)</legend>
+    <label style="margin-left:1em;">File: <input type="file" name="file" accept=".xls,.xlsx" required></label>
+    <label>Sheet Name: <input type="text" name="sheet_name" placeholder="Enter name of worksheet..." size="28"></label>
+    <button type="submit" style="margin-left:1em;">Upload</button>
+  </fieldset>
 </form>
 <form method="get" action="/ui/ddf/terminology" style="margin-bottom:1em;">
   <label>Search substring: <input type="text" name="search" value="{{ search }}" /></label>
