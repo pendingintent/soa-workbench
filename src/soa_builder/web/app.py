@@ -4432,7 +4432,7 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
         )
     else:
         cur.execute(
-            "SELECT id, name, label, description, testrl, teenrl, order_index, NULL as element_id FROM element WHERE id=? AND soa_id=?",
+            "SELECT id, name, label, description, testrl, teenrl, order_index FROM element WHERE id=? AND soa_id=?",
             (element_id, soa_id),
         )
     row_b = cur.fetchone()
@@ -4446,7 +4446,7 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
             "testrl": row_b[4],
             "teenrl": row_b[5],
             "order_index": row_b[6],
-            "element_id": row_b[7],
+            "element_id": (row_b[7] if has_uid else None),
         }
     # Perform delete
     cur.execute("DELETE FROM element WHERE id=? AND soa_id=?", (element_id, soa_id))
