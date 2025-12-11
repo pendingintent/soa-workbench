@@ -344,6 +344,17 @@
           {% endfor %}
         </table>
       </div>
+    </details>
+    <details id="transition-rules-section" class="collapsible">
+      <summary>Transition Rules ({{ transition_rules|length }})</summary>
+      {% include 'transition_rules_list.html' %}
+      <form method="post" action="/ui/soa/{{ soa_id }}/add_transition_rule" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+        <input name="name" placeholder="Transition Rule Name" required style="flex:1;min-width:120px;" />
+        <input name="label" placeholder="Transition Rule Label" style="flex:1;min-width:110px;" />
+        <input name="description" placeholder="Transition Rule Description" style="flex:2;min-width:160px;" />
+        <input name="text" placeholder="Transition Rule text" required style="flex:2;min-width:160px;" />
+        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Transition Rule</button>
+      </form>
     </details>  
   </div>
   <div>
@@ -535,6 +546,7 @@ persistSection('arm-audit-section');
 persistSection('epoch-audit-section');
 persistSection('study-cells-section');
 persistSection('study-cell-audit-section');
+persistSection('transition-rules-section');
 
 // --- Drag & drop reorder utility ---
 function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){

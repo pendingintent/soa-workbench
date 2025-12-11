@@ -3351,6 +3351,28 @@ def ui_edit(request: Request, soa_id: int):
         pass
 
     study_cells = _list_study_cells(soa_id)
+
+    # Transition Rules list
+    conn_tr = _connect()
+    cur_tr = conn_tr.cursor()
+    cur_tr.execute(
+        "SELECT transition_rule_uid,name,label,description,text,order_index,created_at FROM transition_rule WHERE soa_id=? ORDER BY order_index",
+        (soa_id,),
+    )
+    transition_rules = [
+        dict(
+            transition_rule_uid=r[0],
+            name=r[1],
+            label=r[2],
+            description=r[3],
+            text=r[4],
+            order_index=r[5],
+            created_at=r[6],
+        )
+        for r in cur_tr.fetchall()
+    ]
+    conn_tr.close()
+
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -3382,6 +3404,7 @@ def ui_edit(request: Request, soa_id: int):
             "epoch_type_options": epoch_type_options,
             # Study Cells
             "study_cells": study_cells,
+            "transition_rules": transition_rules,
         },
     )
 
@@ -4861,7 +4884,54 @@ def ui_update_epoch(
 
 
 # --------------------------- Transition Rules ----------------------#
-@app.post("/ui/soa/{sod_id}/add_transition_rule", response_class=HTMLResponse)
+def _next_transition_rule_uid(soa_id: int) -> str:
+    """Compute next monotonically increasing TransitionRule_N for an SoA.
+    Considers existing transition_rule rows and any prior UIDs found in transition_rule_audit.
+    This guarantees we never reuse a lower N even after deletes.
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    max_n = 0
+    try:
+        cur.execute(
+            "SELECT transition_rule_uid FROM transition_rule WHERE soa_id=?",
+            (soa_id,),
+        )
+        for (uid,) in cur.fetchall():
+            if isinstance(uid, str) and uid.startswith("TransitionRule_"):
+                tail = uid.split("TransitionRule_")[-1]
+                if tail.isdigit():
+                    max_n = max(max_n, int(tail))
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            "SELECT before_json, after_json FROM transition_rule_audit WHERE soa_id=?",
+            (soa_id,),
+        )
+        for bjson, ajson in cur.fetchall():
+            for js in (bjson, ajson):
+                if not js:
+                    continue
+                try:
+                    obj = json.loads(js)
+                except Exception:
+                    obj = None
+                if isinstance(obj, dict):
+                    uid = obj.get("transition_rule_uid") or obj.get(
+                        "transition_rule_id"
+                    )
+                    if isinstance(uid, str) and uid.startswith("TransitionRule_"):
+                        tail = uid.split("TransitionRule_")[-1]
+                        if tail.isdigit():
+                            max_n = max(max_n, int(tail))
+    except Exception:
+        pass
+    conn.close()
+    return f"TransitionRule_{max_n + 1}"
+
+
+@app.post("/ui/soa/{soa_id}/add_transition_rule", response_class=HTMLResponse)
 def ui_add_transition_rule(
     request: Request,
     soa_id: int,
@@ -4870,44 +4940,33 @@ def ui_add_transition_rule(
     description: Optional[str] = Form(None),
     text: str = Form(...),
 ):
-    """Form handler to add a transitionRule."""
+    """Form handler to add a Transition Rule."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     name = (name or "").strip()
     if not name:
         raise HTTPException(400, "Name required")
+    text = (text or "").strip()
     if not text:
         raise HTTPException(400, "Text required")
     conn = _connect()
     cur = conn.cursor()
     # Determine next order index
     cur.execute(
-        "SELECT COALESCE(MAW(order_index), 0) FROM transition_rule WHERE soa_id=?",
+        "SELECT COALESCE(MAX(order_index), 0) FROM transition_rule WHERE soa_id=?",
         (soa_id,),
     )
     next_ord = (cur.fetchone() or [0])[0] + 1
     now = datetime.now(timezone.utc).isoformat()
-    transition_rule_identifier: Optional[str] = None
-    # Generate TransitionRule_<n> where n is the next unused integer for this SOA
-    cur.execute("SELECT id from transition_rule WHERE soa_id=?", (soa_id,))
-    existing_raw = [r[0] for r in cur.fetchall() if r[0]]
-    used_nums = set()
-    for val in existing_raw:
-        if val.startswith("TransitionRule_"):
-            tail = val.split("TransitionRule_")[-1]
-            if tail.isdigit():
-                used_nums.add(int(tail))
-    next_n = 1
-    while next_n in used_nums:
-        next_n += 1
-    transition_rule_identifier = f"TransitionRule_{next_n}"
+    # Generate TransitionRule_<n> monotonically increasing for this SOA
+    transition_rule_identifier = _next_transition_rule_uid(soa_id)
     cur.execute(
         """INSERT INTO transition_rule (soa_id,transition_rule_uid,name,label,description,text,order_index,created_at) VALUES (?,?,?,?,?,?,?,?)""",
         (
             soa_id,
             transition_rule_identifier,
             name,
-            (label or "").sript() or None,
+            (label or "").strip() or None,
             (description or "").strip() or None,
             text,
             next_ord,
@@ -4924,12 +4983,12 @@ def ui_add_transition_rule(
         before=None,
         after={
             "id": eid,
+            "transition_rule_uid": transition_rule_identifier,
             "name": name,
             "label": (label or "").strip() or None,
             "description": (description or "").strip() or None,
             "text": text,
             "order_index": next_ord,
-            "transition_rule_id": transition_rule_identifier,
         },
     )
     return HTMLResponse(
@@ -4937,63 +4996,62 @@ def ui_add_transition_rule(
     )
 
 
-@app.post("/ui/soa/{sod_id}/update_transition_rule", response_class=HTMLResponse)
+@app.post("/ui/soa/{soa_id}/update_transition_rule", response_class=HTMLResponse)
 def ui_transition_rule_update(
     request: Request,
     soa_id: int,
     transition_rule_uid: str = Form(...),
-    name: str = Form(...),
+    name: Optional[str] = Form(None),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    text: str = Form(...),
+    text: Optional[str] = Form(None),
 ):
-    """Form handler to update existing transition rule"""
+    """Form handler to update an existing Transition Rule."""
     if not _soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
+    # Verify exists and get id
     cur.execute(
-        "SELECT transition_rule_uid from transition_rule WHERE transition_rule_uid=? AND soa_id=?",
-        (transition_rule_uid, soa_id),
-    )
-    if not cur.fetchone():
-        conn.close()
-        raise HTTPException(404, "Transition Rule not found")
-    # Capture before
-    cur.execute(
-        "SELECT id,transition_rule_uid,name,label,description,text,order_index,create_at "
-        "FROM transition_rule WHERE soa_id=? AND transition_rule_uid=?",
+        "SELECT id,transition_rule_uid,name,label,description,text,order_index,created_at FROM transition_rule WHERE soa_id=? AND transition_rule_uid=?",
         (soa_id, transition_rule_uid),
     )
     b = cur.fetchone()
-    before = None
-    if b:
-        before = {
-            "id": b[0],
-            "transition_rule_uid": b[1],
-            "name": b[2],
-            "label": b[3],
-            "description": b[4],
-            "text": b[5],
-            "order_index": b[6],
-            "created_at": b[7],
-        }
-    cur.execute(
-        "UPDATE transition_rule SET name=?, label=?, description=?, text=? WHERE id=?",
-        (
-            (name or "").strip() or None,
-            (label or "").strip() or None,
-            (description or "").strip() or None,
-            (text or "").strip() or None,
-            id,
-        ),
-    )
-    conn.commit()
+    if not b:
+        conn.close()
+        raise HTTPException(404, "Transition Rule not found")
+    before = {
+        "id": b[0],
+        "transition_rule_uid": b[1],
+        "name": b[2],
+        "label": b[3],
+        "description": b[4],
+        "text": b[5],
+        "order_index": b[6],
+        "created_at": b[7],
+    }
+    sets = []
+    vals: list[Any] = []
+    if name is not None:
+        sets.append("name=?")
+        vals.append((name or "").strip() or None)
+    if label is not None:
+        sets.append("label=?")
+        vals.append((label or "").strip() or None)
+    if description is not None:
+        sets.append("description=?")
+        vals.append((description or "").strip() or None)
+    if text is not None:
+        sets.append("text=?")
+        vals.append((text or "").strip() or None)
+    if sets:
+        vals.append(before["id"])
+        cur.execute(f"UPDATE transition_rule SET {', '.join(sets)} WHERE id=?", vals)
+        conn.commit()
     # Fetch after
     cur.execute(
-        "SELECT id,name,label,description,text,order_index,created_at "
-        "FROM transition_rule WHERE id=?",
-        (id,),
+        "SELECT id,name,label,description,text,order_index,created_at FROM transition_rule WHERE id=?",
+        (before["id"],),
     )
     a = cur.fetchone()
     conn.close()
@@ -5013,12 +5071,37 @@ def ui_transition_rule_update(
     _record_transition_rule_audit(
         soa_id,
         "update",
-        id,
+        before["id"],
         before=before,
         after={**after, "updated_fields": updated_fields},
     )
+    # HTMX inline update: return refreshed list markup when requested
+    if request.headers.get("HX-Request") == "true":
+        conn_tr = _connect()
+        cur_tr = conn_tr.cursor()
+        cur_tr.execute(
+            "SELECT transition_rule_uid,name,label,description,text,order_index,created_at FROM transition_rule WHERE soa_id=? ORDER BY order_index",
+            (soa_id,),
+        )
+        transition_rules = [
+            dict(
+                transition_rule_uid=r[0],
+                name=r[1],
+                label=r[2],
+                description=r[3],
+                text=r[4],
+                order_index=r[5],
+                created_at=r[6],
+            )
+            for r in cur_tr.fetchall()
+        ]
+        conn_tr.close()
+        html = templates.get_template("transition_rules_list.html").render(
+            transition_rules=transition_rules, soa_id=soa_id
+        )
+        return HTMLResponse(html)
     return HTMLResponse(
-        f"<script>window.lcoation='/ui/soa/{int(soa_id)}/edit';</script>"
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
 
 
@@ -5031,6 +5114,24 @@ def ui_delete_transition_rule(
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
+    # Capture before for audit
+    cur.execute(
+        "SELECT id,transition_rule_uid,name,label,description,text,order_index,created_at FROM transition_rule WHERE soa_id=? AND transition_rule_uid=?",
+        (soa_id, transition_rule_uid),
+    )
+    b = cur.fetchone()
+    before = None
+    if b:
+        before = {
+            "id": b[0],
+            "transition_rule_uid": b[1],
+            "name": b[2],
+            "label": b[3],
+            "description": b[4],
+            "text": b[5],
+            "order_index": b[6],
+            "created_at": b[7],
+        }
     cur.execute(
         "DELETE FROM transition_rule WHERE transition_rule_uid=? AND soa_id=?",
         (transition_rule_uid, soa_id),
@@ -5040,10 +5141,35 @@ def ui_delete_transition_rule(
     _record_transition_rule_audit(
         soa_id,
         "delete",
-        transition_rule_uid,
-        before={"transitioin_rule_uid": transition_rule_uid},
+        before["id"] if before else None,
+        before=before,
         after=None,
     )
+    # HTMX inline update: return refreshed list markup when requested
+    if request.headers.get("HX-Request") == "true":
+        conn_tr = _connect()
+        cur_tr = conn_tr.cursor()
+        cur_tr.execute(
+            "SELECT transition_rule_uid,name,label,description,text,order_index,created_at FROM transition_rule WHERE soa_id=? ORDER BY order_index",
+            (soa_id,),
+        )
+        transition_rules = [
+            dict(
+                transition_rule_uid=r[0],
+                name=r[1],
+                label=r[2],
+                description=r[3],
+                text=r[4],
+                order_index=r[5],
+                created_at=r[6],
+            )
+            for r in cur_tr.fetchall()
+        ]
+        conn_tr.close()
+        html = templates.get_template("transition_rules_list.html").render(
+            transition_rules=transition_rules, soa_id=soa_id
+        )
+        return HTMLResponse(html)
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
