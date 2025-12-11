@@ -3008,6 +3008,36 @@ def ui_update_meta(
     )
 
 
+# Helper to fetch element audit rows with legacy-safe columns
+def _fetch_element_audits(soa_id: int):
+    conn_ea = _connect()
+    cur_ea = conn_ea.cursor()
+    cur_ea.execute("PRAGMA table_info(element_audit)")
+    cols = [row[1] for row in cur_ea.fetchall()]
+    want = [
+        "id",
+        "element_id",
+        "action",
+        "before_json",
+        "after_json",
+        "performed_at",
+    ]
+    available = [c for c in want if c in cols]
+    element_audits = []
+    if available:
+        select_sql = f"SELECT {', '.join(available)} FROM element_audit WHERE soa_id=? ORDER BY id DESC"
+        cur_ea.execute(select_sql, (soa_id,))
+        for r in cur_ea.fetchall():
+            item = {}
+            for i, c in enumerate(available):
+                item[c] = r[i]
+            for k in want:
+                item.setdefault(k, None)
+            element_audits.append(item)
+    conn_ea.close()
+    return element_audits
+
+
 @app.get("/ui/soa/{soa_id}/edit", response_class=HTMLResponse)
 def ui_edit(request: Request, soa_id: int):
     """Render edit HTML page for an SoA."""
@@ -3357,29 +3387,7 @@ def ui_edit(request: Request, soa_id: int):
     conn_tr.close()
 
     # Element audit list
-    conn_ea = _connect()
-    cur_ea = conn_ea.cursor()
-    # Handle legacy schemas gracefully by detecting available columns
-    cur_ea.execute("PRAGMA table_info(element_audit)")
-    cols = [row[1] for row in cur_ea.fetchall()]  # row[1] is column name
-    want = ["id", "element_id", "action", "before_json", "after_json", "performed_at"]
-    available = [c for c in want if c in cols]
-    if not available:
-        element_audits = []
-    else:
-        select_sql = f"SELECT {', '.join(available)} FROM element_audit WHERE soa_id=? ORDER BY id DESC"
-        cur_ea.execute(select_sql, (soa_id,))
-        rows = cur_ea.fetchall()
-        element_audits = []
-        for r in rows:
-            item = {}
-            for i, c in enumerate(available):
-                item[c] = r[i]
-            # Ensure keys for template even if missing
-            for k in want:
-                item.setdefault(k, None)
-            element_audits.append(item)
-    conn_ea.close()
+    element_audits = _fetch_element_audits(soa_id)
 
     return templates.TemplateResponse(
         request,
