@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
-from ..db import _connect
+from ..utils import soa_exists
 
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
@@ -15,18 +15,12 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 router = APIRouter()
 
 
-def _soa_exists(soa_id: int) -> bool:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM soa WHERE id=?", (soa_id,))
-    r = cur.fetchone()
-    conn.close()
-    return r is not None
+# Removed local _soa_exists; using shared utils.soa_exists
 
 
 @router.get("/soa/{soa_id}/rollback_audit")
 def get_rollback_audit_json(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     from ..app import _list_rollback_audit  # type: ignore
 
@@ -35,7 +29,7 @@ def get_rollback_audit_json(soa_id: int):
 
 @router.get("/soa/{soa_id}/reorder_audit")
 def get_reorder_audit_json(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     from ..app import _list_reorder_audit  # type: ignore
 
@@ -44,7 +38,7 @@ def get_reorder_audit_json(soa_id: int):
 
 @router.get("/ui/soa/{soa_id}/rollback_audit", response_class=HTMLResponse)
 def ui_rollback_audit(request: Request, soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     from ..app import _list_rollback_audit  # type: ignore
 
@@ -57,7 +51,7 @@ def ui_rollback_audit(request: Request, soa_id: int):
 
 @router.get("/ui/soa/{soa_id}/reorder_audit", response_class=HTMLResponse)
 def ui_reorder_audit(request: Request, soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     from ..app import _list_reorder_audit  # type: ignore
 
@@ -70,7 +64,7 @@ def ui_reorder_audit(request: Request, soa_id: int):
 
 @router.get("/soa/{soa_id}/rollback_audit/export/xlsx")
 def export_rollback_audit_xlsx(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     from ..app import _list_rollback_audit  # type: ignore
 
@@ -103,7 +97,7 @@ def export_rollback_audit_xlsx(soa_id: int):
 
 @router.get("/soa/{soa_id}/reorder_audit/export/xlsx")
 def export_reorder_audit_xlsx(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     from ..app import _list_reorder_audit  # type: ignore
 

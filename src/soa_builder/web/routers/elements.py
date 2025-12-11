@@ -7,18 +7,13 @@ from fastapi.responses import JSONResponse
 
 from ..audit import _record_element_audit
 from ..db import _connect
+from ..utils import soa_exists
 from ..schemas import ElementCreate, ElementUpdate
 
 router = APIRouter(prefix="/soa/{soa_id}")
 
 
-def _soa_exists(soa_id: int) -> bool:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM soa WHERE id=?", (soa_id,))
-    ok = cur.fetchone() is not None
-    conn.close()
-    return ok
+"""Shared SOA existence check imported from utils.so a_exists"""
 
 
 def _next_element_identifier(soa_id: int) -> str:
@@ -85,7 +80,7 @@ def _get_element_uid(soa_id: int, row_id: int) -> Optional[str]:
 
 @router.get("/elements", response_class=JSONResponse)
 def list_elements(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -113,7 +108,7 @@ def list_elements(soa_id: int):
 
 @router.get("/elements/{element_id}", response_class=JSONResponse)
 def get_element(soa_id: int, element_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -141,7 +136,7 @@ def get_element(soa_id: int, element_id: int):
 
 @router.get("/element_audit", response_class=JSONResponse)
 def list_element_audit(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -175,7 +170,7 @@ def list_element_audit(soa_id: int):
 
 @router.post("/elements", response_class=JSONResponse, status_code=201)
 def create_element(soa_id: int, payload: ElementCreate):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     name = (payload.name or "").strip()
     if not name:
@@ -244,7 +239,7 @@ def create_element(soa_id: int, payload: ElementCreate):
 
 @router.patch("/elements/{element_id}", response_class=JSONResponse)
 def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -319,7 +314,7 @@ def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
 
 @router.delete("/elements/{element_id}", response_class=JSONResponse)
 def delete_element(soa_id: int, element_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -357,7 +352,7 @@ def delete_element(soa_id: int, element_id: int):
 
 @router.post("/elements/reorder", response_class=JSONResponse)
 def reorder_elements_api(soa_id: int, order: List[int]):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not order:
         raise HTTPException(400, "Order list required")

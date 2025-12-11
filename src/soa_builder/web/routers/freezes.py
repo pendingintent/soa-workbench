@@ -5,6 +5,7 @@ import sqlite3
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from ..utils import soa_exists
 
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
@@ -17,13 +18,7 @@ def _connect():
     return sqlite3.connect(DB_PATH)
 
 
-def _soa_exists(soa_id: int) -> bool:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM soa WHERE id=?", (soa_id,))
-    r = cur.fetchone()
-    conn.close()
-    return r is not None
+# Removed local _soa_exists; using shared utils.soa_exists
 
 
 # Dynamic helper imports inside endpoint bodies avoid circular import at module load.
@@ -31,7 +26,7 @@ def _soa_exists(soa_id: int) -> bool:
 
 @router.post("/ui/soa/{soa_id}/freeze", response_class=HTMLResponse)
 def ui_freeze_soa(request: Request, soa_id: int, version_label: str = Form("")):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     try:
         from ..app import _create_freeze  # type: ignore
@@ -52,7 +47,7 @@ def ui_freeze_soa(request: Request, soa_id: int, version_label: str = Form("")):
 
 @router.get("/soa/{soa_id}/freeze/{freeze_id}")
 def get_freeze(soa_id: int, freeze_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()

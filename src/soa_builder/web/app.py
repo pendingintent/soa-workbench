@@ -62,6 +62,7 @@ from .migrate_database import (
 from .routers import activities as activities_router
 from .routers import arms as arms_router
 from .routers import elements as elements_router
+from .routers.elements import _next_element_identifier
 from .routers import epochs as epochs_router
 from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
@@ -4561,45 +4562,7 @@ def _next_study_cell_uid(cur, soa_id: int) -> str:
     return f"StudyCell_{max_n + 1}"
 
 
-def _next_element_identifier(soa_id: int) -> str:
-    """Compute next monotonically increasing StudyElement_N for an SoA.
-    Scans current element rows and element_audit snapshots to avoid reusing numbers after deletes.
-    """
-    conn = _connect()
-    cur = conn.cursor()
-    max_n = 0
-    try:
-        cur.execute("SELECT element_id FROM element WHERE soa_id=?", (soa_id,))
-        for (eid,) in cur.fetchall():
-            if isinstance(eid, str) and eid.startswith("StudyElement_"):
-                tail = eid.split("StudyElement_")[-1]
-                if tail.isdigit():
-                    max_n = max(max_n, int(tail))
-    except Exception:
-        pass
-    try:
-        cur.execute(
-            "SELECT before_json, after_json FROM element_audit WHERE soa_id=?",
-            (soa_id,),
-        )
-        for bjson, ajson in cur.fetchall():
-            for js in (bjson, ajson):
-                if not js:
-                    continue
-                try:
-                    obj = json.loads(js)
-                except Exception:
-                    obj = None
-                if isinstance(obj, dict):
-                    val = obj.get("element_id")
-                    if isinstance(val, str) and val.startswith("StudyElement_"):
-                        tail = val.split("StudyElement_")[-1]
-                        if tail.isdigit():
-                            max_n = max(max_n, int(tail))
-    except Exception:
-        pass
-    conn.close()
-    return f"StudyElement_{max_n + 1}"
+# _next_element_identifier is defined in routers/elements.py; imported above
 
 
 @app.post("/ui/soa/{soa_id}/add_study_cell", response_class=HTMLResponse)

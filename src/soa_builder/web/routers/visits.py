@@ -5,23 +5,18 @@ from fastapi.responses import JSONResponse
 
 from ..audit import _record_reorder_audit, _record_visit_audit
 from ..db import _connect
+from ..utils import soa_exists
 from ..schemas import VisitCreate, VisitUpdate
 
 router = APIRouter(prefix="/soa/{soa_id}")
 
 
-def _soa_exists(soa_id: int) -> bool:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM soa WHERE id=?", (soa_id,))
-    ok = cur.fetchone() is not None
-    conn.close()
-    return ok
+# Removed local _soa_exists; using shared utils.soa_exists
 
 
 @router.get("/visits", response_class=JSONResponse)
 def list_visits(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -45,7 +40,7 @@ def list_visits(soa_id: int):
 
 @router.get("/visits/{visit_id}", response_class=JSONResponse)
 def get_visit(soa_id: int, visit_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -69,7 +64,7 @@ def get_visit(soa_id: int, visit_id: int):
 
 @router.post("/visits", response_class=JSONResponse)
 def add_visit(soa_id: int, payload: VisitCreate):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -108,7 +103,7 @@ def add_visit(soa_id: int, payload: VisitCreate):
 
 @router.patch("/visits/{visit_id}", response_class=JSONResponse)
 def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -178,7 +173,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
 
 @router.post("/visits/reorder", response_class=JSONResponse)
 def reorder_visits_api(soa_id: int, order: List[int]):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not order:
         raise HTTPException(400, "Order list required")

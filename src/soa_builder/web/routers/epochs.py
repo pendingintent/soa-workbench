@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from ..schemas import EpochCreate, EpochUpdate
+from ..utils import soa_exists
 
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 
@@ -16,15 +17,6 @@ router = APIRouter()
 
 def _connect():
     return sqlite3.connect(DB_PATH)
-
-
-def _soa_exists(soa_id: int) -> bool:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM soa WHERE id=?", (soa_id,))
-    row = cur.fetchone()
-    conn.close()
-    return row is not None
 
 
 def _record_epoch_audit(
@@ -56,7 +48,7 @@ def _record_epoch_audit(
 
 @router.post("/soa/{soa_id}/epochs")
 def add_epoch(soa_id: int, payload: EpochCreate):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -99,7 +91,7 @@ def add_epoch(soa_id: int, payload: EpochCreate):
 
 @router.get("/soa/{soa_id}/epochs")
 def list_epochs(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -124,7 +116,7 @@ def list_epochs(soa_id: int):
 
 @router.get("/soa/{soa_id}/epochs/{epoch_id}")
 def get_epoch(soa_id: int, epoch_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -149,7 +141,7 @@ def get_epoch(soa_id: int, epoch_id: int):
 
 @router.post("/soa/{soa_id}/epochs/{epoch_id}/metadata")
 def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -223,7 +215,7 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
 
 @router.post("/soa/{soa_id}/epochs/reorder", response_class=JSONResponse)
 def reorder_epochs_api(soa_id: int, order: List[int]):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not order:
         raise HTTPException(400, "Order list required")
