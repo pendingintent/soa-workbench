@@ -201,7 +201,7 @@ def _init_db():
         """CREATE TABLE IF NOT EXISTS transition_rule (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             soa_id INTEGER NOT NULL,
-            transition_rule_uid TEXT NOT NULL,  --immutable TransitionRule_N identifier uniquie within SOA
+            transition_rule_uid TEXT NOT NULL,  --immutable TransitionRule_N identifier unique within SOA
             name TEXT NOT NULL,
             label TEXT,
             description TEXT,
