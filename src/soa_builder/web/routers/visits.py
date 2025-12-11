@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, HTTPException
+import logging
 from fastapi.responses import JSONResponse
 
 from ..audit import _record_reorder_audit, _record_visit_audit
@@ -9,6 +10,7 @@ from ..utils import soa_exists
 from ..schemas import VisitCreate, VisitUpdate
 
 router = APIRouter(prefix="/soa/{soa_id}")
+logger = logging.getLogger("soa_builder.web.routers.visits")
 
 
 # Removed local _soa_exists; using shared utils.soa_exists

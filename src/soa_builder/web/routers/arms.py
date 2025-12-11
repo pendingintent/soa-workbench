@@ -10,6 +10,7 @@ from ..schemas import ArmCreate, ArmUpdate
 from ..utils import soa_exists
 
 router = APIRouter(prefix="/soa/{soa_id}")
+logger = logging.getLogger("soa_builder.web.routers.arms")
 
 
 # Removed local _soa_exists; using shared utils.soa_exists
@@ -67,7 +68,7 @@ def create_arm(soa_id: int, payload: ArmCreate):
             if tail.isdigit():
                 used_nums.add(int(tail))
             else:
-                logging.getLogger("soa_builder.concepts").warning(
+                logger.warning(
                     "Invalid arm_uid format encountered (ignored for numbering): %s",
                     uid,
                 )

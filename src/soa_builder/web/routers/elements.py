@@ -12,6 +12,7 @@ from ..utils import soa_exists
 from ..schemas import ElementCreate, ElementUpdate
 
 router = APIRouter(prefix="/soa/{soa_id}")
+logger = logging.getLogger("soa_builder.web.routers.elements")
 
 
 """Shared SOA existence check imported from utils.soa_exists"""
@@ -32,7 +33,7 @@ def _next_element_identifier(soa_id: int) -> str:
                 if tail.isdigit():
                     max_n = max(max_n, int(tail))
     except Exception as e:
-        logging.getLogger("soa_builder.elements").exception(
+        logger.exception(
             "_next_element_identifier scan elements failed for soa_id=%s: %s",
             soa_id,
             e,
@@ -49,7 +50,7 @@ def _next_element_identifier(soa_id: int) -> str:
                 try:
                     obj = json.loads(js)
                 except Exception as e:
-                    logging.getLogger("soa_builder.elements").debug(
+                    logger.debug(
                         "_next_element_identifier JSON parse failed soa_id=%s: %s",
                         soa_id,
                         e,
@@ -62,7 +63,7 @@ def _next_element_identifier(soa_id: int) -> str:
                         if tail.isdigit():
                             max_n = max(max_n, int(tail))
     except Exception as e:
-        logging.getLogger("soa_builder.elements").exception(
+        logger.exception(
             "_next_element_identifier scan element_audit failed for soa_id=%s: %s",
             soa_id,
             e,
@@ -89,7 +90,7 @@ def _get_element_uid(soa_id: int, row_id: int) -> Optional[str]:
         conn.close()
         return r[0] if r else None
     except Exception as e:
-        logging.getLogger("soa_builder.elements").exception(
+        logger.exception(
             "_get_element_uid failed for soa_id=%s row_id=%s: %s", soa_id, row_id, e
         )
         return None
@@ -165,11 +166,17 @@ def list_element_audit(soa_id: int):
     for r in cur.fetchall():
         try:
             before = json.loads(r[3]) if r[3] else None
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "list_element_audit before JSON parse failed soa_id=%s: %s", soa_id, e
+            )
             before = None
         try:
             after = json.loads(r[4]) if r[4] else None
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "list_element_audit after JSON parse failed soa_id=%s: %s", soa_id, e
+            )
             after = None
         rows.append(
             {

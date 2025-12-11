@@ -14,6 +14,7 @@ from ..utils import soa_exists
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 
 router = APIRouter()
+logger = logging.getLogger("soa_builder.web.routers.epochs")
 
 
 def _connect():
@@ -44,7 +45,7 @@ def _record_epoch_audit(
         conn.commit()
         conn.close()
     except Exception as e:
-        logging.getLogger("soa_builder.epochs").exception(
+        logger.exception(
             "_record_epoch_audit failed soa_id=%s epoch_id=%s action=%s: %s",
             soa_id,
             epoch_id,
@@ -178,7 +179,7 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
         if before is not None:
             before["type"] = tr[0] if tr else None
     except Exception as e:
-        logging.getLogger("soa_builder.epochs").debug(
+        logger.debug(
             "update_epoch_metadata type fetch failed soa_id=%s epoch_id=%s: %s",
             soa_id,
             epoch_id,

@@ -79,6 +79,21 @@ from .utils import (
 # Audit functions
 from .audit import _record_element_audit
 
+
+def _configure_logging():
+    level = logging.INFO
+    if os.environ.get("SOA_BUILDER_DEBUG") == "1":
+        level = logging.DEBUG
+    logging.basicConfig(
+        level=level, format="%(asctime)s %(name)s %(levelname)s: %(message)s"
+    )
+    # Quiet noisy libraries if present
+    logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+    return logging.getLogger("soa_builder")
+
+
+logger = _configure_logging()
+
 load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 NORMALIZED_ROOT = os.environ.get("SOA_BUILDER_NORMALIZED_ROOT", "normalized")

@@ -1,4 +1,5 @@
 import json
+import logging
 
 # Lightweight concept fetcher to avoid circular import with app.py
 import os
@@ -15,6 +16,9 @@ from ..utils import soa_exists
 
 _ACT_CONCEPT_CACHE = {"data": None, "fetched_at": 0}
 _ACT_CONCEPT_TTL = 60 * 60
+
+router = APIRouter(prefix="/soa/{soa_id}")
+logger = logging.getLogger("soa_builder.web.routers.activities")
 
 
 def fetch_biomedical_concepts(force: bool = False):
@@ -54,7 +58,8 @@ def fetch_biomedical_concepts(force: bool = False):
                 if code:
                     concepts.append({"code": code, "title": title})
             return concepts
-        except Exception:
+        except Exception as e:
+            logger.debug("fetch_biomedical_concepts override JSON parse failed: %s", e)
             return []
     now = time.time()
     if (
@@ -67,9 +72,6 @@ def fetch_biomedical_concepts(force: bool = False):
     _ACT_CONCEPT_CACHE["data"] = []
     _ACT_CONCEPT_CACHE["fetched_at"] = now
     return []
-
-
-router = APIRouter(prefix="/soa/{soa_id}")
 
 
 # Removed local _soa_exists; using shared utils.soa_exists

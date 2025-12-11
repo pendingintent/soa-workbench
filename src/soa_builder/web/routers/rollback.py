@@ -1,5 +1,6 @@
 import io
 import os
+import logging
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request
@@ -13,6 +14,7 @@ TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templa
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 router = APIRouter()
+logger = logging.getLogger("soa_builder.web.routers.rollback")
 
 
 # Removed local _soa_exists; using shared utils.soa_exists
@@ -104,23 +106,31 @@ def export_reorder_audit_xlsx(soa_id: int):
     rows = _list_reorder_audit(soa_id)
     flat = []
     for r in rows:
-        moves = []
-        old_pos = {vid: idx + 1 for idx, vid in enumerate(r.get("old_order", []))}
-        new_order = r.get("new_order", [])
-        for idx, vid in enumerate(new_order, start=1):
-            op = old_pos.get(vid)
-            if op and op != idx:
-                moves.append(f"{vid}:{op}->{idx}")
-        flat.append(
-            {
-                "id": r.get("id"),
-                "entity_type": r.get("entity_type"),
-                "performed_at": r.get("performed_at"),
-                "old_order": ",".join(map(str, r.get("old_order", []))),
-                "new_order": ",".join(map(str, new_order)),
-                "moves": "; ".join(moves) if moves else "",
-            }
-        )
+        try:
+            moves = []
+            old_pos = {vid: idx + 1 for idx, vid in enumerate(r.get("old_order", []))}
+            new_order = r.get("new_order", [])
+            for idx, vid in enumerate(new_order, start=1):
+                op = old_pos.get(vid)
+                if op and op != idx:
+                    moves.append(f"{vid}:{op}->{idx}")
+            flat.append(
+                {
+                    "id": r.get("id"),
+                    "entity_type": r.get("entity_type"),
+                    "performed_at": r.get("performed_at"),
+                    "old_order": ",".join(map(str, r.get("old_order", []))),
+                    "new_order": ",".join(map(str, new_order)),
+                    "moves": "; ".join(moves) if moves else "",
+                }
+            )
+        except Exception as e:
+            logger.debug(
+                "export_reorder_audit_xlsx flatten failure soa_id=%s row_id=%s: %s",
+                soa_id,
+                r.get("id"),
+                e,
+            )
     df = pd.DataFrame(flat)
     if df.empty:
         df = pd.DataFrame(

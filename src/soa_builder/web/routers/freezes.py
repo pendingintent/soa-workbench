@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sqlite3
 
@@ -12,6 +13,7 @@ TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templa
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 router = APIRouter()
+logger = logging.getLogger("soa_builder.web.routers.freezes")
 
 
 def _connect():
@@ -61,7 +63,13 @@ def get_freeze(soa_id: int, freeze_id: int):
         raise HTTPException(404, "Freeze not found")
     try:
         data = json.loads(row[0])
-    except Exception:
+    except Exception as e:
+        logger.exception(
+            "get_freeze JSON decode failed soa_id=%s freeze_id=%s: %s",
+            soa_id,
+            freeze_id,
+            e,
+        )
         data = {"error": "Corrupt snapshot"}
     return JSONResponse(data)
 
