@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -30,8 +31,12 @@ def _next_element_identifier(soa_id: int) -> str:
                 tail = eid.split("StudyElement_")[-1]
                 if tail.isdigit():
                     max_n = max(max_n, int(tail))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger("soa_builder.elements").exception(
+            "_next_element_identifier scan elements failed for soa_id=%s: %s",
+            soa_id,
+            e,
+        )
     try:
         cur.execute(
             "SELECT before_json, after_json FROM element_audit WHERE soa_id=?",
@@ -43,7 +48,12 @@ def _next_element_identifier(soa_id: int) -> str:
                     continue
                 try:
                     obj = json.loads(js)
-                except Exception:
+                except Exception as e:
+                    logging.getLogger("soa_builder.elements").debug(
+                        "_next_element_identifier JSON parse failed soa_id=%s: %s",
+                        soa_id,
+                        e,
+                    )
                     obj = None
                 if isinstance(obj, dict):
                     val = obj.get("element_id")
@@ -51,8 +61,12 @@ def _next_element_identifier(soa_id: int) -> str:
                         tail = val.split("StudyElement_")[-1]
                         if tail.isdigit():
                             max_n = max(max_n, int(tail))
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger("soa_builder.elements").exception(
+            "_next_element_identifier scan element_audit failed for soa_id=%s: %s",
+            soa_id,
+            e,
+        )
     conn.close()
     return f"StudyElement_{max_n + 1}"
 
@@ -74,7 +88,10 @@ def _get_element_uid(soa_id: int, row_id: int) -> Optional[str]:
         r = cur.fetchone()
         conn.close()
         return r[0] if r else None
-    except Exception:
+    except Exception as e:
+        logging.getLogger("soa_builder.elements").exception(
+            "_get_element_uid failed for soa_id=%s row_id=%s: %s", soa_id, row_id, e
+        )
         return None
 
 

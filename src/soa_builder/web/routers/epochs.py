@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -42,8 +43,14 @@ def _record_epoch_audit(
         )
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger("soa_builder.epochs").exception(
+            "_record_epoch_audit failed soa_id=%s epoch_id=%s action=%s: %s",
+            soa_id,
+            epoch_id,
+            action,
+            e,
+        )
 
 
 @router.post("/soa/{soa_id}/epochs")
@@ -170,8 +177,13 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
         tr = cur.fetchone()
         if before is not None:
             before["type"] = tr[0] if tr else None
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger("soa_builder.epochs").debug(
+            "update_epoch_metadata type fetch failed soa_id=%s epoch_id=%s: %s",
+            soa_id,
+            epoch_id,
+            e,
+        )
     sets = []
     vals = []
     if payload.name is not None:
