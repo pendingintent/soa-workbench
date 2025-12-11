@@ -70,7 +70,11 @@ from .routers import visits as visits_router
 from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
 from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
-from .utils import get_next_code_uid as _get_next_code_uid, load_epoch_type_options
+from .utils import (
+    get_next_code_uid as _get_next_code_uid,
+    load_epoch_type_options,
+    soa_exists,
+)
 
 # Audit functions
 from .audit import _record_element_audit
@@ -299,7 +303,7 @@ app.include_router(rollback_router.router)
 @app.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
 def reorder_visits_api(soa_id: int, order: List[int]):
     """JSON reorder endpoint for visits (parity with elements). Body is array of visit IDs in desired order."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not order:
         raise HTTPException(400, "Order list required")
@@ -323,7 +327,7 @@ def reorder_visits_api(soa_id: int, order: List[int]):
 @app.post("/soa/{soa_id}/activities/reorder", response_class=JSONResponse)
 def reorder_activities_api(soa_id: int, order: List[int]):
     """JSON reorder endpoint for activities."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not order:
         raise HTTPException(400, "Order list required")
@@ -429,7 +433,7 @@ def _get_freeze(soa_id: int, freeze_id: int):
 
 
 def _create_freeze(soa_id: int, version_label: Optional[str]):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     # Auto version label if not provided
     conn = _connect()
@@ -983,13 +987,7 @@ class MatrixImport(BaseModel):
 # --------------------- Helpers ---------------------
 
 
-def _soa_exists(soa_id: int) -> bool:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM soa WHERE id=?", (soa_id,))
-    row = cur.fetchone()
-    conn.close()
-    return row is not None
+# Use shared utils.soa_exists instead of local helper
 
 
 def _fetch_matrix(soa_id: int):
@@ -1733,7 +1731,7 @@ app.router.lifespan_context = lifespan
 @app.post("/ui/soa/{soa_id}/concepts_refresh")
 def ui_refresh_concepts(request: Request, soa_id: int):
     """Fetch Biomedical Concepts; refresh cache"""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     fetch_biomedical_concepts(force=True)
     # If HTMX request, use HX-Redirect header for clean redirect without injecting script
@@ -1751,7 +1749,7 @@ def ui_refresh_concepts(request: Request, soa_id: int):
 @app.get("/soa/{soa_id}/reorder_audit/export/csv")
 def export_reorder_audit_csv(soa_id: int):
     """Export reorder audit history to CSV."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     rows = _list_reorder_audit(soa_id)
     # Prepare CSV lines
@@ -1937,7 +1935,7 @@ def create_soa(payload: SOACreate):
 @app.get("/soa/{soa_id}")
 def get_soa(soa_id: int):
     """Return SoA by ID"""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     visits, activities, cells = _fetch_matrix(soa_id)
     # Fetch epochs
@@ -1989,7 +1987,7 @@ def get_soa(soa_id: int):
 @app.post("/soa/{soa_id}/metadata")
 def update_soa_metadata(soa_id: int, payload: SOAMetadataUpdate):
     """Update metadata for SoA/Study."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -2052,7 +2050,7 @@ def update_soa_metadata(soa_id: int, payload: SOAMetadataUpdate):
 @app.post("/soa/{soa_id}/activities/{activity_id}/concepts")
 def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate):
     """Update Biomedical Concept assigned to an Activity."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -2102,7 +2100,7 @@ def ui_add_activity_concept(
     """Add Biomedical Concept to an Activity."""
     if not activity_id:
         raise HTTPException(400, "Missing activity_id")
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     code = concept_code.strip()
     if not code:
@@ -2150,7 +2148,7 @@ def ui_remove_activity_concept(
     """Remove Biomedical Concept from Activity."""
     if not activity_id:
         raise HTTPException(400, "Missing activity_id")
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     code = concept_code.strip()
     if not code:
@@ -2183,7 +2181,7 @@ def ui_remove_activity_concept(
 @app.post("/soa/{soa_id}/cells")
 def set_cell(soa_id: int, payload: CellCreate):
     """Set 'X' in SoA Matrix cell."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -2220,7 +2218,7 @@ def set_cell(soa_id: int, payload: CellCreate):
 @app.get("/soa/{soa_id}/matrix")
 def get_matrix(soa_id: int):
     """Return SoA Matrix for Visits, Activities and assigned Matrix Cells."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     visits, activities, cells = _fetch_matrix(soa_id)
     return {"visits": visits, "activities": activities, "cells": cells}
@@ -2229,7 +2227,7 @@ def get_matrix(soa_id: int):
 @app.get("/soa/{soa_id}/export/xlsx")
 def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = None):
     """Export SoA Matrix to XLSX."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     visits, activities, cells = _fetch_matrix(soa_id)
     if not visits or not activities:
@@ -2448,7 +2446,7 @@ def export_pdf(soa_id: int):
     The PDF is intentionally simple and produced without external dependencies to avoid
     introducing new packages. It uses a single page with monospaced layout style commands.
     """
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -2617,7 +2615,7 @@ def export_pdf(soa_id: int):
 
 @app.get("/soa/{soa_id}/normalized")
 def get_normalized(soa_id: int):
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     csv_path = _generate_wide_csv(soa_id)
     out_dir = os.path.join(NORMALIZED_ROOT, f"soa_{soa_id}")
@@ -2631,7 +2629,7 @@ def get_normalized(soa_id: int):
 @app.post("/soa/{soa_id}/matrix/import")
 def import_matrix(soa_id: int, payload: MatrixImport):
     """Import SoA Matrix."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not payload.visits:
         raise HTTPException(400, "visits list empty")
@@ -2730,7 +2728,7 @@ def _reindex(table: str, soa_id: int):
 @app.delete("/soa/{soa_id}/visits/{visit_id}")
 def delete_visit(soa_id: int, visit_id: int):
     """Delete Visit from an SoA."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -2768,7 +2766,7 @@ def delete_visit(soa_id: int, visit_id: int):
 @app.delete("/soa/{soa_id}/activities/{activity_id}")
 def delete_activity(soa_id: int, activity_id: int):
     """Delete Activity from an SoA."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -2799,7 +2797,7 @@ def delete_activity(soa_id: int, activity_id: int):
 @app.delete("/soa/{soa_id}/epochs/{epoch_id}")
 def delete_epoch(soa_id: int, epoch_id: int):
     """Delete an Epoch from an SoA."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -2882,7 +2880,7 @@ def ui_index(request: Request):
 @app.post("/ui/soa/{soa_id}/add_activity", response_class=HTMLResponse)
 def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
     """Add an Activity to an SoA."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     nm = (name or "").strip()
     if not nm:
@@ -2962,7 +2960,7 @@ def ui_update_meta(
     study_description: Optional[str] = Form(None),
 ):
     """Update the metadata for an SoA."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -3041,7 +3039,7 @@ def _fetch_element_audits(soa_id: int):
 @app.get("/ui/soa/{soa_id}/edit", response_class=HTMLResponse)
 def ui_edit(request: Request, soa_id: int):
     """Render edit HTML page for an SoA."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     visits, activities, cells = _fetch_matrix(soa_id)
     # Epochs list
@@ -3703,7 +3701,7 @@ def ui_add_visit(
     Accepts either form field name `epoch_id_raw` (new) or `epoch_id` (legacy).
     Blank selection is treated as None without triggering 422 validation.
     """
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     # Determine which raw epoch string was provided
     provided = (epoch_id_raw or "").strip() or (epoch_id or "").strip()
@@ -3770,7 +3768,7 @@ async def ui_add_arm(
     element_id: Optional[str] = Form(None),
 ):
     """Form handler to create a new Arm."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     # Accept blank/empty element selection gracefully. The form may submit "" which would 422 with Optional[int].
     eid = int(element_id) if element_id and element_id.strip().isdigit() else None
@@ -3931,7 +3929,7 @@ async def ui_update_arm(
     element_id: Optional[str] = Form(None),
 ):
     """Form handler to update an existing Arm."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
 
     # Read raw form to capture field names with hyphens: 'arm-type' and 'data-origin-type'
@@ -4199,7 +4197,7 @@ def ui_delete_arm(request: Request, soa_id: int, arm_id: int = Form(...)):
 @app.post("/ui/soa/{soa_id}/reorder_arms", response_class=HTMLResponse)
 def ui_reorder_arms(request: Request, soa_id: int, order: str = Form("")):
     """Form handler to reorder existing Arms."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
     if not ids:
@@ -4239,7 +4237,7 @@ def ui_add_element(
     teenrl: Optional[str] = Form(None),
 ):
     """Form handler to add an element."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     name = (name or "").strip()
     if not name:
@@ -4326,7 +4324,7 @@ def ui_update_element(
     teenrl: Optional[str] = Form(None),
 ):
     """Form handler to update an existing Element."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -4417,7 +4415,7 @@ def ui_update_element(
 @app.post("/ui/soa/{soa_id}/delete_element", response_class=HTMLResponse)
 def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)):
     """Form handler to delete an existing Element."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -4499,7 +4497,7 @@ def ui_add_study_cell(
 
     Duplicate prevention enforced on (soa_id, arm_uid, epoch_uid, element_uid).
     """
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     arm_uid = (arm_uid or "").strip()
     epoch_uid = (epoch_uid or "").strip()
@@ -4596,7 +4594,7 @@ def ui_update_study_cell(
 
     Duplicate prevention enforced; if update causes a duplicate, no change is applied.
     """
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -4660,7 +4658,7 @@ def ui_update_study_cell(
 @app.post("/ui/soa/{soa_id}/delete_study_cell", response_class=HTMLResponse)
 def ui_delete_study_cell(request: Request, soa_id: int, study_cell_id: int = Form(...)):
     """Delete a Study Cell by id."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -4710,7 +4708,7 @@ def ui_add_epoch(
     epoch_type_submission_value: Optional[str] = Form(None),
 ):
     """Form handler to add an Epoch."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -4799,7 +4797,7 @@ def ui_update_epoch(
     epoch_type_submission_value: Optional[str] = Form(None),
 ):
     """Form handler to update an existing Epoch."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -5004,7 +5002,7 @@ def ui_add_transition_rule(
     text: str = Form(...),
 ):
     """Form handler to add a Transition Rule."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     name = (name or "").strip()
     if not name:
@@ -5070,7 +5068,7 @@ def ui_transition_rule_update(
     text: Optional[str] = Form(None),
 ):
     """Form handler to update an existing Transition Rule."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -5173,7 +5171,7 @@ def ui_delete_transition_rule(
     request: Request, soa_id: int, transition_rule_uid: str = Form(...)
 ):
     """Form handler to delete a transition rule"""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
@@ -5288,7 +5286,7 @@ def ui_activity_concepts_cell(
     # surface a clear 400 error rather than proceeding and causing confusing downstream behavior.
     if not activity_id:
         raise HTTPException(status_code=400, detail="Missing activity_id")
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     concepts = fetch_biomedical_concepts()
     conn = _connect()
@@ -5336,7 +5334,7 @@ def ui_toggle_cell(
 ):
     """Toggle logic: blank -> X, X -> blank (delete row). Returns updated <td> snippet with next action encoded.
     This avoids stale hx-vals attributes after a partial swap."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     # Determine current status
     conn = _connect()
@@ -5403,7 +5401,7 @@ def ui_set_visit_epoch(
     epoch_id: str = Form(""),  # legacy field name used by template select
 ):
     """Form handler to associate an Epoch with a Visit/Encounter."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     # Determine provided raw value (prefer epoch_id_raw if non-blank)
     raw_val = (epoch_id_raw or "").strip() or (epoch_id or "").strip()
@@ -5463,7 +5461,7 @@ def ui_delete_epoch(request: Request, soa_id: int, epoch_id: int = Form(...)):
 @app.post("/ui/soa/{soa_id}/reorder_visits", response_class=HTMLResponse)
 def ui_reorder_visits(request: Request, soa_id: int, order: str = Form("")):
     """Persist new visit ordering. 'order' is a comma-separated list of visit IDs in desired order."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
     if not ids:
@@ -5491,7 +5489,7 @@ def ui_reorder_visits(request: Request, soa_id: int, order: str = Form("")):
 @app.post("/ui/soa/{soa_id}/reorder_activities", response_class=HTMLResponse)
 def ui_reorder_activities(request: Request, soa_id: int, order: str = Form("")):
     """Persist new activity ordering. 'order' is a comma-separated list of activity IDs in desired order."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
     if not ids:
@@ -5519,7 +5517,7 @@ def ui_reorder_activities(request: Request, soa_id: int, order: str = Form("")):
 @app.post("/ui/soa/{soa_id}/reorder_epochs", response_class=HTMLResponse)
 def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
     """Form handler to persist new epoch ordering."""
-    if not _soa_exists(soa_id):
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
     if not ids:
