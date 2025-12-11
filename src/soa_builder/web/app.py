@@ -1021,7 +1021,7 @@ def _fetch_matrix(soa_id: int):
 def _list_study_cells(soa_id: int) -> list[dict]:
     """List study_cell rows, including element and arm names filtered by soa_id.
 
-    Returns: [{id, study_cell_uid, arm_uid, epoch_uid, element_uid, element_name, arm_name}]
+    Returns: [{id, study_cell_uid, arm_uid, epoch_uid, element_uid, element_name, arm_name, epoch_name}]
     """
     conn = _connect()
     cur = conn.cursor()
