@@ -45,6 +45,18 @@ def _record_element_audit(
     try:
         conn = _connect()
         cur = conn.cursor()
+        # Ensure table exists (defensive for migrated databases)
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS element_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                element_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
         cur.execute(
             "INSERT INTO element_audit (soa_id, element_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
             (

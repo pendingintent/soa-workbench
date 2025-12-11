@@ -49,6 +49,7 @@ from .migrate_database import (
     _migrate_add_epoch_seq,
     _migrate_add_study_fields,
     _migrate_arm_add_type_fields,
+    _migrate_element_audit_columns,
     _migrate_copy_cell_data,
     _migrate_create_code_junction,
     _migrate_drop_arm_element_link,
@@ -69,6 +70,9 @@ from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
 from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
 from .utils import get_next_code_uid as _get_next_code_uid, load_epoch_type_options
+
+# Audit functions
+from .audit import _record_element_audit
 
 load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
@@ -122,6 +126,7 @@ _migrate_element_id()
 _migrate_rollback_add_elements_restored()
 _migrate_activity_add_uid()
 _migrate_arm_add_type_fields()
+_migrate_element_audit_columns()
 _backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 
@@ -139,34 +144,6 @@ def _get_cdisc_api_key():
 
 def _get_concepts_override():
     return os.environ.get("CDISC_CONCEPTS_JSON")
-
-
-# Audit functions
-def _record_element_audit(
-    soa_id: int,
-    action: str,
-    element_id: Optional[int],
-    before: Optional[dict] = None,
-    after: Optional[dict] = None,
-):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO element_audit (soa_id, element_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                element_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:  # pragma: no cover
-        logger.warning("Failed recording element audit: %s", e)
 
 
 def _record_transition_rule_audit(
@@ -1762,6 +1739,37 @@ def ui_refresh_concepts(request: Request, soa_id: int):
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
     # Fallback: plain form POST non-htmx redirect via script
+    # HTMX: return refreshed Element Audit section when requested
+    if request.headers.get("HX-Request") == "true":
+        conn_ea = _connect()
+        cur_ea = conn_ea.cursor()
+        cur_ea.execute("PRAGMA table_info(element_audit)")
+        cols = [row[1] for row in cur_ea.fetchall()]
+        want = [
+            "id",
+            "element_id",
+            "action",
+            "before_json",
+            "after_json",
+            "performed_at",
+        ]
+        available = [c for c in want if c in cols]
+        element_audits = []
+        if available:
+            select_sql = f"SELECT {', '.join(available)} FROM element_audit WHERE soa_id=? ORDER BY id DESC"
+            cur_ea.execute(select_sql, (soa_id,))
+            for r in cur_ea.fetchall():
+                item = {}
+                for i, c in enumerate(available):
+                    item[c] = r[i]
+                for k in want:
+                    item.setdefault(k, None)
+                element_audits.append(item)
+        conn_ea.close()
+        html = templates.get_template("element_audit_section.html").render(
+            request=request, soa_id=soa_id, element_audits=element_audits
+        )
+        return HTMLResponse(html)
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
@@ -2932,6 +2940,36 @@ def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
             "activity_uid": f"Activity_{order_index}",
         },
     )
+    if request.headers.get("HX-Request") == "true":
+        conn_ea = _connect()
+        cur_ea = conn_ea.cursor()
+        cur_ea.execute("PRAGMA table_info(element_audit)")
+        cols = [row[1] for row in cur_ea.fetchall()]
+        want = [
+            "id",
+            "element_id",
+            "action",
+            "before_json",
+            "after_json",
+            "performed_at",
+        ]
+        available = [c for c in want if c in cols]
+        element_audits = []
+        if available:
+            select_sql = f"SELECT {', '.join(available)} FROM element_audit WHERE soa_id=? ORDER BY id DESC"
+            cur_ea.execute(select_sql, (soa_id,))
+            for r in cur_ea.fetchall():
+                item = {}
+                for i, c in enumerate(available):
+                    item[c] = r[i]
+                for k in want:
+                    item.setdefault(k, None)
+                element_audits.append(item)
+        conn_ea.close()
+        html = templates.get_template("element_audit_section.html").render(
+            request=request, soa_id=soa_id, element_audits=element_audits
+        )
+        return HTMLResponse(html)
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
@@ -3020,6 +3058,36 @@ def ui_update_meta(
     )
     conn.commit()
     conn.close()
+    if request.headers.get("HX-Request") == "true":
+        conn_ea = _connect()
+        cur_ea = conn_ea.cursor()
+        cur_ea.execute("PRAGMA table_info(element_audit)")
+        cols = [row[1] for row in cur_ea.fetchall()]
+        want = [
+            "id",
+            "element_id",
+            "action",
+            "before_json",
+            "after_json",
+            "performed_at",
+        ]
+        available = [c for c in want if c in cols]
+        element_audits = []
+        if available:
+            select_sql = f"SELECT {', '.join(available)} FROM element_audit WHERE soa_id=? ORDER BY id DESC"
+            cur_ea.execute(select_sql, (soa_id,))
+            for r in cur_ea.fetchall():
+                item = {}
+                for i, c in enumerate(available):
+                    item[c] = r[i]
+                for k in want:
+                    item.setdefault(k, None)
+                element_audits.append(item)
+        conn_ea.close()
+        html = templates.get_template("element_audit_section.html").render(
+            request=request, soa_id=soa_id, element_audits=element_audits
+        )
+        return HTMLResponse(html)
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
@@ -3373,6 +3441,31 @@ def ui_edit(request: Request, soa_id: int):
     ]
     conn_tr.close()
 
+    # Element audit list
+    conn_ea = _connect()
+    cur_ea = conn_ea.cursor()
+    # Handle legacy schemas gracefully by detecting available columns
+    cur_ea.execute("PRAGMA table_info(element_audit)")
+    cols = [row[1] for row in cur_ea.fetchall()]  # row[1] is column name
+    want = ["id", "element_id", "action", "before_json", "after_json", "performed_at"]
+    available = [c for c in want if c in cols]
+    if not available:
+        element_audits = []
+    else:
+        select_sql = f"SELECT {', '.join(available)} FROM element_audit WHERE soa_id=? ORDER BY id DESC"
+        cur_ea.execute(select_sql, (soa_id,))
+        rows = cur_ea.fetchall()
+        element_audits = []
+        for r in rows:
+            item = {}
+            for i, c in enumerate(available):
+                item[c] = r[i]
+            # Ensure keys for template even if missing
+            for k in want:
+                item.setdefault(k, None)
+            element_audits.append(item)
+    conn_ea.close()
+
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -3400,6 +3493,7 @@ def ui_edit(request: Request, soa_id: int):
             "epoch_audits": epoch_audits,
             "activity_audits": activity_audits,
             "study_cell_audits": study_cell_audits,
+            "element_audits": element_audits,
             # Epoch Type options (C99079)
             "epoch_type_options": epoch_type_options,
             # Study Cells
@@ -4240,19 +4334,8 @@ def ui_add_element(
     element_cols = {r[1] for r in cur.fetchall()}
     element_identifier: Optional[str] = None
     if "element_id" in element_cols:
-        # Generate StudyElement_<n> where n is next unused integer for this SOA
-        cur.execute("SELECT element_id FROM element WHERE soa_id=?", (soa_id,))
-        existing_raw = [r[0] for r in cur.fetchall() if r[0]]
-        used_nums = set()
-        for val in existing_raw:
-            if val.startswith("StudyElement_"):
-                tail = val.split("StudyElement_")[-1]
-                if tail.isdigit():
-                    used_nums.add(int(tail))
-        next_n = 1
-        while next_n in used_nums:
-            next_n += 1
-        element_identifier = f"StudyElement_{next_n}"
+        # Generate StudyElement_<n> monotonically increasing for this SOA
+        element_identifier = _next_element_identifier(soa_id)
         cur.execute(
             """INSERT INTO element (soa_id,name,label,description,testrl,teenrl,order_index,created_at,element_id)
             VALUES (?,?,?,?,?,?,?,?,?)""",
@@ -4286,10 +4369,11 @@ def ui_add_element(
     eid = cur.lastrowid
     conn.commit()
     conn.close()
+    # Audit should store the logical StudyElement_N in element_audit.element_id, not the row id
     _record_element_audit(
         soa_id,
         "create",
-        eid,
+        element_identifier,
         before=None,
         after={
             "id": eid,
@@ -4378,10 +4462,27 @@ def ui_update_element(
     updated_fields = [
         f for f in mutable_fields if before and before.get(f) != after.get(f)
     ]
+    # Fetch element.element_id for audit key
+    try:
+        conn_k = _connect()
+        cur_k = conn_k.cursor()
+        cur_k.execute("PRAGMA table_info(element)")
+        cols_k = {r[1] for r in cur_k.fetchall()}
+        element_uid_for_audit = None
+        if "element_id" in cols_k:
+            cur_k.execute(
+                "SELECT element_id FROM element WHERE id=? AND soa_id=?",
+                (element_id, soa_id),
+            )
+            row_k = cur_k.fetchone()
+            element_uid_for_audit = row_k[0] if row_k else None
+        conn_k.close()
+    except Exception:
+        element_uid_for_audit = None
     _record_element_audit(
         soa_id,
         "update",
-        element_id,
+        element_uid_for_audit,
         before=before,
         after={**after, "updated_fields": updated_fields},
     )
@@ -4397,11 +4498,47 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
+    # Capture before snapshot including logical element_id (StudyElement_N) if present
+    cur.execute("PRAGMA table_info(element)")
+    cols = {r[1] for r in cur.fetchall()}
+    has_uid = "element_id" in cols
+    if has_uid:
+        cur.execute(
+            "SELECT id, name, label, description, testrl, teenrl, order_index, element_id FROM element WHERE id=? AND soa_id=?",
+            (element_id, soa_id),
+        )
+    else:
+        cur.execute(
+            "SELECT id, name, label, description, testrl, teenrl, order_index, NULL as element_id FROM element WHERE id=? AND soa_id=?",
+            (element_id, soa_id),
+        )
+    row_b = cur.fetchone()
+    before = None
+    if row_b:
+        before = {
+            "id": row_b[0],
+            "name": row_b[1],
+            "label": row_b[2],
+            "description": row_b[3],
+            "testrl": row_b[4],
+            "teenrl": row_b[5],
+            "order_index": row_b[6],
+            "element_id": row_b[7],
+        }
+    # Perform delete
     cur.execute("DELETE FROM element WHERE id=? AND soa_id=?", (element_id, soa_id))
     conn.commit()
     conn.close()
+    # Use logical element_id (StudyElement_N) for audit key if available
+    element_uid_for_audit = (
+        before.get("element_id") if isinstance(before, dict) else None
+    )
     _record_element_audit(
-        soa_id, "delete", element_id, before={"id": element_id}, after=None
+        soa_id,
+        "delete",
+        element_uid_for_audit,
+        before=before or {"id": element_id},
+        after=None,
     )
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
@@ -4422,6 +4559,47 @@ def _next_study_cell_uid(cur, soa_id: int) -> str:
             except Exception:
                 pass
     return f"StudyCell_{max_n + 1}"
+
+
+def _next_element_identifier(soa_id: int) -> str:
+    """Compute next monotonically increasing StudyElement_N for an SoA.
+    Scans current element rows and element_audit snapshots to avoid reusing numbers after deletes.
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    max_n = 0
+    try:
+        cur.execute("SELECT element_id FROM element WHERE soa_id=?", (soa_id,))
+        for (eid,) in cur.fetchall():
+            if isinstance(eid, str) and eid.startswith("StudyElement_"):
+                tail = eid.split("StudyElement_")[-1]
+                if tail.isdigit():
+                    max_n = max(max_n, int(tail))
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            "SELECT before_json, after_json FROM element_audit WHERE soa_id=?",
+            (soa_id,),
+        )
+        for bjson, ajson in cur.fetchall():
+            for js in (bjson, ajson):
+                if not js:
+                    continue
+                try:
+                    obj = json.loads(js)
+                except Exception:
+                    obj = None
+                if isinstance(obj, dict):
+                    val = obj.get("element_id")
+                    if isinstance(val, str) and val.startswith("StudyElement_"):
+                        tail = val.split("StudyElement_")[-1]
+                        if tail.isdigit():
+                            max_n = max(max_n, int(tail))
+    except Exception:
+        pass
+    conn.close()
+    return f"StudyElement_{max_n + 1}"
 
 
 @app.post("/ui/soa/{soa_id}/add_study_cell", response_class=HTMLResponse)

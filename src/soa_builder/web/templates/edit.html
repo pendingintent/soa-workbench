@@ -184,11 +184,11 @@
           <span class="ord">{{ el.order_index }}</span>. <strong>{{ el.name }}</strong>
           {% if el.label %}<em style="color:#555;font-size:0.7em;">[{{ el.label }}]</em>{% endif %}
           {% if el.testrl or el.teenrl %}<span style="font-size:0.6em;color:#2e7d32;">(rules)</span>{% endif %}
-          <form hx-post="/ui/soa/{{ soa_id }}/delete_element" hx-confirm="Delete element '{{ el.name }}'?" style="display:inline">
+          <form hx-post="/ui/soa/{{ soa_id }}/delete_element" hx-confirm="Delete element '{{ el.name }}'?" hx-target="#element-audit-section" hx-swap="outerHTML" style="display:inline">
             <input type="hidden" name="element_id" value="{{ el.id }}" />
             <button type="submit" class="delete-btn">✕</button>
           </form>
-          <form method="post" action="/ui/soa/{{ soa_id }}/update_element" style="display:inline;margin-left:6px;font-size:0.6em;">
+          <form hx-post="/ui/soa/{{ soa_id }}/update_element" hx-target="#element-audit-section" hx-swap="outerHTML" style="display:inline;margin-left:6px;font-size:0.6em;">
             <input type="hidden" name="element_id" value="{{ el.id }}" />
             <input name="name" value="{{ el.name }}" placeholder="Name" style="width:90px;" />
             <input name="label" value="{{ el.label or '' }}" placeholder="Label" style="width:70px;" />
@@ -200,7 +200,7 @@
         </li>
         {% endfor %}
       </ul>
-      <form method="post" action="/ui/soa/{{ soa_id }}/add_element" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+      <form hx-post="/ui/soa/{{ soa_id }}/add_element" hx-target="#element-audit-section" hx-swap="outerHTML" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
         <input name="name" placeholder="Element Name" required style="flex:1;min-width:120px;" />
         <input name="label" placeholder="Label" required style="flex:1;min-width:110px;" />
         <input name="description" placeholder="Description" required style="flex:2;min-width:160px;" />
@@ -466,6 +466,7 @@
         <div style="font-size:0.75em;color:#777;">No study cell audit entries yet.</div>
       {% endif %}
     </details>
+    {% include 'element_audit_section.html' %}
   </div>
 </div>
 <hr />
