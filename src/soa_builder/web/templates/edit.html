@@ -535,7 +535,6 @@ function persistSection(sectionId){
   });
   const saved = localStorage.getItem('soa_collapse_'+sectionId);
   if(saved === '0') el.open = false;
-  else if (saved === '1') el.open = true;
 }
 persistSection('visits-section');
 persistSection('activities-section');
