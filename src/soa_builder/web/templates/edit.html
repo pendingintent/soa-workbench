@@ -477,7 +477,7 @@
     <th>Concepts</th>
     {% for v in visits %}
       <th style="min-width:70px;" data-visit-id="{{ v.id }}">
-        <div>{{ v.raw_header }}</div>
+        <div>{{ v.raw_header or v.name }}</div>
         <div style="font-size:0.65em;color:#555;line-height:1.1;">Encounter: {{ v.name }}</div>
         {% if v.epoch_id %}
           {% set ep = (epochs | selectattr('id','equalto', v.epoch_id) | list) %}
