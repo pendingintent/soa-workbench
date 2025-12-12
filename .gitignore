@@ -95,5 +95,6 @@ old-tests/
 *.db-corrupt
 docs/~*
 files/~*
+output/*
 
 # End of file
