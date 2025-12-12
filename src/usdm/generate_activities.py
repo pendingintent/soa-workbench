@@ -20,6 +20,22 @@ def _nz(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
+def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT concept_uid from activity_concept where soa_id=? and activity_uid=?",
+        (
+            soa_id,
+            activity_uid,
+        ),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    bc_uids = [r[0] for r in rows] or []
+    return bc_uids
+
+
 def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
     """
     Build USDM Activity-Output objects for the given SOA.
@@ -70,6 +86,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
         aid = activity_uid
         prev_id = id_by_index.get(i - 1)
         next_id = id_by_index.get(i + 1)
+        bcs = _get_biomedical_concept_ids(soa_id, aid)
 
         activity = {
             "id": aid,
@@ -81,7 +98,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
             "nextId": next_id,
             "childIds": [],
             "definedProcedures": [],
-            "biomedicalConceptIds": [],
+            "biomedicalConceptIds": bcs,
             "bcCategoryIds": [],
             "bcSurrogateIds": [],
             "timelineId": None,
