@@ -1017,11 +1017,41 @@ def _fetch_matrix(soa_id: int):
         dict(id=r[0], name=r[1], raw_header=r[2], order_index=r[3], epoch_id=r[4])
         for r in cur.fetchall()
     ]
-    cur.execute(
-        "SELECT id,name,order_index FROM activity WHERE soa_id=? ORDER BY order_index",
-        (soa_id,),
-    )
-    activities = [dict(id=r[0], name=r[1], order_index=r[2]) for r in cur.fetchall()]
+    # Activities: include optional label/description if schema supports them
+    cur.execute("PRAGMA table_info(activity)")
+    act_cols = {r[1] for r in cur.fetchall()}
+    if "label" in act_cols and "description" in act_cols:
+        cur.execute(
+            "SELECT id,name,order_index,activity_uid,label,description FROM activity WHERE soa_id=? ORDER BY order_index",
+            (soa_id,),
+        )
+        activities = [
+            dict(
+                id=r[0],
+                name=r[1],
+                order_index=r[2],
+                activity_uid=r[3],
+                label=r[4],
+                description=r[5],
+            )
+            for r in cur.fetchall()
+        ]
+    else:
+        cur.execute(
+            "SELECT id,name,order_index,activity_uid FROM activity WHERE soa_id=? ORDER BY order_index",
+            (soa_id,),
+        )
+        activities = [
+            dict(
+                id=r[0],
+                name=r[1],
+                order_index=r[2],
+                activity_uid=r[3],
+                label=None,
+                description=None,
+            )
+            for r in cur.fetchall()
+        ]
     cur.execute(
         "SELECT visit_id, activity_id, status FROM matrix_cells WHERE soa_id=?",
         (soa_id,),

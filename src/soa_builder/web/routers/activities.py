@@ -6,8 +6,8 @@ import os
 import time
 from typing import List
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi.responses import JSONResponse, HTMLResponse
 
 from ..audit import _record_activity_audit, _record_reorder_audit
 from ..db import _connect
@@ -84,11 +84,18 @@ def list_activities(soa_id: int):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,name,order_index,activity_uid FROM activity WHERE soa_id=? ORDER BY order_index",
+        "SELECT id,name,order_index,activity_uid,label,description FROM activity WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
     rows = [
-        {"id": r[0], "name": r[1], "order_index": r[2], "activity_uid": r[3]}
+        {
+            "id": r[0],
+            "name": r[1],
+            "order_index": r[2],
+            "activity_uid": r[3],
+            "label": r[4],
+            "description": r[5],
+        }
         for r in cur.fetchall()
     ]
     conn.close()
@@ -102,7 +109,7 @@ def get_activity(soa_id: int, activity_id: int):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,name,order_index,activity_uid FROM activity WHERE id=? AND soa_id=?",
+        "SELECT id,name,order_index,activity_uid,label,description FROM activity WHERE id=? AND soa_id=?",
         (activity_id, soa_id),
     )
     row = cur.fetchone()
@@ -115,6 +122,8 @@ def get_activity(soa_id: int, activity_id: int):
         "name": row[1],
         "order_index": row[2],
         "activity_uid": row[3],
+        "label": row[4],
+        "description": row[5],
     }
 
 
@@ -124,27 +133,75 @@ def add_activity(soa_id: int, payload: ActivityCreate):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM activity WHERE soa_id=?", (soa_id,))
-    order_index = cur.fetchone()[0] + 1
+    # Determine next order_index
     cur.execute(
-        "INSERT INTO activity (soa_id,name,order_index,activity_uid) VALUES (?,?,?,?)",
-        (soa_id, payload.name, order_index, f"Activity_{order_index}"),
+        "SELECT COALESCE(MAX(order_index),0) FROM activity WHERE soa_id=?", (soa_id,)
     )
+    order_index = (cur.fetchone() or [0])[0] + 1
+    # Compute activity_uid from order_index (keeps list stable after inserts)
+    activity_uid = f"Activity_{order_index}"
+
+    name = (payload.name or "").strip()
+    label = (payload.label or "").strip() or None
+    description = (payload.description or "").strip() or None
+    if not name:
+        conn.close()
+        raise HTTPException(400, "Name required")
+
+    # Insert guarding for legacy schemas that may not have label/description
+    cur.execute("PRAGMA table_info(activity)")
+    cols = {r[1] for r in cur.fetchall()}
+    if "label" in cols and "description" in cols:
+        cur.execute(
+            "INSERT INTO activity (soa_id,name,order_index,activity_uid,label,description) VALUES (?,?,?,?,?,?)",
+            (soa_id, name, order_index, activity_uid, label, description),
+        )
+    else:
+        cur.execute(
+            "INSERT INTO activity (soa_id,name,order_index,activity_uid) VALUES (?,?,?,?)",
+            (soa_id, name, order_index, activity_uid),
+        )
     aid = cur.lastrowid
     conn.commit()
     conn.close()
+
     after = {
         "id": aid,
-        "name": payload.name,
+        "name": name,
         "order_index": order_index,
-        "activity_uid": f"Activity_{order_index}",
+        "activity_uid": activity_uid,
+        "label": label,
+        "description": description,
     }
     _record_activity_audit(soa_id, "create", aid, before=None, after=after)
     return {
         "activity_id": aid,
         "order_index": order_index,
-        "activity_uid": f"Activity_{order_index}",
+        "activity_uid": activity_uid,
     }
+
+
+@router.post("/activities/add", response_class=HTMLResponse)
+def ui_add_activity(
+    request: Request,
+    soa_id: int,
+    name: str | None = Form(None),
+    label: str | None = Form(None),
+    description: str | None = Form(None),
+):
+    """UI form handler to add an Activity, then redirect to the edit page.
+
+    Accepts standard form fields and reuses the JSON create logic.
+    """
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    payload = ActivityCreate(name=name or "", label=label, description=description)
+    add_activity(soa_id, payload)
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @router.patch("/activities/{activity_id}", response_class=JSONResponse)
@@ -154,33 +211,63 @@ def update_activity(soa_id: int, activity_id: int, payload: ActivityUpdate):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,name,order_index,activity_uid FROM activity WHERE id=? AND soa_id=?",
+        "SELECT id,name,order_index,activity_uid,label,description FROM activity WHERE id=? AND soa_id=?",
         (activity_id, soa_id),
     )
     row = cur.fetchone()
     if not row:
         conn.close()
         raise HTTPException(404, "Activity not found")
+
     before = {
         "id": row[0],
         "name": row[1],
         "order_index": row[2],
         "activity_uid": row[3],
+        "label": row[4],
+        "description": row[5],
     }
+
+    # Apply payload with trimming; None means "unchanged"
     new_name = (payload.name if payload.name is not None else before["name"]) or ""
+    new_label = payload.label if payload.label is not None else before["label"]
+    new_description = (
+        payload.description
+        if payload.description is not None
+        else before["description"]
+    )
+
     new_name = new_name.strip()
+    new_label = (new_label or "").strip() or None
+    new_description = (new_description or "").strip() or None
+
     cur.execute(
-        "UPDATE activity SET name=? WHERE id=?", (new_name or None, activity_id)
+        "UPDATE activity SET name=?, label=?, description=? WHERE id=? AND soa_id=?",
+        (new_name or None, new_label, new_description, activity_id, soa_id),
     )
     conn.commit()
     cur.execute(
-        "SELECT id,name,order_index,activity_uid FROM activity WHERE id=?",
-        (activity_id,),
+        "SELECT id,name,order_index,activity_uid,label,description FROM activity WHERE id=? AND soa_id=?",
+        (activity_id, soa_id),
     )
     r = cur.fetchone()
     conn.close()
-    after = {"id": r[0], "name": r[1], "order_index": r[2], "activity_uid": r[3]}
-    updated_fields = ["name"] if before["name"] != after["name"] else []
+
+    after = {
+        "id": r[0],
+        "name": r[1],
+        "order_index": r[2],
+        "activity_uid": r[3],
+        "label": r[4],
+        "description": r[5],
+    }
+
+    # Correct updated_fields calculation
+    updated_fields = []
+    for fld in ("name", "label", "description"):
+        if (before.get(fld) or None) != (after.get(fld) or None):
+            updated_fields.append(fld)
+
     _record_activity_audit(
         soa_id,
         "update",
@@ -191,38 +278,76 @@ def update_activity(soa_id: int, activity_id: int, payload: ActivityUpdate):
     return JSONResponse({**after, "updated_fields": updated_fields})
 
 
+@router.post("/activities/{activity_id}/update", response_class=HTMLResponse)
+def ui_update_activity(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    name: str | None = Form(None),
+    label: str | None = Form(None),
+    description: str | None = Form(None),
+):
+    """UI form handler to update an Activity and redirect back to edit page.
+
+    This wraps the JSON update endpoint and returns an HTML redirect suitable
+    for both full page and HTMX requests.
+    """
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    payload = ActivityUpdate(name=name, label=label, description=description)
+    # Reuse the JSON handler for business logic/audit
+    update_activity(soa_id, activity_id, payload)
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
 @router.post("/activities/reorder", response_class=JSONResponse)
 def reorder_activities_api(soa_id: int, order: List[int]):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not order:
         raise HTTPException(400, "Order list required")
+
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT id FROM activity WHERE soa_id=? ORDER BY order_index", (soa_id,)
-    )
-    old_order = [r[0] for r in cur.fetchall()]
+
+    # Validate IDs exist in this SOA
     cur.execute("SELECT id FROM activity WHERE soa_id=?", (soa_id,))
     existing = {r[0] for r in cur.fetchall()}
     if set(order) - existing:
         conn.close()
         raise HTTPException(400, "Order contains invalid activity id")
+
+    cur.execute(
+        "SELECT id FROM activity WHERE soa_id=? ORDER BY order_index", (soa_id,)
+    )
+    old_order = [r[0] for r in cur.fetchall()]
+
     before_rows = {
         r[0]: r[1]
         for r in cur.execute(
             "SELECT id,order_index FROM activity WHERE soa_id=?", (soa_id,)
         ).fetchall()
     }
+
+    # Apply new order_index
     for idx, aid in enumerate(order, start=1):
-        cur.execute("UPDATE activity SET order_index=? WHERE id=?", (idx, aid))
+        cur.execute(
+            "UPDATE activity SET order_index=? WHERE id=? AND soa_id=?",
+            (idx, aid, soa_id),
+        )
+
     after_rows = {
         r[0]: r[1]
         for r in cur.execute(
             "SELECT id,order_index FROM activity WHERE soa_id=?", (soa_id,)
         ).fetchall()
     }
-    # Two-phase UID reassignment
+
+    # Reassign activity_uid from order_index
     cur.execute(
         "UPDATE activity SET activity_uid='TMP_' || id WHERE soa_id=?", (soa_id,)
     )
@@ -232,7 +357,9 @@ def reorder_activities_api(soa_id: int, order: List[int]):
     )
     conn.commit()
     conn.close()
+
     _record_reorder_audit(soa_id, "activity", old_order, order)
+
     reorder_details = [
         {
             "id": aid,
@@ -241,6 +368,7 @@ def reorder_activities_api(soa_id: int, order: List[int]):
         }
         for aid in order
     ]
+
     _record_activity_audit(
         soa_id,
         "reorder",
