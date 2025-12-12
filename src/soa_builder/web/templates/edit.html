@@ -303,7 +303,7 @@
           <label for="epoch_uid">Epoch</label>
           <select id="epoch_uid" name="epoch_uid" required>
             {% for e in epochs %}
-              {% set val = e.epoch_uid or ('Epoch_' ~ (e.epoch_seq or e.id)) %}
+              {% set val = e.epoch_uid or ('StudyEpoch_' ~ (e.epoch_seq or e.id)) %}
               <option value="{{ val }}">{{ val }} — {{ e.name }}</option>
             {% endfor %}
           </select>

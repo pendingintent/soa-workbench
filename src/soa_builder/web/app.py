@@ -48,6 +48,7 @@ from .migrate_database import (
     _migrate_add_epoch_label_desc,
     _migrate_add_epoch_seq,
     _migrate_add_study_fields,
+    _migrate_add_epoch_uid,
     _migrate_arm_add_type_fields,
     _migrate_element_audit_columns,
     _migrate_copy_cell_data,
@@ -138,6 +139,7 @@ _migrate_drop_arm_element_link()
 _migrate_add_epoch_id_to_visit()
 _migrate_add_epoch_seq()
 _migrate_add_epoch_label_desc()
+_migrate_add_epoch_uid()
 _migrate_create_code_junction()
 _migrate_add_study_fields()
 _drop_unused_override_table()
@@ -4840,6 +4842,21 @@ def ui_add_study_cell(
             f"<script>alert('Epoch not found');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
             status_code=404,
         )
+    # Allocate a single StudyCell UID for this Arm×Epoch submission,
+    # but reuse an existing UID if one already exists for (soa_id, arm_uid, epoch_uid)
+    sc_uid_global = None
+    try:
+        cur.execute(
+            "SELECT study_cell_uid FROM study_cell WHERE soa_id=? AND arm_uid=? AND epoch_uid=? LIMIT 1",
+            (soa_id, arm_uid, epoch_uid),
+        )
+        row_existing = cur.fetchone()
+        if row_existing and row_existing[0]:
+            sc_uid_global = row_existing[0]
+    except Exception:
+        sc_uid_global = None
+    if not sc_uid_global:
+        sc_uid_global = _next_study_cell_uid(cur, soa_id)
     inserted = 0
     for el_uid in element_ids:
         # ensure element exists if element_id column present
@@ -4860,10 +4877,9 @@ def ui_add_study_cell(
         )
         if cur.fetchone():
             continue
-        sc_uid = _next_study_cell_uid(cur, soa_id)
         cur.execute(
             "INSERT INTO study_cell (soa_id, study_cell_uid, arm_uid, epoch_uid, element_uid) VALUES (?,?,?,?,?)",
-            (soa_id, sc_uid, arm_uid, epoch_uid, el_uid),
+            (soa_id, sc_uid_global, arm_uid, epoch_uid, el_uid),
         )
         sc_id = cur.lastrowid
         # Inline audit write for reliability
@@ -4876,7 +4892,7 @@ def ui_add_study_cell(
                 None,
                 json.dumps(
                     {
-                        "study_cell_uid": sc_uid,
+                        "study_cell_uid": sc_uid_global,
                         "arm_uid": arm_uid,
                         "epoch_uid": epoch_uid,
                         "element_uid": el_uid,
