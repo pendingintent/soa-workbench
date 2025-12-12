@@ -72,8 +72,10 @@ from .routers.arms import delete_arm
 from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
 from .utils import (
     get_next_code_uid as _get_next_code_uid,
+    get_next_concept_uid as _get_next_concept_uid,
     load_epoch_type_options,
     soa_exists,
+    table_has_columns as _table_has_columns,
 )
 
 # Audit functions
@@ -520,12 +522,34 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
     concepts_map = {}
     if activity_ids:
         placeholders = ",".join("?" for _ in activity_ids)
-        cur.execute(
-            f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE activity_id IN ({placeholders})",
-            activity_ids,
-        )
-        for aid, code, title in cur.fetchall():
-            concepts_map.setdefault(aid, []).append({"code": code, "title": title})
+        has_uid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
+        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+            if has_uid:
+                cur.execute(
+                    f"SELECT activity_id, concept_code, concept_title, concept_uid FROM activity_concept WHERE soa_id=? AND activity_id IN ({placeholders})",
+                    [soa_id] + activity_ids,
+                )
+            else:
+                cur.execute(
+                    f"SELECT activity_id, concept_code, concept_title, NULL as concept_uid FROM activity_concept WHERE soa_id=? AND activity_id IN ({placeholders})",
+                    [soa_id] + activity_ids,
+                )
+        else:
+            if has_uid:
+                cur.execute(
+                    f"SELECT activity_id, concept_code, concept_title, concept_uid FROM activity_concept WHERE activity_id IN ({placeholders})",
+                    activity_ids,
+                )
+            else:
+                cur.execute(
+                    f"SELECT activity_id, concept_code, concept_title, NULL as concept_uid FROM activity_concept WHERE activity_id IN ({placeholders})",
+                    activity_ids,
+                )
+        for aid, code, title, cuid in cur.fetchall():
+            entry = {"code": code, "title": title}
+            if cuid:
+                entry["uid"] = cuid
+            concepts_map.setdefault(aid, []).append(entry)
     snapshot = {
         "soa_id": soa_id,
         "soa_name": soa_name,
@@ -806,15 +830,68 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         new_aid = activity_id_map.get(int(old_aid))
         if not new_aid:
             continue
+        # Fetch activity_uid for the new activity id
+        cur.execute("SELECT activity_uid FROM activity WHERE id=?", (new_aid,))
+        row_uid = cur.fetchone()
+        new_activity_uid = row_uid[0] if row_uid else None
+        ac_has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
+        ac_has_actuid = _table_has_columns(cur, "activity_concept", ("activity_uid",))
+        ac_has_conceptuid = _table_has_columns(
+            cur, "activity_concept", ("concept_uid",)
+        )
         for c in concept_list:
             code = c.get("code")
             title = c.get("title") or code
             if not code:
                 continue
-            cur.execute(
-                "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
-                (new_aid, code, title),
+            # Insert concept mapping; include soa_id if column exists
+            concept_uid = (
+                _get_next_concept_uid(cur, soa_id) if ac_has_conceptuid else None
             )
+            if ac_has_soa and ac_has_actuid:
+                if ac_has_conceptuid:
+                    cur.execute(
+                        "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?,?)",
+                        (soa_id, new_aid, new_activity_uid, concept_uid, code, title),
+                    )
+                else:
+                    cur.execute(
+                        "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                        (soa_id, new_aid, new_activity_uid, code, title),
+                    )
+            elif ac_has_actuid:
+                if ac_has_conceptuid:
+                    cur.execute(
+                        "INSERT INTO activity_concept (activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                        (new_aid, new_activity_uid, concept_uid, code, title),
+                    )
+                else:
+                    cur.execute(
+                        "INSERT INTO activity_concept (activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?)",
+                        (new_aid, new_activity_uid, code, title),
+                    )
+            elif ac_has_soa:
+                if ac_has_conceptuid:
+                    cur.execute(
+                        "INSERT INTO activity_concept (soa_id, activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                        (soa_id, new_aid, concept_uid, code, title),
+                    )
+                else:
+                    cur.execute(
+                        "INSERT INTO activity_concept (soa_id, activity_id, concept_code, concept_title) VALUES (?,?,?,?)",
+                        (soa_id, new_aid, code, title),
+                    )
+            else:
+                if ac_has_conceptuid:
+                    cur.execute(
+                        "INSERT INTO activity_concept (activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?)",
+                        (new_aid, concept_uid, code, title),
+                    )
+                else:
+                    cur.execute(
+                        "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
+                        (new_aid, code, title),
+                    )
             inserted_concepts += 1
     conn.commit()
     conn.close()
@@ -2103,20 +2180,75 @@ def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate
     if not cur.fetchone():
         conn.close()
         raise HTTPException(404, "Activity not found")
-    # Clear existing mappings
-    cur.execute("DELETE FROM activity_concept WHERE activity_id=?", (activity_id,))
+    # Clear existing mappings; include soa_id if column exists
+    ac_has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
+    ac_has_actuid = _table_has_columns(cur, "activity_concept", ("activity_uid",))
+    if ac_has_soa:
+        cur.execute(
+            "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
+            (activity_id, soa_id),
+        )
+    else:
+        cur.execute("DELETE FROM activity_concept WHERE activity_id=?", (activity_id,))
     concepts = fetch_biomedical_concepts()
     lookup = {c["code"]: c["title"] for c in concepts}
+    # Fetch activity_uid once
+    cur.execute("SELECT activity_uid FROM activity WHERE id=?", (activity_id,))
+    r = cur.fetchone()
+    activity_uid = r[0] if r else None
+    # Prepare concept_uid generation when column exists
+    ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
     inserted = 0
     for code in payload.concept_codes:
         ccode = code.strip()
         if not ccode:
             continue
         title = lookup.get(ccode, ccode)
-        cur.execute(
-            "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
-            (activity_id, ccode, title),
-        )
+        concept_uid = _get_next_concept_uid(cur, soa_id) if ac_has_conceptuid else None
+        if ac_has_soa and ac_has_actuid:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?,?)",
+                    (soa_id, activity_id, activity_uid, concept_uid, ccode, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                    (soa_id, activity_id, activity_uid, ccode, title),
+                )
+        elif ac_has_actuid:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                    (activity_id, activity_uid, concept_uid, ccode, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?)",
+                    (activity_id, activity_uid, ccode, title),
+                )
+        elif ac_has_soa:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                    (soa_id, activity_id, concept_uid, ccode, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, concept_code, concept_title) VALUES (?,?,?,?)",
+                    (soa_id, activity_id, ccode, title),
+                )
+        else:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?)",
+                    (activity_id, concept_uid, ccode, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
+                    (activity_id, ccode, title),
+                )
         inserted += 1
     conn.commit()
     conn.close()
@@ -2127,10 +2259,16 @@ def _get_activity_concepts(activity_id: int):
     """Return list of concepts (immutable: stored snapshot)."""
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
-        (activity_id,),
-    )
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        cur.execute(
+            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=? AND soa_id=(SELECT soa_id FROM activity WHERE id=?)",
+            (activity_id, activity_id),
+        )
+    else:
+        cur.execute(
+            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+            (activity_id,),
+        )
     rows = [{"code": c, "title": t} for c, t in cur.fetchall()]
     conn.close()
     return rows
@@ -2159,15 +2297,70 @@ def ui_add_activity_concept(
     if not cur.fetchone():
         conn.close()
         raise HTTPException(404, "Activity not found")
-    cur.execute(
-        "SELECT 1 FROM activity_concept WHERE activity_id=? AND concept_code=?",
-        (activity_id, code),
-    )
-    if not cur.fetchone():
+    # Check existence; include soa_id if column exists
+    ac_has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
+    ac_has_actuid = _table_has_columns(cur, "activity_concept", ("activity_uid",))
+    ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
+    if ac_has_soa:
         cur.execute(
-            "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
-            (activity_id, code, title),
+            "SELECT 1 FROM activity_concept WHERE activity_id=? AND concept_code=? AND soa_id=?",
+            (activity_id, code, soa_id),
         )
+    else:
+        cur.execute(
+            "SELECT 1 FROM activity_concept WHERE activity_id=? AND concept_code=?",
+            (activity_id, code),
+        )
+    if not cur.fetchone():
+        # Fetch activity_uid once
+        cur.execute("SELECT activity_uid FROM activity WHERE id=?", (activity_id,))
+        rr = cur.fetchone()
+        activity_uid = rr[0] if rr else None
+        concept_uid = _get_next_concept_uid(cur, soa_id) if ac_has_conceptuid else None
+        if ac_has_soa and ac_has_actuid:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?,?)",
+                    (soa_id, activity_id, activity_uid, concept_uid, code, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                    (soa_id, activity_id, activity_uid, code, title),
+                )
+        elif ac_has_actuid:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                    (activity_id, activity_uid, concept_uid, code, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?)",
+                    (activity_id, activity_uid, code, title),
+                )
+        elif ac_has_soa:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                    (soa_id, activity_id, concept_uid, code, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, concept_code, concept_title) VALUES (?,?,?,?)",
+                    (soa_id, activity_id, code, title),
+                )
+        else:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?)",
+                    (activity_id, concept_uid, code, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
+                    (activity_id, code, title),
+                )
         conn.commit()
     conn.close()
     selected = _get_activity_concepts(activity_id)
@@ -2200,10 +2393,19 @@ def ui_remove_activity_concept(
         raise HTTPException(400, "Empty concept_code")
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM activity_concept WHERE activity_id=? AND concept_code=?",
-        (activity_id, code),
-    )
+    # Delete mapping; include soa_id if column exists
+    cur.execute("PRAGMA table_info(activity_concept)")
+    ac_cols = {r[1] for r in cur.fetchall()}
+    if "soa_id" in ac_cols:
+        cur.execute(
+            "DELETE FROM activity_concept WHERE activity_id=? AND concept_code=? AND soa_id=?",
+            (activity_id, code, soa_id),
+        )
+    else:
+        cur.execute(
+            "DELETE FROM activity_concept WHERE activity_id=? AND concept_code=?",
+            (activity_id, code),
+        )
     conn.commit()
     conn.close()
     concepts = fetch_biomedical_concepts()
@@ -2282,39 +2484,98 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     headers, rows = _matrix_arrays(soa_id)
     # Build DataFrame, then inject Concepts column (second position)
     df = pd.DataFrame(rows, columns=["Activity"] + headers)
-    # Fetch concepts only (immutable snapshot titles)
+    # Fetch concepts and optional concept_uids (immutable snapshot titles)
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT activity_id, concept_code, concept_title FROM activity_concept")
+    has_uid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        if has_uid:
+            cur.execute(
+                "SELECT activity_id, concept_code, concept_title, concept_uid FROM activity_concept WHERE soa_id=?",
+                (soa_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT activity_id, concept_code, concept_title, NULL as concept_uid FROM activity_concept WHERE soa_id=?",
+                (soa_id,),
+            )
+    else:
+        if has_uid:
+            cur.execute(
+                "SELECT ac.activity_id, ac.concept_code, ac.concept_title, ac.concept_uid FROM activity_concept ac JOIN activity a ON ac.activity_id = a.id WHERE a.soa_id=?",
+                (soa_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT ac.activity_id, ac.concept_code, ac.concept_title, NULL as concept_uid FROM activity_concept ac JOIN activity a ON ac.activity_id = a.id WHERE a.soa_id=?",
+                (soa_id,),
+            )
     concepts_map = {}
-    for aid, code, title in cur.fetchall():
+    concepts_uids_map = {}
+    for aid, code, title, cuid in cur.fetchall():
         concepts_map.setdefault(aid, {})[code] = title
+        if cuid:
+            concepts_uids_map.setdefault(aid, set()).add(cuid)
     conn.close()
     visits, activities, _cells = _fetch_matrix(soa_id)
     activity_ids_in_order = [a["id"] for a in activities]
     # Build display strings using EffectiveTitle (override if present) and show code in parentheses
     concepts_strings = []
+    concept_uids_strings = []
     for aid in activity_ids_in_order:
         cmap = concepts_map.get(aid, {})
+        cuids = concepts_uids_map.get(aid, set())
         if not cmap:
             concepts_strings.append("")
+            concept_uids_strings.append("")
             continue
         items = sorted(cmap.items(), key=lambda kv: kv[1].lower())
         concepts_strings.append(
             "; ".join([f"{title} ({code})" for code, title in items])
         )
+        concept_uids_strings.append(", ".join(sorted(list(cuids))) if cuids else "")
     if len(concepts_strings) == len(df):
         df.insert(1, "Concepts", concepts_strings)
+        df["Concept UIDs"] = concept_uids_strings
     # Build concept mappings sheet data
     mapping_rows = []
     for a in activities:
         aid = a["id"]
         cmap = concepts_map.get(aid, {})
+        cuids = concepts_uids_map.get(aid, set())
+        # Map code -> uid (if any) for this activity
+        code_to_uid = {}
+        if cuids:
+            # We need to fetch per code uid; concepts_uids_map stores set per activity, not mapping.
+            # Build mapping by querying rows for this activity to capture concept_uid per code when available.
+            if has_uid:
+                conn2 = _connect()
+                cur2 = conn2.cursor()
+                if _table_has_columns(cur2, "activity_concept", ("soa_id",)):
+                    cur2.execute(
+                        "SELECT concept_code, concept_uid FROM activity_concept WHERE soa_id=? AND activity_id=?",
+                        (soa_id, aid),
+                    )
+                else:
+                    cur2.execute(
+                        "SELECT concept_code, concept_uid FROM activity_concept WHERE activity_id=?",
+                        (aid,),
+                    )
+                for ccode, cuid in cur2.fetchall():
+                    if cuid:
+                        code_to_uid[ccode] = cuid
+                conn2.close()
         for code, title in cmap.items():
-            mapping_rows.append([aid, a["name"], code, title])
+            mapping_rows.append([aid, a["name"], code, title, code_to_uid.get(code)])
     mapping_df = pd.DataFrame(
         mapping_rows,
-        columns=["ActivityID", "ActivityName", "ConceptCode", "ConceptTitle"],
+        columns=[
+            "ActivityID",
+            "ActivityName",
+            "ConceptCode",
+            "ConceptTitle",
+            "ConceptUID",
+        ],
     )
     # Build rollback audit sheet data (optional)
     audit_rows = (
@@ -3139,10 +3400,16 @@ def ui_edit(request: Request, soa_id: int):
         conn = _connect()
         cur = conn.cursor()
         placeholders = ",".join("?" for _ in activity_ids)
-        cur.execute(
-            f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE activity_id IN ({placeholders})",
-            activity_ids,
-        )
+        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+            cur.execute(
+                f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE soa_id=? AND activity_id IN ({placeholders})",
+                [soa_id] + activity_ids,
+            )
+        else:
+            cur.execute(
+                f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE activity_id IN ({placeholders})",
+                activity_ids,
+            )
         for aid, code, title in cur.fetchall():
             activity_concepts.setdefault(aid, []).append({"code": code, "title": title})
         conn.close()
@@ -5299,10 +5566,16 @@ def ui_set_activity_concepts(
         concepts = fetch_biomedical_concepts()
         conn = _connect()
         cur = conn.cursor()
-        cur.execute(
-            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
-            (activity_id,),
-        )
+        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+            cur.execute(
+                "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=? AND soa_id=?",
+                (activity_id, soa_id),
+            )
+        else:
+            cur.execute(
+                "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+                (activity_id,),
+            )
         selected = [{"code": c, "title": t} for c, t in cur.fetchall()]
         conn.close()
         html = templates.get_template("concepts_cell.html").render(
@@ -5336,10 +5609,16 @@ def ui_activity_concepts_cell(
     concepts = fetch_biomedical_concepts()
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
-        (activity_id,),
-    )
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        cur.execute(
+            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=? AND soa_id=?",
+            (activity_id, soa_id),
+        )
+    else:
+        cur.execute(
+            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+            (activity_id,),
+        )
     selected = [{"code": c, "title": t} for c, t in cur.fetchall()]
     conn.close()
     return HTMLResponse(

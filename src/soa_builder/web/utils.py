@@ -230,6 +230,38 @@ def get_next_code_uid(cur: Any, soa_id: int) -> str:
     return f"Code_{n}"
 
 
+def get_next_concept_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique BiomedicalConcept_N for the given SOA.
+
+    Assumes `cur` is a sqlite cursor within an open transaction.
+    Uses activity_concept table when available; falls back safely if table missing.
+    """
+    try:
+        cur.execute("PRAGMA table_info(activity_concept)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "concept_uid" not in cols:
+            return "BiomedicalConcept_1"
+        if "soa_id" in cols:
+            cur.execute(
+                "SELECT concept_uid FROM activity_concept WHERE soa_id=? AND concept_uid LIKE 'BiomedicalConcept_%'",
+                (soa_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT concept_uid FROM activity_concept WHERE concept_uid LIKE 'BiomedicalConcept_%'"
+            )
+        existing = [x[0] for x in cur.fetchall() if x[0]]
+        n = 1
+        if existing:
+            try:
+                n = max(int(x.split("_")[1]) for x in existing) + 1
+            except Exception:
+                n = len(existing) + 1
+        return f"BiomedicalConcept_{n}"
+    except Exception:
+        return "BiomedicalConcept_1"
+
+
 def soa_exists(soa_id: int) -> bool:
     """Return True if an SOA row exists with the given id."""
     try:
@@ -239,5 +271,21 @@ def soa_exists(soa_id: int) -> bool:
         ok = cur.fetchone() is not None
         conn.close()
         return ok
+    except Exception:
+        return False
+
+
+def table_has_columns(cur: Any, table: str, required: List[str] | tuple) -> bool:
+    """Return True if all required column names exist in the given table.
+
+    Parameters:
+      cur: sqlite3 cursor
+      table: table name (constant in code; not user-provided)
+      required: iterable of column names to check
+    """
+    try:
+        cur.execute(f"PRAGMA table_info({table})")
+        cols = {r[1] for r in cur.fetchall()}
+        return all(c in cols for c in required)
     except Exception:
         return False

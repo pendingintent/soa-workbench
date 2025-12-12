@@ -12,7 +12,11 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from ..audit import _record_activity_audit, _record_reorder_audit
 from ..db import _connect
 from ..schemas import ActivityCreate, ActivityUpdate, BulkActivities
-from ..utils import soa_exists
+from ..utils import (
+    soa_exists,
+    table_has_columns as _table_has_columns,
+    get_next_concept_uid as _get_next_concept_uid,
+)
 
 _ACT_CONCEPT_CACHE = {"data": None, "fetched_at": 0}
 _ACT_CONCEPT_TTL = 60 * 60
@@ -426,19 +430,74 @@ def set_activity_concepts(soa_id: int, activity_id: int, concept_codes: List[str
     if not cur.fetchone():
         conn.close()
         raise HTTPException(404, "Activity not found")
-    cur.execute("DELETE FROM activity_concept WHERE activity_id=?", (activity_id,))
+    # Clear existing mappings; include soa_id if column exists
+    ac_has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
+    ac_has_actuid = _table_has_columns(cur, "activity_concept", ("activity_uid",))
+    if ac_has_soa:
+        cur.execute(
+            "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
+            (activity_id, soa_id),
+        )
+    else:
+        cur.execute("DELETE FROM activity_concept WHERE activity_id=?", (activity_id,))
     concepts = fetch_biomedical_concepts()
     lookup = {c["code"]: c["title"] for c in concepts}
+    # Fetch activity_uid once for inserts
+    cur.execute("SELECT activity_uid FROM activity WHERE id=?", (activity_id,))
+    row = cur.fetchone()
+    activity_uid = row[0] if row else None
+    ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
     inserted = 0
     for code in concept_codes:
         ccode = code.strip()
         if not ccode:
             continue
         title = lookup.get(ccode, ccode)
-        cur.execute(
-            "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
-            (activity_id, ccode, title),
-        )
+        concept_uid = _get_next_concept_uid(cur, soa_id) if ac_has_conceptuid else None
+        if ac_has_soa and ac_has_actuid:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?,?)",
+                    (soa_id, activity_id, activity_uid, concept_uid, ccode, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                    (soa_id, activity_id, activity_uid, ccode, title),
+                )
+        elif ac_has_actuid:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                    (activity_id, activity_uid, concept_uid, ccode, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?)",
+                    (activity_id, activity_uid, ccode, title),
+                )
+        elif ac_has_soa:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
+                    (soa_id, activity_id, concept_uid, ccode, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (soa_id, activity_id, concept_code, concept_title) VALUES (?,?,?,?)",
+                    (soa_id, activity_id, ccode, title),
+                )
+        else:
+            if ac_has_conceptuid:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?)",
+                    (activity_id, concept_uid, ccode, title),
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
+                    (activity_id, ccode, title),
+                )
         inserted += 1
     conn.commit()
     conn.close()
