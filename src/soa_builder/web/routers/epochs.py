@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from ..schemas import EpochCreate, EpochUpdate
-from ..utils import soa_exists
+from ..utils import soa_exists, table_has_columns as _table_has_columns
 
 DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 
@@ -65,17 +65,34 @@ def add_epoch(soa_id: int, payload: EpochCreate):
     cur.execute("SELECT MAX(epoch_seq) FROM epoch WHERE soa_id=?", (soa_id,))
     row = cur.fetchone()
     next_seq = (row[0] or 0) + 1
-    cur.execute(
-        "INSERT INTO epoch (soa_id,name,order_index,epoch_seq,epoch_label,epoch_description) VALUES (?,?,?,?,?,?)",
-        (
-            soa_id,
-            payload.name,
-            order_index,
-            next_seq,
-            (payload.epoch_label or "").strip() or None,
-            (payload.epoch_description or "").strip() or None,
-        ),
-    )
+    # Determine if epoch_uid column exists and prepare values
+    has_uid = _table_has_columns(cur, "epoch", ("epoch_uid",))
+    epoch_uid_val = f"StudyEpoch_{next_seq}"
+    if has_uid:
+        cur.execute(
+            "INSERT INTO epoch (soa_id,name,order_index,epoch_seq,epoch_label,epoch_description,epoch_uid) VALUES (?,?,?,?,?,?,?)",
+            (
+                soa_id,
+                payload.name,
+                order_index,
+                next_seq,
+                (payload.epoch_label or "").strip() or None,
+                (payload.epoch_description or "").strip() or None,
+                epoch_uid_val,
+            ),
+        )
+    else:
+        cur.execute(
+            "INSERT INTO epoch (soa_id,name,order_index,epoch_seq,epoch_label,epoch_description) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                payload.name,
+                order_index,
+                next_seq,
+                (payload.epoch_label or "").strip() or None,
+                (payload.epoch_description or "").strip() or None,
+            ),
+        )
     eid = cur.lastrowid
     conn.commit()
     conn.close()
@@ -93,6 +110,7 @@ def add_epoch(soa_id: int, payload: EpochCreate):
             "epoch_seq": next_seq,
             "epoch_label": (payload.epoch_label or "").strip() or None,
             "epoch_description": (payload.epoch_description or "").strip() or None,
+            "epoch_uid": epoch_uid_val if has_uid else f"StudyEpoch_{next_seq}",
         },
     )
 
@@ -103,21 +121,43 @@ def list_epochs(soa_id: int):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description FROM epoch WHERE soa_id=? ORDER BY order_index",
-        (soa_id,),
-    )
-    rows = [
-        {
-            "id": r[0],
-            "name": r[1],
-            "order_index": r[2],
-            "epoch_seq": r[3],
-            "epoch_label": r[4],
-            "epoch_description": r[5],
-        }
-        for r in cur.fetchall()
-    ]
+    has_uid = _table_has_columns(cur, "epoch", ("epoch_uid",))
+    if has_uid:
+        cur.execute(
+            "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description,epoch_uid FROM epoch WHERE soa_id=? ORDER BY order_index",
+            (soa_id,),
+        )
+        rows = [
+            {
+                "id": r[0],
+                "name": r[1],
+                "order_index": r[2],
+                "epoch_seq": r[3],
+                "epoch_label": r[4],
+                "epoch_description": r[5],
+                "epoch_uid": r[6],
+            }
+            for r in cur.fetchall()
+        ]
+    else:
+        cur.execute(
+            "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description FROM epoch WHERE soa_id=? ORDER BY order_index",
+            (soa_id,),
+        )
+        rows = []
+        for r in cur.fetchall():
+            eid, name, order_index, epoch_seq, epoch_label, epoch_description = r
+            rows.append(
+                {
+                    "id": eid,
+                    "name": name,
+                    "order_index": order_index,
+                    "epoch_seq": epoch_seq,
+                    "epoch_label": epoch_label,
+                    "epoch_description": epoch_description,
+                    "epoch_uid": f"StudyEpoch_{epoch_seq or eid}",
+                }
+            )
     conn.close()
     return {"soa_id": soa_id, "epochs": rows}
 
@@ -128,23 +168,48 @@ def get_epoch(soa_id: int, epoch_id: int):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description FROM epoch WHERE id=? AND soa_id=?",
-        (epoch_id, soa_id),
-    )
-    row = cur.fetchone()
+    has_uid = _table_has_columns(cur, "epoch", ("epoch_uid",))
+    if has_uid:
+        cur.execute(
+            "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description,epoch_uid FROM epoch WHERE id=? AND soa_id=?",
+            (epoch_id, soa_id),
+        )
+        row = cur.fetchone()
+    else:
+        cur.execute(
+            "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description FROM epoch WHERE id=? AND soa_id=?",
+            (epoch_id, soa_id),
+        )
+        row = cur.fetchone()
     conn.close()
     if not row:
         raise HTTPException(404, "Epoch not found")
-    return {
-        "id": row[0],
-        "soa_id": soa_id,
-        "name": row[1],
-        "order_index": row[2],
-        "epoch_seq": row[3],
-        "epoch_label": row[4],
-        "epoch_description": row[5],
-    }
+    if has_uid:
+        eid, name, order_index, epoch_seq, epoch_label, epoch_description, epoch_uid = (
+            row
+        )
+        return {
+            "id": eid,
+            "soa_id": soa_id,
+            "name": name,
+            "order_index": order_index,
+            "epoch_seq": epoch_seq,
+            "epoch_label": epoch_label,
+            "epoch_description": epoch_description,
+            "epoch_uid": epoch_uid,
+        }
+    else:
+        eid, name, order_index, epoch_seq, epoch_label, epoch_description = row
+        return {
+            "id": eid,
+            "soa_id": soa_id,
+            "name": name,
+            "order_index": order_index,
+            "epoch_seq": epoch_seq,
+            "epoch_label": epoch_label,
+            "epoch_description": epoch_description,
+            "epoch_uid": f"StudyEpoch_{epoch_seq or eid}",
+        }
 
 
 @router.post("/soa/{soa_id}/epochs/{epoch_id}/metadata")

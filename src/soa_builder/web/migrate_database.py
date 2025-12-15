@@ -279,6 +279,88 @@ def _migrate_add_epoch_type():
         logger.warning("Epoch type migration failed: %s", e)
 
 
+# Migration: add epoch_uid to epoch
+def _migrate_add_epoch_uid():
+    """Ensure epoch_uid column exists and is populated as StudyEpoch_<n> unique per SoA.
+    Uses epoch_seq when available to keep numbering stable; otherwise falls back to id order.
+    Creates unique index (soa_id, epoch_uid).
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(epoch)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "epoch_uid" not in cols:
+            cur.execute("ALTER TABLE epoch ADD COLUMN epoch_uid TEXT")
+            conn.commit()
+            logger.info("Added epoch_uid column to epoch table")
+        # Backfill any NULL epoch_uid values
+        cur.execute("SELECT DISTINCT soa_id FROM epoch")
+        soa_ids = [r[0] for r in cur.fetchall()]
+        for sid in soa_ids:
+            # Prefer ordering by epoch_seq if present to make UIDs deterministic
+            order_col = "epoch_seq" if "epoch_seq" in cols else "id"
+            cur.execute(
+                f"SELECT id, COALESCE(epoch_seq, 0) FROM epoch WHERE soa_id=? AND epoch_uid IS NULL ORDER BY {order_col}",
+                (sid,),
+            )
+            rows = cur.fetchall()
+            if not rows:
+                continue
+            # Determine used numbers to avoid collisions when partially populated
+            cur.execute(
+                "SELECT epoch_uid FROM epoch WHERE soa_id=? AND epoch_uid IS NOT NULL",
+                (sid,),
+            )
+            used_nums = set()
+            for (uid,) in cur.fetchall():
+                if isinstance(uid, str) and uid.startswith("StudyEpoch_"):
+                    try:
+                        used_nums.add(int(uid.split("StudyEpoch_")[-1]))
+                    except Exception:
+                        pass
+            for eid, seq in rows:
+                n = int(seq) if int(seq) > 0 and int(seq) not in used_nums else None
+                if n is None:
+                    # pick next available number
+                    n = 1
+                    while n in used_nums:
+                        n += 1
+                uid = f"StudyEpoch_{n}"
+                used_nums.add(n)
+                cur.execute("UPDATE epoch SET epoch_uid=? WHERE id=?", (uid, eid))
+        # Create unique index
+        try:
+            cur.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_epoch_soaid_uid ON epoch(soa_id, epoch_uid)"
+            )
+            conn.commit()
+        except Exception:
+            pass
+        # Create trigger to auto-fill epoch_uid on insert when NULL
+        try:
+            cur.execute(
+                """
+                CREATE TRIGGER IF NOT EXISTS tr_epoch_uid_autofill
+                AFTER INSERT ON epoch
+                FOR EACH ROW
+                WHEN NEW.epoch_uid IS NULL
+                BEGIN
+                    UPDATE epoch
+                    SET epoch_uid = 'StudyEpoch_' || COALESCE(NEW.epoch_seq, NEW.id)
+                    WHERE id = NEW.id;
+                END;
+                """
+            )
+            conn.commit()
+        except Exception:
+            pass
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("epoch_uid migration failed: %s", e)
+
+
 # Migration: create code_junction table
 def _migrate_create_code_junction():
     """Create code_junction linking table if absent.

@@ -5,10 +5,14 @@ from pydantic import BaseModel
 
 class ActivityCreate(BaseModel):
     name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
 
 
 class ActivityUpdate(BaseModel):
     name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
 
 
 class BulkActivities(BaseModel):

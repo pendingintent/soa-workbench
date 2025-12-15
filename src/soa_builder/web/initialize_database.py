@@ -5,13 +5,31 @@ def _init_db():
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        """CREATE TABLE IF NOT EXISTS soa (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, created_at TEXT)"""
+        """CREATE TABLE IF NOT EXISTS soa (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            created_at TEXT
+        )"""
     )
     cur.execute(
-        """CREATE TABLE IF NOT EXISTS visit (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, raw_header TEXT, order_index INTEGER)"""
+        """CREATE TABLE IF NOT EXISTS visit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER,
+            name TEXT,
+            raw_header TEXT,
+            order_index INTEGER
+        )"""
     )
     cur.execute(
-        """CREATE TABLE IF NOT EXISTS activity (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, order_index INTEGER, activity_uid TEXT)"""
+        """CREATE TABLE IF NOT EXISTS activity (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER,
+            name TEXT,
+            order_index INTEGER,
+            activity_uid TEXT,  -- immutable Activity_N identifier unique within an SOA
+            label TEXT,
+            description TEXT
+        )"""
     )
     # Arms: groupings similar to Visits. (Legacy element linkage removed; schema now only stores intrinsic fields.)
     cur.execute(
@@ -127,19 +145,44 @@ def _init_db():
     )
     # Epochs: high-level study phase grouping (optional). Behaves like visits/activities list ordering.
     cur.execute(
-        """CREATE TABLE IF NOT EXISTS epoch (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, name TEXT, order_index INTEGER)"""
+        """CREATE TABLE IF NOT EXISTS epoch (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER,
+            name TEXT,
+            order_index INTEGER
+        )"""
     )
     # Matrix cells table (renamed from legacy 'cell')
     cur.execute(
-        """CREATE TABLE IF NOT EXISTS matrix_cells (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, visit_id INTEGER, activity_id INTEGER, status TEXT)"""
+        """CREATE TABLE IF NOT EXISTS matrix_cells (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER,
+            visit_id INTEGER,
+            activity_id INTEGER,
+            status TEXT
+        )"""
     )
     # Mapping table linking activities to biomedical concepts (concept_code + title stored for snapshot purposes)
     cur.execute(
-        """CREATE TABLE IF NOT EXISTS activity_concept (id INTEGER PRIMARY KEY AUTOINCREMENT, activity_id INTEGER, concept_code TEXT, concept_title TEXT)"""
+        """CREATE TABLE IF NOT EXISTS activity_concept (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            activity_id INTEGER,
+            concept_code TEXT,
+            concept_title TEXT,
+            concept_uid TEXT,    -- immutable BiomedicalConcept_N identifier unique within an SOA
+            activity_uid TEXT,   -- joins to the activity table using this uid unique within an SOA
+            soa_id INT
+        )"""
     )
     # Frozen versions (snapshot JSON of current matrix & concepts)
     cur.execute(
-        """CREATE TABLE IF NOT EXISTS soa_freeze (id INTEGER PRIMARY KEY AUTOINCREMENT, soa_id INTEGER, version_label TEXT, created_at TEXT, snapshot_json TEXT)"""
+        """CREATE TABLE IF NOT EXISTS soa_freeze (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER,
+            version_label TEXT,
+            created_at TEXT,
+            snapshot_json TEXT
+        )"""
     )
     # Unique index to enforce one label per SoA
     cur.execute(
