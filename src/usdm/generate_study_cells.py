@@ -20,24 +20,27 @@ def _nz(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
-def _get_element_ids(
-    soa_id: int, arm_uid: str, epoch_uid: str, study_cell_uid: str
-) -> List[str]:
+def _get_element_ids(soa_id: int, study_cell_uid: str) -> List[str]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT element_uid from study_cell WHERE soa_id=? AND arm_uid=? AND epoch_uid=? AND study_cell_uid=? ORDER BY element_uid",
+        "SELECT element_uid from study_cell WHERE soa_id=? AND study_cell_uid=? ORDER BY element_uid",
         (
             soa_id,
-            arm_uid,
-            epoch_uid,
             study_cell_uid,
         ),
     )
     rows = cur.fetchall()
     conn.close()
+    # Deduplicate and preserve stable order
     element_uids = [r[0] for r in rows] or []
-    return element_uids
+    seen = set()
+    ordered_unique: List[str] = []
+    for uid in element_uids:
+        if uid and uid not in seen:
+            seen.add(uid)
+            ordered_unique.append(uid)
+    return ordered_unique
 
 
 def build_usdm_study_cells(soa_id: int) -> List[Dict[str, Any]]:
@@ -55,8 +58,9 @@ def build_usdm_study_cells(soa_id: int) -> List[Dict[str, Any]]:
 
     conn = _connect()
     cur = conn.cursor()
+    # Select distinct StudyCell groups by (study_cell_uid, arm_uid, epoch_uid)
     cur.execute(
-        "SELECT id,soa_id,study_cell_uid,arm_uid,epoch_uid from study_cell WHERE soa_id=? ORDER BY id,study_cell_uid",
+        "SELECT DISTINCT study_cell_uid, arm_uid, epoch_uid FROM study_cell WHERE soa_id=? ORDER BY id,study_cell_uid",
         (soa_id,),
     )
     rows = cur.fetchall()
@@ -64,18 +68,18 @@ def build_usdm_study_cells(soa_id: int) -> List[Dict[str, Any]]:
 
     out: List[Dict[str, Any]] = []
     for i, r in enumerate(rows):
-        id, soa_id, study_cell_uid, arm_uid, epoch_uid = r[0], r[1], r[2], r[3], r[4]
+        study_cell_uid, arm_uid, epoch_uid = r[0], r[1], r[2]
         scid = study_cell_uid
         armId = arm_uid
         epochId = epoch_uid
-        elementIds = _get_element_ids(soa_id, armId, epochId, scid)
+        elementIds = _get_element_ids(soa_id, scid)
 
         study_cells = {
             "id": scid,
             "extensionAttributes": [],
             "armId": armId,
             "epochId": epochId,
-            "elementIds": """<placeholder>""",
+            "elementIds": elementIds,
             "instanceType": "StudyCell",
         }
         out.append(study_cells)

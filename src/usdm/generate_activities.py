@@ -33,6 +33,7 @@ def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
     rows = cur.fetchall()
     conn.close()
     bc_uids = [r[0] for r in rows] or []
+    print(bc_uids)
     return bc_uids
 
 
