@@ -255,5 +255,41 @@ def _init_db():
         )"""
     )
 
+    # create the timing table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS timing (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        soa_id INTEGER NOT NULL,
+        timing_uid TEXT NOT NULL,   -- immutable Timing_N identifier unique within SOA
+        name TEXT NOT NULL,
+        label TEXT,
+        description TEXT,
+        type TEXT,  -- value chosen from submissionValue in codelist_code C201264
+        value TEXT,
+        value_label TEXT,
+        relative_to_from TEXT,  -- value chosen from submissionValue in codelist_code C201265
+        relative_from_schedule_instance TEXT,
+        relative_to_schedule_instance TEXT,
+        window_label TEXT,
+        window_upper TEXT,
+        window_lower TEXT,
+        order_index INTEGER,
+        UNIQUE(soa_id, timing_uid)
+        )"""
+    )
+
+    # create timing_audit table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS timing_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        soa_id INT NOT NULL,
+        timing_id INT NOT NULL,
+        action TEXT NOT NULL,   -- create|update|delete
+        before_json TEXT,
+        after_json TEXT,
+        performed_at TEXT
+        )"""
+    )
+
     conn.commit()
     conn.close()

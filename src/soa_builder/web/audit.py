@@ -190,3 +190,30 @@ def _record_study_cell_audit(
         conn.close()
     except Exception as e:
         logger.warning("Failed recording study_cell audit: %s", e)
+
+
+def _record_timing_audit(
+    soa_id: int,
+    action: str,
+    timing_id: int | None,
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO timing_audit (soa_id, timing_id, action, before_json, after_json, performed_at VALUES (?,?,?,?,?,?))",
+            (
+                soa_id,
+                timing_id,
+                action,
+                before,
+                after,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording timing audit: %s", e)

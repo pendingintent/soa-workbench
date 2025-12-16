@@ -68,6 +68,7 @@ from .routers import epochs as epochs_router
 from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
 from .routers import visits as visits_router
+from .routers import timings as timings_router
 from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
 from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
@@ -317,6 +318,7 @@ app.include_router(activities_router.router)
 app.include_router(epochs_router.router)
 app.include_router(freezes_router.router)
 app.include_router(rollback_router.router)
+app.include_router(timings_router.router)
 
 
 @app.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
