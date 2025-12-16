@@ -1,16 +1,22 @@
 import logging
+import json
+import os
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_timing_audit
 from ..db import _connect
 from ..schemas import TimingCreate, TimingUpdate
 from ..utils import soa_exists
 
-router = APIRouter(prefix="/soa/{soa_id}")
+router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.timings")
+templates = Jinja2Templates(
+    directory=os.path.join(os.path.dirname(__file__), "..", "templates")
+)
 
 
 def _nz(s: Optional[str]) -> Optional[str]:
@@ -18,7 +24,57 @@ def _nz(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
-@router.get("/timings", response_class=JSONResponse, response_model=None)
+# UI code to list timings in an SOA
+@router.get("/ui/soa/{soa_id}/timings", response_class=HTMLResponse)
+def ui_list_timings(request: Request, soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    timings = list_timings(soa_id)
+    return templates.TemplateResponse(
+        request,
+        "timings.html",
+        {"request": request, "soa_id": soa_id, "timings": timings},
+    )
+
+
+# UI code to create a timing for an SOA
+@router.post("/ui/soa/{soa_id}/timings/create")
+def ui_create_timing(
+    request: Request,
+    soa_id: int,
+    name: str = Form(...),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    type: Optional[str] = Form(None),
+    value: Optional[str] = Form(None),
+    value_label: Optional[str] = Form(None),
+    relative_to_from: Optional[str] = Form(None),
+    relative_from_schedule_instance: Optional[str] = Form(None),
+    relative_to_schedule_instance: Optional[str] = Form(None),
+    window_label: Optional[str] = Form(None),
+    window_upper: Optional[str] = Form(None),
+    window_lower: Optional[str] = Form(None),
+):
+    payload = TimingCreate(
+        name=name,
+        label=label,
+        description=description,
+        type=type,
+        value=value,
+        value_label=value_label,
+        relative_to_from=relative_to_from,
+        relative_from_schedule_instance=relative_from_schedule_instance,
+        relative_to_schedule_instance=relative_to_schedule_instance,
+        window_label=window_label,
+        window_upper=window_upper,
+        window_lower=window_lower,
+    )
+    create_timing(soa_id, payload)
+    return RedirectResponse(url=f"/ui/soa/{soa_id}/timings", status_code=303)
+
+
+# API endpoint to list timings for SOA
+@router.get("/soa/{soa_id}/timings", response_class=JSONResponse, response_model=None)
 def list_timings(soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -56,8 +112,51 @@ def list_timings(soa_id: int):
     return rows
 
 
+@router.get("/soa/{soa_id}/timing_audit", response_class=JSONResponse)
+def list_timing_audit(soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, timing_id, action, before_json, after_json, performed_at FROM timing_audit WHERE soa_id=? ORDER BY id DESC",
+            (soa_id,),
+        )
+    except Exception:
+        # If table does not exist yet, return empty list for backward compatibility
+        conn.close()
+        return JSONResponse([])
+    rows = []
+    for r in cur.fetchall():
+        try:
+            before = json.loads(r[3]) if r[3] else None
+        except Exception:
+            before = None
+        try:
+            after = json.loads(r[4]) if r[4] else None
+        except Exception:
+            after = None
+        rows.append(
+            {
+                "id": r[0],
+                "timing_id": r[1],
+                "action": r[2],
+                "before": before,
+                "after": after,
+                "performed_at": r[5],
+            }
+        )
+    conn.close()
+    return JSONResponse(rows)
+
+
+# API endpoint for creating a timing in an SOA
 @router.post(
-    "/timings", response_class=JSONResponse, status_code=201, response_model=None
+    "/soa/{soa_id}/timings",
+    response_class=JSONResponse,
+    status_code=201,
+    response_model=None,
 )
 def create_timing(soa_id: int, payload: TimingCreate):
     if not soa_exists(soa_id):
@@ -131,7 +230,12 @@ def create_timing(soa_id: int, payload: TimingCreate):
     return row
 
 
-@router.patch("/timings/{timing_id}", response_class=JSONResponse, response_model=None)
+# API endpoint to update a timing in an SOA
+@router.patch(
+    "/soa/{soa_id}/timings/{timing_id}",
+    response_class=JSONResponse,
+    response_model=None,
+)
 def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -288,7 +392,49 @@ def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
     return {**after, "updated_fields": update_fields}
 
 
-@router.delete("/timings/{timing_id}", response_class=JSONResponse, response_model=None)
+# UI code to update a timing in an SOA
+@router.post("/ui/soa/{soa_id}/timings/{timing_id}/update")
+def ui_update_timing(
+    request: Request,
+    soa_id: int,
+    timing_id: int,
+    name: Optional[str] = Form(None),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    type: Optional[str] = Form(None),
+    value: Optional[str] = Form(None),
+    value_label: Optional[str] = Form(None),
+    relative_to_from: Optional[str] = Form(None),
+    relative_from_schedule_instance: Optional[str] = Form(None),
+    relative_to_schedule_instance: Optional[str] = Form(None),
+    window_label: Optional[str] = Form(None),
+    window_upper: Optional[str] = Form(None),
+    window_lower: Optional[str] = Form(None),
+):
+    payload = TimingUpdate(
+        name=name,
+        label=label,
+        description=description,
+        type=type,
+        value=value,
+        value_label=value_label,
+        relative_to_from=relative_to_from,
+        relative_from_schedule_instance=relative_from_schedule_instance,
+        relative_to_schedule_instance=relative_to_schedule_instance,
+        window_label=window_label,
+        window_upper=window_upper,
+        window_lower=window_lower,
+    )
+    update_timing(soa_id, timing_id, payload)
+    return RedirectResponse(url=f"/ui/soa/{soa_id}/timings", status_code=303)
+
+
+# API endpoint to delete a timing
+@router.delete(
+    "/soa/{soa_id}/timings/{timing_id}",
+    response_class=JSONResponse,
+    response_model=None,
+)
 def delete_timing(soa_id: int, timing_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -325,3 +471,10 @@ def delete_timing(soa_id: int, timing_id: int):
 
     _record_timing_audit(soa_id, "delete", timing_id, before=before, after=None)
     return {"deleted": True, "id": timing_id}
+
+
+# UI Code to delete timing
+@router.post("/ui/soa/{soa_id}/timings/{timing_id}/delete")
+def ui_delete_timing(request: Request, soa_id: int, timing_id: int):
+    delete_timing(soa_id, timing_id)
+    return RedirectResponse(url=f"/ui/soa/{soa_id}/timings", status_code=303)

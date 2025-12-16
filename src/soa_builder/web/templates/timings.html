@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Timings for SoA {{ soa_id }}</h2>
+
+<div style="margin-bottom:12px;">
+  <form method="post" action="/ui/soa/{{ soa_id }}/timings/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Name *</label>
+      <input name="name" placeholder="Timing Name" required />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Label</label>
+      <input name="label" placeholder="Label (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Description</label>
+      <input name="description" placeholder="Description (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Type</label>
+      <input name="type" placeholder="Type (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Value</label>
+      <input name="value" placeholder="Value (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Value Label</label>
+      <input name="value_label" placeholder="Value Label (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Relative To/From</label>
+      <input name="relative_to_from" placeholder="from|to (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Relative From Schedule Instance</label>
+      <input name="relative_from_schedule_instance" placeholder="e.g., Arm A (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Relative To Schedule Instance</label>
+      <input name="relative_to_schedule_instance" placeholder="e.g., Epoch 1 (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Window Label</label>
+      <input name="window_label" placeholder="Window (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Window Upper</label>
+      <input name="window_upper" placeholder="+N (optional)" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label>Window Lower</label>
+      <input name="window_lower" placeholder="-N (optional)" />
+    </div>
+    <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Timing</button>
+  </form>
+</div>
+
+<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
+  <tr style="background:#eee;">
+    <th style="text-align:left;padding:4px;">#</th>
+    <th style="text-align:left;padding:4px;">UID</th>
+    <th style="text-align:left;padding:4px;">Name</th>
+    <th style="text-align:left;padding:4px;">Label</th>
+    <th style="text-align:left;padding:4px;">Description</th>
+    <th style="text-align:left;padding:4px;">Type</th>
+    <th style="text-align:left;padding:4px;">Value</th>
+    <th style="text-align:left;padding:4px;">Value Label</th>
+    <th style="text-align:left;padding:4px;">Rel From</th>
+    <th style="text-align:left;padding:4px;">Rel To</th>
+    <th style="text-align:left;padding:4px;">Window</th>
+    <th style="text-align:left;padding:4px;">Update Timing</th>
+  </tr>
+  {% for t in timings or [] %}
+  <tr>
+    <td style="padding:4px;">{{ t.order_index }}</td>
+    <td style="padding:4px;">{{ t.timing_uid }}</td>
+    <td style="padding:4px;">{{ t.name }}</td>
+    <td style="padding:4px;">{{ t.label or '' }}</td>
+    <td style="padding:4px;">{{ t.description or '' }}</td>
+    <td style="padding:4px;">{{ t.type or '' }}</td>
+    <td style="padding:4px;">{{ t.value or '' }}</td>
+    <td style="padding:4px;">{{ t.value_label or '' }}</td>
+    <td style="padding:4px;">{{ t.relative_from_schedule_instance or '' }}</td>
+    <td style="padding:4px;">{{ t.relative_to_schedule_instance or '' }}</td>
+    <td style="padding:4px;">
+      {{ t.window_label or '' }}
+      {% if t.window_upper or t.window_lower %}
+        <small>({{ t.window_lower or '' }}..{{ t.window_upper or '' }})</small>
+      {% endif %}
+    </td>
+    <td style="padding:4px;">
+      <form method="post" action="/ui/soa/{{ soa_id }}/timings/{{ t.id }}/update" style="display:inline-grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:4px;align-items:center;">
+        <input name="name" value="{{ t.name }}" placeholder="Name" />
+        <input name="label" value="{{ t.label or '' }}" placeholder="Label" />
+        <input name="description" value="{{ t.description or '' }}" placeholder="Description" />
+        <input name="type" value="{{ t.type or '' }}" placeholder="Type" />
+        <input name="value" value="{{ t.value or '' }}" placeholder="Value" />
+        <input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" />
+        <input name="relative_to_from" value="{{ t.relative_to_from or '' }}" placeholder="from|to" />
+        <input name="relative_from_schedule_instance" value="{{ t.relative_from_schedule_instance or '' }}" placeholder="Rel From" />
+        <input name="relative_to_schedule_instance" value="{{ t.relative_to_schedule_instance or '' }}" placeholder="Rel To" />
+        <input name="window_label" value="{{ t.window_label or '' }}" placeholder="Window Label" />
+        <input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="Upper (+N)" />
+        <input name="window_lower" value="{{ t.window_lower or '' }}" placeholder="Lower (-N)" />
+        <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+      </form>
+      <form method="post" action="/ui/soa/{{ soa_id }}/timings/{{ t.id }}/delete" style="display:inline;margin-left:6px;">
+        <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">✕</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="12" style="padding:6px;color:#777;">No timings yet.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

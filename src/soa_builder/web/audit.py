@@ -202,14 +202,26 @@ def _record_timing_audit(
     try:
         conn = _connect()
         cur = conn.cursor()
+        # Ensure table exists (defensive for migrated databases)
         cur.execute(
-            "INSERT INTO timing_audit (soa_id, timing_id, action, before_json, after_json, performed_at VALUES (?,?,?,?,?,?))",
+            """CREATE TABLE IF NOT EXISTS timing_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                timing_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        cur.execute(
+            "INSERT INTO timing_audit (soa_id, timing_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
             (
                 soa_id,
                 timing_id,
                 action,
-                before,
-                after,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
                 datetime.now(timezone.utc).isoformat(),
             ),
         )
