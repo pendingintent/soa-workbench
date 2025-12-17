@@ -11,6 +11,8 @@ from ..audit import _record_timing_audit
 from ..db import _connect
 from ..schemas import TimingCreate, TimingUpdate
 from ..utils import soa_exists
+from ..utils import get_study_timing_type
+from ..utils import get_next_code_uid as _get_next_code_uid
 
 router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.timings")
@@ -30,10 +32,34 @@ def ui_list_timings(request: Request, soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     timings = list_timings(soa_id)
+    # Build mapping: submissionValue -> code and reverse
+    try:
+        sv_to_code = get_study_timing_type("C201264")
+    except Exception:
+        sv_to_code = {}
+    code_to_sv = {v: k for k, v in (sv_to_code or {}).items()}
+    # Map timing.type (code_uid) -> code via code table, then to submissionValue
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT code_uid, code FROM code WHERE soa_id=?", (soa_id,))
+    code_uid_to_code = {r[0]: r[1] for r in cur.fetchall() if r[0]}
+    conn.close()
+    for t in timings:
+        sv = None
+        cu = t.get("type")
+        if cu and cu in code_uid_to_code:
+            code_val = code_uid_to_code.get(cu)
+            sv = code_to_sv.get(str(code_val))
+        t["type_submission_value"] = sv
     return templates.TemplateResponse(
         request,
         "timings.html",
-        {"request": request, "soa_id": soa_id, "timings": timings},
+        {
+            "request": request,
+            "soa_id": soa_id,
+            "timings": timings,
+            "timing_type_options": sorted(list(sv_to_code.keys())),
+        },
     )
 
 
@@ -45,7 +71,7 @@ def ui_create_timing(
     name: str = Form(...),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    type: Optional[str] = Form(None),
+    type_submission_value: Optional[str] = Form(None),
     value: Optional[str] = Form(None),
     value_label: Optional[str] = Form(None),
     relative_to_from: Optional[str] = Form(None),
@@ -55,11 +81,36 @@ def ui_create_timing(
     window_upper: Optional[str] = Form(None),
     window_lower: Optional[str] = Form(None),
 ):
+    # Map selected submission value to code_uid stored in code table
+    code_uid: Optional[str] = None
+    sv = (type_submission_value or "").strip()
+    if sv:
+        try:
+            sv_to_code = get_study_timing_type("C201264")
+            code_val = sv_to_code.get(sv)
+            if code_val:
+                conn_c = _connect()
+                cur_c = conn_c.cursor()
+                code_uid = _get_next_code_uid(cur_c, soa_id)
+                cur_c.execute(
+                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    (
+                        soa_id,
+                        code_uid,
+                        "ddf_terminology",
+                        "C201264",
+                        str(code_val),
+                    ),
+                )
+                conn_c.commit()
+                conn_c.close()
+        except Exception:
+            code_uid = None
     payload = TimingCreate(
         name=name,
         label=label,
         description=description,
-        type=type,
+        type=code_uid,
         value=value,
         value_label=value_label,
         relative_to_from=relative_to_from,
@@ -401,7 +452,7 @@ def ui_update_timing(
     name: Optional[str] = Form(None),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    type: Optional[str] = Form(None),
+    type_submission_value: Optional[str] = Form(None),
     value: Optional[str] = Form(None),
     value_label: Optional[str] = Form(None),
     relative_to_from: Optional[str] = Form(None),
@@ -411,11 +462,39 @@ def ui_update_timing(
     window_upper: Optional[str] = Form(None),
     window_lower: Optional[str] = Form(None),
 ):
+    # Map submission value to a new code_uid (or clear if blank)
+    mapped_type: Optional[str] = None
+    if type_submission_value is not None:
+        sv = (type_submission_value or "").strip()
+        if sv == "":
+            mapped_type = ""  # will be trimmed to NULL by update_timing
+        else:
+            try:
+                sv_to_code = get_study_timing_type("C201264")
+                code_val = sv_to_code.get(sv)
+                if code_val:
+                    conn_c = _connect()
+                    cur_c = conn_c.cursor()
+                    mapped_type = _get_next_code_uid(cur_c, soa_id)
+                    cur_c.execute(
+                        "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                        (
+                            soa_id,
+                            mapped_type,
+                            "ddf_terminology",
+                            "C201264",
+                            str(code_val),
+                        ),
+                    )
+                    conn_c.commit()
+                    conn_c.close()
+            except Exception:
+                mapped_type = None
     payload = TimingUpdate(
         name=name,
         label=label,
         description=description,
-        type=type,
+        type=mapped_type,
         value=value,
         value_label=value_label,
         relative_to_from=relative_to_from,

@@ -18,7 +18,12 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label>Type</label>
-      <input name="type" placeholder="Type (optional)" />
+      <select name="type_submission_value">
+        <option value="">(none)</option>
+        {% for sv in timing_type_options or [] %}
+          <option value="{{ sv }}">{{ sv }}</option>
+        {% endfor %}
+      </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label>Value</label>
@@ -78,7 +83,7 @@
     <td style="padding:4px;">{{ t.name }}</td>
     <td style="padding:4px;">{{ t.label or '' }}</td>
     <td style="padding:4px;">{{ t.description or '' }}</td>
-    <td style="padding:4px;">{{ t.type or '' }}</td>
+    <td style="padding:4px;">{{ t.type_submission_value or '' }}</td>
     <td style="padding:4px;">{{ t.value or '' }}</td>
     <td style="padding:4px;">{{ t.value_label or '' }}</td>
     <td style="padding:4px;">{{ t.relative_from_schedule_instance or '' }}</td>
@@ -94,7 +99,12 @@
         <input name="name" value="{{ t.name }}" placeholder="Name" />
         <input name="label" value="{{ t.label or '' }}" placeholder="Label" />
         <input name="description" value="{{ t.description or '' }}" placeholder="Description" />
-        <input name="type" value="{{ t.type or '' }}" placeholder="Type" />
+        <select name="type_submission_value">
+          <option value="">(none)</option>
+          {% for sv in timing_type_options or [] %}
+            <option value="{{ sv }}" {% if t.type_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
+          {% endfor %}
+        </select>
         <input name="value" value="{{ t.value or '' }}" placeholder="Value" />
         <input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" />
         <input name="relative_to_from" value="{{ t.relative_to_from or '' }}" placeholder="from|to" />

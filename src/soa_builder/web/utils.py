@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple, Optional
 import os
 import requests
 import time
@@ -289,3 +289,43 @@ def table_has_columns(cur: Any, table: str, required: List[str] | tuple) -> bool
         return all(c in cols for c in required)
     except Exception:
         return False
+
+
+def get_study_timing_type(
+    codelist_code: str,
+    *,
+    ensure_default: Optional[Tuple[str, str]] = None,
+    fallback_codelist_code: Optional[str] = None,
+) -> Dict[str, str]:
+    """Return a dictionary of {submissionValue: code} from the DDF Terminology table.
+
+    Parameters:
+      codelist_code: Required codelist identifier to read from `ddf_terminology`.
+      ensure_default: Optional pair (submissionValue, code) to inject if not present.
+      fallback_codelist_code: Optional alternate codelist to use when the primary
+        codelist has no rows.
+    """
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT cdisc_submission_value,code FROM ddf_terminology WHERE codelist_code=?",
+            (codelist_code,),
+        )
+        rows = cur.fetchall()
+        if not rows and fallback_codelist_code:
+            cur.execute(
+                "SELECT cdisc_submission_value,code FROM ddf_terminology WHERE codelist_code=?",
+                (fallback_codelist_code,),
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    result: Dict[str, str] = {str(sub): str(code) for (sub, code) in rows}
+    if ensure_default and all(ensure_default):
+        sub_val, code_val = ensure_default
+        # Only add if missing, do not overwrite existing mapping
+        if sub_val not in result:
+            result[str(sub_val)] = str(code_val)
+    return result
