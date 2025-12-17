@@ -93,7 +93,7 @@ def build_usdm_arms(soa_id: int) -> List[Dict[str, Any]]:
         - codeSystem: string
         - codeSystemVersion: string
         - decode: string
-        - instanceTye: "Code"
+        - instanceType: "Code"
         }
       - popultionIds?: int[]
       - notes?: string[]|[]
