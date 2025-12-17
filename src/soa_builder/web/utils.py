@@ -289,3 +289,20 @@ def table_has_columns(cur: Any, table: str, required: List[str] | tuple) -> bool
         return all(c in cols for c in required)
     except Exception:
         return False
+
+
+def get_study_timing_type(codelist_code: str) -> Dict[str, str]:
+    """Return a dictionary of {submissionValue: code} from the DDF
+    Terminology (ddf_terminology) table.
+
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT cdisc_submission_value,code FROM ddf_terminology WHERE codelist_code=?",
+        (codelist_code,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+
+    return {str(sub): str(code) for (sub, code) in rows}

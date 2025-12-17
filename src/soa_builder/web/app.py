@@ -68,6 +68,7 @@ from .routers import epochs as epochs_router
 from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
 from .routers import visits as visits_router
+from .routers import timings as timings_router
 from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
 from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
@@ -317,6 +318,7 @@ app.include_router(activities_router.router)
 app.include_router(epochs_router.router)
 app.include_router(freezes_router.router)
 app.include_router(rollback_router.router)
+app.include_router(timings_router.router)
 
 
 @app.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
@@ -406,14 +408,6 @@ def reorder_activities_api(soa_id: int, order: List[int]):
         after={"new_order": order, "details": reorder_details},
     )
     return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})
-
-
-class ConceptsUpdate(BaseModel):
-    concept_codes: List[str]
-
-
-class FreezeCreate(BaseModel):
-    version_label: Optional[str] = None
 
 
 def _list_freezes(soa_id: int):
@@ -1052,6 +1046,15 @@ def _rollback_preview(soa_id: int, freeze_id: int) -> dict:
     }
 
 
+# ------ Schemas -----#
+class ConceptsUpdate(BaseModel):
+    concept_codes: List[str]
+
+
+class FreezeCreate(BaseModel):
+    version_label: Optional[str] = None
+
+
 class CellCreate(BaseModel):
     visit_id: int
     activity_id: int
@@ -1076,12 +1079,6 @@ class MatrixImport(BaseModel):
     visits: List[MatrixVisit]
     activities: List[MatrixActivity]
     reset: bool = True
-
-
-# --------------------- Helpers ---------------------
-
-
-# Use shared utils.soa_exists instead of local helper
 
 
 def _fetch_matrix(soa_id: int):
@@ -2151,23 +2148,11 @@ def update_soa_metadata(soa_id: int, payload: SOAMetadataUpdate):
 
 
 """Visit creation handled in routers/visits.py"""
-
-
 """Visit update handled in routers/visits.py"""
-
-
 """Visit detail handled in routers/visits.py"""
-
-
 """Activity creation handled in routers/activities.py"""
-
-
 """Activity update handled in routers/activities.py"""
-
-
 """Activity detail handled in routers/activities.py"""
-
-
 """Epoch CRUD and reorder endpoints refactored into epochs_router."""
 
 
@@ -5902,7 +5887,6 @@ def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
     return HTMLResponse("OK")
 
 
-# --------------------- DDF Terminology Load ---------------------
 def _sanitize_column(name: str) -> str:
     """Sanitize Excel column header to safe SQLite identifier: lowercase, replace spaces & non-alnum with underscore, collapse repeats."""
     import re
@@ -5915,6 +5899,7 @@ def _sanitize_column(name: str) -> str:
     return s
 
 
+# ------------------------- DDF Terminology ----------------------#
 def load_ddf_terminology(
     file_path: str,
     sheet_name: str = "DDF Terminology 2025-09-26",
@@ -6507,7 +6492,7 @@ def ui_ddf_audit(
     )
 
 
-# Protocol Terminology functions
+# ------------------------ Protocol Terminology ----------------------#
 def load_protocol_terminology(
     file_path: str,
     sheet_name: str = "Protocol Terminology 2025-09-26",
