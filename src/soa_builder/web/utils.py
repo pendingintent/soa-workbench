@@ -292,7 +292,7 @@ def table_has_columns(cur: Any, table: str, required: List[str] | tuple) -> bool
 
 
 def get_study_timing_type(codelist_code: str) -> Dict[str, str]:
-    """Return a dictonary of {submissionValue: code} from the DDF
+    """Return a dictionary of {submissionValue: code} from the DDF
     Terminology (ddf_terminology) table.
 
     """
