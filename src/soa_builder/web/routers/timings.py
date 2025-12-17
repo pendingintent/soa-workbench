@@ -37,7 +37,13 @@ def ui_list_timings(request: Request, soa_id: int):
         sv_to_code = get_study_timing_type("C201264")
     except Exception:
         sv_to_code = {}
+    # Mapping for Relative To/From (C201265)
+    try:
+        sv_to_code_rtf = get_study_timing_type("C201265")
+    except Exception:
+        sv_to_code_rtf = {}
     code_to_sv = {v: k for k, v in (sv_to_code or {}).items()}
+    code_to_sv_rtf = {v: k for k, v in (sv_to_code_rtf or {}).items()}
     # Map timing.type (code_uid) -> code via code table, then to submissionValue
     conn = _connect()
     cur = conn.cursor()
@@ -51,6 +57,13 @@ def ui_list_timings(request: Request, soa_id: int):
             code_val = code_uid_to_code.get(cu)
             sv = code_to_sv.get(str(code_val))
         t["type_submission_value"] = sv
+        # Decode relative_to_from (stores code_uid) -> submission value
+        rtf_sv = None
+        rtf_cu = t.get("relative_to_from")
+        if rtf_cu and rtf_cu in code_uid_to_code:
+            rtf_code_val = code_uid_to_code.get(rtf_cu)
+            rtf_sv = code_to_sv_rtf.get(str(rtf_code_val))
+        t["relative_to_from_submission_value"] = rtf_sv
     return templates.TemplateResponse(
         request,
         "timings.html",
@@ -59,6 +72,7 @@ def ui_list_timings(request: Request, soa_id: int):
             "soa_id": soa_id,
             "timings": timings,
             "timing_type_options": sorted(list(sv_to_code.keys())),
+            "relative_to_from_options": sorted(list(sv_to_code_rtf.keys())),
         },
     )
 
@@ -74,7 +88,7 @@ def ui_create_timing(
     type_submission_value: Optional[str] = Form(None),
     value: Optional[str] = Form(None),
     value_label: Optional[str] = Form(None),
-    relative_to_from: Optional[str] = Form(None),
+    relative_to_from_submission_value: Optional[str] = Form(None),
     relative_from_schedule_instance: Optional[str] = Form(None),
     relative_to_schedule_instance: Optional[str] = Form(None),
     window_label: Optional[str] = Form(None),
@@ -106,6 +120,31 @@ def ui_create_timing(
                 conn_c.close()
         except Exception:
             code_uid = None
+    # Map Relative To/From submission value to code_uid
+    rtf_code_uid: Optional[str] = None
+    rsv = (relative_to_from_submission_value or "").strip()
+    if rsv:
+        try:
+            sv_to_code_rtf = get_study_timing_type("C201265")
+            rtf_code_val = sv_to_code_rtf.get(rsv)
+            if rtf_code_val:
+                conn_c2 = _connect()
+                cur_c2 = conn_c2.cursor()
+                rtf_code_uid = _get_next_code_uid(cur_c2, soa_id)
+                cur_c2.execute(
+                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    (
+                        soa_id,
+                        rtf_code_uid,
+                        "ddf_terminology",
+                        "C201265",
+                        str(rtf_code_val),
+                    ),
+                )
+                conn_c2.commit()
+                conn_c2.close()
+        except Exception:
+            rtf_code_uid = None
     payload = TimingCreate(
         name=name,
         label=label,
@@ -113,7 +152,7 @@ def ui_create_timing(
         type=code_uid,
         value=value,
         value_label=value_label,
-        relative_to_from=relative_to_from,
+        relative_to_from=rtf_code_uid,
         relative_from_schedule_instance=relative_from_schedule_instance,
         relative_to_schedule_instance=relative_to_schedule_instance,
         window_label=window_label,
@@ -455,41 +494,96 @@ def ui_update_timing(
     type_submission_value: Optional[str] = Form(None),
     value: Optional[str] = Form(None),
     value_label: Optional[str] = Form(None),
-    relative_to_from: Optional[str] = Form(None),
+    relative_to_from_submission_value: Optional[str] = Form(None),
     relative_from_schedule_instance: Optional[str] = Form(None),
     relative_to_schedule_instance: Optional[str] = Form(None),
     window_label: Optional[str] = Form(None),
     window_upper: Optional[str] = Form(None),
     window_lower: Optional[str] = Form(None),
 ):
-    # Map submission value to a new code_uid (or clear if blank)
+    # Determine existing code values for type and relative_to_from
     mapped_type: Optional[str] = None
-    if type_submission_value is not None:
-        sv = (type_submission_value or "").strip()
-        if sv == "":
-            mapped_type = ""  # will be trimmed to NULL by update_timing
-        else:
-            try:
+    mapped_rtf: Optional[str] = None
+    try:
+        conn_chk = _connect()
+        cur_chk = conn_chk.cursor()
+        cur_chk.execute(
+            "SELECT type, relative_to_from FROM timing WHERE soa_id=? AND id=?",
+            (soa_id, timing_id),
+        )
+        row_chk = cur_chk.fetchone()
+        existing_type_uid = row_chk[0] if row_chk else None
+        existing_rtf_uid = row_chk[1] if row_chk else None
+        # Map existing code_uids -> code values
+        cur_chk.execute(
+            "SELECT code_uid, code FROM code WHERE soa_id=?",
+            (soa_id,),
+        )
+        code_rows = cur_chk.fetchall() or []
+        code_uid_to_code = {r[0]: str(r[1]) for r in code_rows if r and r[0]}
+        # Handle type mapping only when changed
+        if type_submission_value is not None:
+            sv = (type_submission_value or "").strip()
+            if sv == "":
+                mapped_type = ""  # clear field
+            else:
                 sv_to_code = get_study_timing_type("C201264")
-                code_val = sv_to_code.get(sv)
-                if code_val:
-                    conn_c = _connect()
-                    cur_c = conn_c.cursor()
-                    mapped_type = _get_next_code_uid(cur_c, soa_id)
-                    cur_c.execute(
+                new_code_val = sv_to_code.get(sv)
+                current_code_val = (
+                    code_uid_to_code.get(existing_type_uid)
+                    if existing_type_uid
+                    else None
+                )
+                if new_code_val is None:
+                    mapped_type = None  # invalid; ignore
+                elif str(current_code_val) == str(new_code_val):
+                    mapped_type = None  # unchanged; do not update
+                else:
+                    # Always create a fresh code_uid; do not reuse across timings
+                    mapped_type = _get_next_code_uid(cur_chk, soa_id)
+                    cur_chk.execute(
                         "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                         (
                             soa_id,
                             mapped_type,
                             "ddf_terminology",
                             "C201264",
-                            str(code_val),
+                            str(new_code_val),
                         ),
                     )
-                    conn_c.commit()
-                    conn_c.close()
-            except Exception:
-                mapped_type = None
+        # Handle relative_to_from mapping only when changed
+        if relative_to_from_submission_value is not None:
+            rsv = (relative_to_from_submission_value or "").strip()
+            if rsv == "":
+                mapped_rtf = ""  # clear field
+            else:
+                sv_to_code_rtf = get_study_timing_type("C201265")
+                new_rtf_code_val = sv_to_code_rtf.get(rsv)
+                current_rtf_code_val = (
+                    code_uid_to_code.get(existing_rtf_uid) if existing_rtf_uid else None
+                )
+                if new_rtf_code_val is None:
+                    mapped_rtf = None  # invalid; ignore
+                elif str(current_rtf_code_val) == str(new_rtf_code_val):
+                    mapped_rtf = None  # unchanged; do not update
+                else:
+                    mapped_rtf = _get_next_code_uid(cur_chk, soa_id)
+                    cur_chk.execute(
+                        "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                        (
+                            soa_id,
+                            mapped_rtf,
+                            "ddf_terminology",
+                            "C201265",
+                            str(new_rtf_code_val),
+                        ),
+                    )
+        conn_chk.commit()
+        conn_chk.close()
+    except Exception:
+        # On any error, fall back to previous behavior (leave fields unchanged)
+        mapped_type = None if type_submission_value not in ("",) else ""
+        mapped_rtf = None if relative_to_from_submission_value not in ("",) else ""
     payload = TimingUpdate(
         name=name,
         label=label,
@@ -497,7 +591,7 @@ def ui_update_timing(
         type=mapped_type,
         value=value,
         value_label=value_label,
-        relative_to_from=relative_to_from,
+        relative_to_from=mapped_rtf,
         relative_from_schedule_instance=relative_from_schedule_instance,
         relative_to_schedule_instance=relative_to_schedule_instance,
         window_label=window_label,

@@ -35,7 +35,12 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label>Relative To/From</label>
-      <input name="relative_to_from" placeholder="from|to (optional)" />
+      <select name="relative_to_from_submission_value">
+        <option value="">(none)</option>
+        {% for sv in relative_to_from_options or [] %}
+          <option value="{{ sv }}">{{ sv }}</option>
+        {% endfor %}
+      </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label>Relative From Schedule Instance</label>
@@ -107,7 +112,12 @@
         </select>
         <input name="value" value="{{ t.value or '' }}" placeholder="Value" />
         <input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" />
-        <input name="relative_to_from" value="{{ t.relative_to_from or '' }}" placeholder="from|to" />
+        <select name="relative_to_from_submission_value">
+          <option value="">(none)</option>
+          {% for sv in relative_to_from_options or [] %}
+            <option value="{{ sv }}" {% if t.relative_to_from_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
+          {% endfor %}
+        </select>
         <input name="relative_from_schedule_instance" value="{{ t.relative_from_schedule_instance or '' }}" placeholder="Rel From" />
         <input name="relative_to_schedule_instance" value="{{ t.relative_to_schedule_instance or '' }}" placeholder="Rel To" />
         <input name="window_label" value="{{ t.window_label or '' }}" placeholder="Window Label" />
