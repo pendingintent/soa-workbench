@@ -20,6 +20,28 @@ def _nz(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
+def _get_timing_code_values(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT DISTINCT c.codelist_table,d.code,d.cdisc_submission_value,d.dataset_date "
+        "FROM code c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
+        "AND c.code = d.code WHERE c.soa_id=? AND c.code_uid=?",
+        (
+            soa_id,
+            code_uid,
+        ),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    code_system = [r[0] for r in rows]
+    code_code = [r[1] for r in rows]
+    code_decode = [r[2] for r in rows]
+    code_system_version = [r[3] for r in rows]
+
+    return code_code, code_decode, code_system, code_system_version
+
+
 def build_usdm_timings(soa_id: int) -> List[Dict[str, Any]]:
     """
     Build USDM Timings-Output objects for the given SOA.
@@ -103,6 +125,12 @@ def build_usdm_timings(soa_id: int) -> List[Dict[str, Any]]:
             r[13],
             r[14],
         )
+        t_code, t_decode, t_codeSystem, t_codeSystemVersion = _get_timing_code_values(
+            soa_id, type
+        )
+        rtf_code, rtf_decode, rtf_codeSystem, rtf_codeSystemVersion = (
+            _get_timing_code_values(soa_id, relative_to_from)
+        )
 
         timing = {
             "id": timing_uid,
@@ -111,23 +139,23 @@ def build_usdm_timings(soa_id: int) -> List[Dict[str, Any]]:
             "label": _nz(label),
             "description": _nz(description),
             "type": {
-                "id": "<placeholder>",
+                "id": type,
                 "extensionAttributes": [],
-                "code": "<placeholder>",
-                "codeSystem": "<placeholder>",
-                "codeSystemVersion": "<placeholder>",
-                "decode": type,
+                "code": t_code[0],
+                "codeSystem": t_codeSystem[0],
+                "codeSystemVersion": t_codeSystemVersion[0],
+                "decode": t_decode[0],
                 "instanceType": "Code",
             },
             "value": value,
             "valueLabel": value_label,
             "relativeToFrom": {
-                "id": "<placeholder>",
+                "id": relative_to_from,
                 "extensionAttributes": [],
-                "code": "<placeholder>",
-                "codeSystem": "<placeholder>",
-                "codeSystemVersion": "<placeholder>",
-                "decode": relative_to_from,
+                "code": rtf_code[0],
+                "codeSystem": rtf_codeSystem[0],
+                "codeSystemVersion": rtf_codeSystemVersion[0],
+                "decode": rtf_decode[0],
                 "instanceType": "Code",
             },
             "relativeFromScheduledInstanceId": relative_from_schedule_instance,
