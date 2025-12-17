@@ -25,12 +25,12 @@ def _nz(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
-def _get_epoch_code_values(soa_id: int, type: str, code: str) -> Tuple[
+def _get_epoch_code_values(soa_id: int, epoch_type: str, code: str) -> Tuple[
     str,
     str,
     str,
 ]:
-    logger = logging.getLogger("usdm.generate_arms")
+    logger = logging.getLogger("usdm.generate_epochs")
     url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
@@ -46,11 +46,11 @@ def _get_epoch_code_values(soa_id: int, type: str, code: str) -> Tuple[
 
     resp = requests.get(url, headers=headers, timeout=10)
     if resp.status_code != 200:
-        logger.exception("No response from {} for code {}".format(url, type))
+        logger.exception("No response from {} for code {}".format(url, epoch_type))
     else:
         content = resp.json()
         parsed_url = urlparse(url)
-        code_system = parsed_url.scheme + "//:" + parsed_url.netloc
+        code_system = parsed_url.scheme + "://" + parsed_url.netloc
         code_system_version = parsed_url.path.split("/", 7)[5]
 
         top_terms = content.get("terms")
@@ -61,7 +61,7 @@ def _get_epoch_code_values(soa_id: int, type: str, code: str) -> Tuple[
     return code_system, code_system_version, decode
 
 
-def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
+def build_usdm_epochs(soa_id: int) -> List[Dict[str, Any]]:
     """
     Build USDM Epoch-Output objects for the given SOA.
 
@@ -83,7 +83,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
       - previousId?: string | null
       - nextId?: string | null
       - notes?: string[]
-      - instanceType: "Activity"
+      - instanceType: "StudyEpoch"
     """
     conn = _connect()
     cur = conn.cursor()
@@ -113,7 +113,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
 
     for i, r in enumerate(rows):
-        id, epoch_uid, name, label, description, type, code = (
+        id, epoch_uid, name, label, description, epoch_type, code = (
             r[0],
             r[1],
             r[2],
@@ -125,9 +125,15 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
         eid = epoch_uid
         prev_id = id_by_index.get(i - 1)
         next_id = id_by_index.get(i + 1)
-        code_system, code_system_version, decode = _get_epoch_code_values(
-            soa_id, type, code
-        )
+
+        try:
+            code_system, code_system_version, decode = _get_epoch_code_values(
+                soa_id, epoch_type, code
+            )
+        except Exception:
+            code_system = None
+            code_system_version = None
+            decode = None
 
         epoch = {
             "id": eid,
@@ -136,7 +142,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
             "label": _nz(label),
             "description": _nz(description),
             "type": {
-                "id": type,
+                "id": epoch_type,
                 "extensionAttributes": [],
                 "code": code,
                 "codeSystem": code_system,
@@ -170,7 +176,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        activities = build_usdm_activities(args.soa_id)
+        activities = build_usdm_epochs(args.soa_id)
     except Exception:
         logger.exception("Failed to build epochs for soa_id=%s", args.soa_id)
         sys.exit(1)
