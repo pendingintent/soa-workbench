@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from ..audit import _record_instance_audit
 from ..db import _connect
 from ..schemas import InstanceCreate, InstanceUpdate
-from ..utils import soa_exists
+from ..utils import soa_exists, get_encounter_id
 
 router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.instances")
@@ -63,12 +63,14 @@ def ui_list_instances(request: Request, soa_id: int):
         raise HTTPException(404, "SOA not found")
 
     instances = list_instances(soa_id)
+    encounter_options = get_encounter_id(soa_id)
     return templates.TemplateResponse(
         "instances.html",
         {
             "request": request,
             "soa_id": soa_id,
             "instances": instances,
+            "encounter_options": encounter_options,
         },
     )
 

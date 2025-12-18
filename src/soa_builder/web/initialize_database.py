@@ -17,7 +17,10 @@ def _init_db():
             soa_id INTEGER,
             name TEXT,
             raw_header TEXT,
-            order_index INTEGER
+            order_index INTEGER,
+            epoch_id INTEGER,
+            encounter_uid TEXT,
+            UNIQUE(soa_id,encounter_uid)
         )"""
     )
     cur.execute(

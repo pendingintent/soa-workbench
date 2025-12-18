@@ -35,7 +35,12 @@
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
             <label>Encounter</label>
-            <input name="encounter_uid" placeholder="Visit ID" />
+            <select name="encounter_uid">
+                <option value="">-- Select encounter --</option>
+                {% for name, enc_uid in (encounter_options or {}).items() %}
+                    <option value="{{ end_uid }}">{{ name }}</option>
+                {% endfor %}
+            </select>
         </div>
         <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Instance</button>
     </form>
@@ -66,7 +71,13 @@
       <td style="padding:4px;"><input name="epoch_uid" value="{{ i.epoch_uid or '' }}" placeholder="Epoch ID" /></td>
       <td style="padding:4px;"><input name="timeline_id" value="{{ i.timeline_id or '' }}" placeholder="Timeline ID" /></td>
       <td style="padding:4px;"><input name="timeline_exit_id" value="{{ i.timeline_exit_id or '' }}" placeholder="Timeline Exit ID" /></td>
-      <td style="padding:4px;"><input name="encounter_uid" value="{{ i.encounter_uid or '' }}" placeholder="Encounter/Visit ID" /></td>
+      <td style="padding:4px;">
+        <select name="encounter_uid">
+            <option value="">-- Select Encounter --</option>
+            {% for name, enc_uid in (encounter_options or {}).items() %}
+                <option value="{{ enc_uid }}" {% if i.encounter_uid == enc_uid %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+      </td>
       <td style="padding:4px;">
         <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
       </td>
