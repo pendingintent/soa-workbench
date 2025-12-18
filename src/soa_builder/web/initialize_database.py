@@ -291,5 +291,54 @@ def _init_db():
         )"""
     )
 
+    # create schedule_timelines table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS schedule_timelines (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        soa_id INT NOT NULL,
+        schedule_timeline_uid TEXT NOT NULL,    -- immutable ScheduleTimeline_N identifier unique within SOA
+        name TEXT NOT NULL,
+        label TEXT,
+        description TEXT,
+        main_timeline INT,  -- 1=True|0=False
+        entry_condition TEXT,
+        entry_id,       -- dropdown select for ScheduledActivityInstance_
+        exit_id TEXT,
+        order_index INT,
+        UNIQUE(soa_id, schedule_timeline_uid)
+        )"""
+    )
+
+    # create instance_audit table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS instance_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                instance_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+    )
+
+    # create instances table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS instances (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        soa_id INT NOT NULL,
+        instance_uid TEXT NOT NULL,     -- immutable ScheduledActivityInstance_N identifier unique withiun SOA
+        name TEXT NOT NULL,
+        label TEXT,
+        description TEXT,
+        default_condition_uid TEXT,
+        epoch_uid TEXT,
+        timeline_id TEXT,
+        timeline_exit_id TEXT,
+        order_index INT,
+        UNIQUE(soa_id, instance_uid)
+        )"""
+    )
+
     conn.commit()
     conn.close()

@@ -202,18 +202,6 @@ def _record_timing_audit(
     try:
         conn = _connect()
         cur = conn.cursor()
-        # Ensure table exists (defensive for migrated databases)
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS timing_audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                soa_id INTEGER NOT NULL,
-                timing_id INTEGER,
-                action TEXT NOT NULL,
-                before_json TEXT,
-                after_json TEXT,
-                performed_at TEXT NOT NULL
-            )"""
-        )
         cur.execute(
             "INSERT INTO timing_audit (soa_id, timing_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
             (
@@ -229,3 +217,31 @@ def _record_timing_audit(
         conn.close()
     except Exception as e:
         logger.warning("Failed recording timing audit: %s", e)
+
+
+def _record_instance_audit(
+    soa_id: int,
+    action: str,
+    instance_uid: str,
+    before: Optional[Dict[str, Any]],
+    after: Optional[Dict[str, Any]],
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO instance_audit (soa_id, instance_id, action, before_json, after_json, performed_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                instance_uid,
+                action,
+                before,
+                after,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording instance audti: %s", e)

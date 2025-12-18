@@ -344,7 +344,7 @@ def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
     row = cur.fetchone()
     if not row:
         conn.close()
-        raise HTTPException(404, f"Timing id={timing_id} not found")
+        raise HTTPException(404, f"Timing id={int(timing_id)} not found")
 
     before = {
         "id": row[0],
@@ -650,4 +650,4 @@ def delete_timing(soa_id: int, timing_id: int):
 @router.post("/ui/soa/{soa_id}/timings/{timing_id}/delete")
 def ui_delete_timing(request: Request, soa_id: int, timing_id: int):
     delete_timing(soa_id, timing_id)
-    return RedirectResponse(url=f"/ui/soa/{soa_id}/timings", status_code=303)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/timings", status_code=303)

@@ -69,6 +69,7 @@ from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
 from .routers import visits as visits_router
 from .routers import timings as timings_router
+from .routers import instances as instances_router
 from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
 from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
@@ -155,11 +156,16 @@ _migrate_element_audit_columns()
 _backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 
-
-# All models moved
-# Visit & Activity models moved to routers/visits.py and routers/activities.py
-# Element models moved to routers/elements.py
-# Visit & Activity update models moved to routers/visits.py and routers/activities.py
+# routers
+app.include_router(arms_router.router)
+app.include_router(elements_router.router)
+app.include_router(visits_router.router)
+app.include_router(activities_router.router)
+app.include_router(epochs_router.router)
+app.include_router(freezes_router.router)
+app.include_router(rollback_router.router)
+app.include_router(timings_router.router)
+app.include_router(instances_router.router)
 
 
 # Utility functions
@@ -305,20 +311,6 @@ def _record_arm_audit(
         conn.close()
     except Exception as e:  # pragma: no cover
         logger.warning("Failed recording arm audit: %s", e)
-
-
-"""Element endpoints moved to routers/elements.py"""
-"""Epoch endpoints moved to routers/epochs.py"""
-"""Arm endpoints moved to routers/arms.py and schemas to schemas.py"""
-
-app.include_router(arms_router.router)
-app.include_router(elements_router.router)
-app.include_router(visits_router.router)
-app.include_router(activities_router.router)
-app.include_router(epochs_router.router)
-app.include_router(freezes_router.router)
-app.include_router(rollback_router.router)
-app.include_router(timings_router.router)
 
 
 @app.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
