@@ -23,7 +23,12 @@
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
             <label>Epoch ID</label>
-            <input name="epoch_uid" placeholder="Epoch ID (Optional)" />
+            <select name="epoch_uid">
+                <option value="">-- Select epoch --</option>
+                {% for name, epoch_uid in (epoch_options or {}).items() %}
+                    <option value="{{ epoch_uid }}">{{ name }}</option>
+                {% endfor %}
+            </select>
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
             <label>Timeline ID</label>
@@ -68,7 +73,14 @@
       <td style="padding:4px;"><input name="label" value="{{ i.label or '' }}" placeholder="Label" /></td>
       <td style="padding:4px;"><input name="description" value="{{ i.description or '' }}" placeholder="Description" /></td>
       <td style="padding:4px;"><input name="default_condition_uid" value="{{ i.default_condition_uid or '' }}" placeholder="Default Condition ID" /></td>
-      <td style="padding:4px;"><input name="epoch_uid" value="{{ i.epoch_uid or '' }}" placeholder="Epoch ID" /></td>
+      <td style="padding:4px;">
+        <select name="epoch_uid">
+            <option value="">-- Select Epoch --</option>
+            {% for name, epoch_uid in (epoch_options or {}).items() %}
+                <option value="{{ epoch_uid }}" {%if i.epoch_uid == epoch_uid %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+    </td>   
       <td style="padding:4px;"><input name="timeline_id" value="{{ i.timeline_id or '' }}" placeholder="Timeline ID" /></td>
       <td style="padding:4px;"><input name="timeline_exit_id" value="{{ i.timeline_exit_id or '' }}" placeholder="Timeline Exit ID" /></td>
       <td style="padding:4px;">
@@ -77,6 +89,7 @@
             {% for name, enc_uid in (encounter_options or {}).items() %}
                 <option value="{{ enc_uid }}" {% if i.encounter_uid == enc_uid %}selected{% endif %}>{{ name }}</option>
             {% endfor %}
+        </select>
       </td>
       <td style="padding:4px;">
         <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>

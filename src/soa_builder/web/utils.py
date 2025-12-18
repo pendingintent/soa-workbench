@@ -309,7 +309,7 @@ def get_study_timing_type(codelist_code: str) -> Dict[str, str]:
 
 
 def get_encounter_id(soa_id: int) -> Dict[str, str]:
-    """Return a dictionary of {id: name} from the visit table"""
+    """Return a dictionary of {name: encounter_uid} from the visit table"""
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -319,3 +319,16 @@ def get_encounter_id(soa_id: int) -> Dict[str, str]:
     rows = cur.fetchall()
     conn.close()
     return {str(name): str(enc_uid) for (name, enc_uid) in rows if name is not None}
+
+
+def get_epoch_uid(soa_id: int) -> Dict[str, str]:
+    """Return a dictionary of {name: epoch_uid} from the epoch table"""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name, epoch_uid FROM epoch WHERE soa_id=? ORDER BY epoch_uid",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {str(name): str(epoch_uid) for (name, epoch_uid) in rows if name is not None}
