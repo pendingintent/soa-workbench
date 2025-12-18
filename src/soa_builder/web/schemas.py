@@ -4,13 +4,14 @@ from pydantic import BaseModel
 
 
 class InstanceUpdate(BaseModel):
-    name: str
+    name: Optional[str] = None
     label: Optional[str] = None
     description: Optional[str] = None
     default_condition_uid: Optional[str] = None
     epoch_uid: Optional[str] = None
     timeline_id: Optional[str] = None
     timeline_exit_id: Optional[str] = None
+    encounter_uid: Optional[str] = None
 
 
 class InstanceCreate(BaseModel):
@@ -21,6 +22,7 @@ class InstanceCreate(BaseModel):
     epoch_uid: Optional[str] = None
     timeline_id: Optional[str] = None
     timeline_exit_id: Optional[str] = None
+    encounter_uid: Optional[str] = None
 
 
 class TimingCreate(BaseModel):

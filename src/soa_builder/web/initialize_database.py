@@ -336,6 +336,7 @@ def _init_db():
         timeline_id TEXT,
         timeline_exit_id TEXT,
         order_index INT,
+        encounter_uid TEXT,
         UNIQUE(soa_id, instance_uid)
         )"""
     )

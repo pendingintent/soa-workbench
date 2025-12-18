@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2>Scheduled Activity Instances for SoA {{ soa_id }}</h2>
+
+<div style="margin-bottom:2px;">
+    <form method="post" action="/ui/soa/{{ soa_id }}/instances/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+        <div style="display: flex;flex-direction: column;gap: 2px;">
+            <label>Name *</label>
+            <input name="name" placeholder="Instance Name" required />
+        </div>
+        <div style="display: flex;flex-direction: column;gap:2px;">
+            <label>Label</label>
+            <input name="label" placeholder="Label (optional)" />
+        </div>
+        <div style="display: flex;flex-direction: column;gap:2px;">
+            <label>Description</label>
+            <input name="description" placeholder="Description (Optional)" />
+        </div>
+        <div style="display: flex;flex-direction: column;gap:2px;">
+            <label>Default Condition ID</label>
+            <input name="default_condition_uid" placeholder="Default Condition ID (Optional)" />
+        </div>
+        <div style="display: flex;flex-direction: column;gap:2px;">
+            <label>Epoch ID</label>
+            <input name="epoch_uid" placeholder="Epoch ID (Optional)" />
+        </div>
+        <div style="display: flex;flex-direction: column;gap:2px;">
+            <label>Timeline ID</label>
+            <input name="timeline_id" placeholder="Timeline ID (Optional)" />
+        </div>
+        <div style="display: flex;flex-direction: column;gap:2px;">
+            <label>Timeline Exit ID</label>
+            <input name="timeline_exit_id" placeholder="Timeline Exit ID" />
+        </div>
+        <div style="display: flex;flex-direction: column;gap:2px;">
+            <label>Encounter</label>
+            <input name="encounter_uid" placeholder="Visit ID" />
+        </div>
+        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Instance</button>
+    </form>
+</div>
+
+<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
+    <tr style="background:#eee;">
+        <th style="text-align:left;padding:4px;">UID</th>
+        <th style="text-align:left;padding:4px;">Name</th>
+        <th style="text-align:left;padding:4px;">Label</th>
+        <th style="text-align:left;padding:4px;">Description</th>
+        <th style="text-align:left;padding:4px;">Default Condition</th>
+        <th style="text-align:left;padding:4px;">Epoch</th>
+        <th style="text-align:left;padding:4px;">Timeline ID</th>
+        <th style="text-align:left;padding:4px;">Timeline Exit ID</th>
+        <th style="text-align:left;padding:4px;">Encounter</th>
+        <th style="text-align:left;padding:4px;">Save</th>
+        <th style="text-align:left;padding:4px;">Delete Instance</th>
+    </tr>
+    {% for i in instances or [] %}
+  <tr>
+    <form method="post" action="/ui/soa/{{ soa_id }}/instances/{{ i.id }}/update">
+      <td style="padding:4px;white-space:nowrap;">{{ i.instance_uid }}</td>
+      <td style="padding:4px;"><input name="name" value="{{ i.name or '' }}" placeholder="Name" /></td>
+      <td style="padding:4px;"><input name="label" value="{{ i.label or '' }}" placeholder="Label" /></td>
+      <td style="padding:4px;"><input name="description" value="{{ i.description or '' }}" placeholder="Description" /></td>
+      <td style="padding:4px;"><input name="default_condition_uid" value="{{ i.default_condition_uid or '' }}" placeholder="Default Condition ID" /></td>
+      <td style="padding:4px;"><input name="epoch_uid" value="{{ i.epoch_uid or '' }}" placeholder="Epoch ID" /></td>
+      <td style="padding:4px;"><input name="timeline_id" value="{{ i.timeline_id or '' }}" placeholder="Timeline ID" /></td>
+      <td style="padding:4px;"><input name="timeline_exit_id" value="{{ i.timeline_exit_id or '' }}" placeholder="Timeline Exit ID" /></td>
+      <td style="padding:4px;"><input name="encounter_uid" value="{{ i.encounter_uid or '' }}" placeholder="Encounter/Visit ID" /></td>
+      <td style="padding:4px;">
+        <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+      </td>
+    </form>
+    <td style="padding:4px;">
+      <form method="post" action="/ui/soa/{{ soa_id }}/instances/{{ i.id }}/delete">
+        <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">✕</button>
+      </form>
+    </td>
+  </tr>
+    {% else %}
+    <tr><td colspan="12" style="padding:6px;color:#777;">No instances yet.</td></tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

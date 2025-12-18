@@ -33,7 +33,7 @@ def list_instances(soa_id: int):
     cur = conn.cursor()
     cur.execute(
         "SELECT id,instance_uid,name,label,description,default_condition_uid,epoch_uid,timeline_id,"
-        "timeline_exit_id,order_index FROM instances WHERE soa_id=? ORDER BY order_index,id",
+        "timeline_exit_id,order_index,encounter_uid FROM instances WHERE soa_id=? ORDER BY order_index,id",
         (soa_id,),
     )
     rows = [
@@ -48,6 +48,7 @@ def list_instances(soa_id: int):
             "timeline_id": r[7],
             "timeline_exit_id": r[8],
             "order_index": r[9],
+            "encounter_uid": r[10],
         }
         for r in cur.fetchall()
     ]
@@ -63,7 +64,6 @@ def ui_list_instances(request: Request, soa_id: int):
 
     instances = list_instances(soa_id)
     return templates.TemplateResponse(
-        request,
         "instances.html",
         {
             "request": request,
@@ -108,7 +108,7 @@ def create_instance(soa_id: int, payload: InstanceCreate):
                 used_nums.add(int(tail))
             else:
                 logger.warning(
-                    "Invalid ingtance_uid format encountered (ignored): %s",
+                    "Invalid instance_uid format encountered (ignored): %s",
                     uid,
                 )
     next_n = 1
@@ -117,7 +117,7 @@ def create_instance(soa_id: int, payload: InstanceCreate):
     new_uid = f"ScheduledActivityInstance_{next_n}"
     cur.execute(
         "INSERT INTO instances (soa_id,instance_uid,name,label,description,default_condition_uid,epoch_uid,"
-        "timeline_id,timeline_exit_id,order_index) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "timeline_id,timeline_exit_id,order_index,encounter_uid) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (
             soa_id,
             new_uid,
@@ -129,6 +129,7 @@ def create_instance(soa_id: int, payload: InstanceCreate):
             _nz(payload.timeline_id),
             _nz(payload.timeline_exit_id),
             next_ord,
+            _nz(payload.encounter_uid),
         ),
     )
     instance_id = cur.lastrowid
@@ -158,6 +159,7 @@ def ui_create_instance(
     epoch_uid: Optional[str] = Form(None),
     timeline_id: Optional[str] = Form(None),
     timeline_exit_id: Optional[str] = Form(None),
+    encounter_uid: Optional[str] = Form(None),
 ):
     payload = InstanceCreate(
         name=name,
@@ -167,6 +169,7 @@ def ui_create_instance(
         epoch_uid=epoch_uid,
         timeline_id=timeline_id,
         timeline_exit_id=timeline_exit_id,
+        encounter_uid=encounter_uid,
     )
     create_instance(soa_id, payload)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/instances", status_code=303)
@@ -186,7 +189,7 @@ def update_instance(soa_id: int, instance_id: int, payload: InstanceUpdate):
     cur = conn.cursor()
     cur.execute(
         "SELECT id,instance_uid,name,label,description,default_condition_uid, epoch_uid,"
-        "timeline_id,timeline_exit_id,order_index from instances WHERE soa_id=? and id=?",
+        "timeline_id,timeline_exit_id,order_index,encounter_uid from instances WHERE soa_id=? and id=?",
         (
             soa_id,
             instance_id,
@@ -208,6 +211,7 @@ def update_instance(soa_id: int, instance_id: int, payload: InstanceUpdate):
         "timeline_id": row[7],
         "timeline_exit_id": row[8],
         "order_index": row[9],
+        "encounter_uid": row[10],
     }
     new_name = (payload.name if payload.name is not None else before["name"]) or ""
     new_label = payload.label if payload.label is not None else before["label"]
@@ -234,10 +238,15 @@ def update_instance(soa_id: int, instance_id: int, payload: InstanceUpdate):
         if payload.timeline_exit_id is not None
         else before["timeline_exit_id"]
     )
+    new_encounter_uid = (
+        payload.encounter_uid
+        if payload.encounter_uid is not None
+        else before["encounter_uid"]
+    )
 
     cur.execute(
         "UPDATE instances SET name=?, label=?, description=?, default_condition_uid=?, epoch_uid=?, "
-        "timeline_id=?, timeline_exit_id=? WHERE id=? and soa_id=?",
+        "timeline_id=?, timeline_exit_id=?, encounter_uid=? WHERE id=? and soa_id=?",
         (
             _nz(new_name),
             _nz(new_label),
@@ -246,12 +255,15 @@ def update_instance(soa_id: int, instance_id: int, payload: InstanceUpdate):
             _nz(new_epoch_uid),
             _nz(new_timeline_id),
             _nz(new_timeline_exit_id),
+            _nz(new_encounter_uid),
+            instance_id,
+            soa_id,
         ),
     )
     conn.commit()
     cur.execute(
-        "SELECT id,intance_uid,name,label,description,default_condition_uid,epoch_uid,timeline_id,"
-        "timeline_exit_id,order_index FROM instances WHERE soa_id=? and instance_id=?",
+        "SELECT id,instance_uid,name,label,description,default_condition_uid,epoch_uid,timeline_id,"
+        "timeline_exit_id,order_index,encounter_uid FROM instances WHERE soa_id=? and id=?",
         (
             soa_id,
             instance_id,
@@ -270,6 +282,7 @@ def update_instance(soa_id: int, instance_id: int, payload: InstanceUpdate):
         "timeline_id": r[7],
         "timeline_exit_id": r[8],
         "order_index": r[9],
+        "encounter_uid": r[10],
     }
     mutable = [
         "name",
@@ -279,6 +292,7 @@ def update_instance(soa_id: int, instance_id: int, payload: InstanceUpdate):
         "epoch_uid",
         "timeline_id",
         "timeline_exit_id",
+        "encounter_uid",
     ]
     update_fields = [
         f for f in mutable if (before.get(f) or None) != (after.get(f) or None)
@@ -306,6 +320,7 @@ def ui_update_instance(
     epoch_uid: Optional[str] = Form(None),
     timeline_id: Optional[str] = Form(None),
     timeline_exit_id: Optional[str] = Form(None),
+    encounter_uid: Optional[str] = Form(None),
 ):
     payload = InstanceUpdate(
         name=name,
@@ -315,6 +330,7 @@ def ui_update_instance(
         epoch_uid=epoch_uid,
         timeline_id=timeline_id,
         timeline_exit_id=timeline_exit_id,
+        encounter_uid=encounter_uid,
     )
     update_instance(soa_id, instance_id, payload)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/instances", status_code=303)
@@ -342,13 +358,13 @@ def delete_instance(soa_id: int, instance_id: int):
     row = cur.fetchone()
     if not row:
         conn.close()
-        raise HTTPException(404, f"Timing id={int(instance_id)} not found")
+        raise HTTPException(404, f"Instance id={int(instance_id)} not found")
     before = {
         "id": row[0],
-        "instance_id": row[1],
+        "instance_uid": row[1],
         "name": row[2],
         "label": row[3],
-        "desciption": row[4],
+        "description": row[4],
     }
     cur.execute(
         "DELETE FROM instances WHERE id=? and soa_id=?",
@@ -359,12 +375,12 @@ def delete_instance(soa_id: int, instance_id: int):
     )
     conn.commit()
     conn.close()
-    _record_instance_audit(soa_id, "delete", instance_id, before, afvter=None)
+    _record_instance_audit(soa_id, "delete", instance_id, before, after=None)
     return {"deleted": True, "id": instance_id}
 
 
 # UI code to delete timeline instance
-@router.post("/ui/soa/{soa_id}/instances/{int(instance_id)}/delete")
+@router.post("/ui/soa/{soa_id}/instances/{instance_id}/delete")
 def ui_del_instance(request: Request, soa_id: int, instance_id: int):
     delete_instance(soa_id, instance_id)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/instances", status_code=303)

@@ -222,26 +222,37 @@ def _record_timing_audit(
 def _record_instance_audit(
     soa_id: int,
     action: str,
-    instance_uid: str,
-    before: Optional[Dict[str, Any]],
-    after: Optional[Dict[str, Any]],
+    instance_id: int | None,
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
 ):
     try:
         conn = _connect()
         cur = conn.cursor()
+        # Ensure table exists defensively
         cur.execute(
-            "INSERT INTO instance_audit (soa_id, instance_id, action, before_json, after_json, performed_at) "
-            "VALUES (?,?,?,?,?,?)",
+            """CREATE TABLE IF NOT EXISTS instance_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                instance_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        cur.execute(
+            "INSERT INTO instance_audit (soa_id, instance_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
             (
                 soa_id,
-                instance_uid,
+                instance_id,
                 action,
-                before,
-                after,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
                 datetime.now(timezone.utc).isoformat(),
             ),
         )
         conn.commit()
         conn.close()
     except Exception as e:
-        logger.warning("Failed recording instance audti: %s", e)
+        logger.warning("Failed recording instance audit: %s", e)
