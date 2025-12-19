@@ -43,7 +43,7 @@
             <select name="encounter_uid">
                 <option value="">-- Select encounter --</option>
                 {% for name, enc_uid in (encounter_options or {}).items() %}
-                    <option value="{{ end_uid }}">{{ name }}</option>
+                    <option value="{{ enc_uid }}">{{ name }}</option>
                 {% endfor %}
             </select>
         </div>
