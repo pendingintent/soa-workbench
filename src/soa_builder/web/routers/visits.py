@@ -184,7 +184,6 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
             conn.close()
             raise HTTPException(400, "Invalid epoch_id for this SOA")
 
-    # new_name = new_name.strip()
     new_label = payload.label if payload.label is not None else before["label"]
     new_epoch_id = (
         payload.epoch_id if payload.epoch_id is not None else before["epoch_id"]
