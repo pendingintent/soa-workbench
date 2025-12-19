@@ -150,7 +150,7 @@ def create_instance(soa_id: int, payload: InstanceCreate):
     return row
 
 
-# UI code to create new intsance in an SOA
+# UI code to create new instance in an SOA
 @router.post("/ui/soa/{soa_id}/instances/create")
 def ui_create_instance(
     request: Request,
