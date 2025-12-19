@@ -11,8 +11,8 @@ def _create_soa(name="DelTest"):
     return r.json()["id"]
 
 
-def _add_visit(soa_id, name, raw_header=None):
-    payload = {"name": name, "raw_header": raw_header or name}
+def _add_visit(soa_id, name, label=None):
+    payload = {"name": name, "label": label or name}
     r = client.post(f"/soa/{soa_id}/visits", json=payload)
     assert r.status_code == 200
     return r.json()["visit_id"]

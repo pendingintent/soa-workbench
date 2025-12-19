@@ -16,10 +16,11 @@ def _init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             soa_id INTEGER,
             name TEXT,
-            raw_header TEXT,
+            label TEXT,
             order_index INTEGER,
             epoch_id INTEGER,
             encounter_uid TEXT,
+            description TEXT,
             UNIQUE(soa_id,encounter_uid)
         )"""
     )

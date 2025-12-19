@@ -47,7 +47,7 @@ Response:
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
-| POST | `/soa/{soa_id}/visits` | Create visit `{ name, raw_header?, epoch_id? }` |
+| POST | `/soa/{soa_id}/visits` | Create visit `{ name, label?, epoch_id? }` |
 | PATCH | `/soa/{soa_id}/visits/{visit_id}` | Update visit (partial) returns `updated_fields` |
 | DELETE | `/soa/{soa_id}/visits/{visit_id}` | Delete visit (and its cells) |
 | GET | `/soa/{soa_id}/visits/{visit_id}` | Fetch visit detail |

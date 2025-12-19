@@ -55,7 +55,7 @@ PM_SYMBOL_RE = re.compile(r"±(\d+)d")
 @dataclass
 class Visit:
     visit_id: int
-    raw_header: str
+    label: str
     visit_name: str
     visit_code: Optional[str]
     sequence_index: int
@@ -229,7 +229,7 @@ def build_visits(headers: List[str]) -> List[Visit]:
         visits.append(
             Visit(
                 visit_id=idx,
-                raw_header=h,
+                label=h,
                 visit_name=re.sub(r"\s*\(.*?\)", "", h).strip(),
                 visit_code=code,
                 sequence_index=idx,
@@ -305,7 +305,7 @@ def build_schedule_rules(
     rule_id = 1
     # From headers (e.g., Survival FU (q12w))
     for v in visits:
-        header_lower = v.raw_header.lower()
+        header_lower = v.label.lower()
         for pat in REPEAT_PATTERNS:
             if pat in header_lower:
                 rules.append(
@@ -316,7 +316,7 @@ def build_schedule_rules(
                         source_type="header",
                         activity_id=None,
                         visit_id=v.visit_id,
-                        raw_text=v.raw_header,
+                        raw_text=v.label,
                     )
                 )
                 rule_id += 1
@@ -386,7 +386,7 @@ def to_sqlite(
         """
         CREATE TABLE IF NOT EXISTS visits (
             visit_id INTEGER PRIMARY KEY,
-            raw_header TEXT,
+            label TEXT,
             visit_name TEXT,
             visit_code TEXT,
             sequence_index INTEGER,

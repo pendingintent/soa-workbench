@@ -5,7 +5,7 @@ from __future__ import annotations
 Endpoints:
   POST /soa {name} -> create SOA container
   GET /soa/{id} -> summary
-  POST /soa/{id}/visits {name, raw_header} -> add visit
+  POST /soa/{id}/visits {name, label} -> add visit
   POST /soa/{id}/activities {name} -> add activity
   POST /soa/{id}/cells {visit_id, activity_id, status} -> set cell value
   GET /soa/{id}/matrix -> returns visits, activities, cells matrix
@@ -39,12 +39,14 @@ from pydantic import BaseModel
 
 from ..normalization import normalize_soa
 from .initialize_database import _connect, _init_db
+from .db import DB_PATH as _DB_PATH
 from .migrate_database import (
     _backfill_dataset_date,
     _drop_unused_override_table,
     _migrate_activity_add_uid,
     _migrate_add_arm_uid,
     _migrate_add_epoch_id_to_visit,
+    _migrate_visit_add_label_desc,
     _migrate_add_epoch_label_desc,
     _migrate_add_epoch_seq,
     _migrate_add_study_fields,
@@ -67,17 +69,23 @@ from .routers.elements import _next_element_identifier
 from .routers import epochs as epochs_router
 from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
+import importlib
 from .routers import visits as visits_router
+
+
 from .routers import timings as timings_router
 from .routers import instances as instances_router
 from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
-from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate
+
+# Avoid binding visit helpers directly to allow fresh reloads in tests
+from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate, VisitCreate
 from .utils import (
     get_next_code_uid as _get_next_code_uid,
     get_next_concept_uid as _get_next_concept_uid,
     load_epoch_type_options,
     soa_exists,
+    load_epoch_type_map,
     table_has_columns as _table_has_columns,
 )
 
@@ -100,7 +108,8 @@ def _configure_logging():
 logger = _configure_logging()
 
 load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
-DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
+# Use the DB path resolved by db.py to keep consistency across modules
+DB_PATH = _DB_PATH
 NORMALIZED_ROOT = os.environ.get("SOA_BUILDER_NORMALIZED_ROOT", "normalized")
 
 
@@ -139,6 +148,7 @@ _migrate_add_epoch_type()
 _migrate_add_arm_uid()
 _migrate_drop_arm_element_link()
 _migrate_add_epoch_id_to_visit()
+_migrate_visit_add_label_desc()
 _migrate_add_epoch_seq()
 _migrate_add_epoch_label_desc()
 _migrate_add_epoch_uid()
@@ -166,6 +176,8 @@ app.include_router(freezes_router.router)
 app.include_router(rollback_router.router)
 app.include_router(timings_router.router)
 app.include_router(instances_router.router)
+# Ensure fresh router code on app reload (tests call reload(webapp))
+visits_router = importlib.reload(visits_router)
 
 
 # Utility functions
@@ -760,11 +772,11 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     visit_id_map = {}
     for v in sorted(visits, key=lambda x: x.get("order_index", 0)):
         cur.execute(
-            "INSERT INTO visit (soa_id,name,raw_header,order_index) VALUES (?,?,?,?)",
+            "INSERT INTO visit (soa_id,name,label,order_index) VALUES (?,?,?,?)",
             (
                 soa_id,
                 v.get("name"),
-                v.get("raw_header") or v.get("name"),
+                v.get("label") or None,
                 v.get("order_index"),
             ),
         )
@@ -1059,7 +1071,7 @@ class BulkActivities(BaseModel):
 
 class MatrixVisit(BaseModel):
     name: str
-    raw_header: Optional[str] = None
+    label: Optional[str] = None
 
 
 class MatrixActivity(BaseModel):
@@ -1078,11 +1090,11 @@ def _fetch_matrix(soa_id: int):
     cur = conn.cursor()
     # Epochs not part of matrix axes currently; retrieved separately where needed.
     cur.execute(
-        "SELECT id,name,raw_header,order_index,epoch_id FROM visit WHERE soa_id=? ORDER BY order_index",
+        "SELECT id,name,label,order_index,epoch_id FROM visit WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
     visits = [
-        dict(id=r[0], name=r[1], raw_header=r[2], order_index=r[3], epoch_id=r[4])
+        dict(id=r[0], name=r[1], label=r[2], order_index=r[3], epoch_id=r[4])
         for r in cur.fetchall()
     ]
     # Activities: include optional label/description if schema supports them
@@ -1971,8 +1983,8 @@ def _generate_wide_csv(soa_id: int) -> str:
         raise ValueError(
             "Cannot generate CSV: need at least one visit and one activity"
         )
-    # Build matrix with first column Activity, subsequent visit headers using raw_header or name
-    visit_headers = [v["raw_header"] or v["name"] for v in visits]
+    # Build matrix with first column Activity, subsequent visit headers using label or name
+    visit_headers = [v["label"] or v["name"] for v in visits]
     matrix = []
     for a in activities:
         row = [a["name"]]
@@ -1998,7 +2010,7 @@ def _generate_wide_csv(soa_id: int) -> str:
 def _matrix_arrays(soa_id: int):
     """Return visit headers list and rows (activity name + statuses)."""
     visits, activities, cells = _fetch_matrix(soa_id)
-    visit_headers = [v["raw_header"] or v["name"] for v in visits]
+    visit_headers = [v["label"] or v["name"] for v in visits]
     cell_lookup = {(c["visit_id"], c["activity_id"]): c["status"] for c in cells}
     rows = []
     for a in activities:
@@ -2428,7 +2440,11 @@ def set_cell(soa_id: int, payload: CellCreate):
         conn.close()
         return {"cell_id": None, "status": "", "deleted": False}
     if row:
-        cur.execute("UPDATE cell SET status=? WHERE id=?", (payload.status, row[0]))
+        # Update existing matrix cell status
+        cur.execute(
+            "UPDATE matrix_cells SET status=? WHERE id=?",
+            (payload.status, row[0]),
+        )
         cid = row[0]
     else:
         cur.execute(
@@ -2761,7 +2777,7 @@ def export_pdf(soa_id: int):
     arms = cur.fetchall()
     # Visits
     cur.execute(
-        "SELECT id, name, COALESCE(raw_header,'') FROM visit WHERE soa_id=? ORDER BY COALESCE(order_index, id)",
+        "SELECT id, name, COALESCE(label,'') FROM visit WHERE soa_id=? ORDER BY COALESCE(order_index, id)",
         (soa_id,),
     )
     visits = cur.fetchall()
@@ -2942,8 +2958,8 @@ def import_matrix(soa_id: int, payload: MatrixImport):
     for v in payload.visits:
         v_index += 1
         cur.execute(
-            "INSERT INTO visit (soa_id,name,raw_header,order_index) VALUES (?,?,?,?)",
-            (soa_id, v.name, v.raw_header or v.name, v_index),
+            "INSERT INTO visit (soa_id,name,label,order_index) VALUES (?,?,?,?)",
+            (soa_id, v.name, v.label or v.name, v_index),
         )
         visit_id_map.append(cur.lastrowid)
     # Insert activities
@@ -3010,7 +3026,7 @@ def _reindex(table: str, soa_id: int):
     conn.close()
 
 
-@app.delete("/soa/{soa_id}/visits/{visit_id}")
+'''@app.delete("/soa/{soa_id}/visits/{visit_id}")
 def delete_visit(soa_id: int, visit_id: int):
     """Delete Visit from an SoA."""
     if not soa_exists(soa_id):
@@ -3024,7 +3040,7 @@ def delete_visit(soa_id: int, visit_id: int):
     # cascade cells
     # Capture before for audit
     cur.execute(
-        "SELECT id,name,raw_header,order_index,epoch_id FROM visit WHERE id=?",
+        "SELECT id,name,label,order_index,epoch_id FROM visit WHERE id=?",
         (visit_id,),
     )
     b = cur.fetchone()
@@ -3033,7 +3049,7 @@ def delete_visit(soa_id: int, visit_id: int):
         before = {
             "id": b[0],
             "name": b[1],
-            "raw_header": b[2],
+            "label": b[2],
             "order_index": b[3],
             "epoch_id": b[4],
         }
@@ -3046,6 +3062,7 @@ def delete_visit(soa_id: int, visit_id: int):
     _reindex("visit", soa_id)
     _record_visit_audit(soa_id, "delete", visit_id, before=before, after=None)
     return {"deleted_visit_id": visit_id}
+'''
 
 
 @app.delete("/soa/{soa_id}/activities/{activity_id}")
@@ -3617,7 +3634,6 @@ def ui_edit(request: Request, soa_id: int):
             code_map[eid] = code
     conn_em.close()
     try:
-        from .utils import load_epoch_type_map
 
         code_to_submission = load_epoch_type_map(force=False) or {}
     except Exception:
@@ -3983,10 +3999,19 @@ def ui_add_visit(
     request: Request,
     soa_id: int,
     name: str = Form(...),
-    raw_header: str = Form(""),
-    epoch_id_raw: str = Form(""),  # new flexible field name
-    epoch_id: str = Form(""),  # legacy field name still used in template
+    label: Optional[str] = Form(None),
+    epoch_id: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
 ):
+    payload = VisitCreate(
+        name=name,
+        label=label,
+        epoch_id=epoch_id,
+        description=description,
+    )
+    # Call through router module to ensure fresh code under reload
+    visits_router.add_visit(soa_id, payload)
+    '''
     """Create a visit (UI form).
 
     Accepts either form field name `epoch_id_raw` (new) or `epoch_id` (legacy).
@@ -4014,8 +4039,8 @@ def ui_add_visit(
             conn.close()
             raise HTTPException(400, "Invalid epoch_id for this SOA")
     cur.execute(
-        "INSERT INTO visit (soa_id,name,raw_header,order_index,epoch_id) VALUES (?,?,?,?,?)",
-        (soa_id, name, raw_header or name, order_index, parsed_epoch),
+        "INSERT INTO visit (soa_id,name,label,order_index,epoch_id) VALUES (?,?,?,?,?)",
+        (soa_id, name, label or name, order_index, parsed_epoch),
     )
     vid = cur.lastrowid
     conn.commit()
@@ -4039,11 +4064,12 @@ def ui_add_visit(
         after={
             "id": vid,
             "name": name,
-            "raw_header": raw_header or name,
+            "label": label,
             "order_index": order_index,
             "epoch_id": parsed_epoch,
         },
     )
+    '''
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
@@ -5688,12 +5714,32 @@ def ui_toggle_cell(
     return HTMLResponse(cell_html)
 
 
+# UI code to delete an encounter from an SOA
 @app.post("/ui/soa/{soa_id}/delete_visit", response_class=HTMLResponse)
 def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    try:
+        # Call through router to avoid stale import bindings
+        visits_router.delete_visit(soa_id, visit_id)
+    except HTTPException:
+        # swallow 404 to keep UX smooth
+        pass
+    # If HTMX, use HX-Redirect; else script redirect
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{int(soa_id)}/edit"})
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+'''
+def ui_delete_visit(request: Request, soa_id: int, visit_id: int):
     """Form handler to delete a visit."""
     # Use API logic to delete and log
     try:
-        delete_visit(soa_id, visit_id)
+        visits_router.delete_visit(soa_id, visit_id)
         logger.info(
             "ui_delete_visit deleted visit id=%s soa_id=%s db_path=%s",
             visit_id,
@@ -5707,6 +5753,7 @@ def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+'''
 
 
 @app.post("/ui/soa/{soa_id}/set_visit_epoch", response_class=HTMLResponse)
@@ -5730,10 +5777,23 @@ def ui_set_visit_epoch(
             raise HTTPException(400, "Invalid epoch_id value")
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM visit WHERE id=? AND soa_id=?", (visit_id, soa_id))
-    if not cur.fetchone():
+    cur.execute(
+        "SELECT id,name,label,order_index,epoch_id,encounter_uid,description FROM visit WHERE id=? AND soa_id=?",
+        (visit_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
         conn.close()
         raise HTTPException(404, "Visit not found")
+    before = {
+        "id": row[0],
+        "name": row[1],
+        "label": row[2],
+        "order_index": row[3],
+        "epoch_id": row[4],
+        "encounter_uid": row[5],
+        "description": row[6],
+    }
     if parsed_epoch is not None:
         cur.execute(
             "SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (parsed_epoch, soa_id)
@@ -5750,6 +5810,31 @@ def ui_set_visit_epoch(
         parsed_epoch,
         raw_val,
         DB_PATH,
+    )
+    # Fetch after and record audit
+    cur.execute(
+        "SELECT id,name,label,order_index,epoch_id,encounter_uid,description FROM visit WHERE id=? AND soa_id=?",
+        (visit_id, soa_id),
+    )
+    r = cur.fetchone()
+    after = {
+        "id": r[0],
+        "name": r[1],
+        "label": r[2],
+        "order_index": r[3],
+        "epoch_id": r[4],
+        "encounter_uid": r[5],
+        "description": r[6],
+    }
+    updated_fields = [
+        f for f in ["epoch_id"] if (before.get(f) or None) != (after.get(f) or None)
+    ]
+    _record_visit_audit(
+        soa_id,
+        "update",
+        visit_id,
+        before=before,
+        after={**after, "updated_fields": updated_fields},
     )
     conn.close()
     return HTMLResponse(

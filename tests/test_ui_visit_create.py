@@ -15,7 +15,7 @@ def test_ui_add_visit_blank_epoch():
     soa_id = _create_soa()
     # Post without epoch (form supplies blank)
     resp = client.post(
-        f"/ui/soa/{soa_id}/add_visit", data={"name": "Visit 1", "raw_header": ""}
+        f"/ui/soa/{soa_id}/add_visit", data={"name": "Visit 1", "label": ""}
     )
     assert resp.status_code == 200, resp.text
     # Fetch matrix to validate visit presence

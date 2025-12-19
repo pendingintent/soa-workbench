@@ -71,7 +71,7 @@ ACTIVITY_CATEGORY_KEYWORDS = {
 @dataclass
 class Visit:
     visit_id: int
-    raw_header: str
+    label: str
     visit_name: str
     visit_code: Optional[str]
     sequence_index: int
@@ -246,7 +246,7 @@ def build_schedule_rules(
     rid = 1
     # headers
     for v in visits:
-        low = v.raw_header.lower()
+        low = v.label.lower()
         for pat in REPEAT_PATTERNS:
             if pat in low:
                 rules.append(
@@ -257,7 +257,7 @@ def build_schedule_rules(
                         "header",
                         None,
                         v.visit_id,
-                        v.raw_header,
+                        v.label,
                     )
                 )
                 rid += 1
@@ -342,7 +342,7 @@ def normalize_soa(
         ]:
             cur.execute(f"DROP TABLE IF EXISTS {tbl}")
         cur.execute(
-            """CREATE TABLE visits (visit_id INTEGER PRIMARY KEY, raw_header TEXT, visit_name TEXT, visit_code TEXT, sequence_index INTEGER, window_lower INTEGER, window_upper INTEGER, repeat_pattern TEXT, category TEXT)"""
+            """CREATE TABLE visits (visit_id INTEGER PRIMARY KEY, label TEXT, visit_name TEXT, visit_code TEXT, sequence_index INTEGER, window_lower INTEGER, window_upper INTEGER, repeat_pattern TEXT, category TEXT)"""
         )
         cur.execute(
             """CREATE TABLE activities (activity_id INTEGER PRIMARY KEY, activity_name TEXT)"""

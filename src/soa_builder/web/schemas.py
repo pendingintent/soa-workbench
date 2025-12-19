@@ -101,14 +101,16 @@ class EpochUpdate(BaseModel):
 
 class VisitCreate(BaseModel):
     name: str
-    raw_header: Optional[str] = None
+    label: Optional[str] = None
     epoch_id: Optional[int] = None
+    description: Optional[str] = None
 
 
 class VisitUpdate(BaseModel):
     name: Optional[str] = None
-    raw_header: Optional[str] = None
+    label: Optional[str] = None
     epoch_id: Optional[int] = None
+    description: Optional[str] = None
 
 
 class ArmCreate(BaseModel):
