@@ -102,7 +102,7 @@
             <form method="post" action="/ui/soa/{{ soa_id }}/update_visit" style="display:inline;font-size:0.6em;">
               <input type="hidden" name="visit_id" value="{{ v.id }}" />
               <input name="label" value="{{ v.label or '' }}" placeholder="Label (opt)" style="width:100px;" />
-              <input name="description" value="{{ v.description or '' }}" placeholder="Desc (opt)" style="width:160px;" />
+              <input name="description" value="{{ v.description or '' }}" placeholder="Description (optional)" style="width:160px;" />
               <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
             </form>
             <form method="post" action="/ui/soa/{{ soa_id }}/delete_visit" style="display:inline;">
