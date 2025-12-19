@@ -54,7 +54,7 @@ def derive_nominal_day(row) -> float:
       5. Fallback to sequence_index * 7 (coarse)
     """
     name = str(row.get("visit_name", "")).lower()
-    header = str(row.get("raw_header", "")).lower()
+    header = str(row.get("label", "")).lower()
     for text in (name, header):
         m = WEEK_RE.search(text)
         if m:

@@ -26,7 +26,7 @@ CYCLE_DAY1_RE = re.compile(r"cycle\s*(\d+)\s*day\s*1", re.IGNORECASE)
 class VisitStub:
     visit_id: int
     visit_name: str
-    raw_header: str
+    label: str
     sequence_index: int
 
 
@@ -88,7 +88,7 @@ def derive_nominal_day_for_visit(
     v: VisitStub, cycle_length_days: int, cycle_lengths: Optional[List[int]]
 ) -> int:
     name = v.visit_name.lower()
-    header = v.raw_header.lower()
+    header = v.label.lower()
     for txt in (name, header):
         mc = CYCLE_DAY1_RE.search(txt)
         if mc:
@@ -183,9 +183,7 @@ def expand_schedule_rules(
             anchor_cycle = 1
             if rule.visit_id and rule.visit_id in visits:
                 txt = (
-                    visits[rule.visit_id].visit_name
-                    + " "
-                    + visits[rule.visit_id].raw_header
+                    visits[rule.visit_id].visit_name + " " + visits[rule.visit_id].label
                 ).lower()
                 mc = CYCLE_DAY1_RE.search(txt)
                 if mc:

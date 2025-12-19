@@ -19,7 +19,7 @@ def test_create_and_normalize_flow():
     # add visit
     rv = client.post(
         f"/soa/{soa_id}/visits",
-        json={"name": "C1D1", "raw_header": "Cycle 1 Day 1 (C1D1)"},
+        json={"name": "C1D1", "label": "Cycle 1 Day 1 (C1D1)"},
     )
     assert rv.status_code == 200
     visit_id = rv.json()["visit_id"]

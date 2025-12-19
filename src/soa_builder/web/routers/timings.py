@@ -279,9 +279,8 @@ def create_timing(soa_id: int, payload: TimingCreate):
                     "Invalid timing_uid format encountered (ignored): %s",
                     uid,
                 )
-    next_n = 1
-    while next_n in used_nums:
-        next_n += 1
+    # Always pick max(existing) + 1, do not fill gaps
+    next_n = (max(used_nums) if used_nums else 0) + 1
     new_uid = f"Timing_{next_n}"
     cur.execute(
         """INSERT INTO timing (soa_id,timing_uid,name,label,description,type,value,value_label,
@@ -344,7 +343,7 @@ def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
     row = cur.fetchone()
     if not row:
         conn.close()
-        raise HTTPException(404, f"Timing id={timing_id} not found")
+        raise HTTPException(404, f"Timing id={int(timing_id)} not found")
 
     before = {
         "id": row[0],
@@ -650,4 +649,4 @@ def delete_timing(soa_id: int, timing_id: int):
 @router.post("/ui/soa/{soa_id}/timings/{timing_id}/delete")
 def ui_delete_timing(request: Request, soa_id: int, timing_id: int):
     delete_timing(soa_id, timing_id)
-    return RedirectResponse(url=f"/ui/soa/{soa_id}/timings", status_code=303)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/timings", status_code=303)

@@ -31,7 +31,7 @@ def test_matrix_import_endpoint():
     soa_id = r.json()["id"]
     payload = {
         "visits": [
-            {"name": "C1D1", "raw_header": "Cycle 1 Day 1 (C1D1)"},
+            {"name": "C1D1", "label": "Cycle 1 Day 1 (C1D1)"},
             {"name": "C1D8"},
             {"name": "C1D15"},
         ],

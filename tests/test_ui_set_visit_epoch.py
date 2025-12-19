@@ -35,7 +35,7 @@ def test_assign_epoch_to_existing_visit():
     soa_id = _create_soa()
     # Add visit with no epoch
     resp_v = client.post(
-        f"/ui/soa/{soa_id}/add_visit", data={"name": "V1", "raw_header": ""}
+        f"/ui/soa/{soa_id}/add_visit", data={"name": "V1", "label": ""}
     )
     assert resp_v.status_code == 200
     visit_row = _get_visit_row(soa_id, "V1")

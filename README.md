@@ -52,6 +52,15 @@ Run unit tests:
 pytest
 ```
 
+### Test database
+- Tests run against a separate SQLite file to avoid touching your local/prod data.
+- Default path: `soa_builder_web_tests.db` in the repo root. Override with env var `SOA_BUILDER_DB`.
+- A pytest session fixture removes any stale test DB/WAL/SHM files at start to prevent I/O errors.
+- Manually clear the test DB before a run if needed:
+```bash
+rm -f soa_builder_web_tests.db soa_builder_web_tests.db-wal soa_builder_web_tests.db-shm
+```
+
 > Full, updated endpoint reference (including Elements, freezes, audits, JSON CRUD and UI helpers) lives in `README_endpoints.md`. Consult that file for detailed request/response examples, curl snippets, and future enhancement notes.
 
 Endpoints:
@@ -77,7 +86,7 @@ Running the script produces (in `--out-dir`):
 
 ### visits.csv Columns
 - `visit_id`: Sequential numeric id.
-- `raw_header`: Original header text.
+- `label`: Original header text.
 - `visit_name`: Header stripped of parenthetical codes.
 - `visit_code`: Code extracted from parentheses (e.g., `C1D1`, `EOT`).
 - `sequence_index`: Positional order.

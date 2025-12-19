@@ -225,6 +225,34 @@ def _migrate_add_epoch_seq():
         logger.warning("epoch_seq migration failed: %s", e)
 
 
+# Migration: add visit label/description
+def _migrate_visit_add_label_desc():
+    """Add optional label and description columns to visit if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(visit)")
+        cols = {r[1] for r in cur.fetchall()}
+        alters: list[str] = []
+        if "label" not in cols:
+            alters.append("ALTER TABLE visit ADD COLUMN label TEXT")
+        if "description" not in cols:
+            alters.append("ALTER TABLE visit ADD COLUMN description TEXT")
+        for stmt in alters:
+            try:
+                cur.execute(stmt)
+            except Exception as e:
+                logger.warning("Failed visit migration '%s': %s", stmt, e)
+        if alters:
+            conn.commit()
+            logger.info(
+                "Applied visit label/description migration: %s", ", ".join(alters)
+            )
+        conn.close()
+    except Exception as e:
+        logger.warning("visit label/description migration failed: %s", e)
+
+
 # Migration: add epoch label/description
 def _migrate_add_epoch_label_desc():
     """Add optional epoch_label and epoch_description columns if missing."""

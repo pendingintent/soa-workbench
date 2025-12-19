@@ -3,6 +3,28 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
+class InstanceUpdate(BaseModel):
+    name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    default_condition_uid: Optional[str] = None
+    epoch_uid: Optional[str] = None
+    timeline_id: Optional[str] = None
+    timeline_exit_id: Optional[str] = None
+    encounter_uid: Optional[str] = None
+
+
+class InstanceCreate(BaseModel):
+    name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    default_condition_uid: Optional[str] = None
+    epoch_uid: Optional[str] = None
+    timeline_id: Optional[str] = None
+    timeline_exit_id: Optional[str] = None
+    encounter_uid: Optional[str] = None
+
+
 class TimingCreate(BaseModel):
     name: str
     label: Optional[str] = None
@@ -79,14 +101,16 @@ class EpochUpdate(BaseModel):
 
 class VisitCreate(BaseModel):
     name: str
-    raw_header: Optional[str] = None
+    label: Optional[str] = None
     epoch_id: Optional[int] = None
+    description: Optional[str] = None
 
 
 class VisitUpdate(BaseModel):
     name: Optional[str] = None
-    raw_header: Optional[str] = None
+    label: Optional[str] = None
     epoch_id: Optional[int] = None
+    description: Optional[str] = None
 
 
 class ArmCreate(BaseModel):

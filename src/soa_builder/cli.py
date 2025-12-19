@@ -64,7 +64,7 @@ def _load_visits(normalized_dir: str) -> dict:
         visits[vid] = VisitStub(
             visit_id=vid,
             visit_name=r.get("visit_name", ""),
-            raw_header=r.get("raw_header", ""),
+            label=r.get("label", ""),
             sequence_index=int(r.get("sequence_index", "0")),
         )
     return visits
