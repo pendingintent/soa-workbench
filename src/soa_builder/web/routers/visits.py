@@ -199,7 +199,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         (
             _nz(new_name),
             _nz(new_label),
-            _nz(new_epoch_id),
+            new_epoch_id,
             _nz(new_description),
             visit_id,
         ),
