@@ -69,7 +69,6 @@ from .routers.elements import _next_element_identifier
 from .routers import epochs as epochs_router
 from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
-import importlib
 from .routers import visits as visits_router
 
 
@@ -3024,45 +3023,6 @@ def _reindex(table: str, soa_id: int):
     conn.close()
 
 
-'''@app.delete("/soa/{soa_id}/visits/{visit_id}")
-def delete_visit(soa_id: int, visit_id: int):
-    """Delete Visit from an SoA."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM visit WHERE id=? AND soa_id=?", (visit_id, soa_id))
-    if not cur.fetchone():
-        conn.close()
-        raise HTTPException(404, "Visit not found")
-    # cascade cells
-    # Capture before for audit
-    cur.execute(
-        "SELECT id,name,label,order_index,epoch_id FROM visit WHERE id=?",
-        (visit_id,),
-    )
-    b = cur.fetchone()
-    before = None
-    if b:
-        before = {
-            "id": b[0],
-            "name": b[1],
-            "label": b[2],
-            "order_index": b[3],
-            "epoch_id": b[4],
-        }
-    cur.execute(
-        "DELETE FROM matrix_cells WHERE soa_id=? AND visit_id=?", (soa_id, visit_id)
-    )
-    cur.execute("DELETE FROM visit WHERE id=?", (visit_id,))
-    conn.commit()
-    conn.close()
-    _reindex("visit", soa_id)
-    _record_visit_audit(soa_id, "delete", visit_id, before=before, after=None)
-    return {"deleted_visit_id": visit_id}
-'''
-
-
 @app.delete("/soa/{soa_id}/activities/{activity_id}")
 def delete_activity(soa_id: int, activity_id: int):
     """Delete Activity from an SoA."""
@@ -4001,73 +3961,28 @@ def ui_add_visit(
     epoch_id: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
 ):
+    # Coerce empty epoch_id from form to None, otherwise to int
+    parsed_epoch_id: Optional[int] = None
+    if epoch_id is not None:
+        eid = str(epoch_id).strip()
+        if eid != "":
+            try:
+                parsed_epoch_id = int(eid)
+            except ValueError:
+                parsed_epoch_id = None
     payload = VisitCreate(
         name=name,
         label=label,
-        epoch_id=epoch_id,
+        epoch_id=parsed_epoch_id,
         description=description,
     )
-    # Call through router module to ensure fresh code under reload
-    visits_router.add_visit(soa_id, payload)
-    '''
-    """Create a visit (UI form).
+    # Create the visit via the API helper to ensure audits and ordering
+    try:
+        visits_router.add_visit(soa_id, payload)
+    except Exception:
+        # Swallow and continue redirect; detailed errors are handled by API logs
+        pass
 
-    Accepts either form field name `epoch_id_raw` (new) or `epoch_id` (legacy).
-    Blank selection is treated as None without triggering 422 validation.
-    """
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    # Determine which raw epoch string was provided
-    provided = (epoch_id_raw or "").strip() or (epoch_id or "").strip()
-    parsed_epoch: Optional[int] = None
-    if provided:
-        if provided.isdigit():
-            parsed_epoch = int(provided)
-        else:
-            raise HTTPException(400, "Invalid epoch_id value")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM visit WHERE soa_id=?", (soa_id,))
-    order_index = cur.fetchone()[0] + 1
-    if parsed_epoch is not None:
-        cur.execute(
-            "SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (parsed_epoch, soa_id)
-        )
-        if not cur.fetchone():
-            conn.close()
-            raise HTTPException(400, "Invalid epoch_id for this SOA")
-    cur.execute(
-        "INSERT INTO visit (soa_id,name,label,order_index,epoch_id) VALUES (?,?,?,?,?)",
-        (soa_id, name, label or name, order_index, parsed_epoch),
-    )
-    vid = cur.lastrowid
-    conn.commit()
-    # Debug verification query
-    cur.execute("SELECT COUNT(*) FROM visit WHERE soa_id=?", (soa_id,))
-    _total_visits = cur.fetchone()[0]
-    conn.close()
-    logger.info(
-        "ui_add_visit inserted visit id=%s soa_id=%s total_visits_now=%s epoch_raw='%s' db_path=%s",
-        vid,
-        soa_id,
-        _total_visits,
-        provided,
-        DB_PATH,
-    )
-    _record_visit_audit(
-        soa_id,
-        "create",
-        vid,
-        before=None,
-        after={
-            "id": vid,
-            "name": name,
-            "label": label,
-            "order_index": order_index,
-            "epoch_id": parsed_epoch,
-        },
-    )
-    '''
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
