@@ -279,9 +279,12 @@ def create_timing(soa_id: int, payload: TimingCreate):
                     "Invalid timing_uid format encountered (ignored): %s",
                     uid,
                 )
-    next_n = 1
+    """next_n = 1
     while next_n in used_nums:
         next_n += 1
+    """
+    # Always pick max(existing) + 1, do not fill gaps
+    next_n = (max(used_nums) if used_nums else 0) + 1
     new_uid = f"Timing_{next_n}"
     cur.execute(
         """INSERT INTO timing (soa_id,timing_uid,name,label,description,type,value,value_label,
