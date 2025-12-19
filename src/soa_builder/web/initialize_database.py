@@ -331,7 +331,7 @@ def _init_db():
         """CREATE TABLE IF NOT EXISTS instances (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         soa_id INT NOT NULL,
-        instance_uid TEXT NOT NULL,     -- immutable ScheduledActivityInstance_N identifier unique withiun SOA
+        instance_uid TEXT NOT NULL,     -- immutable ScheduledActivityInstance_N identifier unique within SOA
         name TEXT NOT NULL,
         label TEXT,
         description TEXT,
