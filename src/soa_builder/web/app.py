@@ -176,8 +176,6 @@ app.include_router(freezes_router.router)
 app.include_router(rollback_router.router)
 app.include_router(timings_router.router)
 app.include_router(instances_router.router)
-# Ensure fresh router code on app reload (tests call reload(webapp))
-visits_router = importlib.reload(visits_router)
 
 
 # Utility functions
