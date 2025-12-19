@@ -115,11 +115,6 @@ def create_instance(soa_id: int, payload: InstanceCreate):
                     "Invalid instance_uid format encountered (ignored): %s",
                     uid,
                 )
-    """
-    next_n = 1
-    while next_n in used_nums:
-        next_n += 1
-    """
     # Always pick max(existing) + 1, do not fill gaps
     next_n = (max(used_nums) if used_nums else 0) + 1
     new_uid = f"ScheduledActivityInstance_{next_n}"
