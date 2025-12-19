@@ -86,7 +86,7 @@
       <summary>Visits ({{ visits|length }}) <span class="hint">(drag to reorder)</span></summary>
       <ul id="visits-list" class="drag-list">
         {% for v in visits %}
-        <li class="drag-item" draggable="true" data-id="{{ v.id }}"><span class="ord">{{ v.order_index }}</span>. {{ v.name }} ({{ v.label }})
+        <li class="drag-item" draggable="true" data-id="{{ v.id }}"><span class="ord">{{ v.order_index }}</span>. {{ v.name }} 
           {% if epochs %}
           <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_epoch" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
@@ -98,18 +98,27 @@
             </select>
           </form>
           {% endif %}
-          <form method="post" action="/ui/soa/{{ soa_id }}/delete_visit" style="display:inline;">
-            <input type="hidden" name="visit_id" value="{{ v.id }}" />
-            <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-              Delete
-            </button>
-          </form>
+          <span class="visit-actions">
+            <form method="post" action="/ui/soa/{{ soa_id }}/update_visit" style="display:inline;font-size:0.6em;">
+              <input type="hidden" name="visit_id" value="{{ v.id }}" />
+              <input name="label" value="{{ v.label or '' }}" placeholder="Label (opt)" style="width:100px;" />
+              <input name="description" value="{{ v.description or '' }}" placeholder="Description (optional)" style="width:160px;" />
+              <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </form>
+            <form method="post" action="/ui/soa/{{ soa_id }}/delete_visit" style="display:inline;">
+              <input type="hidden" name="visit_id" value="{{ v.id }}" />
+              <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+                Delete
+              </button>
+            </form>
+          </span>
         </li>
         {% endfor %}
       </ul>
       <form method="post" action="/ui/soa/{{ soa_id }}/add_visit" style="margin-top:6px;">
         <input name="name" placeholder="Visit Name" required />
         <input name="label" placeholder="Label (optional)" />
+        <input name="description" placeholder="Description (optional)" />
         {% if epochs %}
           <select name="epoch_id" style="font-size:0.7em;">
             <option value="">Epoch (optional)</option>
@@ -535,7 +544,8 @@
   .drag-item { padding:3px 4px; margin:2px 0; background:#fff; border:1px solid #e0e0e0; border-radius:3px; cursor:grab; display:flex; align-items:center; gap:4px; }
   .drag-item.dragging { opacity:0.5; }
   .drag-item.over { border-color:#1976d2; background:#e3f2fd; }
-  .drag-item form { margin-left:auto; }
+  .drag-item form { margin-left:0; }
+  .visit-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
   .hint { font-weight:400; font-size:0.7em; color:#666; }
 </style>
 <script>

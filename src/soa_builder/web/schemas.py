@@ -140,3 +140,34 @@ class SOAMetadataUpdate(BaseModel):
     study_id: Optional[str] = None
     study_label: Optional[str] = None
     study_description: Optional[str] = None
+
+
+# moved from app.py
+class ConceptsUpdate(BaseModel):
+    concept_codes: List[str]
+
+
+class FreezeCreate(BaseModel):
+    version_label: Optional[str] = None
+
+
+class CellCreate(BaseModel):
+    visit_id: int
+    activity_id: int
+    status: str
+
+
+class MatrixVisit(BaseModel):
+    name: str
+    label: Optional[str] = None
+
+
+class MatrixActivity(BaseModel):
+    name: str
+    statuses: List[str]
+
+
+class MatrixImport(BaseModel):
+    visits: List[MatrixVisit]
+    activities: List[MatrixActivity]
+    reset: bool = True
