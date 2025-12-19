@@ -82,6 +82,7 @@ from .schemas import (
     SOACreate,
     SOAMetadataUpdate,
     VisitCreate,
+    VisitUpdate,
     ConceptsUpdate,
     # FreezeCreate,
     CellCreate,
@@ -1063,11 +1064,18 @@ def _fetch_matrix(soa_id: int):
     cur = conn.cursor()
     # Epochs not part of matrix axes currently; retrieved separately where needed.
     cur.execute(
-        "SELECT id,name,label,order_index,epoch_id FROM visit WHERE soa_id=? ORDER BY order_index",
+        "SELECT id,name,label,order_index,epoch_id,description FROM visit WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
     visits = [
-        dict(id=r[0], name=r[1], label=r[2], order_index=r[3], epoch_id=r[4])
+        dict(
+            id=r[0],
+            name=r[1],
+            label=r[2],
+            order_index=r[3],
+            epoch_id=r[4],
+            description=r[5],
+        )
         for r in cur.fetchall()
     ]
     # Activities: include optional label/description if schema supports them
@@ -5726,6 +5734,32 @@ def ui_set_visit_epoch(
         after={**after, "updated_fields": updated_fields},
     )
     conn.close()
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+@app.post("/ui/soa/{soa_id}/update_visit", response_class=HTMLResponse)
+def ui_update_visit(
+    request: Request,
+    soa_id: int,
+    visit_id: int = Form(...),
+    name: Optional[str] = Form(None),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+):
+    """Form handler to update a Visit's mutable fields (name/label/description)."""
+    # Build payload with provided fields; blanks should clear values
+    payload = VisitUpdate(
+        name=name,
+        label=label,
+        description=description,
+    )
+    try:
+        visits_router.update_visit(soa_id, visit_id, payload)
+    except Exception:
+        # Let redirect proceed; detailed errors will appear in API logs
+        pass
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
