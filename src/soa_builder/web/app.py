@@ -35,7 +35,6 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, Response, Uploa
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
 
 from ..normalization import normalize_soa
 from .initialize_database import _connect, _init_db
@@ -78,7 +77,19 @@ from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
-from .schemas import ArmCreate, SOACreate, SOAMetadataUpdate, VisitCreate
+from .schemas import (
+    ArmCreate,
+    SOACreate,
+    SOAMetadataUpdate,
+    VisitCreate,
+    ConceptsUpdate,
+    # FreezeCreate,
+    CellCreate,
+    # BulkActivities,
+    # MatrixVisit,
+    # MatrixActivity,
+    MatrixImport,
+)
 from .utils import (
     get_next_code_uid as _get_next_code_uid,
     get_next_concept_uid as _get_next_concept_uid,
@@ -1045,41 +1056,6 @@ def _rollback_preview(soa_id: int, freeze_id: int) -> dict:
         "cells_to_restore": len(cells),
         "concept_mappings_to_restore": sum(len(v) for v in concepts_map.values()),
     }
-
-
-# ------ Schemas -----#
-class ConceptsUpdate(BaseModel):
-    concept_codes: List[str]
-
-
-class FreezeCreate(BaseModel):
-    version_label: Optional[str] = None
-
-
-class CellCreate(BaseModel):
-    visit_id: int
-    activity_id: int
-    status: str
-
-
-class BulkActivities(BaseModel):
-    names: List[str]
-
-
-class MatrixVisit(BaseModel):
-    name: str
-    label: Optional[str] = None
-
-
-class MatrixActivity(BaseModel):
-    name: str
-    statuses: List[str]
-
-
-class MatrixImport(BaseModel):
-    visits: List[MatrixVisit]
-    activities: List[MatrixActivity]
-    reset: bool = True
 
 
 def _fetch_matrix(soa_id: int):
