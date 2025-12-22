@@ -60,6 +60,7 @@ from .migrate_database import (
     _migrate_rename_cell_table,
     _migrate_rollback_add_elements_restored,
     _migrate_add_epoch_type,
+    _migrate_visit_columns,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -155,6 +156,7 @@ _init_db()
 
 
 # Database migration steps
+_migrate_visit_columns()
 _migrate_add_epoch_type()
 _migrate_add_arm_uid()
 _migrate_drop_arm_element_link()
@@ -3945,15 +3947,19 @@ def ui_add_visit(
     epoch_id: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
 ):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
     # Coerce empty epoch_id from form to None, otherwise to int
     parsed_epoch_id: Optional[int] = None
     if epoch_id is not None:
         eid = str(epoch_id).strip()
-        if eid != "":
+        if eid:
             try:
                 parsed_epoch_id = int(eid)
             except ValueError:
                 parsed_epoch_id = None
+
     payload = VisitCreate(
         name=name,
         label=label,
@@ -3964,7 +3970,6 @@ def ui_add_visit(
     try:
         visits_router.add_visit(soa_id, payload)
     except Exception:
-        # Swallow and continue redirect; detailed errors are handled by API logs
         pass
 
     return HTMLResponse(
@@ -4129,7 +4134,9 @@ async def ui_add_arm(
         conn.commit()
         # routers.arms.create_arm already records a create audit; avoid duplicating here
         conn.close()
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/update_arm", response_class=HTMLResponse)
@@ -7059,4 +7066,5 @@ def main():  # pragma: no cover
 
 
 if __name__ == "__main__":  # pragma: no cover
+
     main()
