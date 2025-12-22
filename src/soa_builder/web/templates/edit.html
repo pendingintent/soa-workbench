@@ -91,9 +91,9 @@
           <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_epoch" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
             <select name="epoch_id" style="font-size:0.65em;" onchange="this.form.submit()">
-              <option value="" {% if not v.epoch_id %}selected{% endif %}>[no epoch]</option>
+              <option value="" {% if not v.epoch_id %}selected{% endif %}>Select Epoch</option>
               {% for e in epochs %}
-                <option value="{{ e.id }}" {% if v.epoch_id == e.id %}selected{% endif %}>E{{ e.epoch_seq }} {{ e.name }}{% if e.epoch_label %} - {{ e.epoch_label }}{% endif %}</option>
+                <option value="{{ e.id }}" {% if v.epoch_id == e.id %}selected{% endif %}>{{ e.name }}</option>
               {% endfor %}
             </select>
           </form>
@@ -134,18 +134,21 @@
         {% for a in activities %}
         <li class="drag-item" draggable="true" data-id="{{ a.id }}">
           <span class="ord">{{ a.order_index }}</span>. {{ a.name }}
-          
-          <form hx-post="/ui/soa/{{ soa_id }}/delete_activity" hx-confirm="Delete activity '{{ a.name }}' and its cells?" style="display:inline">
-            <input type="hidden" name="activity_id" value="{{ a.id }}" />
-            <button type="submit" class="delete-btn">✕</button>
-          </form>
-          <form method="post" action="/soa/{{ soa_id }}/activities/{{ a.id }}/update" style="display:inline;margin-left:6px;font-size:0.6em;">
-            <input type="hidden" name="activity_id" value="{{ a.id }}" />
-            <input name="name" value="{{ a.name }}" placeholder="Name" style="width:110px;" />
-            <input name="label" value="{{ a.label or '' }}" placeholder="Label (opt)" style="width:100px;" />
-            <input name="description" value="{{ a.description or '' }}" placeholder="Desc (opt)" style="width:160px;" />
-            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-          </form>
+          <span class="activity-actions">
+            <form method="post" action="/soa/{{ soa_id }}/activities/{{ a.id }}/update" style="display:inline;font-size:0.6em;">
+              <input type="hidden" name="activity_id" value="{{ a.id }}" />
+              <input name="name" value="{{ a.name }}" placeholder="Name" style="width:110px;" />
+              <input name="label" value="{{ a.label or '' }}" placeholder="Label (opt)" style="width:100px;" />
+              <input name="description" value="{{ a.description or '' }}" placeholder="Desc (opt)" style="width:160px;" />
+              <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </form>
+            <form hx-post="/ui/soa/{{ soa_id }}/delete_activity" hx-confirm="Delete activity '{{ a.name }}' and its cells?" style="display:inline">
+              <input type="hidden" name="activity_id" value="{{ a.id }}" />
+              <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+                Delete
+              </button>
+            </form>
+          </span>
         </li>
         {% endfor %}
       </ul>
@@ -545,6 +548,7 @@
   .drag-item.over { border-color:#1976d2; background:#e3f2fd; }
   .drag-item form { margin-left:0; }
   .visit-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
+  .activity-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
   .hint { font-weight:400; font-size:0.7em; color:#666; }
 </style>
 <script>
