@@ -871,3 +871,49 @@ def _backfill_dataset_date(table: str, audit_table: str):
         conn.close()
     except Exception as e:  # pragma: no cover
         logger.warning("dataset_date backfill for %s failed: %s", table, e)
+
+
+def _migrate_visit_columns():
+    """Add missing columns to the database table `visit`
+    New columns:
+    - description: string
+    - type: string
+    - environmentalSettings: string[]
+    - contactModes: string[]
+    - transitionStartRule: string
+    - transitionEndRule: string
+
+    (environmentalSettings & contactModes are officially list but
+    are only single string values in the first iteration of the app
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(visit)")
+        cols = {r[1] for r in cur.fetchall()}
+        alters = []
+        if "description" not in cols:
+            alters.append("ALTER TABLE visit ADD COLUMN description TEXT")
+        if "type" not in cols:
+            alters.append("ALTER TABLE visit ADD COLUMN type TEXT")
+        if "environmentalSettings" not in cols:
+            alters.append("ALTER TABLE visit ADD COLUMN environmentalSettings TEXT")
+        if "contactModes" not in cols:
+            alters.append("ALTER TABLE visit ADD COLUMN contactModes TEXT")
+        if "transitionStartRule" not in cols:
+            alters.append("ALTER TABLE visit ADD COLUMN transitionStartRule TEXT")
+        if "transitionEndRule" not in cols:
+            alters.append("ALTER TABLE visit ADD COLUMN transitionEndRule TEXT")
+        if "scheduledAtId" not in cols:
+            alters.append("ALTER TABLE visit ADD COLUMN scheduledAtId TEXT")
+        for stmt in alters:
+            try:
+                cur.execute(stmt)
+            except Exception as e:  # pragma: no cover
+                logger.warning("Failed visit field migration '%s': %s", stmt, e)
+        if alters:
+            conn.commit()
+            logger.info("Applied visit column migration: %s", ", ".join(alters))
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.warning("visit table migration failed: %s", e)
