@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Prefer absolute import; fallback to adding src/ to sys.path when run directly
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 try:
     from soa_builder.web.app import _connect  # reuse existing DB connector
@@ -18,6 +18,28 @@ except ImportError:
 def _nz(s: Optional[str]) -> Optional[str]:
     s = (s or "").strip()
     return s or None
+
+
+def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT DISTINCT c.codelist_table, p.code,p.cdisc_submission_value,p.dataset_date "
+        "FROM code c INNER JOIN ddf_terminology p ON c.codelist_code = p.codelist_code "
+        "AND c.code = p.code WHERE c.soa_id=? AND c.code_uid=?",
+        (
+            soa_id,
+            code_uid,
+        ),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    code_system = [r[0] for r in rows]
+    code_code = [r[1] for r in rows]
+    code_decode = [r[2] for r in rows]
+    code_system_version = [r[3] for r in rows]
+
+    return code_code, code_decode, code_system, code_system_version
 
 
 def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
@@ -62,7 +84,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT name,label,order_index,encounter_uid,description FROM visit WHERE soa_id=?",
+        "SELECT name,label,order_index,encounter_uid,description,type FROM visit WHERE soa_id=?",
         (soa_id,),
     )
     rows = cur.fetchall()
@@ -75,14 +97,18 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
 
     for i, r in enumerate(rows):
-        name, label, order_index, encounter_uid, description = (
+        name, label, order_index, encounter_uid, description, type = (
             r[0],
             r[1],
             r[2],
             r[3],
             r[4],
+            r[5],
         )
         eid = encounter_uid
+        t_code, t_decode, t_codeSystem, t_codeSystemVersion = _get_type_code_tuple(
+            soa_id, type
+        )
         prev_id = id_by_index.get(i - 1)
         next_id = id_by_index.get(i + 1)
 
@@ -93,12 +119,12 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             "label": _nz(label),
             "description": _nz(description),
             "type": {
-                "id": "<placeholder>",
+                "id": type,
                 "extensionAttributes": [],
-                "code": "C25716",
-                "codeSystem": "db://ddf_terminology",
-                "codeSystemVersion": "2025-09-26",
-                "decode": "Visit",
+                "code": t_code[0],
+                "codeSystem": "db://" + t_codeSystem[0],
+                "codeSystemVersion": t_codeSystemVersion[0],
+                "decode": t_decode[0],
                 "instanceType": "Code",
             },
             "previousId": prev_id,
