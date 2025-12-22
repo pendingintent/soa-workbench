@@ -72,10 +72,11 @@ def create_arm(soa_id: int, payload: ArmCreate):
                     "Invalid arm_uid format encountered (ignored for numbering): %s",
                     uid,
                 )
-    next_n = 1
-    while next_n in used_nums:
-        next_n += 1
+
+    # Always pick max(existing) + 1, do not fill gaps
+    next_n = (max(used_nums) if used_nums else 0) + 1
     new_uid = f"StudyArm_{next_n}"
+
     cur.execute(
         """INSERT INTO arm (soa_id,name,label,description,type,data_origin_type,order_index,arm_uid)
             VALUES (?,?,?,?,?,?,?,?)""",
