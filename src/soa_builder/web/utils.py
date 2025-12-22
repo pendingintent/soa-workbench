@@ -332,3 +332,69 @@ def get_epoch_uid(soa_id: int) -> Dict[str, str]:
     rows = cur.fetchall()
     conn.close()
     return {str(name): str(epoch_uid) for (name, epoch_uid) in rows if name is not None}
+
+
+def get_sdtm_submission_values(url: str, codelist_code: str) -> Dict[str, str]:
+    """Return a mapping of {conceptId: submissionValue} from the CDISC Library
+    for the given codelist_code. `url` should be the codelists base endpoint.
+    """
+    full_url = f"{url.rstrip('/')}/{codelist_code}"
+    headers: dict[str, str] = {"Accept": "application/json"}
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
+        "CDISC_SUBSCRIPTION_KEY"
+    )
+    unified_key = subscription_key or api_key
+    if unified_key:
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    mapping: Dict[str, str] = {}
+    try:
+        resp = requests.get(full_url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return {}
+        data = resp.json() or {}
+
+        # Prefer top-level 'terms'; fall back to HAL-style links
+        terms: List[dict] = []
+        if isinstance(data, dict) and isinstance(data.get("terms"), list):
+            terms = data.get("terms") or []
+        elif isinstance(data, list):
+            terms = data
+        else:
+            terms = data.get("_links", {}).get("terms", []) or []
+
+        for t in terms:
+            if not isinstance(t, dict):
+                continue
+            code = t.get("conceptId") or t.get("code") or t.get("termCode")
+            sv = t.get("submissionValue") or t.get("cdisc_submission_value")
+            if code and sv:
+                mapping[str(code)] = str(sv).strip()
+                continue
+
+            # If only a link is provided, follow it to resolve fields
+            href = t.get("href") or t.get("_href")
+            if not href:
+                linkself = t.get("_links", {}).get("self", {})
+                href = linkself.get("href") if isinstance(linkself, dict) else None
+            if href:
+                try:
+                    tr = requests.get(href, headers=headers, timeout=10)
+                    if tr.status_code == 200:
+                        tj = tr.json() or {}
+                        code2 = tj.get("conceptId") or tj.get("code") or code
+                        sv2 = tj.get("submissionValue") or tj.get(
+                            "cdisc_submission_value"
+                        )
+                        if code2 and sv2:
+                            mapping[str(code2)] = str(sv2).strip()
+                except Exception:
+                    pass
+
+        return mapping
+    except Exception:
+        return {}
