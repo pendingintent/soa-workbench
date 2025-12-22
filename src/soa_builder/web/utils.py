@@ -398,3 +398,41 @@ def get_sdtm_submission_values(url: str, codelist_code: str) -> Dict[str, str]:
         return mapping
     except Exception:
         return {}
+
+
+def get_study_timings(soa_id: int) -> Dict[str, str]:
+    """Return a Dict of {name: timing_uid} from the database
+    `timing` table for the SOA
+
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name,timing_uid from timing WHERE soa_id=? ORDER BY name",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {
+        str(name): str(timing_uid) for (name, timing_uid) in rows if name is not None
+    }
+
+
+def get_study_transition_rules(soa_id: int) -> Dict[str, str]:
+    """Return a Dict of {name: transition_rule_uid} from teh database
+    `transition_rule` table for the SOA
+
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name,transition_rule_uid from transition_rule WHERE soa_id=? ORDER BY name",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {
+        str(name): str(transition_rule_uid)
+        for (name, transition_rule_uid) in rows
+        if name is not None
+    }
