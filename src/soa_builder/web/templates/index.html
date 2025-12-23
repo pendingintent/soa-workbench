@@ -10,6 +10,7 @@
     <th>Description</th>
     <th>Created</th>
     <th>Actions</th>
+    <th>Audits</th>
   </tr>
   {% for s in soas %}
   <tr>
@@ -20,6 +21,7 @@
     <td style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ s.study_description }}">{{ s.study_description or '' }}</td>
     <td>{{ s.created_at }}</td>
     <td><a href="/ui/soa/{{ s.id }}/edit">Edit</a></td>
+    <td><a href="/ui/soa/{{ s.id }}/audits">Audits</a></td>
   </tr>
   {% endfor %}
 </table>

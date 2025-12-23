@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Entity Audits for {{ soa_id }}</h2>
+
+
+<div class="flex">
+  <div>
+    <details id="visit-audit-section" class="collapsible">
+      <summary>Visit Audit (latest {{ visit_audits|length }})</summary>
+      {% if visit_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Activity</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for va in visit_audits %}
+        <tr>
+          <td style="padding:4px;">{{ va.id }}</td>
+          <td style="padding:4px;">{{ va.activity_id }}</td>
+          <td style="padding:4px;">{{ va.action }}</td>
+          <td style="padding:4px;">{{ va.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ va.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ va.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No visit audit entries yet.</div>
+      {% endif %}
+    </details>
+    <details id="activity-audit-section" class="collapsible">
+      <summary>Activity Audit (latest {{ activity_audits|length }})</summary>
+      {% if activity_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Activity</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for aa in activity_audits %}
+        <tr>
+          <td style="padding:4px;">{{ aa.id }}</td>
+          <td style="padding:4px;">{{ aa.activity_id }}</td>
+          <td style="padding:4px;">{{ aa.action }}</td>
+          <td style="padding:4px;">{{ aa.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ aa.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ aa.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div style="font-size:0.75em;color:#777;">No activity audit entries yet.</div>
+      {% endif %}
+    </details>
+    <details id="arm-audit-section" class="collapsible">
+      <summary>Arm Audit (latest {{ arm_audits|length }})</summary>
+      {% if arm_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Arm</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for au in arm_audits %}
+        <tr>
+          <td style="padding:4px;">{{ au.id }}</td>
+          <td style="padding:4px;">{{ au.arm_id }}</td>
+          <td style="padding:4px;">{{ au.action }}</td>
+          <td style="padding:4px;">{{ au.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No arm audit entries yet.</div>
+      {% endif %}
+    </details>
+    <details id="epoch-audit-section" class="collapsible">
+      <summary>Epoch Audit (latest {{ epoch_audits|length }})</summary>
+      {% if epoch_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Epoch</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for au in epoch_audits %}
+        <tr>
+          <td style="padding:4px;">{{ au.id }}</td>
+          <td style="padding:4px;">{{ au.epoch_id }}</td>
+          <td style="padding:4px;">{{ au.action }}</td>
+          <td style="padding:4px;">{{ au.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No epoch audit entries yet.</div>
+      {% endif %}
+    </details>
+    <details id="study-cell-audit-section" class="collapsible">
+      <summary>Study Cell Audit (latest {{ study_cell_audits|length }})</summary>
+      {% if study_cell_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Study Cell</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for au in study_cell_audits %}
+        <tr>
+          <td style="padding:4px;">{{ au.id }}</td>
+          <td style="padding:4px;">{{ au.study_cell_id }}</td>
+          <td style="padding:4px;">{{ au.action }}</td>
+          <td style="padding:4px;">{{ au.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No study cell audit entries yet.</div>
+      {% endif %}
+    </details>
+    <details id="transition-rules-audit-section" class="collapsible">
+      <summary>Transition Rule Audit (latest {{ transition_rule_audits|length }})</summary>
+      {% if transition_rule_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Study Cell</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for tra in transition_rule_audits %}
+        <tr>
+          <td style="padding:4px;">{{ tra.id }}</td>
+          <td style="padding:4px;">{{ tra.study_cell_id }}</td>
+          <td style="padding:4px;">{{ tra.action }}</td>
+          <td style="padding:4px;">{{ tra.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ tra.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ tra.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No transition rule audit entries yet.</div>
+      {% endif %}
+    </details>
+    <details id="timings-audit-section" class="collapsible">
+      <summary>Timing Audit (latest {{ timing_audits|length }})</summary>
+      {% if timing_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Study Cell</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for ta in timing_audits %}
+        <tr>
+          <td style="padding:4px;">{{ ta.id }}</td>
+          <td style="padding:4px;">{{ ta.study_cell_id }}</td>
+          <td style="padding:4px;">{{ ta.action }}</td>
+          <td style="padding:4px;">{{ ta.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ ta.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ ta.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No timing audit entries yet.</div>
+      {% endif %}
+    </details>
+    <details id="instances-audit-section" class="collapsible">
+      <summary>Scheduled Activity Instances Audit (latest {{ instance_audits|length }})</summary>
+      {% if instance_audits %}
+      <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Study Cell</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for ia in instance_audits %}
+        <tr>
+          <td style="padding:4px;">{{ ia.id }}</td>
+          <td style="padding:4px;">{{ ia.study_cell_id }}</td>
+          <td style="padding:4px;">{{ ia.action }}</td>
+          <td style="padding:4px;">{{ ia.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ ia.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ ia.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No Scheduled Activity Instances audit entries yet.</div>
+      {% endif %}
+    </details>
+  </div>
+
+
+
+</div>
+
+<style>
+  details.collapsible { border:1px solid #ddd; padding:6px 8px; border-radius:4px; background:#fafafa; }
+  details.collapsible summary { cursor:pointer; font-weight:600; }
+  details.collapsible[open] { background:#fdfdfd; }
+</style>
+
+{% endblock %}

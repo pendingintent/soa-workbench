@@ -70,7 +70,7 @@ from .routers import epochs as epochs_router
 from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
 from .routers import visits as visits_router
-
+from .routers import audits as audits_router
 
 from .routers import timings as timings_router
 from .routers import instances as instances_router
@@ -179,7 +179,7 @@ _migrate_element_audit_columns()
 _backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 
-# routers
+# Include routers
 app.include_router(arms_router.router)
 app.include_router(elements_router.router)
 app.include_router(visits_router.router)
@@ -189,6 +189,7 @@ app.include_router(freezes_router.router)
 app.include_router(rollback_router.router)
 app.include_router(timings_router.router)
 app.include_router(instances_router.router)
+app.include_router(audits_router.router)
 
 
 # Utility functions
@@ -3252,7 +3253,8 @@ def ui_update_meta(
     )
 
 
-# Helper to fetch element audit rows with legacy-safe columns
+# Helper to fetch element audit rows with legacy-safe columns   -> Moved to audits.py, audits.html
+"""
 def _fetch_element_audits(soa_id: int):
     conn_ea = _connect()
     cur_ea = conn_ea.cursor()
@@ -3280,6 +3282,7 @@ def _fetch_element_audits(soa_id: int):
             element_audits.append(item)
     conn_ea.close()
     return element_audits
+"""
 
 
 @app.get("/ui/soa/{soa_id}/edit", response_class=HTMLResponse)
@@ -3485,6 +3488,7 @@ def ui_edit(request: Request, soa_id: int):
         )
 
     # Admin audit view: recent activity audits for this SOA
+    """
     conn_activity_audit = _connect()
     cur_activity_audit = conn_activity_audit.cursor()
     cur_activity_audit.execute(
@@ -3503,8 +3507,10 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_activity_audit.fetchall()
     ]
     conn_activity_audit.close()
+    """
 
     # Admin audit view: recent arm audits for this SOA
+    """
     conn_arm_audit = _connect()
     cur_arm_audit = conn_arm_audit.cursor()
     cur_arm_audit.execute(
@@ -3523,8 +3529,10 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_arm_audit.fetchall()
     ]
     conn_arm_audit.close()
+    """
 
     # Admin audit view: recent epoch audits for this SoA
+    """
     conn_epoch_audit = _connect()
     cur_epoch_audit = conn_epoch_audit.cursor()
     cur_epoch_audit.execute(
@@ -3543,8 +3551,10 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_epoch_audit.fetchall()
     ]
     conn_epoch_audit.close()
+    """
 
-    # Admin audit view: recent study cell audits for this SoA
+    # Admin audit view: recent study cell audits for this SoA -> moved to audits.py, audits.html
+    """
     conn_sc_audit = _connect()
     cur_sc_audit = conn_sc_audit.cursor()
     cur_sc_audit.execute(
@@ -3563,6 +3573,7 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_sc_audit.fetchall()
     ]
     conn_sc_audit.close()
+    """
 
     # Enrich epochs using API-only map: code -> submissionValue
     # Resolve stored epoch.type (code_uid) to terminology code via code table, then map to submissionValue.
@@ -3636,7 +3647,7 @@ def ui_edit(request: Request, soa_id: int):
     conn_tr.close()
 
     # Element audit list
-    element_audits = _fetch_element_audits(soa_id)
+    # element_audits = _fetch_element_audits(soa_id)    -> Moved to audits.py, audits.html
 
     return templates.TemplateResponse(
         request,
@@ -3661,11 +3672,11 @@ def ui_edit(request: Request, soa_id: int):
             **study_meta,
             "protocol_terminology_C174222": protocol_terminology_C174222,
             "ddf_terminology_C188727": ddf_terminology_C188727,
-            "arm_audits": arm_audits,
-            "epoch_audits": epoch_audits,
-            "activity_audits": activity_audits,
-            "study_cell_audits": study_cell_audits,
-            "element_audits": element_audits,
+            # "arm_audits": arm_audits,
+            # "epoch_audits": epoch_audits,
+            # "activity_audits": activity_audits,
+            # "study_cell_audits": study_cell_audits,
+            # "element_audits": element_audits,
             # Epoch Type options (C99079)
             "epoch_type_options": epoch_type_options,
             # Study Cells
