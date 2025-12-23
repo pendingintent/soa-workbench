@@ -42,6 +42,24 @@ def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str
     return code_code, code_decode, code_system, code_system_version
 
 
+def _get_environment_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str]:
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT DISTINCT c.codelist_table,c.code "
+        "FROM code c WHERE c.soa_id=? AND c.code_uid=?",
+        (
+            soa_id,
+            code_uid,
+        ),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    code_system = [r[0] for r in rows]
+    code = [r[1] for r in rows]
+    return code, code_system
+
+
 def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
     """
     Build USDM Encounters-Output objects for the given SOA
@@ -84,7 +102,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT name,label,order_index,encounter_uid,description,type FROM visit WHERE soa_id=?",
+        "SELECT name,label,order_index,encounter_uid,description,type,environmentalSettings FROM visit WHERE soa_id=?",
         (soa_id,),
     )
     rows = cur.fetchall()
@@ -92,23 +110,36 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
 
     uids = [r[3] for r in rows]
     id_by_index = {i: uid for i, uid in enumerate(uids)}
-    print(id_by_index)
+    # print(id_by_index)
 
     out: List[Dict[str, Any]] = []
 
     for i, r in enumerate(rows):
-        name, label, order_index, encounter_uid, description, type = (
+        (
+            name,
+            label,
+            order_index,
+            encounter_uid,
+            description,
+            type,
+            environmentalSettings,
+        ) = (
             r[0],
             r[1],
             r[2],
             r[3],
             r[4],
             r[5],
+            r[6],
         )
         eid = encounter_uid
         t_code, t_decode, t_codeSystem, t_codeSystemVersion = _get_type_code_tuple(
             soa_id, type
         )
+        e_code, e_codesystem = _get_environment_code_tuple(
+            soa_id, environmentalSettings
+        )
+        # print(e_code, e_codesystem)
         prev_id = id_by_index.get(i - 1)
         next_id = id_by_index.get(i + 1)
 
@@ -130,7 +161,17 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             "previousId": prev_id,
             "nextId": next_id,
             "scheduledAt": "<placeholder>",
-            "environmentSettings": [],
+            "environmentSettings": [
+                {
+                    "id": environmentalSettings,
+                    "extensionAttributes": [],
+                    "code": e_code[0],
+                    "codeSystem": e_codesystem[0],
+                    "codeSystemVersion": "2024-09-27",
+                    "decode": "Clinic",
+                    "instanceType": "Code",
+                },
+            ],
             "contactModes": [],
             "transitionStartRule": {},
             "transitionEndRule": {},

@@ -122,6 +122,7 @@ def add_visit(soa_id: int, payload: VisitCreate):
 
     # Generate Code_{N} for encounter.type
     type_uid = _get_next_code_uid(cur, soa_id)
+    logger.info("type_uid=%s", type_uid)
 
     if type_uid:
         cur.execute(
@@ -135,8 +136,24 @@ def add_visit(soa_id: int, payload: VisitCreate):
             ),
         )
 
+    # Generate Code_{N} for environmentalSettings.type
+    es_uid = _get_next_code_uid(cur, soa_id)
+    logger.info("es_uid=%s", es_uid)
+
+    if es_uid:
+        cur.execute(
+            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            (
+                soa_id,
+                es_uid,
+                "http://www.cdisc.org",
+                "C127262",
+                "C51282",
+            ),
+        )
+
     cur.execute(
-        "INSERT INTO visit (soa_id,name,label,order_index,epoch_id,encounter_uid,description,type) VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT INTO visit (soa_id,name,label,order_index,epoch_id,encounter_uid,description,type,environmentalSettings) VALUES (?,?,?,?,?,?,?,?,?)",
         (
             soa_id,
             name,
@@ -146,6 +163,7 @@ def add_visit(soa_id: int, payload: VisitCreate):
             new_uid,
             _nz(payload.description),
             type_uid,
+            es_uid,
         ),
     )
     encounter_id = cur.lastrowid
