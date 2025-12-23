@@ -15,6 +15,14 @@ _epoch_type_cache: dict[str, Any] = {
 _EPOCH_TYPE_CACHE_TTL = 60 * 60  # 1 hour
 
 
+def get_cdisc_api_key():
+    return os.environ.get("CDISC_API_KEY")
+
+
+def get_concepts_override():
+    return os.environ.get("CDISC_CONCEPTS_JSON")
+
+
 def load_epoch_type_options(force: bool = False) -> list[str]:
     """Fetch Epoch Type options from CDISC Library API codelist C99079.
 
