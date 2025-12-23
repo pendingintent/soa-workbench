@@ -166,7 +166,6 @@
         {% for e in epochs %}
         <li class="drag-item" draggable="false" data-id="{{ e.id }}" title="{{ e.epoch_description or '' }}">
           <span class="ord">{{ e.order_index }}</span>. <strong>{{ e.name }}</strong> 
-          
           <span class="epochs-actions">
             <form method="post" action="/ui/soa/{{ soa_id }}/update_epoch" style="display:inline;margin-left:6px;font-size:0.6em;">
               <input type="hidden" name="epoch_id" value="{{ e.id }}" />
@@ -209,22 +208,24 @@
       <ul id="elements-list" class="drag-list">
         {% for el in elements %}
         <li class="drag-item" draggable="true" data-id="{{ el.id }}" title="{{ el.description or '' }}">
-          <span class="ord">{{ el.order_index }}</span>. <strong>{{ el.name }}</strong>
-          {% if el.label %}<em style="color:#555;font-size:0.7em;">[{{ el.label }}]</em>{% endif %}
-          {% if el.testrl or el.teenrl %}<span style="font-size:0.6em;color:#2e7d32;">(rules)</span>{% endif %}
-          <form hx-post="/ui/soa/{{ soa_id }}/delete_element" hx-confirm="Delete element '{{ el.name }}'?" hx-target="#element-audit-section" hx-swap="outerHTML" style="display:inline">
-            <input type="hidden" name="element_id" value="{{ el.id }}" />
-            <button type="submit" class="delete-btn">✕</button>
-          </form>
-          <form hx-post="/ui/soa/{{ soa_id }}/update_element" hx-target="#element-audit-section" hx-swap="outerHTML" style="display:inline;margin-left:6px;font-size:0.6em;">
-            <input type="hidden" name="element_id" value="{{ el.id }}" />
-            <input name="name" value="{{ el.name }}" placeholder="Name" style="width:90px;" />
-            <input name="label" value="{{ el.label or '' }}" placeholder="Label" style="width:70px;" />
-            <input name="description" value="{{ el.description or '' }}" placeholder="Desc" style="width:120px;" />
-            <input name="testrl" value="{{ el.testrl or '' }}" placeholder="StartRule" style="width:90px;" />
-            <input name="teenrl" value="{{ el.teenrl or '' }}" placeholder="EndRule" style="width:90px;" />
-            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-          </form>
+          <span class="ord">{{ el.order_index }}</span>. <strong>{% if el.label %}{{ el.label }}{% else %}{{ el.name }}{% endif %}</strong>
+          <span class="element-actions">
+            <form hx-post="/ui/soa/{{ soa_id }}/update_element" hx-target="#element-audit-section" hx-swap="outerHTML" style="display:inline;margin-left:6px;font-size:0.6em;">
+              <input type="hidden" name="element_id" value="{{ el.id }}" />
+              <input name="name" value="{{ el.name }}" placeholder="Name" style="width:90px;" />
+              <input name="label" value="{{ el.label or '' }}" placeholder="Label" style="width:70px;" />
+              <input name="description" value="{{ el.description or '' }}" placeholder="Desc" style="width:120px;" />
+              <input name="testrl" value="{{ el.testrl or '' }}" placeholder="StartRule" style="width:90px;" />
+              <input name="teenrl" value="{{ el.teenrl or '' }}" placeholder="EndRule" style="width:90px;" />
+              <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </form>
+            <form hx-post="/ui/soa/{{ soa_id }}/delete_element" hx-confirm="Delete element '{{ el.name }}'?" hx-target="#element-audit-section" hx-swap="outerHTML" style="display:inline">
+              <input type="hidden" name="element_id" value="{{ el.id }}" />
+              <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+                  Delete
+              </button>
+            </form>
+          </span>
         </li>
         {% endfor %}
       </ul>
@@ -242,41 +243,44 @@
       <ul id="arms-list" class="drag-list">
         {% for arm in arms %}
         <li class="drag-item" draggable="true" data-id="{{ arm.id }}" title="{{ arm.description or '' }}">
-          <span class="ord">{{ arm.order_index }}</span>. <strong>{{ arm.arm_uid }}</strong> {{ arm.name }}
-          {% if arm.label %}<em style="color:#555;font-size:0.7em;">[{{ arm.label }}]</em>{% endif %}
-          <form hx-post="/ui/soa/{{ soa_id }}/delete_arm" hx-confirm="Delete arm '{{ arm.name }}'?" style="display:inline">
-            <input type="hidden" name="arm_id" value="{{ arm.id }}" />
-            <button type="submit" class="delete-btn">✕</button>
-          </form>
-          <form method="post" action="/ui/soa/{{ soa_id }}/update_arm" style="display:inline;margin-left:6px;font-size:0.6em;">
-            <input type="hidden" name="arm_id" value="{{ arm.id }}" />
-            <input name="name" value="{{ arm.name }}" placeholder="Name" style="width:90px;" />
-            <input name="label" value="{{ arm.label or '' }}" placeholder="Label" style="width:70px;" />
-            <input name="description" value="{{ arm.description or '' }}" placeholder="Desc" style="width:120px;" />
-            {# Type selection from protocol terminology C174222 #}
-            {% if protocol_terminology_C174222 %}
-            <select name="arm-type" style="width:200px;" title="Type">
-              <option value="">Type</option>
-              {% for opt in protocol_terminology_C174222 %}
-                {% set text = (opt.cdisc_submission_value or '') %}
-                {% set td = (arm.type_display or '') %}
-                <option value="{{ text }}" {% if td|trim|lower == text|trim|lower and td != '' %}selected{% endif %}>{{ text }}</option>
-              {% endfor %}
-            </select>
-            {% endif %}
-            {# Type selection from ddf terminology C188727 #}
-            {% if ddf_terminology_C188727 %}
-            <select name="data-origin-type" style="width:200px;" title="Data Origin Type">
-              <option value="">DataOriginType</option>
-              {% for ddf_opt in ddf_terminology_C188727 %}
-                {% set text = (ddf_opt.cdisc_submission_value or '') %}
-                {% set td = (arm.data_origin_type_display or '') %}
-                <option value="{{ text }}" {% if td|trim|lower == text|trim|lower and td != '' %}selected{% endif %}>{{ text }}</option>
-              {% endfor %}
-            </select>
-            {% endif %}
-            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-          </form>
+          <span class="ord">{{ arm.order_index }}</span>. <strong>{% if arm.label %}{{ arm.label }}{% else %}{{ arm.name }}{% endif %}</strong>
+          <span class="arm-actions">
+            <form method="post" action="/ui/soa/{{ soa_id }}/update_arm" style="display:inline;margin-left:6px;font-size:0.6em;">
+              <input type="hidden" name="arm_id" value="{{ arm.id }}" />
+              <input name="name" value="{{ arm.name }}" placeholder="Name" style="width:90px;" />
+              <input name="label" value="{{ arm.label or '' }}" placeholder="Label" style="width:70px;" />
+              <input name="description" value="{{ arm.description or '' }}" placeholder="Desc" style="width:120px;" />
+              {# Type selection from protocol terminology C174222 #}
+              {% if protocol_terminology_C174222 %}
+              <select name="arm-type" style="width:200px;" title="Type">
+                <option value="">Type</option>
+                {% for opt in protocol_terminology_C174222 %}
+                  {% set text = (opt.cdisc_submission_value or '') %}
+                  {% set td = (arm.type_display or '') %}
+                  <option value="{{ text }}" {% if td|trim|lower == text|trim|lower and td != '' %}selected{% endif %}>{{ text }}</option>
+                {% endfor %}
+              </select>
+              {% endif %}
+              {# Type selection from ddf terminology C188727 #}
+              {% if ddf_terminology_C188727 %}
+              <select name="data-origin-type" style="width:200px;" title="Data Origin Type">
+                <option value="">DataOriginType</option>
+                {% for ddf_opt in ddf_terminology_C188727 %}
+                  {% set text = (ddf_opt.cdisc_submission_value or '') %}
+                  {% set td = (arm.data_origin_type_display or '') %}
+                  <option value="{{ text }}" {% if td|trim|lower == text|trim|lower and td != '' %}selected{% endif %}>{{ text }}</option>
+                {% endfor %}
+              </select>
+              {% endif %}
+              <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </form>
+            <form hx-post="/ui/soa/{{ soa_id }}/delete_arm" hx-confirm="Delete arm '{{ arm.name }}'?" style="display:inline">
+              <input type="hidden" name="arm_id" value="{{ arm.id }}" />
+              <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+                Delete
+              </button>
+            </form>
+          </span>
         </li>
         {% endfor %}
       </ul>
@@ -375,7 +379,29 @@
     </details>
     <details id="transition-rules-section" class="collapsible">
       <summary>Transition Rules ({{ transition_rules|length }})</summary>
-      {% include 'transition_rules_list.html' %}
+      <ul id="transition-rule-list" class="drag-list">
+        {% for rule in transition_rules %}
+        <li class="drag-item" draggable="false" data-id="{{ rule.transition_rule_uid }}" title="{{ rule.name or '' }}">
+          <span class="ord">{{ rule.order_index }}</span>. <strong>{% if rule.label %}{{ rule.label }}{% else %}{{ rule.name }}{% endif %}</strong>
+          <span class="transition-rule-actions">
+            <form method="post" action="/ui/soa/{{ soa_id }}/update_transition_rule" style="display:inline;margin-left:6px;font-size:0.6em;">
+              <input type="hidden" name="transition_rule_uid" value="{{ rule.transition_rule_uid }}" />
+              <input name="name" value="{{ rule.name }}" placeholder="Name" style="width:90px;" />
+              <input name="label" value="{{ rule.label or '' }}" placeholder="Label" style="width:70px;" />
+              <input name="description" value="{{ rule.description or '' }}" placeholder="Desc" style="width:120px;" />
+              <input name="text" value="{{ rule.text or '' }}" placeholder="Rule text" style="width:160px;" />
+              <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </form>
+            <form hx-post="/ui/soa/{{ soa_id }}/delete_transition_rule" hx-target="#transition-rule-list" hx-swap="outerHTML" hx-confirm="Delete transition rule '{{ rule.name }}'?" style="display:inline">
+              <input type="hidden" name="transition_rule_uid" value="{{ rule.transition_rule_uid }}" />
+              <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+                Delete
+              </button>
+            </form>
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
       <form method="post" action="/ui/soa/{{ soa_id }}/add_transition_rule" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
         <input name="name" placeholder="Transition Rule Name" required style="flex:1;min-width:120px;" />
         <input name="label" placeholder="Transition Rule Label" style="flex:1;min-width:110px;" />
@@ -444,6 +470,9 @@
   .visit-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
   .activity-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
   .epochs-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
+  .element-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
+  .arm-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
+  .transition-rule-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
   .hint { font-weight:400; font-size:0.7em; color:#666; }
 </style>
 <script>
