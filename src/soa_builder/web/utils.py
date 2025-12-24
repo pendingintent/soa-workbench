@@ -427,7 +427,7 @@ def get_study_timings(soa_id: int) -> Dict[str, str]:
 
 
 def get_study_transition_rules(soa_id: int) -> Dict[str, str]:
-    """Return a Dict of {name: transition_rule_uid} from teh database
+    """Return a Dict of {name: transition_rule_uid} from the database
     `transition_rule` table for the SOA
 
     """
