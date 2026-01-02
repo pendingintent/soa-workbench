@@ -1062,7 +1062,7 @@ def _fetch_matrix(soa_id: int):
     cur = conn.cursor()
     # Epochs not part of matrix axes currently; retrieved separately where needed.
     cur.execute(
-        "SELECT id,name,label,order_index,epoch_id,description FROM visit WHERE soa_id=? ORDER BY order_index",
+        "SELECT id,name,label,order_index,epoch_id,description,scheduledAtId FROM visit WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
     visits = [
@@ -1073,6 +1073,9 @@ def _fetch_matrix(soa_id: int):
             order_index=r[3],
             epoch_id=r[4],
             description=r[5],
+            scheduledAtId=(
+                int(r[6]) if (r[6] is not None and str(r[6]).isdigit()) else None
+            ),
         )
         for r in cur.fetchall()
     ]
@@ -3637,8 +3640,15 @@ def ui_edit(request: Request, soa_id: int):
     ]
     conn_tr.close()
 
-    # Element audit list
-    # element_audits = _fetch_element_audits(soa_id)    -> Moved to audits.py, audits.html
+    # Load Timings for dropdown
+    conn_tm = _connect()
+    cur_tm = conn_tm.cursor()
+    cur_tm.execute(
+        "SELECT id,name FROM timing WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    timings = [{"id": r[0], "name": r[1]} for r in cur_tm.fetchall()]
+    conn_tm.close()
 
     return templates.TemplateResponse(
         request,
@@ -3673,6 +3683,7 @@ def ui_edit(request: Request, soa_id: int):
             # Study Cells
             "study_cells": study_cells,
             "transition_rules": transition_rules,
+            "timings": timings,
         },
     )
 
@@ -5710,6 +5721,7 @@ def ui_set_visit_epoch(
             raise HTTPException(400, "Invalid epoch_id for this SOA")
     cur.execute("UPDATE visit SET epoch_id=? WHERE id=?", (parsed_epoch, visit_id))
     conn.commit()
+    """
     logger.info(
         "ui_set_visit_epoch updated visit id=%s soa_id=%s epoch_id=%s raw_val='%s' db_path=%s",
         visit_id,
@@ -5718,6 +5730,7 @@ def ui_set_visit_epoch(
         raw_val,
         DB_PATH,
     )
+    """
     # Fetch after and record audit
     cur.execute(
         "SELECT id,name,label,order_index,epoch_id,encounter_uid,description FROM visit WHERE id=? AND soa_id=?",
@@ -5735,6 +5748,90 @@ def ui_set_visit_epoch(
     }
     updated_fields = [
         f for f in ["epoch_id"] if (before.get(f) or None) != (after.get(f) or None)
+    ]
+    _record_visit_audit(
+        soa_id,
+        "update",
+        visit_id,
+        before=before,
+        after={**after, "updated_fields": updated_fields},
+    )
+    conn.close()
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+# UI endpoint for associating a Timing with Visit/Encounter (visit.scheduledAtId)
+@app.post("/ui/soa/{soa_id}/set_timing", response_class=HTMLResponse)
+def ui_set_timing(
+    request: Request,
+    soa_id: int,
+    visit_id: int = Form(...),
+    timing_id: str = Form(""),
+):
+    """Form handler for associating a Timing with a Visit/Encounter"""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    # Determing timing name
+    raw_val = (timing_id or "").strip()
+    parsed_timing: Optional[int] = None
+    if raw_val:
+        if raw_val.isdigit():
+            parsed_timing = int(raw_val)
+        else:
+            raise HTTPException(400, "Invalid timing_id value")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,label,order_index,encounter_uid,description,scheduledAtId FROM visit WHERE id=? AND soa_id=?",
+        (visit_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Visit not found")
+    before = {
+        "id": row[0],
+        "name": row[1],
+        "label": row[2],
+        "order_index": row[3],
+        "encounter_uid": row[4],
+        "description": row[5],
+        "scheduledAtId": row[6],
+    }
+    if parsed_timing is not None:
+        cur.execute(
+            "SELECT 1 FROM timing WHERE id=? AND soa_id=?",
+            (parsed_timing, soa_id),
+        )
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(400, "Invalid timing_id for this SOA")
+    cur.execute(
+        "UPDATE visit SET scheduledAtId=? WHERE id=?",
+        (parsed_timing, visit_id),
+    )
+    conn.commit()
+    # Fecth after record audit
+    cur.execute(
+        "SELECT id,name,label,order_index,encounter_uid,description,scheduledAtId FROM visit WHERE id=? AND soa_id=?",
+        (visit_id, soa_id),
+    )
+    r = cur.fetchone()
+    after = {
+        "id": r[0],
+        "name": r[1],
+        "label": r[2],
+        "order_index": r[3],
+        "encounter_uid": r[4],
+        "description": r[5],
+        "scheduledAtId": r[6],
+    }
+    updated_fields = [
+        f
+        for f in ["scheduledAtId"]
+        if (before.get(f) or None) != (after.get(f) or None)
     ]
     _record_visit_audit(
         soa_id,
