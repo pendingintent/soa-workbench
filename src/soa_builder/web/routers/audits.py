@@ -16,7 +16,7 @@ templates = Jinja2Templates(
 
 
 @router.get("/ui/soa/{soa_id}/audits", response_class=HTMLResponse)
-def ui_list_timings(request: Request, soa_id: int):
+def ui_list_audits(request: Request, soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
 
@@ -108,7 +108,7 @@ def ui_list_timings(request: Request, soa_id: int):
     study_cell_audits = [
         {
             "id": r[0],
-            "element_id": r[1],
+            "study_cell_id": r[1],
             "action": r[2],
             "before_json": r[3],
             "after_json": r[4],
@@ -127,7 +127,7 @@ def ui_list_timings(request: Request, soa_id: int):
     transition_rule_audits = [
         {
             "id": r[0],
-            "element_id": r[1],
+            "transition_rule_id": r[1],
             "action": r[2],
             "before_json": r[3],
             "after_json": r[4],
@@ -146,7 +146,7 @@ def ui_list_timings(request: Request, soa_id: int):
     visit_audits = [
         {
             "id": r[0],
-            "element_id": r[1],
+            "visit_id": r[1],
             "action": r[2],
             "before_json": r[3],
             "after_json": r[4],
@@ -165,7 +165,7 @@ def ui_list_timings(request: Request, soa_id: int):
     timing_audits = [
         {
             "id": r[0],
-            "element_id": r[1],
+            "timing_id": r[1],
             "action": r[2],
             "before_json": r[3],
             "after_json": r[4],
@@ -184,7 +184,7 @@ def ui_list_timings(request: Request, soa_id: int):
     instance_audits = [
         {
             "id": r[0],
-            "element_id": r[1],
+            "instance_id": r[1],
             "action": r[2],
             "before_json": r[3],
             "after_json": r[4],
@@ -207,5 +207,6 @@ def ui_list_timings(request: Request, soa_id: int):
             "visit_audits": visit_audits,
             "timing_audits": timing_audits,
             "instance_audits": instance_audits,
+            "soa_id": soa_id,
         },
     )

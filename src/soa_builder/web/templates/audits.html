@@ -11,7 +11,7 @@
       <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
         <tr style="background:#eee;">
           <th style="text-align:left;padding:4px;">ID</th>
-          <th style="text-align:left;padding:4px;">Activity</th>
+          <th style="text-align:left;padding:4px;">Visit</th>
           <th style="text-align:left;padding:4px;">Action</th>
           <th style="text-align:left;padding:4px;">Performed</th>
           <th style="text-align:left;padding:4px;">Before</th>
@@ -20,7 +20,7 @@
         {% for va in visit_audits %}
         <tr>
           <td style="padding:4px;">{{ va.id }}</td>
-          <td style="padding:4px;">{{ va.activity_id }}</td>
+          <td style="padding:4px;">{{ va.visit_id }}</td>
           <td style="padding:4px;">{{ va.action }}</td>
           <td style="padding:4px;">{{ va.performed_at }}</td>
           <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ va.before_json or '' }}</td>
@@ -146,7 +146,7 @@
       <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
         <tr style="background:#eee;">
           <th style="text-align:left;padding:4px;">ID</th>
-          <th style="text-align:left;padding:4px;">Study Cell</th>
+          <th style="text-align:left;padding:4px;">Transition Rule</th>
           <th style="text-align:left;padding:4px;">Action</th>
           <th style="text-align:left;padding:4px;">Performed</th>
           <th style="text-align:left;padding:4px;">Before</th>
@@ -155,7 +155,7 @@
         {% for tra in transition_rule_audits %}
         <tr>
           <td style="padding:4px;">{{ tra.id }}</td>
-          <td style="padding:4px;">{{ tra.study_cell_id }}</td>
+          <td style="padding:4px;">{{ tra.transition_rule_id }}</td>
           <td style="padding:4px;">{{ tra.action }}</td>
           <td style="padding:4px;">{{ tra.performed_at }}</td>
           <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ tra.before_json or '' }}</td>
@@ -173,7 +173,7 @@
       <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
         <tr style="background:#eee;">
           <th style="text-align:left;padding:4px;">ID</th>
-          <th style="text-align:left;padding:4px;">Study Cell</th>
+          <th style="text-align:left;padding:4px;">Timing</th>
           <th style="text-align:left;padding:4px;">Action</th>
           <th style="text-align:left;padding:4px;">Performed</th>
           <th style="text-align:left;padding:4px;">Before</th>
@@ -182,7 +182,7 @@
         {% for ta in timing_audits %}
         <tr>
           <td style="padding:4px;">{{ ta.id }}</td>
-          <td style="padding:4px;">{{ ta.study_cell_id }}</td>
+          <td style="padding:4px;">{{ ta.timing_id }}</td>
           <td style="padding:4px;">{{ ta.action }}</td>
           <td style="padding:4px;">{{ ta.performed_at }}</td>
           <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ ta.before_json or '' }}</td>
@@ -200,7 +200,7 @@
       <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
         <tr style="background:#eee;">
           <th style="text-align:left;padding:4px;">ID</th>
-          <th style="text-align:left;padding:4px;">Study Cell</th>
+          <th style="text-align:left;padding:4px;">Scheduled Activity Instance</th>
           <th style="text-align:left;padding:4px;">Action</th>
           <th style="text-align:left;padding:4px;">Performed</th>
           <th style="text-align:left;padding:4px;">Before</th>
@@ -209,7 +209,7 @@
         {% for ia in instance_audits %}
         <tr>
           <td style="padding:4px;">{{ ia.id }}</td>
-          <td style="padding:4px;">{{ ia.study_cell_id }}</td>
+          <td style="padding:4px;">{{ ia.instance_id }}</td>
           <td style="padding:4px;">{{ ia.action }}</td>
           <td style="padding:4px;">{{ ia.performed_at }}</td>
           <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ ia.before_json or '' }}</td>

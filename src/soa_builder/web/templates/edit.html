@@ -91,7 +91,7 @@
           <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_epoch" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
             <select name="epoch_id" style="font-size:0.65em;" onchange="this.form.submit()">
-              <option value="" {% if not v.epoch_id %}selected{% endif %}>Select Epoch</option>
+              <option value="" {% if not v.epoch_id %}selected{% endif %}>No Epoch selected</option>
               {% for e in epochs %}
                 <option value="{{ e.id }}" {% if v.epoch_id == e.id %}selected{% endif %}>{{ e.name }}</option>
               {% endfor %}

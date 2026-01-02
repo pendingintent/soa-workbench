@@ -199,12 +199,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        activities = build_usdm_encounters(args.soa_id)
+        encounters = build_usdm_encounters(args.soa_id)
     except Exception:
         logger.exception("Failed to build Encounters for soa_id=%s", args.soa_id)
         sys.exit(1)
 
-    payload = json.dumps(activities, indent=args.indent)
+    payload = json.dumps(encounters, indent=args.indent)
     if args.output in ("-", "/dev/stdout"):
         sys.stdout.write(payload + "\n")
     else:
