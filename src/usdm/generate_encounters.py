@@ -20,6 +20,23 @@ def _nz(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
+def _get_timing_name(soa_id: int, timing_id: Optional[int]) -> str:
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT timing_uid FROM timing WHERE id=? AND soa_id=?",
+        (
+            timing_id,
+            soa_id,
+        ),
+    )
+    row = cur.fetchone()
+    conn.close()
+    timing_uid = row[0] if (row and row[0] is not None) else None
+
+    return timing_uid
+
+
 def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
     conn = _connect()
     cur = conn.cursor()
@@ -102,7 +119,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT name,label,order_index,encounter_uid,description,type,environmentalSettings FROM visit WHERE soa_id=?",
+        "SELECT name,label,order_index,encounter_uid,description,type,environmentalSettings,scheduledAtId FROM visit WHERE soa_id=?",
         (soa_id,),
     )
     rows = cur.fetchall()
@@ -123,6 +140,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             description,
             type,
             environmentalSettings,
+            scheduledAtId,
         ) = (
             r[0],
             r[1],
@@ -131,6 +149,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             r[4],
             r[5],
             r[6],
+            r[7],
         )
         eid = encounter_uid
         t_code, t_decode, t_codeSystem, t_codeSystemVersion = _get_type_code_tuple(
@@ -142,6 +161,15 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
         # print(e_code, e_codesystem)
         prev_id = id_by_index.get(i - 1)
         next_id = id_by_index.get(i + 1)
+
+        timing_uid = _get_timing_name(
+            soa_id,
+            (
+                int(scheduledAtId)
+                if (scheduledAtId is not None and str(scheduledAtId).isdigit())
+                else None
+            ),
+        )
 
         encounter = {
             "id": eid,
@@ -160,7 +188,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             },
             "previousId": prev_id,
             "nextId": next_id,
-            "scheduledAt": "<placeholder>",
+            "scheduledAt": timing_uid,
             "environmentSettings": [
                 {
                     "id": environmentalSettings,
