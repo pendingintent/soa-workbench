@@ -63,6 +63,32 @@ def _get_transition_start_rule(
     }
 
 
+def _get_transition_end_rule(
+    soa_id: int, transition_rule_uid: Optional[str]
+) -> Optional[Dict[str, Any]]:
+    if not transition_rule_uid:
+        return None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT tr.name, tr.label, tr.description, tr.text FROM transition_rule tr WHERE soa_id=? AND transition_rule_uid=?",
+        (soa_id, transition_rule_uid),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {
+        "id": transition_rule_uid,
+        "extensionAttributes": [],
+        "name": row[0] or None,
+        "label": row[1] or None,
+        "description": row[2] or None,
+        "text": row[3] or None,
+        "instanceType": "TransitionRule",
+    }
+
+
 def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
     conn = _connect()
     cur = conn.cursor()
@@ -145,7 +171,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT name,label,order_index,encounter_uid,description,type,environmentalSettings,scheduledAtId,transitionStartRule FROM visit WHERE soa_id=?",
+        "SELECT name,label,order_index,encounter_uid,description,type,environmentalSettings,scheduledAtId,transitionStartRule,transitionEndRule FROM visit WHERE soa_id=?",
         (soa_id,),
     )
     rows = cur.fetchall()
@@ -168,6 +194,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             environmentalSettings,
             scheduledAtId,
             transition_start_rule_uid,
+            transition_end_rule_uid,
         ) = (
             r[0],
             r[1],
@@ -178,6 +205,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             r[6],
             r[7],
             r[8],
+            r[9],
         )
         eid = encounter_uid
         t_code, t_decode, t_codeSystem, t_codeSystemVersion = _get_type_code_tuple(
@@ -201,6 +229,10 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
 
         transition_start_rule_obj = _get_transition_start_rule(
             soa_id, transition_start_rule_uid
+        )
+
+        transition_end_rule_obj = _get_transition_start_rule(
+            soa_id, transition_end_rule_uid
         )
 
         encounter = {
@@ -234,7 +266,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             ],
             "contactModes": [],
             "transitionStartRule": transition_start_rule_obj or {},
-            "transitionEndRule": {},
+            "transitionEndRule": transition_end_rule_obj or {},
             "notes": [],
             "instanceType": "Encounter",
         }

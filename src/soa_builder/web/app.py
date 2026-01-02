@@ -1062,7 +1062,7 @@ def _fetch_matrix(soa_id: int):
     cur = conn.cursor()
     # Epochs not part of matrix axes currently; retrieved separately where needed.
     cur.execute(
-        "SELECT id,name,label,order_index,epoch_id,description,scheduledAtId,transitionStartRule FROM visit WHERE soa_id=? ORDER BY order_index",
+        "SELECT id,name,label,order_index,epoch_id,description,scheduledAtId,transitionStartRule,transitionEndRule FROM visit WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
     visits = [
@@ -1077,6 +1077,7 @@ def _fetch_matrix(soa_id: int):
                 int(r[6]) if (r[6] is not None and str(r[6]).isdigit()) else None
             ),
             transitionStartRule=(r[7] if r[7] else None),
+            transitionEndRule=(r[8] if r[8] else None),
         )
         for r in cur.fetchall()
     ]
@@ -5832,6 +5833,91 @@ def ui_set_transition_start_rule(
     updated_fields = [
         f
         for f in ["transitionStartRule"]
+        if (before.get(f) or None) != (after.get(f) or None)
+    ]
+    _record_visit_audit(
+        soa_id,
+        "update",
+        visit_id,
+        before=before,
+        after={**after, "updated_fields": updated_fields},
+    )
+    conn.close()
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+# UI endpoint for associating a Transition End Rule with Visit/Encounter (visit.transitionEndRule)
+@app.post("/ui/soa/{soa_id}/set_transition_end_rule", response_class=HTMLResponse)
+def ui_set_transition_end_rule(
+    request: Request,
+    soa_id: int,
+    visit_id: int = Form(...),
+    transition_end_rule_uid: str = Form(""),
+):
+    """Form Handler for associating a Transition End Rule with a Visit/Encounter"""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    new_uid = (transition_end_rule_uid or "").strip() or None
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,label,order_index,encounter_uid,description,transitionEndRule FROM visit WHERE id=? AND soa_id=?",
+        (visit_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Visit not found")
+
+    before = {
+        "id": row[0],
+        "name": row[1],
+        "label": row[2],
+        "order_index": row[3],
+        "encounter_uid": row[4],
+        "description": row[5],
+        "transitionEndRule": row[6],
+    }
+
+    if new_uid is not None:
+        cur.execute(
+            "SELECT 1 FROM transition_rule WHERE transition_rule_uid=? AND soa_id=?",
+            (new_uid, soa_id),
+        )
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(400, "Invalid Transition Rule for this SOA")
+
+    cur.execute(
+        "UPDATE visit SET transitionEndRule=? WHERE id=? AND soa_id=?",
+        (new_uid, visit_id, soa_id),
+    )
+    conn.commit()
+
+    cur.execute(
+        "SELECT id,name,label,order_index,encounter_uid,description,transitionEndRule FROM visit WHERE id=? AND soa_id=?",
+        (
+            visit_id,
+            soa_id,
+        ),
+    )
+    r = cur.fetchone()
+    after = {
+        "id": r[0],
+        "name": r[1],
+        "label": r[2],
+        "order_index": r[3],
+        "encounter_uid": r[4],
+        "description": r[5],
+        "transitionEndRule": r[6],
+    }
+    updated_fields = [
+        f
+        for f in ["transitionEndRule"]
         if (before.get(f) or None) != (after.get(f) or None)
     ]
     _record_visit_audit(
