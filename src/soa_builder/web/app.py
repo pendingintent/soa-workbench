@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """FastAPI web application for interactive Schedule of Activities creation.
 
-Endpoints:
+Endpoints (deprecated):
   POST /soa {name} -> create SOA container
   GET /soa/{id} -> summary
   POST /soa/{id}/visits {name, label} -> add visit
@@ -60,6 +60,7 @@ from .migrate_database import (
     _migrate_rename_cell_table,
     _migrate_rollback_add_elements_restored,
     _migrate_add_epoch_type,
+    _migrate_visit_columns,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -69,7 +70,7 @@ from .routers import epochs as epochs_router
 from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
 from .routers import visits as visits_router
-
+from .routers import audits as audits_router
 
 from .routers import timings as timings_router
 from .routers import instances as instances_router
@@ -92,6 +93,8 @@ from .schemas import (
     MatrixImport,
 )
 from .utils import (
+    get_cdisc_api_key as _get_cdisc_api_key,
+    get_concepts_override as _get_concepts_override,
     get_next_code_uid as _get_next_code_uid,
     get_next_concept_uid as _get_next_concept_uid,
     load_epoch_type_options,
@@ -155,6 +158,7 @@ _init_db()
 
 
 # Database migration steps
+_migrate_visit_columns()
 _migrate_add_epoch_type()
 _migrate_add_arm_uid()
 _migrate_drop_arm_element_link()
@@ -177,7 +181,7 @@ _migrate_element_audit_columns()
 _backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 
-# routers
+# Include routers
 app.include_router(arms_router.router)
 app.include_router(elements_router.router)
 app.include_router(visits_router.router)
@@ -187,17 +191,10 @@ app.include_router(freezes_router.router)
 app.include_router(rollback_router.router)
 app.include_router(timings_router.router)
 app.include_router(instances_router.router)
+app.include_router(audits_router.router)
 
 
-# Utility functions
-def _get_cdisc_api_key():
-    return os.environ.get("CDISC_API_KEY")
-
-
-def _get_concepts_override():
-    return os.environ.get("CDISC_CONCEPTS_JSON")
-
-
+# Create Audit record functions
 def _record_transition_rule_audit(
     soa_id: int,
     action: str,
@@ -334,6 +331,7 @@ def _record_arm_audit(
         logger.warning("Failed recording arm audit: %s", e)
 
 
+# API functions for reordering Activities and Encounters/Visits
 @app.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
 def reorder_visits_api(soa_id: int, order: List[int]):
     """JSON reorder endpoint for visits (parity with elements). Body is array of visit IDs in desired order."""
@@ -1809,7 +1807,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # pragma: no cover
+async def lifespan(app: FastAPI):
     """FastAPI lifespan context replacing deprecated startup event.
 
     Preloads cached terminology datasets (biomedical concepts and SDTM dataset
@@ -1834,6 +1832,7 @@ async def lifespan(app: FastAPI):  # pragma: no cover
 app.router.lifespan_context = lifespan
 
 
+# UI endpoint to refrech the biomedical concepts cache
 @app.post("/ui/soa/{soa_id}/concepts_refresh")
 def ui_refresh_concepts(request: Request, soa_id: int):
     """Fetch Biomedical Concepts; refresh cache"""
@@ -1847,9 +1846,6 @@ def ui_refresh_concepts(request: Request, soa_id: int):
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
-
-
-"""Freeze & rollback endpoints moved to routers/freezes.py and routers/rollback.py"""
 
 
 @app.get("/soa/{soa_id}/reorder_audit/export/csv")
@@ -2002,9 +1998,7 @@ def _matrix_arrays(soa_id: int):
     return visit_headers, rows
 
 
-# --------------------- API Endpoints ---------------------
-
-
+# API endpoint for creating new Study/SOA
 @app.post("/soa")
 def create_soa(payload: SOACreate):
     """Create new Schedule of Activities"""
@@ -2038,6 +2032,7 @@ def create_soa(payload: SOACreate):
     }
 
 
+# API endpoint for returning Study/SOA metadata
 @app.get("/soa/{soa_id}")
 def get_soa(soa_id: int):
     """Return SoA by ID"""
@@ -2090,6 +2085,7 @@ def get_soa(soa_id: int):
     }
 
 
+# API endpoint for updating Study/SOA metadata
 @app.post("/soa/{soa_id}/metadata")
 def update_soa_metadata(soa_id: int, payload: SOAMetadataUpdate):
     """Update metadata for SoA/Study."""
@@ -2132,15 +2128,7 @@ def update_soa_metadata(soa_id: int, payload: SOAMetadataUpdate):
     return {"id": soa_id, "updated": True}
 
 
-"""Visit creation handled in routers/visits.py"""
-"""Visit update handled in routers/visits.py"""
-"""Visit detail handled in routers/visits.py"""
-"""Activity creation handled in routers/activities.py"""
-"""Activity update handled in routers/activities.py"""
-"""Activity detail handled in routers/activities.py"""
-"""Epoch CRUD and reorder endpoints refactored into epochs_router."""
-
-
+# API endpont for assigning BC to activity
 @app.post("/soa/{soa_id}/activities/{activity_id}/concepts")
 def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate):
     """Update Biomedical Concept assigned to an Activity."""
@@ -2227,6 +2215,7 @@ def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate
     return {"activity_id": activity_id, "concepts_set": inserted}
 
 
+# API endpoint for returning BC associated with an Activity
 def _get_activity_concepts(activity_id: int):
     """Return list of concepts (immutable: stored snapshot)."""
     conn = _connect()
@@ -2246,6 +2235,7 @@ def _get_activity_concepts(activity_id: int):
     return rows
 
 
+# API endpoint for adding a BC to an activity
 @app.post(
     "/ui/soa/{soa_id}/activity/{activity_id}/concepts/add", response_class=HTMLResponse
 )
@@ -2348,6 +2338,7 @@ def ui_add_activity_concept(
     return HTMLResponse(html)
 
 
+# UI endpoint for removing a BC from an Activity
 @app.post(
     "/ui/soa/{soa_id}/activity/{activity_id}/concepts/remove",
     response_class=HTMLResponse,
@@ -2394,9 +2385,7 @@ def ui_remove_activity_concept(
     return HTMLResponse(html)
 
 
-"""Activity bulk creation handled in routers/activities.py"""
-
-
+# API endpoint for marking a matrix cell association between an Activity and Encounter/Visit
 @app.post("/soa/{soa_id}/cells")
 def set_cell(soa_id: int, payload: CellCreate):
     """Set 'X' in SoA Matrix cell."""
@@ -2438,6 +2427,7 @@ def set_cell(soa_id: int, payload: CellCreate):
     return {"cell_id": cid, "status": payload.status}
 
 
+# API endpoint fr returning a matrix for a Study/SOA
 @app.get("/soa/{soa_id}/matrix")
 def get_matrix(soa_id: int):
     """Return SoA Matrix for Visits, Activities and assigned Matrix Cells."""
@@ -2447,6 +2437,7 @@ def get_matrix(soa_id: int):
     return {"visits": visits, "activities": activities, "cells": cells}
 
 
+# API endpoint for exporting the Matrix as XLSX
 @app.get("/soa/{soa_id}/export/xlsx")
 def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = None):
     """Export SoA Matrix to XLSX."""
@@ -2721,6 +2712,7 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     )
 
 
+# API endpoint for exporting the Matrix as PDF (Deprecated)
 @app.get("/soa/{soa_id}/export/pdf")
 def export_pdf(soa_id: int):
     """Export lightweight PDF summary of the SOA (arms, visits, activities, concept mappings).
@@ -2895,6 +2887,7 @@ def export_pdf(soa_id: int):
     )
 
 
+# API endpoint for normalizing a Study/SOA (Not Used)
 @app.get("/soa/{soa_id}/normalized")
 def get_normalized(soa_id: int):
     if not soa_exists(soa_id):
@@ -2908,6 +2901,7 @@ def get_normalized(soa_id: int):
     return {"summary": summary, "artifacts_dir": out_dir}
 
 
+# API endpoint for importing a Matrix (Not Used)
 @app.post("/soa/{soa_id}/matrix/import")
 def import_matrix(soa_id: int, payload: MatrixImport):
     """Import SoA Matrix."""
@@ -2980,9 +2974,6 @@ def import_matrix(soa_id: int, payload: MatrixImport):
     }
 
 
-# --------------------- Deletion API Endpoints ---------------------
-
-
 def _reindex(table: str, soa_id: int):
     conn = _connect()
     cur = conn.cursor()
@@ -3007,6 +2998,7 @@ def _reindex(table: str, soa_id: int):
     conn.close()
 
 
+# API endpoint for deleting an Activity
 @app.delete("/soa/{soa_id}/activities/{activity_id}")
 def delete_activity(soa_id: int, activity_id: int):
     """Delete Activity from an SoA."""
@@ -3038,6 +3030,7 @@ def delete_activity(soa_id: int, activity_id: int):
     return {"deleted_activity_id": activity_id}
 
 
+# API endpoint for deleting an Epoch
 @app.delete("/soa/{soa_id}/epochs/{epoch_id}")
 def delete_epoch(soa_id: int, epoch_id: int):
     """Delete an Epoch from an SoA."""
@@ -3089,9 +3082,6 @@ def delete_epoch(soa_id: int, epoch_id: int):
     return {"deleted_epoch_id": epoch_id}
 
 
-# --------------------- HTML UI Endpoints ---------------------
-
-
 @app.get("/", response_class=HTMLResponse)
 def ui_index(request: Request):
     """Render home page for the SoA Workbench."""
@@ -3121,6 +3111,7 @@ def ui_index(request: Request):
     )
 
 
+# UI endpoint for adding an Activity
 @app.post("/ui/soa/{soa_id}/add_activity", response_class=HTMLResponse)
 def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
     """Add an Activity to an SoA."""
@@ -3160,6 +3151,7 @@ def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
     )
 
 
+# UI endpoint for creating a new Study/SOA
 @app.post("/ui/soa/create", response_class=HTMLResponse)
 def ui_create_soa(
     request: Request,
@@ -3195,6 +3187,7 @@ def ui_create_soa(
     return HTMLResponse(f"<script>window.location='/ui/soa/{sid}/edit';</script>")
 
 
+# UI endpoint for updating the metadata of a Study/SOA
 @app.post("/ui/soa/{soa_id}/update_meta", response_class=HTMLResponse)
 def ui_update_meta(
     request: Request,
@@ -3250,7 +3243,8 @@ def ui_update_meta(
     )
 
 
-# Helper to fetch element audit rows with legacy-safe columns
+# Helper to fetch element audit rows with legacy-safe columns   -> Moved to audits.py, audits.html
+"""
 def _fetch_element_audits(soa_id: int):
     conn_ea = _connect()
     cur_ea = conn_ea.cursor()
@@ -3278,8 +3272,10 @@ def _fetch_element_audits(soa_id: int):
             element_audits.append(item)
     conn_ea.close()
     return element_audits
+"""
 
 
+# UI endpoint for rendering SOA edit page
 @app.get("/ui/soa/{soa_id}/edit", response_class=HTMLResponse)
 def ui_edit(request: Request, soa_id: int):
     """Render edit HTML page for an SoA."""
@@ -3483,6 +3479,7 @@ def ui_edit(request: Request, soa_id: int):
         )
 
     # Admin audit view: recent activity audits for this SOA
+    """
     conn_activity_audit = _connect()
     cur_activity_audit = conn_activity_audit.cursor()
     cur_activity_audit.execute(
@@ -3501,8 +3498,10 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_activity_audit.fetchall()
     ]
     conn_activity_audit.close()
+    """
 
     # Admin audit view: recent arm audits for this SOA
+    """
     conn_arm_audit = _connect()
     cur_arm_audit = conn_arm_audit.cursor()
     cur_arm_audit.execute(
@@ -3521,8 +3520,10 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_arm_audit.fetchall()
     ]
     conn_arm_audit.close()
+    """
 
     # Admin audit view: recent epoch audits for this SoA
+    """
     conn_epoch_audit = _connect()
     cur_epoch_audit = conn_epoch_audit.cursor()
     cur_epoch_audit.execute(
@@ -3541,8 +3542,10 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_epoch_audit.fetchall()
     ]
     conn_epoch_audit.close()
+    """
 
-    # Admin audit view: recent study cell audits for this SoA
+    # Admin audit view: recent study cell audits for this SoA -> moved to audits.py, audits.html
+    """
     conn_sc_audit = _connect()
     cur_sc_audit = conn_sc_audit.cursor()
     cur_sc_audit.execute(
@@ -3561,6 +3564,7 @@ def ui_edit(request: Request, soa_id: int):
         for r in cur_sc_audit.fetchall()
     ]
     conn_sc_audit.close()
+    """
 
     # Enrich epochs using API-only map: code -> submissionValue
     # Resolve stored epoch.type (code_uid) to terminology code via code table, then map to submissionValue.
@@ -3634,7 +3638,7 @@ def ui_edit(request: Request, soa_id: int):
     conn_tr.close()
 
     # Element audit list
-    element_audits = _fetch_element_audits(soa_id)
+    # element_audits = _fetch_element_audits(soa_id)    -> Moved to audits.py, audits.html
 
     return templates.TemplateResponse(
         request,
@@ -3659,11 +3663,11 @@ def ui_edit(request: Request, soa_id: int):
             **study_meta,
             "protocol_terminology_C174222": protocol_terminology_C174222,
             "ddf_terminology_C188727": ddf_terminology_C188727,
-            "arm_audits": arm_audits,
-            "epoch_audits": epoch_audits,
-            "activity_audits": activity_audits,
-            "study_cell_audits": study_cell_audits,
-            "element_audits": element_audits,
+            # "arm_audits": arm_audits,
+            # "epoch_audits": epoch_audits,
+            # "activity_audits": activity_audits,
+            # "study_cell_audits": study_cell_audits,
+            # "element_audits": element_audits,
             # Epoch Type options (C99079)
             "epoch_type_options": epoch_type_options,
             # Study Cells
@@ -3673,6 +3677,7 @@ def ui_edit(request: Request, soa_id: int):
     )
 
 
+# UI endpoint for listing BCs
 @app.get("/ui/concepts", response_class=HTMLResponse)
 def ui_concepts_list(request: Request):
     """Render table listing biomedical concepts (title + href)."""
@@ -3699,6 +3704,7 @@ def ui_concepts_list(request: Request):
     )
 
 
+# UI endpoint for listing BC Categories
 @app.get("/ui/concept_categories", response_class=HTMLResponse)
 def ui_categories_list(request: Request, force: bool = False):
     """Render table listing biomedical concept categories (name + title + href)."""
@@ -3724,6 +3730,7 @@ def ui_categories_list(request: Request, force: bool = False):
     )
 
 
+# UI endpint for displaying BC Category
 @app.get("/ui/concept_categories/view", response_class=HTMLResponse)
 def ui_category_detail(request: Request, name: str = "", force: bool = False):
     """Render list of biomedical concepts within a given category name.
@@ -3757,6 +3764,7 @@ def ui_category_detail(request: Request, name: str = "", force: bool = False):
     )
 
 
+# UI endpoint for displaying SDTM specializations
 @app.get("/ui/sdtm/specializations", response_class=HTMLResponse)
 def ui_sdtm_specializations_list(request: Request, code: Optional[str] = None):
     """Render table listing SDTM dataset specializations (title + API link).
@@ -3789,6 +3797,7 @@ def ui_sdtm_specializations_list(request: Request, code: Optional[str] = None):
     )
 
 
+# UI endpoint for displaying a selected SDTM specialization
 @app.get("/ui/sdtm/specializations/{idx}", response_class=HTMLResponse)
 def ui_sdtm_specialization_detail(
     idx: int,
@@ -3861,6 +3870,7 @@ def ui_sdtm_specialization_detail(
     )
 
 
+# UI endpoint for displaying a selected BC
 @app.get("/ui/concepts/{code}", response_class=HTMLResponse)
 def ui_concept_detail(code: str, request: Request):
     """Detail page for a single biomedical concept. Fetches concept JSON from CDISC Library API,
@@ -3936,6 +3946,7 @@ def ui_concept_detail(code: str, request: Request):
     )
 
 
+# UI endpoint for creating an Encounter/Visit
 @app.post("/ui/soa/{soa_id}/add_visit", response_class=HTMLResponse)
 def ui_add_visit(
     request: Request,
@@ -3945,15 +3956,19 @@ def ui_add_visit(
     epoch_id: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
 ):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
     # Coerce empty epoch_id from form to None, otherwise to int
     parsed_epoch_id: Optional[int] = None
     if epoch_id is not None:
         eid = str(epoch_id).strip()
-        if eid != "":
+        if eid:
             try:
                 parsed_epoch_id = int(eid)
             except ValueError:
                 parsed_epoch_id = None
+
     payload = VisitCreate(
         name=name,
         label=label,
@@ -3964,7 +3979,6 @@ def ui_add_visit(
     try:
         visits_router.add_visit(soa_id, payload)
     except Exception:
-        # Swallow and continue redirect; detailed errors are handled by API logs
         pass
 
     return HTMLResponse(
@@ -3972,6 +3986,7 @@ def ui_add_visit(
     )
 
 
+# UI endpoint for adding a new Arm
 @app.post("/ui/soa/{soa_id}/add_arm", response_class=HTMLResponse)
 async def ui_add_arm(
     request: Request,
@@ -4129,9 +4144,12 @@ async def ui_add_arm(
         conn.commit()
         # routers.arms.create_arm already records a create audit; avoid duplicating here
         conn.close()
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
+# UI endpoint for updating an Arm
 @app.post("/ui/soa/{soa_id}/update_arm", response_class=HTMLResponse)
 async def ui_update_arm(
     request: Request,
@@ -4400,6 +4418,7 @@ async def ui_update_arm(
     )
 
 
+# UI endpoint for deleting an Arm
 @app.post("/ui/soa/{soa_id}/delete_arm", response_class=HTMLResponse)
 def ui_delete_arm(request: Request, soa_id: int, arm_id: int = Form(...)):
     delete_arm(soa_id, arm_id)
@@ -4408,6 +4427,7 @@ def ui_delete_arm(request: Request, soa_id: int, arm_id: int = Form(...)):
     )
 
 
+# UI endpoint for reordering Arms
 @app.post("/ui/soa/{soa_id}/reorder_arms", response_class=HTMLResponse)
 def ui_reorder_arms(request: Request, soa_id: int, order: str = Form("")):
     """Form handler to reorder existing Arms."""
@@ -4440,6 +4460,7 @@ def ui_reorder_arms(request: Request, soa_id: int, order: str = Form("")):
     return HTMLResponse("OK")
 
 
+# UI endpoint for adding an element
 @app.post("/ui/soa/{soa_id}/add_element", response_class=HTMLResponse)
 def ui_add_element(
     request: Request,
@@ -4526,6 +4547,7 @@ def ui_add_element(
     )
 
 
+# UI endpoint for updating an element
 @app.post("/ui/soa/{soa_id}/update_element", response_class=HTMLResponse)
 def ui_update_element(
     request: Request,
@@ -4626,6 +4648,7 @@ def ui_update_element(
     )
 
 
+# UI endpoint for deleting an element
 @app.post("/ui/soa/{soa_id}/delete_element", response_class=HTMLResponse)
 def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)):
     """Form handler to delete an existing Element."""
@@ -4680,7 +4703,7 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
     )
 
 
-# --------------------- Study Cell UI Endpoints ---------------------
+# Function to compute next available StudyCell_{N}
 def _next_study_cell_uid(cur, soa_id: int) -> str:
     """Compute next StudyCell_N unique within an SoA."""
     cur.execute("SELECT study_cell_uid FROM study_cell WHERE soa_id=?", (soa_id,))
@@ -4696,9 +4719,7 @@ def _next_study_cell_uid(cur, soa_id: int) -> str:
     return f"StudyCell_{max_n + 1}"
 
 
-# _next_element_identifier is defined in routers/elements.py; imported above
-
-
+# UI endpoint for adding a new StudyCell
 @app.post("/ui/soa/{soa_id}/add_study_cell", response_class=HTMLResponse)
 def ui_add_study_cell(
     request: Request,
@@ -4809,6 +4830,7 @@ def ui_add_study_cell(
     )
 
 
+# UI endpoint for updating a StudyCell
 @app.post("/ui/soa/{soa_id}/update_study_cell", response_class=HTMLResponse)
 def ui_update_study_cell(
     request: Request,
@@ -4883,6 +4905,7 @@ def ui_update_study_cell(
     )
 
 
+# UI endpoint for deleting a StudyCell
 @app.post("/ui/soa/{soa_id}/delete_study_cell", response_class=HTMLResponse)
 def ui_delete_study_cell(request: Request, soa_id: int, study_cell_id: int = Form(...)):
     """Delete a Study Cell by id."""
@@ -4926,6 +4949,7 @@ def ui_delete_study_cell(request: Request, soa_id: int, study_cell_id: int = For
     )
 
 
+# UI endpoint for adding a new Epoch
 @app.post("/ui/soa/{soa_id}/add_epoch", response_class=HTMLResponse)
 def ui_add_epoch(
     request: Request,
@@ -5014,6 +5038,7 @@ def ui_add_epoch(
     )
 
 
+# UI endpoint for updating an Epoch
 @app.post("/ui/soa/{soa_id}/update_epoch", response_class=HTMLResponse)
 def ui_update_epoch(
     request: Request,
@@ -5172,7 +5197,7 @@ def ui_update_epoch(
     )
 
 
-# --------------------------- Transition Rules ----------------------#
+# Function to compute next available TransitionRule_{N}
 def _next_transition_rule_uid(soa_id: int) -> str:
     """Compute next monotonically increasing TransitionRule_N for an SoA.
     Considers existing transition_rule rows and any prior UIDs found in transition_rule_audit.
@@ -5220,6 +5245,7 @@ def _next_transition_rule_uid(soa_id: int) -> str:
     return f"TransitionRule_{max_n + 1}"
 
 
+# UI endpoint for adding a new Transition Rule
 @app.post("/ui/soa/{soa_id}/add_transition_rule", response_class=HTMLResponse)
 def ui_add_transition_rule(
     request: Request,
@@ -5285,6 +5311,7 @@ def ui_add_transition_rule(
     )
 
 
+# UI endpoint for updating a Transition Rule
 @app.post("/ui/soa/{soa_id}/update_transition_rule", response_class=HTMLResponse)
 def ui_transition_rule_update(
     request: Request,
@@ -5394,6 +5421,7 @@ def ui_transition_rule_update(
     )
 
 
+# UI endpoint for deleting a Transition Rule
 @app.post("/ui/soa/{soa_id}/delete_transition_rule")
 def ui_delete_transition_rule(
     request: Request, soa_id: int, transition_rule_uid: str = Form(...)
@@ -5464,7 +5492,7 @@ def ui_delete_transition_rule(
     )
 
 
-# -------------------------- Biomedical Concepts --------------------#
+# UI endpoint for setting a BC to an Activity
 @app.post(
     "/ui/soa/{soa_id}/activity/{activity_id}/concepts", response_class=HTMLResponse
 )
@@ -5509,6 +5537,7 @@ def ui_set_activity_concepts(
     )
 
 
+# UI endpoint for displaying BC(s) assigned to an Activity
 @app.get(
     "/ui/soa/{soa_id}/activity/{activity_id}/concepts_cell", response_class=HTMLResponse
 )
@@ -5550,6 +5579,7 @@ def ui_activity_concepts_cell(
     )
 
 
+# UI endpoint for assigning an Activity to an Encounter/Visit
 @app.post("/ui/soa/{soa_id}/set_cell", response_class=HTMLResponse)
 def ui_set_cell(
     request: Request,
@@ -5565,6 +5595,7 @@ def ui_set_cell(
     return HTMLResponse(result.get("status", ""))
 
 
+# UI endpoint for toggling assignment of an Activity to an Encounter/Visit
 @app.post("/ui/soa/{soa_id}/toggle_cell", response_class=HTMLResponse)
 def ui_toggle_cell(
     request: Request,
@@ -5611,7 +5642,7 @@ def ui_toggle_cell(
     return HTMLResponse(cell_html)
 
 
-# UI code to delete an encounter from an SOA
+# UI code to delete an Encounter/Visit from an SOA
 @app.post("/ui/soa/{soa_id}/delete_visit", response_class=HTMLResponse)
 def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
     if not soa_exists(soa_id):
@@ -5631,28 +5662,7 @@ def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
     )
 
 
-'''
-def ui_delete_visit(request: Request, soa_id: int, visit_id: int):
-    """Form handler to delete a visit."""
-    # Use API logic to delete and log
-    try:
-        visits_router.delete_visit(soa_id, visit_id)
-        logger.info(
-            "ui_delete_visit deleted visit id=%s soa_id=%s db_path=%s",
-            visit_id,
-            soa_id,
-            DB_PATH,
-        )
-    except Exception as e:
-        logger.error(
-            "ui_delete_visit failed visit_id=%s soa_id=%s error=%s", visit_id, soa_id, e
-        )
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-'''
-
-
+# UI endpoint for associating an Epoch with a Visit/Encounter
 @app.post("/ui/soa/{soa_id}/set_visit_epoch", response_class=HTMLResponse)
 def ui_set_visit_epoch(
     request: Request,
@@ -5739,6 +5749,7 @@ def ui_set_visit_epoch(
     )
 
 
+# UI endpoint for updating an Encounter/Visit
 @app.post("/ui/soa/{soa_id}/update_visit", response_class=HTMLResponse)
 def ui_update_visit(
     request: Request,
@@ -5765,6 +5776,7 @@ def ui_update_visit(
     )
 
 
+# UI endpoint for deleting an Activity
 @app.post("/ui/soa/{soa_id}/delete_activity", response_class=HTMLResponse)
 def ui_delete_activity(request: Request, soa_id: int, activity_id: int = Form(...)):
     """Form handler to delete an Activity"""
@@ -5774,6 +5786,7 @@ def ui_delete_activity(request: Request, soa_id: int, activity_id: int = Form(..
     )
 
 
+# UI endpoint for deleting an Epoch
 @app.post("/ui/soa/{soa_id}/delete_epoch", response_class=HTMLResponse)
 def ui_delete_epoch(request: Request, soa_id: int, epoch_id: int = Form(...)):
     """Form handler to delete an Epoch."""
@@ -5783,6 +5796,7 @@ def ui_delete_epoch(request: Request, soa_id: int, epoch_id: int = Form(...)):
     )
 
 
+# UI endpoint for reordering Encounters/Visits
 @app.post("/ui/soa/{soa_id}/reorder_visits", response_class=HTMLResponse)
 def ui_reorder_visits(request: Request, soa_id: int, order: str = Form("")):
     """Persist new visit ordering. 'order' is a comma-separated list of visit IDs in desired order."""
@@ -5811,6 +5825,7 @@ def ui_reorder_visits(request: Request, soa_id: int, order: str = Form("")):
     return HTMLResponse("OK")
 
 
+# UI endpoint for reordering Activities
 @app.post("/ui/soa/{soa_id}/reorder_activities", response_class=HTMLResponse)
 def ui_reorder_activities(request: Request, soa_id: int, order: str = Form("")):
     """Persist new activity ordering. 'order' is a comma-separated list of activity IDs in desired order."""
@@ -5839,6 +5854,7 @@ def ui_reorder_activities(request: Request, soa_id: int, order: str = Form("")):
     return HTMLResponse("OK")
 
 
+# # UI endpoint for reordering Epochs
 @app.post("/ui/soa/{soa_id}/reorder_epochs", response_class=HTMLResponse)
 def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
     """Form handler to persist new epoch ordering."""
@@ -5887,6 +5903,7 @@ def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
     return HTMLResponse("OK")
 
 
+# Sanitize column headers in the XLSX export
 def _sanitize_column(name: str) -> str:
     """Sanitize Excel column header to safe SQLite identifier: lowercase, replace spaces & non-alnum with underscore, collapse repeats."""
     import re
@@ -5899,7 +5916,7 @@ def _sanitize_column(name: str) -> str:
     return s
 
 
-# ------------------------- DDF Terminology ----------------------#
+# API to load new DDF Terminology spreadsheet
 def load_ddf_terminology(
     file_path: str,
     sheet_name: str = "DDF Terminology 2025-09-26",
@@ -6030,6 +6047,7 @@ def load_ddf_terminology(
     return {"columns": sanitized, "row_count": len(records)}
 
 
+# UI endpoint to load DDF Terminology
 @app.post("/admin/load_ddf_terminology")
 def admin_load_ddf(
     file_path: Optional[str] = None, sheet_name: str = "DDF Terminology 2025-09-26"
@@ -6082,6 +6100,7 @@ def admin_load_ddf(
     )
 
 
+# API endpoint to display DDF Terminology from the `ddf_terminology`` database table
 @app.get("/ddf/terminology")
 def get_ddf_terminology(
     search: Optional[str] = None,
@@ -6179,6 +6198,7 @@ def get_ddf_terminology(
     }
 
 
+# UI endpoint to display DDF Terminology
 @app.get("/ui/ddf/terminology", response_class=HTMLResponse)
 def ui_ddf_terminology(
     request: Request,
@@ -6215,6 +6235,7 @@ def ui_ddf_terminology(
     )
 
 
+# UI endpoint to load new DDF Terminology
 @app.post("/ui/ddf/terminology/upload", response_class=HTMLResponse)
 def ui_ddf_upload(
     request: Request,
@@ -6265,6 +6286,7 @@ def ui_ddf_upload(
         )
 
 
+# API endpoint to record DDF Terminology Load
 def _record_ddf_audit(
     file_path: str,
     sheet_name: str,
@@ -6336,6 +6358,7 @@ def _record_ddf_audit(
         logger.warning("Failed recording DDF audit: %s", e)
 
 
+# Helper function to return SQLite DDF Terminology table
 def _get_ddf_sources() -> List[str]:
     conn = _connect()
     cur = conn.cursor()
@@ -6353,6 +6376,7 @@ def _get_ddf_sources() -> List[str]:
     return sources
 
 
+# API endpoint to return DDF Terminology audits
 @app.get("/ddf/terminology/audit")
 def get_ddf_audit(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
@@ -6412,6 +6436,7 @@ def get_ddf_audit(
     return {"rows": rows}
 
 
+# API endpoint to export DDF Terminology audit report in XLSX format
 @app.get("/ddf/terminology/audit/export.csv")
 def export_ddf_audit_csv(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
@@ -6460,6 +6485,7 @@ def export_ddf_audit_csv(
     )
 
 
+# API endpoint to export DDF Terminology audit report in JSON format
 @app.get("/ddf/terminology/audit/export.json")
 def export_ddf_audit_json(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
@@ -6468,6 +6494,7 @@ def export_ddf_audit_json(
     return get_ddf_audit(source=source, start=start, end=end)
 
 
+# UI endpoint to display DDF terminology audits
 @app.get("/ui/ddf/terminology/audit", response_class=HTMLResponse)
 def ui_ddf_audit(
     request: Request,
@@ -6492,7 +6519,7 @@ def ui_ddf_audit(
     )
 
 
-# ------------------------ Protocol Terminology ----------------------#
+# API endpoint to load protocol terminology into the `protocol_terminology` database table
 def load_protocol_terminology(
     file_path: str,
     sheet_name: str = "Protocol Terminology 2025-09-26",
@@ -6615,6 +6642,7 @@ def load_protocol_terminology(
     return {"columns": sanitized, "row_count": len(records)}
 
 
+# UI endpoint to load new protocol terminology
 @app.post("/admin/load_protocol_terminology")
 def admin_load_protocol(
     file_path: Optional[str] = None, sheet_name: str = "Protocol Terminology 2025-09-26"
@@ -6657,6 +6685,7 @@ def admin_load_protocol(
     )
 
 
+# API endpoint to list protocol terminology
 @app.get("/protocol/terminology")
 def get_protocol_terminology(
     search: Optional[str] = None,
@@ -6746,6 +6775,7 @@ def get_protocol_terminology(
     }
 
 
+# UI endpoint to return protocol terminology
 @app.get("/ui/protocol/terminology", response_class=HTMLResponse)
 def ui_protocol_terminology(
     request: Request,
@@ -6782,6 +6812,7 @@ def ui_protocol_terminology(
     )
 
 
+# UI endpoint to upload new protocol terminology
 @app.post("/ui/protocol/terminology/upload", response_class=HTMLResponse)
 def ui_protocol_upload(
     request: Request,
@@ -6829,6 +6860,7 @@ def ui_protocol_upload(
         )
 
 
+# API endpoint to record a protocol terminology upload audit
 def _record_protocol_audit(
     file_path: str,
     sheet_name: str,
@@ -6897,6 +6929,7 @@ def _record_protocol_audit(
         logger.warning("Failed recording Protocol audit: %s", e)
 
 
+# Helper function to return SQLite Protocol Terminology table
 def _get_protocol_sources() -> List[str]:
     conn = _connect()
     cur = conn.cursor()
@@ -6914,6 +6947,7 @@ def _get_protocol_sources() -> List[str]:
     return sources
 
 
+# UI endpoint to display protocol terminology audits
 @app.get("/protocol/terminology/audit")
 def get_protocol_audit(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
@@ -6972,6 +7006,7 @@ def get_protocol_audit(
     return {"rows": rows}
 
 
+# API endpoint to export Protocol Terminology audit report in XLSX format
 @app.get("/protocol/terminology/audit/export.csv")
 def export_protocol_audit_csv(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
@@ -7020,6 +7055,7 @@ def export_protocol_audit_csv(
     )
 
 
+# API endpoint to export Protocol Terminology audit report in JSON format
 @app.get("/protocol/terminology/audit/export.json")
 def export_protocol_audit_json(
     source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
@@ -7028,6 +7064,7 @@ def export_protocol_audit_json(
     return get_protocol_audit(source=source, start=start, end=end)
 
 
+# UI endpoint to export Protocol Terminology audit report
 @app.get("/ui/protocol/terminology/audit", response_class=HTMLResponse)
 def ui_protocol_audit(
     request: Request,
@@ -7052,11 +7089,12 @@ def ui_protocol_audit(
     )
 
 
-def main():  # pragma: no cover
+def main():
     import uvicorn
 
     uvicorn.run("soa_builder.web.app:app", host="0.0.0.0", port=8000, reload=True)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
+
     main()

@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from ..audit import _record_reorder_audit, _record_visit_audit
 from ..db import _connect
-from ..utils import soa_exists
+from ..utils import soa_exists, get_next_code_uid as _get_next_code_uid
 from ..schemas import VisitCreate, VisitUpdate
 
 router = APIRouter(prefix="/soa/{soa_id}")
@@ -84,11 +84,8 @@ def add_visit(soa_id: int, payload: VisitCreate):
 
     conn = _connect()
     cur = conn.cursor()
-    # Replace existing block with new block to create new encounter_uid and increment order_index
-    # cur.execute("SELECT COUNT(*) FROM visit WHERE soa_id=?", (soa_id,))
-    # order_index = cur.fetchone()[0] + 1
 
-    # New code to calculate order_index
+    # order_index
     cur.execute(
         "SELECT COALESCE(MAX(order_index),0) FROM visit WHERE soa_id=?",
         (soa_id,),
@@ -123,8 +120,40 @@ def add_visit(soa_id: int, payload: VisitCreate):
             conn.close()
             raise HTTPException(400, "Invalid epoch_id for this SOA")
 
+    # Generate Code_{N} for encounter.type
+    type_uid = _get_next_code_uid(cur, soa_id)
+    logger.info("type_uid=%s", type_uid)
+
+    if type_uid:
+        cur.execute(
+            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            (
+                soa_id,
+                type_uid,
+                "ddf_terminology",
+                "C188728",
+                "C25716",
+            ),
+        )
+
+    # Generate Code_{N} for environmentalSettings.type
+    es_uid = _get_next_code_uid(cur, soa_id)
+    logger.info("es_uid=%s", es_uid)
+
+    if es_uid:
+        cur.execute(
+            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            (
+                soa_id,
+                es_uid,
+                "http://www.cdisc.org",
+                "C127262",
+                "C51282",
+            ),
+        )
+
     cur.execute(
-        "INSERT INTO visit (soa_id,name,label,order_index,epoch_id,encounter_uid,description) VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO visit (soa_id,name,label,order_index,epoch_id,encounter_uid,description,type,environmentalSettings) VALUES (?,?,?,?,?,?,?,?,?)",
         (
             soa_id,
             name,
@@ -133,6 +162,8 @@ def add_visit(soa_id: int, payload: VisitCreate):
             payload.epoch_id,
             new_uid,
             _nz(payload.description),
+            type_uid,
+            es_uid,
         ),
     )
     encounter_id = cur.lastrowid
