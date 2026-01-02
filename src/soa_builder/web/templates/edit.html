@@ -109,6 +109,17 @@
             </select>
           </form>
           {% endif %}
+          {% if transition_rules %}
+          <form method="post" action="/ui/soa/{{ soa_id }}/set_transition_start_rule" style="display:inline;margin-left:6px;">
+            <input type="hidden" name="visit_id" value="{{ v.id }}" />
+            <select name="transition_start_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
+              <option value="" {% if not v.transitionStartRule %}selected{% endif %}>No start rule selected</option>
+              {% for tr in transition_rules %}
+              <option value="{{ tr.transition_rule_uid }}" {% if (v.transitionStartRule|string) == (tr.transition_rule_uid|string) %}selected{% endif %}>{{ tr.name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+          {% endif %}
           <span class="visit-actions">
             <form method="post" action="/ui/soa/{{ soa_id }}/update_visit" style="display:inline;font-size:0.6em;">
               <input type="hidden" name="visit_id" value="{{ v.id }}" />
