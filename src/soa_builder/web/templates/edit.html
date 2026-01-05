@@ -110,7 +110,7 @@
           </form>
           {% endif %}
           {% if transition_rules %}
-          <form method="post" action="/ui/soa/{{ soa_id }}/set_transition_start_rule" style="display:inline;margin-left:6px;">
+          <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_transition_start_rule" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
             <select name="transition_start_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
               <option value="" {% if not v.transitionStartRule %}selected{% endif %}>No START rule selected</option>
@@ -119,7 +119,7 @@
               {% endfor %}
             </select>
           </form>
-          <form method="post" action="/ui/soa/{{ soa_id }}/set_transition_end_rule" style="display:inline;margin-left:6px;">
+          <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_transition_end_rule" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
             <select name="transition_end_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
               <option value="" {% if not v.transitionEndRule %}selected{% endif %}>No END rule selected</option>

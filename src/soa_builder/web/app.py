@@ -5765,8 +5765,10 @@ def ui_set_visit_epoch(
 
 
 # UI endpoint for associating a Transition Start Rule with Visit/Encounter (visit.transitionStartRule)
-@app.post("/ui/soa/{soa_id}/set_transition_start_rule", response_class=HTMLResponse)
-def ui_set_transition_start_rule(
+@app.post(
+    "/ui/soa/{soa_id}/set_visit_transition_start_rule", response_class=HTMLResponse
+)
+def ui_set_visit_transition_start_rule(
     request: Request,
     soa_id: int,
     visit_id: int = Form(...),
@@ -5849,7 +5851,7 @@ def ui_set_transition_start_rule(
 
 
 # UI endpoint for associating a Transition End Rule with Visit/Encounter (visit.transitionEndRule)
-@app.post("/ui/soa/{soa_id}/set_transition_end_rule", response_class=HTMLResponse)
+@app.post("/ui/soa/{soa_id}/set_visit_transition_end_rule", response_class=HTMLResponse)
 def ui_set_transition_end_rule(
     request: Request,
     soa_id: int,
