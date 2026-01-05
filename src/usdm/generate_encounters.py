@@ -164,7 +164,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
         ]
         - contactModes: []
         - transitionStartRule?: {}
-        - transitionEndRule": {}
+        - transitionEndRule?: {}
         - notes: []
         - instanceType: "Encounter"
     """
