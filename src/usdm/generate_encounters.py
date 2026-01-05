@@ -231,7 +231,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             soa_id, transition_start_rule_uid
         )
 
-        transition_end_rule_obj = _get_transition_start_rule(
+        transition_end_rule_obj = _get_transition_end_rule(
             soa_id, transition_end_rule_uid
         )
 
