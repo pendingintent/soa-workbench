@@ -326,7 +326,7 @@ def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
             conn.close()
             raise HTTPException(400, "Invalid transition_rule id for this SOA")
 
-    if payload.testrl is not None:
+    if payload.teenrl is not None:
         cur.execute(
             "SELECT 1 from transition_rule WHERE id=? AND soa_id=?",
             (
@@ -448,7 +448,6 @@ def delete_element(soa_id: int, element_id: int):
 
 
 # Deprecated - no need to reorder elements
-@DeprecationWarning
 @router.post("/elements/reorder", response_class=JSONResponse)
 def reorder_elements_api(soa_id: int, order: List[int]):
     if not soa_exists(soa_id):

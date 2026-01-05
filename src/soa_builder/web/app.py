@@ -4504,7 +4504,7 @@ def ui_add_element(
         teenrl=teenrl_uid,
     )
 
-    # Create the element wia the API helper to ensure audits and ordering
+    # Create the element via the API helper to ensure audits and ordering
     try:
         elements_router.create_element(soa_id, payload)
     except Exception:
@@ -4681,7 +4681,7 @@ def ui_set_element_transition_end_rule(
     element_transition_end_rule_uid: str = Form(...),
 ):
     """Form handler for associating a Transition End Rule with an Element"""
-    if not soa_exists:
+    if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
 
     new_uid = (element_transition_end_rule_uid or "").strip() or None
@@ -4742,7 +4742,7 @@ def ui_set_element_transition_end_rule(
         "update",
         element_id,
         before=before,
-        after={**after, "updated_field": updated_fields},
+        after={**after, "updated_fields": updated_fields},
     )
     conn.close()
     return HTMLResponse(
@@ -4776,7 +4776,7 @@ def ui_update_element(
         pass
 
     return HTMLResponse(
-        f"<script>window.location='/ui/soa{int(soa_id)}/edit';</script>"
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
 
     """
