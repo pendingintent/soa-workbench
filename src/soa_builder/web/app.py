@@ -65,7 +65,6 @@ from .migrate_database import (
 from .routers import activities as activities_router
 from .routers import arms as arms_router
 from .routers import elements as elements_router
-from .routers.elements import _next_element_identifier
 from .routers import epochs as epochs_router
 from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
@@ -85,6 +84,8 @@ from .schemas import (
     VisitCreate,
     VisitUpdate,
     ConceptsUpdate,
+    ElementCreate,
+    ElementUpdate,
     # FreezeCreate,
     CellCreate,
     # BulkActivities,
@@ -4481,12 +4482,39 @@ def ui_add_element(
     name: str = Form(...),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    testrl: Optional[str] = Form(None),
-    teenrl: Optional[str] = Form(None),
+    element_transition_start_rule_uid: str = Form(""),
+    element_transition_end_rule_uid: str = Form(""),
 ):
     """Form handler to add an element."""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
+
+    # Coerce empty testrl from Form to None, otherwise to int
+
+    testrl_uid: Optional[str] = (
+        element_transition_start_rule_uid or ""
+    ).strip() or None
+    teenrl_uid: Optional[str] = (element_transition_end_rule_uid or "").strip() or None
+
+    payload = ElementCreate(
+        name=name,
+        label=label,
+        description=description,
+        testrl=testrl_uid,
+        teenrl=teenrl_uid,
+    )
+
+    # Create the element via the API helper to ensure audits and ordering
+    try:
+        elements_router.create_element(soa_id, payload)
+    except Exception:
+        pass
+
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+    '''
     name = (name or "").strip()
     if not name:
         raise HTTPException(400, "Name required")
@@ -4558,6 +4586,168 @@ def ui_add_element(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+    '''
+
+
+# UI endpoint for associating a Transition Start Rule with an Element (element.testrl)
+@app.post(
+    "/ui/soa/{soa_id}/set_element_transition_start_rule", response_class=HTMLResponse
+)
+def ui_set_element_transition_start_rule(
+    request: Request,
+    soa_id: int,
+    element_id: int = Form(...),
+    element_transition_start_rule_uid: str = Form(...),
+):
+    """Form handler for associating a Transition Start Rule with an Element"""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    new_uid = (element_transition_start_rule_uid or "").strip() or None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,label,description,element_id,testrl FROM element WHERE id=? AND soa_id=?",
+        (element_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Element not found")
+
+    before = {
+        "id": row[0],
+        "name": row[1],
+        "label": row[2],
+        "description": row[3],
+        "element_id": row[4],
+        "testrl": row[5],
+    }
+    if new_uid is not None:
+        cur.execute(
+            "SELECT 1 FROM transition_rule WHERE transition_rule_uid=? AND soa_id=?",
+            (
+                new_uid,
+                soa_id,
+            ),
+        )
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException("Invalid transition rule for this SOA")
+
+    cur.execute(
+        "UPDATE element SET testrl=? WHERE id=? AND soa_id=?",
+        (new_uid, element_id, soa_id),
+    )
+    conn.commit()
+
+    cur.execute(
+        "SELECT id,name,label,description,element_id,testrl FROM element WHERE id=? AND soa_id=?",
+        (element_id, soa_id),
+    )
+    r = cur.fetchone()
+    after = {
+        "id": r[0],
+        "name": r[1],
+        "label": r[2],
+        "description": r[3],
+        "element_id": r[4],
+        "testrl": r[5],
+    }
+    updated_fields = [
+        f for f in ["testrl"] if (before.get(f) or None) != (after.get(f) or None)
+    ]
+    _record_element_audit(
+        soa_id,
+        "update",
+        element_id,
+        before=before,
+        after={**after, "updated_fields": updated_fields},
+    )
+    conn.close()
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+
+# UI endpoint for associating a Transition Start Rule with an Element (element.teenrl)
+@app.post(
+    "/ui/soa/{soa_id}/set_element_transition_end_rule", response_class=HTMLResponse
+)
+def ui_set_element_transition_end_rule(
+    request: Request,
+    soa_id: int,
+    element_id: int = Form(...),
+    element_transition_end_rule_uid: str = Form(...),
+):
+    """Form handler for associating a Transition End Rule with an Element"""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    new_uid = (element_transition_end_rule_uid or "").strip() or None
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,label,description,element_id,teenrl FROM element WHERE id=? AND soa_id=?",
+        (element_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Element not found")
+
+    before = {
+        "id": row[0],
+        "name": row[1],
+        "label": row[2],
+        "description": row[3],
+        "element_id": row[4],
+        "teenrl": row[5],
+    }
+
+    if new_uid is not None:
+        cur.execute(
+            "SELECT 1 FROM transition_rule WHERE transition_rule_uid=? AND soa_id=?",
+            (new_uid, soa_id),
+        )
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(400, "Invalid Transition Rule for this SOA")
+
+    cur.execute(
+        "UPDATE element SET teenrl=? WHERE id=? AND soa_id=?",
+        (new_uid, element_id, soa_id),
+    )
+    conn.commit()
+
+    cur.execute(
+        "SELECT id,name,label,description,element_id,teenrl FROM element WHERE id=? AND soa_id=?",
+        (element_id, soa_id),
+    )
+    r = cur.fetchone()
+    after = {
+        "id": r[0],
+        "name": r[1],
+        "label": r[2],
+        "description": r[3],
+        "element_id": r[4],
+        "teenrl": r[5],
+    }
+    updated_fields = [
+        f for f in ["teenrl"] if (before.get(f) or None) != (after.get(f) or None)
+    ]
+    _record_element_audit(
+        soa_id,
+        "update",
+        element_id,
+        before=before,
+        after={**after, "updated_fields": updated_fields},
+    )
+    conn.close()
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
 
 
 # UI endpoint for updating an element
@@ -4569,12 +4759,27 @@ def ui_update_element(
     name: Optional[str] = Form(None),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    testrl: Optional[str] = Form(None),
-    teenrl: Optional[str] = Form(None),
+    # testrl: Optional[str] = Form(None),
+    # teenrl: Optional[str] = Form(None),
 ):
     """Form handler to update an existing Element."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
+    # Build payload with provided fields; blanks should clear values
+    payload = ElementUpdate(
+        name=name,
+        label=label,
+        description=description,
+    )
+    try:
+        elements_router.update_element(soa_id, element_id, payload)
+    except Exception:
+        # Let redirect proceed; detailed errors will appear in API logs
+        pass
+
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+    """
     conn = _connect()
     cur = conn.cursor()
     cur.execute("SELECT id FROM element WHERE id=? AND soa_id=?", (element_id, soa_id))
@@ -4659,6 +4864,7 @@ def ui_update_element(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+    """
 
 
 # UI endpoint for deleting an element
@@ -4667,6 +4873,22 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
     """Form handler to delete an existing Element."""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
+
+    try:
+        # Call through router to avoid stale import bindings
+        elements_router.delete_element(soa_id, element_id)
+    except HTTPException:
+        # swallow 404
+        pass
+    # If HTMX, use HX-Redirect; else script redirect
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{int(soa_id)}/edit"})
+
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
+    )
+
+    """
     conn = _connect()
     cur = conn.cursor()
     # Capture before snapshot including logical element_id (StudyElement_N) if present
@@ -4714,6 +4936,7 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+    """
 
 
 # Function to compute next available StudyCell_{N}
@@ -5765,18 +5988,20 @@ def ui_set_visit_epoch(
 
 
 # UI endpoint for associating a Transition Start Rule with Visit/Encounter (visit.transitionStartRule)
-@app.post("/ui/soa/{soa_id}/set_transition_start_rule", response_class=HTMLResponse)
-def ui_set_transition_start_rule(
+@app.post(
+    "/ui/soa/{soa_id}/set_visit_transition_start_rule", response_class=HTMLResponse
+)
+def ui_set_visit_transition_start_rule(
     request: Request,
     soa_id: int,
     visit_id: int = Form(...),
-    transition_start_rule_uid: str = Form(""),
+    visit_transition_start_rule_uid: str = Form(""),
 ):
     """Form handler for associating a Transition Start Rule with a Visit/Encounter"""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
 
-    new_uid = (transition_start_rule_uid or "").strip() or None
+    new_uid = (visit_transition_start_rule_uid or "").strip() or None
 
     conn = _connect()
     cur = conn.cursor()
@@ -5849,18 +6074,18 @@ def ui_set_transition_start_rule(
 
 
 # UI endpoint for associating a Transition End Rule with Visit/Encounter (visit.transitionEndRule)
-@app.post("/ui/soa/{soa_id}/set_transition_end_rule", response_class=HTMLResponse)
+@app.post("/ui/soa/{soa_id}/set_visit_transition_end_rule", response_class=HTMLResponse)
 def ui_set_transition_end_rule(
     request: Request,
     soa_id: int,
     visit_id: int = Form(...),
-    transition_end_rule_uid: str = Form(""),
+    visit_transition_end_rule_uid: str = Form(""),
 ):
     """Form Handler for associating a Transition End Rule with a Visit/Encounter"""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
 
-    new_uid = (transition_end_rule_uid or "").strip() or None
+    new_uid = (visit_transition_end_rule_uid or "").strip() or None
 
     conn = _connect()
     cur = conn.cursor()

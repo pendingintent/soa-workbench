@@ -15,7 +15,9 @@ router = APIRouter(prefix="/soa/{soa_id}")
 logger = logging.getLogger("soa_builder.web.routers.elements")
 
 
-"""Shared SOA existence check imported from utils.soa_exists"""
+def _nz(s: Optional[str]) -> Optional[str]:
+    s = (s or "").strip()
+    return s or None
 
 
 def _next_element_identifier(soa_id: int) -> str:
@@ -103,7 +105,7 @@ def list_elements(soa_id: int):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,name,label,description,testrl,teenrl,order_index,created_at,element_id FROM element WHERE soa_id=? ORDER BY order_index",
+        "SELECT id,name,label,description,order_index,created_at,element_id FROM element WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
     rows = [
@@ -112,11 +114,9 @@ def list_elements(soa_id: int):
             "name": r[1],
             "label": r[2],
             "description": r[3],
-            "testrl": r[4],
-            "teenrl": r[5],
-            "order_index": r[6],
-            "created_at": r[7],
-            "element_id": r[8] if len(r) > 8 else None,
+            "order_index": r[4],
+            "created_at": r[5],
+            "element_id": r[6],
         }
         for r in cur.fetchall()
     ]
@@ -131,7 +131,7 @@ def get_element(soa_id: int, element_id: int):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,name,label,description,testrl,teenrl,order_index,created_at,element_id FROM element WHERE id=? AND soa_id=?",
+        "SELECT id,name,label,description,order_index,created_at,element_id FROM element WHERE id=? AND soa_id=?",
         (element_id, soa_id),
     )
     r = cur.fetchone()
@@ -144,11 +144,9 @@ def get_element(soa_id: int, element_id: int):
         "name": r[1],
         "label": r[2],
         "description": r[3],
-        "testrl": r[4],
-        "teenrl": r[5],
-        "order_index": r[6],
-        "created_at": r[7],
-        "element_id": r[8] if len(r) > 8 else None,
+        "order_index": r[4],
+        "created_at": r[5],
+        "element_id": r[6],
     }
 
 
@@ -201,51 +199,79 @@ def create_element(soa_id: int, payload: ElementCreate):
         raise HTTPException(400, "Name required")
     conn = _connect()
     cur = conn.cursor()
+
+    # order_index
     cur.execute(
         "SELECT COALESCE(MAX(order_index),0) FROM element WHERE soa_id=?", (soa_id,)
     )
     next_ord = (cur.fetchone() or [0])[0] + 1
+
+    # Create element_id and increment order_index
+    cur.execute(
+        "SELECT element_id FROM element WHERE soa_id=? AND element_id LIKE 'StudyElement_%'",
+        (soa_id,),
+    )
+    existing_uids = [r[0] for r in cur.fetchall() if r[0]]
+    used_nums = set()
+    for uid in existing_uids:
+        if uid.startswith("StudyElement_"):
+            tail = uid[len("StudyElement_") :]
+            if tail.isdigit():
+                used_nums.add(int(tail))
+            else:
+                logger.warning(
+                    "Invalid element_id format encountered (ignored): %s", uid
+                )
+
+    # Always pick max(existing) +1, do not fill gaps
+    next_n = (max(used_nums) if used_nums else 0) + 1
+    new_uid = f"StudyElement_{next_n}"
+
+    if payload.testrl is not None:
+        cur.execute(
+            "SELECT 1 FROM transition_rule WHERE id=? AND soa_id=?",
+            (
+                payload.testrl,
+                soa_id,
+            ),
+        )
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(400, "Invalid transition_rule id for this SOA")
+
+    if payload.teenrl is not None:
+        cur.execute(
+            "SELECT 1 FROM transition_rule WHERE id=? AND soa_id=?",
+            (
+                payload.teenrl,
+                soa_id,
+            ),
+        )
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(400, "Invalid transition_rule id for this SOA")
+
     now = datetime.now(timezone.utc).isoformat()
-    # Insert, setting element_id if column exists
-    cur.execute("PRAGMA table_info(element)")
-    element_cols = {r[1] for r in cur.fetchall()}
-    element_identifier: Optional[str] = None
-    if "element_id" in element_cols:
-        element_identifier = _next_element_identifier(soa_id)
-        cur.execute(
-            """INSERT INTO element (soa_id,name,label,description,testrl,teenrl,order_index,created_at,element_id)
-            VALUES (?,?,?,?,?,?,?,?,?)""",
-            (
-                soa_id,
-                name,
-                (payload.label or "").strip() or None,
-                (payload.description or "").strip() or None,
-                (payload.testrl or "").strip() or None,
-                (payload.teenrl or "").strip() or None,
-                next_ord,
-                now,
-                element_identifier,
-            ),
-        )
-    else:
-        cur.execute(
-            """INSERT INTO element (soa_id,name,label,description,testrl,teenrl,order_index,created_at)
-            VALUES (?,?,?,?,?,?,?,?)""",
-            (
-                soa_id,
-                name,
-                (payload.label or "").strip() or None,
-                (payload.description or "").strip() or None,
-                (payload.testrl or "").strip() or None,
-                (payload.teenrl or "").strip() or None,
-                next_ord,
-                now,
-            ),
-        )
+
+    cur.execute(
+        "INSERT INTO element (soa_id,name,label,description,testrl,teenrl,order_index,created_at,element_id) VALUES (?,?,?,?,?,?,?,?,?)",
+        (
+            soa_id,
+            name,
+            _nz(payload.label),
+            _nz(payload.description),
+            payload.testrl,
+            payload.teenrl,
+            next_ord,
+            now,
+            new_uid,
+        ),
+    )
+
     eid = cur.lastrowid
     conn.commit()
     conn.close()
-    el = {
+    after = {
         "id": eid,
         "name": name,
         "label": (payload.label or "").strip() or None,
@@ -254,11 +280,11 @@ def create_element(soa_id: int, payload: ElementCreate):
         "teenrl": (payload.teenrl or "").strip() or None,
         "order_index": next_ord,
         "created_at": now,
-        "element_id": element_identifier,
+        "element_id": new_uid,
     }
     # Audit with logical StudyElement_N when available
-    _record_element_audit(soa_id, "create", element_identifier, before=None, after=el)
-    return el
+    _record_element_audit(soa_id, "create", eid, before=None, after=after)
+    return {**after, "element_id": eid}
 
 
 @router.patch("/elements/{element_id}", response_class=JSONResponse)
@@ -287,18 +313,48 @@ def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
         "element_id": row[8],
     }
     new_name = (payload.name if payload.name is not None else before["name"]) or ""
+
+    if payload.testrl is not None:
+        cur.execute(
+            "SELECT 1 FROM transition_rule WHERE id=? AND soa_id=?",
+            (
+                payload.testrl,
+                soa_id,
+            ),
+        )
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(400, "Invalid transition_rule id for this SOA")
+
+    if payload.teenrl is not None:
+        cur.execute(
+            "SELECT 1 from transition_rule WHERE id=? AND soa_id=?",
+            (
+                payload.teenrl,
+                soa_id,
+            ),
+        )
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(400, "Invalid transition_rule id for this SOA")
+
+    new_label = payload.label if payload.label is not None else before["label"]
+    new_description = (
+        payload.description
+        if payload.description is not None
+        else before["description"]
+    )
+    new_testrl = payload.testrl if payload.testrl is not None else before["testrl"]
+    new_teenrl = payload.teenrl if payload.teenrl is not None else before["teenrl"]
+
     cur.execute(
         "UPDATE element SET name=?, label=?, description=?, testrl=?, teenrl=? WHERE id=?",
         (
-            (new_name or "").strip() or None,
-            (payload.label if payload.label is not None else before["label"]),
-            (
-                payload.description
-                if payload.description is not None
-                else before["description"]
-            ),
-            (payload.testrl if payload.testrl is not None else before["testrl"]),
-            (payload.teenrl if payload.teenrl is not None else before["teenrl"]),
+            _nz(new_name),
+            _nz(new_label),
+            _nz(new_description),
+            new_testrl,
+            new_teenrl,
             element_id,
         ),
     )
@@ -321,7 +377,9 @@ def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
         "element_id": r[8],
     }
     mutable_fields = ["name", "label", "description", "testrl", "teenrl"]
-    updated_fields = [f for f in mutable_fields if before.get(f) != after.get(f)]
+    updated_fields = [
+        f for f in mutable_fields if (before.get(f) or None) != (after.get(f) or None)
+    ]
     # Audit with logical StudyElement_N key
     element_uid_for_audit = after.get("element_id") or _get_element_uid(
         soa_id, element_id
@@ -363,6 +421,21 @@ def delete_element(soa_id: int, element_id: int):
     }
     cur.execute("DELETE FROM element WHERE id=?", (element_id,))
     conn.commit()
+    # Reindex remaining elements' order_index sequentially
+    cur.execute(
+        "SELECT id FROM element WHERE soa_id=? ORDER BY order_index",
+        (soa_id,),
+    )
+    remaining = [r[0] for r in cur.fetchall()]
+    for idx, eid in enumerate(remaining, start=1):
+        cur.execute(
+            "UPDATE element SET order_index=? WHERE id=?",
+            (
+                idx,
+                eid,
+            ),
+        )
+    conn.commit()
     conn.close()
     _record_element_audit(
         soa_id,
@@ -374,6 +447,7 @@ def delete_element(soa_id: int, element_id: int):
     return JSONResponse({"deleted": True, "id": element_id})
 
 
+# Deprecated - no need to reorder elements
 @router.post("/elements/reorder", response_class=JSONResponse)
 def reorder_elements_api(soa_id: int, order: List[int]):
     if not soa_exists(soa_id):
