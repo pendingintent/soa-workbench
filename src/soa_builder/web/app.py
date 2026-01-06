@@ -72,6 +72,7 @@ from .routers import visits as visits_router
 from .routers import audits as audits_router
 
 from .routers import timings as timings_router
+from .routers import schedule_timelines as schedule_timelines_router
 from .routers import instances as instances_router
 from .routers.arms import create_arm  # re-export for backward compatibility
 from .routers.arms import delete_arm
@@ -193,6 +194,7 @@ app.include_router(rollback_router.router)
 app.include_router(timings_router.router)
 app.include_router(instances_router.router)
 app.include_router(audits_router.router)
+app.include_router(schedule_timelines_router.router)
 
 
 # Create Audit record functions

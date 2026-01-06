@@ -313,6 +313,19 @@ def _init_db():
         )"""
     )
 
+    # create schedule_timelines_audit table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS schedule_timelines_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                instance_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+    )
+
     # create instance_audit table
     cur.execute(
         """CREATE TABLE IF NOT EXISTS instance_audit (
