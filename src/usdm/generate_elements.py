@@ -97,8 +97,6 @@ def build_usdm_elements(soa_id: int) -> List[Dict[str, Any]]:
     )
     rows = cur.fetchall()
     conn.close()
-    uids = [r[3] for r in rows]
-    id_by_index = {i: uid for i, uid in enumerate(uids)}
     out: List[Dict[str, Any]] = []
 
     for i, r in enumerate(rows):

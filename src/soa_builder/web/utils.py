@@ -316,6 +316,48 @@ def get_study_timing_type(codelist_code: str) -> Dict[str, str]:
     return {str(sub): str(code) for (sub, code) in rows}
 
 
+def get_scheduled_activity_instance(soa_id: int) -> Dict[str, str]:
+    """
+    Return Dictionary of {name: instance_uid} from instances table
+
+    :param soa_id: soa identifier
+    :type soa_id: int
+    :return: {name: instance_uid}
+    :rtype: Dict[str, str]
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name,instance_uid FROM instances WHERE soa_id=? ORDER BY instance_uid",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {str(name): str(instance_uid) for (name, instance_uid) in rows}
+
+
+def get_schedule_timeline(soa_id: int) -> Dict[str, str]:
+    """
+    Return list of {name: schedule_timeline_uid} from schedule_timelines
+
+    :param soa_id: soa identifier
+    :type soa_id: int
+    :return: {name: schedule_timeline_uid}
+    :rtype: Dict[str, str]
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name,schedule_timeline_uid FROM schedule_timelines WHERE soa_id=? ORDER BY schedule_timeline_uid",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {
+        str(name): str(schedule_timeline_uid) for (name, schedule_timeline_uid) in rows
+    }
+
+
 def get_encounter_id(soa_id: int) -> Dict[str, str]:
     """Return a dictionary of {name: encounter_uid} from the visit table"""
     conn = _connect()

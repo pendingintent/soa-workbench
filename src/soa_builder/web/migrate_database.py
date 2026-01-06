@@ -917,3 +917,27 @@ def _migrate_visit_columns():
         conn.close()
     except Exception as e:  # pragma: no cover
         logger.warning("visit table migration failed: %s", e)
+
+
+def _migrate_timing_add_member_of_timeline():
+    """Add optional member_of_timeline column to timing table if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        # Ensure timing table exists
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='timing'"
+        )
+        if not cur.fetchone():
+            conn.close()
+            return
+        # Check column presence
+        cur.execute("PRAGMA table_info(timing)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "member_of_timeline" not in cols:
+            cur.execute("ALTER TABLE timing ADD COLUMN member_of_timeline TEXT")
+            conn.commit()
+            logger.info("Added member_of_timeline column to timing table")
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.warning("timing member_of_timeline migration failed: %s", e)

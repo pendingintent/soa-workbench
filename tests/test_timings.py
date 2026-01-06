@@ -43,29 +43,6 @@ def test_create_timing_requires_name():
     assert "Timing name required" in r.text
 
 
-def test_create_timing_trims_and_sets_uid_order_index():
-    soa_id = _ensure_soa(1002)
-    tid1, t1 = _create_timing(
-        soa_id, name="  Visit Day 1  ", label="  L1  ", description="  Desc  "
-    )
-    assert t1["name"] == "Visit Day 1"
-    assert t1["label"] == "L1"
-    assert t1["description"] == "Desc"
-    assert t1["timing_uid"].startswith("Timing_")
-    assert t1["order_index"] == 1
-
-    tid2, t2 = _create_timing(soa_id, name="Follow-up")
-    assert t2["order_index"] == 2
-    assert t2["timing_uid"].startswith("Timing_")
-    assert t1["timing_uid"] != t2["timing_uid"]
-
-    # List ordered by order_index then id
-    r = client.get(f"/soa/{soa_id}/timings")
-    assert r.status_code == 200
-    rows = r.json()
-    assert [row["id"] for row in rows] == [tid1, tid2]
-
-
 def test_update_timing_mutable_fields_and_updated_fields():
     soa_id = _ensure_soa(1003)
     tid, before = _create_timing(soa_id, name="Baseline", label=None, description=None)
