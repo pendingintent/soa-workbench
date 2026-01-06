@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from ..audit import _record_schedule_timeline_audit
 from ..db import _connect
 from ..schemas import ScheduleTimelineUpdate, ScheduleTimelineCreate
-from ..utils import soa_exists
+from ..utils import soa_exists, get_scheduled_activity_instance
 
 
 router = APIRouter()
@@ -36,7 +36,7 @@ def _assert_main_unique(soa_id: int, exclude_id: Optional[int] = None) -> None:
     cur = conn.cursor()
     if exclude_id is None:
         cur.execute(
-            "SELECT id FROM schedule_timelines WHERE soa_id=? AND main_timline=1 LIMIT 1",
+            "SELECT id FROM schedule_timelines WHERE soa_id=? AND main_timeline=1 LIMIT 1",
             (soa_id,),
         )
     else:
@@ -88,6 +88,7 @@ def ui_list_schedule_timelines(request: Request, soa_id: int):
         raise HTTPException(404, "SOA not found")
 
     schedule_timelines = list_schedule_timelines(soa_id)
+    instance_options = get_scheduled_activity_instance(soa_id)
 
     return templates.TemplateResponse(
         request,
@@ -96,6 +97,7 @@ def ui_list_schedule_timelines(request: Request, soa_id: int):
             "request": request,
             "soa_id": soa_id,
             "schedule_timelines": schedule_timelines,
+            "instance_options": instance_options,
         },
     )
 
@@ -189,7 +191,7 @@ def ui_create_schedule_timeline(
     name: str = Form(...),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    main_timeline: Optional[bool] = Form(None),
+    main_timeline: Optional[str] = Form(None),
     entry_condition: Optional[str] = Form(None),
     entry_id: Optional[str] = Form(None),
     exit_id: Optional[str] = Form(None),
@@ -273,9 +275,11 @@ def update_schedule_timeline(
         if payload.entry_condition is not None
         else before["entry_condition"]
     )
-    new_entry_id = (
-        payload.entry_id if payload.entry_id is not None else before["entry_id"]
-    )
+    if payload.entry_id is not None:
+        new_entry_id = _nz(payload.entry_id)
+    else:
+        new_entry_id = before["entry_id"]
+
     new_exit_id = payload.exit_id if payload.exit_id is not None else before["exit_id"]
 
     cur.execute(
@@ -289,8 +293,8 @@ def update_schedule_timeline(
             _nz(new_description),
             1 if new_main_timeline else 0,
             _nz(new_entry_condition),
-            _nz(new_entry_id),
-            _nz(new_exit_id),
+            new_entry_id,
+            new_exit_id,
             schedule_timeline_id,
             soa_id,
         ),
@@ -359,8 +363,8 @@ def ui_update_schedule_timeline(
         description=description,
         main_timeline=_to_bool(main_timeline),
         entry_condition=entry_condition,
-        entry_id=entry_id,
-        exit_id=exit_id,
+        entry_id=_nz(entry_id),
+        exit_id=_nz(exit_id),
     )
     update_schedule_timeline(soa_id, schedule_timeline_id, payload)
     return RedirectResponse(
@@ -392,7 +396,7 @@ def delete_schedule_timeline(soa_id: int, schedule_timeline_id: int):
     if not row:
         conn.close()
         raise HTTPException(
-            404, f"Schedule Timeline id={schedule_timeline_id} not found"
+            404, f"Schedule Timeline id={int(schedule_timeline_id)} not found"
         )
 
     before = {

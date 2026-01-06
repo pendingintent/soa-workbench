@@ -138,7 +138,7 @@ def create_instance(soa_id: int, payload: InstanceCreate):
     instance_id = cur.lastrowid
     conn.commit()
     conn.close()
-    row = {
+    after = {
         "id": instance_id,
         "instance_uid": new_uid,
         "name": name,
@@ -146,8 +146,8 @@ def create_instance(soa_id: int, payload: InstanceCreate):
         "description": (payload.description or "").strip() or None,
     }
 
-    _record_instance_audit(soa_id, "create", instance_id, before=None, after=row)
-    return row
+    _record_instance_audit(soa_id, "create", instance_id, before=None, after=after)
+    return after
 
 
 # UI code to create new instance in an SOA

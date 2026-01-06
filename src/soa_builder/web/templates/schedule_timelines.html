@@ -29,7 +29,12 @@
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
             <label><strong>Entry ID</strong></label>
-            <input name="entry_id" placeholder="Entry ID (Optional)" />
+            <select name="entry_id">
+                <option value="">-- Select Activity Instance --</option>
+                {% for name, instance_uid in (instance_options or {}).items() %}
+                    <option value="{{ instance_uid }}">{{ name }}</option>
+                {% endfor %}
+            </select>
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
             <label><strong>Exit ID</strong></label>
@@ -67,7 +72,14 @@
                 </label>
             </td>
             <td style="padding:4px;"><input name="entry_condition" value="{{ st.entry_condition or ''}}" placeholder="Entry Condition" /></td>
-            <td style="padding:4px;"><input name="entry_id" value="{{ st.entry_id or '' }}" placeholder="Entry ID" /></td>
+            <td style="padding:4px;">
+                <select name="entry_id">
+                    <option value="">-- Select Activity Instance --</option>
+                    {% for name, instance_uid in (instance_options or {}).items() %}
+                        <option value="{{ instance_uid }}" {% if (st.entry_id or '') == instance_uid %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
             <td style="padding:4px;"><input name="exit_id" value="{{ st.exit_id or '' }}" placeholder="Exit ID" /></td>
             <td style="padding:4px;">
                 <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
