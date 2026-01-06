@@ -24,6 +24,32 @@ def _nz(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
+def _to_bool(v: Optional[str]) -> bool:
+    if v is None:
+        return False
+    return v.strip().lower() in {"1", "true", "on", "yes"}
+
+
+def _assert_main_unique(soa_id: int, exclude_id: Optional[int] = None) -> None:
+    """Ensure only one schedule timeline is marked as main for an SOA"""
+    conn = _connect()
+    cur = conn.cursor()
+    if exclude_id is None:
+        cur.execute(
+            "SELECT id FROM schedule_timelines WHERE soa_id=? AND main_timline=1 LIMIT 1",
+            (soa_id,),
+        )
+    else:
+        cur.execute(
+            "SELECT id FROM schedule_timelines WHERE soa_id=? AND main_timeline=1 AND id!=? LIMIT 1",
+            (soa_id, exclude_id),
+        )
+    row = cur.fetchone()
+    conn.close()
+    if row:
+        raise HTTPException(400, "Only one main_timeline can exist in a SOA")
+
+
 # API endpoint to list schedule timelines for an SOA
 def list_schedule_timelines(soa_id: int):
     if not soa_exists(soa_id):
@@ -32,8 +58,8 @@ def list_schedule_timelines(soa_id: int):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,schedule_timeline_uid,name,label,description,main_timeline,entry_condition, "
-        "entry_id,exit_id,order_index FROM schedule_timelines WHERE soa_id=? ORDER BY order_index,id",
+        """SELECT id,schedule_timeline_uid,name,label,description,main_timeline,entry_condition,
+        entry_id,exit_id,order_index FROM schedule_timelines WHERE soa_id=? ORDER BY order_index,id""",
         (soa_id,),
     )
     rows = [
@@ -43,7 +69,7 @@ def list_schedule_timelines(soa_id: int):
             "name": r[2],
             "label": r[3],
             "description": r[4],
-            "main_timeline": r[5],
+            "main_timeline": bool(r[5]) if r[5] is not None else False,
             "entry_condition": r[6],
             "entry_id": r[7],
             "exit_id": r[8],
@@ -89,6 +115,9 @@ def create_schedule_timeline(soa_id: int, payload: ScheduleTimelineCreate):
     if not name:
         raise HTTPException(400, "Schedule Timeline name is required")
 
+    if payload.main_timeline:
+        _assert_main_unique(soa_id)
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -125,7 +154,7 @@ def create_schedule_timeline(soa_id: int, payload: ScheduleTimelineCreate):
             name,
             _nz(payload.label),
             _nz(payload.description),
-            payload.main_timeline,
+            1 if payload.main_timeline else 0,
             _nz(payload.entry_condition),
             _nz(payload.entry_id),
             _nz(payload.exit_id),
@@ -141,7 +170,7 @@ def create_schedule_timeline(soa_id: int, payload: ScheduleTimelineCreate):
         "name": name,
         "label": (payload.label or "").strip() or None,
         "description": (payload.description or "").strip() or None,
-        "main_timeline": payload.main_timeline or None,
+        "main_timeline": bool(payload.main_timeline),
         "entry_condition": (payload.entry_condition or "").strip() or None,
         "entry_id": (payload.entry_id or "").strip() or None,
         "exit_id": (payload.exit_id or "").strip() or None,
@@ -165,17 +194,22 @@ def ui_create_schedule_timeline(
     entry_id: Optional[str] = Form(None),
     exit_id: Optional[str] = Form(None),
 ):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
     payload = ScheduleTimelineCreate(
         name=name,
         label=label,
         description=description,
-        main_timeline=main_timeline,
+        main_timeline=_to_bool(main_timeline),
         entry_condition=entry_condition,
         entry_id=entry_id,
         exit_id=exit_id,
     )
     create_schedule_timeline(soa_id, payload)
-    return RedirectResponse(url=f"/ui/soa/{soa_id}/schedule_timelines", status_code=303)
+    return RedirectResponse(
+        url=f"/ui/soa/{int(soa_id)}/schedule_timelines", status_code=303
+    )
 
 
 # API endpoint to update a schedule timeline for an SOA
@@ -211,7 +245,7 @@ def update_schedule_timeline(
         "name": row[2],
         "label": row[3],
         "description": row[4],
-        "main_timeline": row[5],
+        "main_timeline": bool(row[5]),
         "entry_condition": row[6],
         "entry_id": row[7],
         "exit_id": row[8],
@@ -229,6 +263,11 @@ def update_schedule_timeline(
         if payload.main_timeline is not None
         else before["main_timeline"]
     )
+
+    # Enforce uniqueness for main timeline (exclude the current row)
+    if bool(new_main_timeline):
+        _assert_main_unique(soa_id, exclude_id=schedule_timeline_id)
+
     new_entry_condition = (
         payload.entry_condition
         if payload.entry_condition is not None
@@ -248,7 +287,7 @@ def update_schedule_timeline(
             _nz(new_name),
             _nz(new_label),
             _nz(new_description),
-            new_main_timeline,
+            1 if new_main_timeline else 0,
             _nz(new_entry_condition),
             _nz(new_entry_id),
             _nz(new_exit_id),
@@ -273,7 +312,7 @@ def update_schedule_timeline(
         "name": r[2],
         "label": r[3],
         "description": r[4],
-        "main_timeline": r[5],
+        "main_timeline": bool(r[5]),
         "entry_condition": r[6],
         "entry_id": r[7],
         "exit_id": r[8],
@@ -309,7 +348,7 @@ def ui_update_schedule_timeline(
     name: Optional[str] = Form(None),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    main_timeline: Optional[bool] = Form(None),
+    main_timeline: Optional[str] = Form(None),
     entry_condition: Optional[str] = Form(None),
     entry_id: Optional[str] = Form(None),
     exit_id: Optional[str] = Form(None),
@@ -318,7 +357,7 @@ def ui_update_schedule_timeline(
         name=name,
         label=label,
         description=description,
-        main_timeline=main_timeline,
+        main_timeline=_to_bool(main_timeline),
         entry_condition=entry_condition,
         entry_id=entry_id,
         exit_id=exit_id,
@@ -362,7 +401,7 @@ def delete_schedule_timeline(soa_id: int, schedule_timeline_id: int):
         "name": row[2],
         "label": row[3],
         "description": row[4],
-        "main_timeline": row[5],
+        "main_timeline": bool(row[5]),
         "entry_condition": row[6],
         "entry_id": row[7],
         "exit_id": row[8],

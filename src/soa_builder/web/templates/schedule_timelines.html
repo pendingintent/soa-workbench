@@ -5,31 +5,34 @@
 <div style="margin-bottom:2px;">
     <form method="post" action="/ui/soa/{{ soa_id }}/schedule_timelines/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
         <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label>Name *</label>
+            <label><strong>Name *</strong></label>
             <input name="name" placeholder="Schedule Timeline Name" required />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Label</label>
+            <label><strong>Label</strong></label>
             <input name="label" placeholder="Label (optional)" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Description</label>
+            <label><strong>Description</strong></label>
             <input name="description" placeholder="Description (Optional)" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Main Timeline</label>
-            <input name="main_timeline" placeholder="Main Timeline (Optional)" />
+            <label><strong>Main Timeline</strong></label>
+            <label style="display:flex;align-items: center;gap: 6px;">
+                <input type="checkbox" name="main_timeline" value="0" />
+                <span>Main timeline?</span>
+            </label>
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Entry Condition</label>
+            <label><strong>Entry Condition</strong></label>
             <input name="entry_condition" placeholder="Entry Condition (Optional)" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Entry ID</label>
+            <label><strong>Entry ID</strong></label>
             <input name="entry_id" placeholder="Entry ID (Optional)" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Exit ID</label>
+            <label><strong>Exit ID</strong></label>
             <input name="exit_id" placeholder="Exit ID (Optional)" />
         </div>
         <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Schedule Timeline</button>
@@ -53,11 +56,16 @@
     {% for st in schedule_timelines %}
     <tr>
         <form method="post" action="/ui/soa/{{ soa_id }}/schedule_timelines/{{ st.id }}/update">
-            <td style="padding:4px;white-space:nowrap;">{{ st.schedule_timeline_id }}</td>
+            <td style="padding:4px;white-space:nowrap;">{{ st.schedule_timeline_uid }}</td>
             <td style="padding:4px;"><input name="name" value="{{ st.name }}" required /></td>
             <td style="padding:4px;"><input name="label" value="{{ st.label or '' }}" placeholder="Label" /></td>
             <td style="padding:4px;"><input name="description" value="{{ st.description or '' }}" placeholder="Description" /></td>
-            <td style="padding:4px;"><input name="main_timeline" value="{{ st.main_timeline }}" /></td>
+            <td style="padding:4px;">
+                <label style="display:flex;align-items:center;gap:6px;">
+                <input type="checkbox" name="main_timeline" value="1" {% if st.main_timeline %}checked{% endif %} />
+                <span>Main</span>
+                </label>
+            </td>
             <td style="padding:4px;"><input name="entry_condition" value="{{ st.entry_condition or ''}}" placeholder="Entry Condition" /></td>
             <td style="padding:4px;"><input name="entry_id" value="{{ st.entry_id or '' }}" placeholder="Entry ID" /></td>
             <td style="padding:4px;"><input name="exit_id" value="{{ st.exit_id or '' }}" placeholder="Exit ID" /></td>
