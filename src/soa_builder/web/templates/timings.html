@@ -5,19 +5,19 @@
 <div style="margin-bottom:12px;">
   <form method="post" action="/ui/soa/{{ soa_id }}/timings/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Name *</label>
+      <label><strong>Name *</strong></label>
       <input name="name" placeholder="Timing Name" required />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Label</label>
+      <label><strong>Label</strong></label>
       <input name="label" placeholder="Label (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Description</label>
+      <label><strong>Description</strong></label>
       <input name="description" placeholder="Description (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Type</label>
+      <label><strong>Type</strong></label>
       <select name="type_submission_value">
         <option value="">(none)</option>
         {% for sv in timing_type_options or [] %}
@@ -26,15 +26,15 @@
       </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Value</label>
+      <label><strong>Value</strong></label>
       <input name="value" placeholder="Value (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Value Label</label>
+      <label><strong>Value Label</strong></label>
       <input name="value_label" placeholder="Value Label (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Relative To/From</label>
+      <label><strong>Relative To/From</strong></label>
       <select name="relative_to_from_submission_value">
         <option value="">(none)</option>
         {% for sv in relative_to_from_options or [] %}
@@ -43,23 +43,33 @@
       </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Relative From Schedule Instance</label>
-      <input name="relative_from_schedule_instance" placeholder="e.g., Arm A (optional)" />
+      <label><strong>Relative From Schedule Instance</strong></label>
+      <select name="relative_from_schedule_instance">
+        <option value="">-- Select Activity Instance --</option>
+        {% for name, instance_uid in (instance_options or {}).items() %}
+          <option value="{{ instance_uid }}">{{ name }}</option>
+        {% endfor %}
+      </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Relative To Schedule Instance</label>
-      <input name="relative_to_schedule_instance" placeholder="e.g., Epoch 1 (optional)" />
+      <label><strong>Relative To Schedule Instance</strong></label>
+      <select name="relative_to_schedule_instance">
+        <option value="">-- Select Activity Instance --</option>
+        {% for name, instance_uid in (instance_options or {}).items() %}
+          <option value="{{ instance_uid }}">{{ name }}</option>
+        {% endfor %}
+      </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Window Label</label>
+      <label><strong>Window Label</strong></label>
       <input name="window_label" placeholder="Window (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Window Upper</label>
+      <label><strong>Window Upper</strong></label>
       <input name="window_upper" placeholder="+N (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label>Window Lower</label>
+      <label><strong>Window Lower</strong></label>
       <input name="window_lower" placeholder="-N (optional)" />
     </div>
     <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Timing</button>
@@ -75,9 +85,12 @@
     <th style="text-align:left;padding:4px;">Type</th>
     <th style="text-align:left;padding:4px;">Value</th>
     <th style="text-align:left;padding:4px;">Value Label</th>
-    <th style="text-align:left;padding:4px;">Rel From</th>
-    <th style="text-align:left;padding:4px;">Rel To</th>
-    <th style="text-align:left;padding:4px;">Window</th>
+    <th style="text-align:left;padding:4px;">Rel To/From</th>
+    <th style="text-align:left;padding:4px;">Rel From Instance</th>
+    <th style="text-align:left;padding:4px;">Rel To Instance</th>
+    <th style="text-align:left;padding:4px;">Window Label</th>
+    <th style="text-align:left;padding:4px;">Window Upper</th>
+    <th style="text-align:left;padding:4px;">Window Lower</th>
     <th style="text-align:left;padding:4px;">Save</th>
     <th style="text-align:left;padding:4px;">Delete</th>
   </tr>
@@ -106,8 +119,22 @@
           {% endfor %}
         </select>
       </td>
-      <td style="padding: 4px;"><input name="relative_from_schedule_instance" value="{{ t.relative_from_schedule_instance or '' }}" placeholder="Rel From" /></td>
-      <td style="padding: 4px;"><input name="relative_to_schedule_instance" value="{{ t.relative_to_schedule_instance or '' }}" placeholder="Rel To" /></td>
+      <td style="padding: 4px;">
+        <select name="relative_from_schedule_instance">
+          <option value="">-- Select Activity Instance --</option>
+          {% for name, instance_uid in (instance_options or {}).items() %}
+            <option value="{{ instance_uid }}" {% if t.relative_from_schedule_instance == instance_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td style="padding: 4px;">
+        <select name="relative_to_schedule_instance">
+          <option value="">-- Select Activity Instance --</option>
+          {% for name, instance_uid in (instance_options or {}).items() %}
+            <option value="{{ instance_uid }}" {% if t.relative_to_schedule_instance == instance_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
       <td style="padding: 4px;"><input name="window_label" value="{{ t.window_label or '' }}" placeholder="Window Label" /></td>
       <td style="padding: 4px;"><input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="Upper (+N)" /></td>
       <td style="padding: 4px;"><input name="window_lower" value="{{ t.window_lower or '' }}" placeholder="Lower (-N)" /></td>
@@ -128,7 +155,3 @@
   {% endfor %}
 </table>
 {% endblock %}
-
-
-
-action="/ui/soa/{{ soa_id }}/timings/{{ t.id }}/update"

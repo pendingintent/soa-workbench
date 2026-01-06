@@ -10,9 +10,12 @@ from fastapi.templating import Jinja2Templates
 from ..audit import _record_timing_audit
 from ..db import _connect
 from ..schemas import TimingCreate, TimingUpdate
-from ..utils import soa_exists
-from ..utils import get_study_timing_type
-from ..utils import get_next_code_uid as _get_next_code_uid
+from ..utils import (
+    soa_exists,
+    get_scheduled_activity_instance,
+    get_study_timing_type,
+    get_next_code_uid as _get_next_code_uid,
+)
 
 router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.timings")
@@ -64,6 +67,9 @@ def ui_list_timings(request: Request, soa_id: int):
             rtf_code_val = code_uid_to_code.get(rtf_cu)
             rtf_sv = code_to_sv_rtf.get(str(rtf_code_val))
         t["relative_to_from_submission_value"] = rtf_sv
+
+    instance_options = get_scheduled_activity_instance(soa_id)
+
     return templates.TemplateResponse(
         request,
         "timings.html",
@@ -73,6 +79,7 @@ def ui_list_timings(request: Request, soa_id: int):
             "timings": timings,
             "timing_type_options": sorted(list(sv_to_code.keys())),
             "relative_to_from_options": sorted(list(sv_to_code_rtf.keys())),
+            "instance_options": instance_options,
         },
     )
 
@@ -307,16 +314,30 @@ def create_timing(soa_id: int, payload: TimingCreate):
     timing_id = cur.lastrowid
     conn.commit()
     conn.close()
-    row = {
+    after = {
         "id": timing_id,
         "timing_uid": new_uid,
         "name": name,
         "label": (payload.label or "").strip() or None,
         "description": (payload.description or "").strip() or None,
-        "order_index": next_ord,
+        "type": (payload.type or "").strip() or None,
+        "value": (payload.value or "").strip() or None,
+        "value_label": (payload.value_label or "").strip() or None,
+        "relative_to_from": (payload.relative_to_from or "").strip() or None,
+        "relative_from_schedule_instance": (
+            payload.relative_from_schedule_instance or ""
+        ).strip()
+        or None,
+        "relative_to_schedule_instance": (
+            payload.relative_to_schedule_instance or ""
+        ).strip()
+        or None,
+        "window_label": (payload.window_label or "").strip() or None,
+        "window_upper": (payload.window_upper or "").strip() or None,
+        "window_lower": (payload.window_lower or "").strip() or None,
     }
-    _record_timing_audit(soa_id, "create", timing_id, before=None, after=row)
-    return row
+    _record_timing_audit(soa_id, "create", timing_id, before=None, after=after)
+    return after
 
 
 # API endpoint to update a timing in an SOA
@@ -452,7 +473,6 @@ def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
         "window_label": r[11],
         "window_upper": r[12],
         "window_lower": r[13],
-        "order_index": r[14],
     }
     mutable = [
         "name",
@@ -468,7 +488,7 @@ def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
         "window_upper",
         "window_lower",
     ]
-    update_fields = [
+    updated_fields = [
         f for f in mutable if (before.get(f) or None) != (after.get(f) or None)
     ]
     _record_timing_audit(
@@ -476,9 +496,9 @@ def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
         "update",
         timing_id,
         before=before,
-        after={**after, "updated_fields": update_fields},
+        after={**after, "updated_fields": updated_fields},
     )
-    return {**after, "updated_fields": update_fields}
+    return {**after, "updated_fields": updated_fields}
 
 
 # UI code to update a timing in an SOA
@@ -598,7 +618,7 @@ def ui_update_timing(
         window_lower=window_lower,
     )
     update_timing(soa_id, timing_id, payload)
-    return RedirectResponse(url=f"/ui/soa/{soa_id}/timings", status_code=303)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/timings", status_code=303)
 
 
 # API endpoint to delete a timing
@@ -623,7 +643,7 @@ def delete_timing(soa_id: int, timing_id: int):
     row = cur.fetchone()
     if not row:
         conn.close()
-        raise HTTPException(404, f"Timing id={timing_id} not found")
+        raise HTTPException(404, f"Timing id={int(timing_id)} not found")
     before = {
         "id": row[0],
         "timing_uid": row[1],
