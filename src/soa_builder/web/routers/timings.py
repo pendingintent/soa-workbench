@@ -113,6 +113,7 @@ def ui_list_timings(request: Request, soa_id: int):
     schedule_timelines_options = get_schedule_timeline(soa_id)
 
     return templates.TemplateResponse(
+        request,
         "timings.html",
         {
             "request": request,
@@ -487,6 +488,7 @@ def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
         "window_label": r[11],
         "window_upper": r[12],
         "window_lower": r[13],
+        "order_index": r[14],
         "member_of_timeline": r[15],
     }
     mutable = [

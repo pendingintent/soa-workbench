@@ -140,7 +140,7 @@ def create_schedule_timeline(soa_id: int, payload: ScheduleTimelineCreate):
                 used_nums.add(int(tail))
             else:
                 logger.warning(
-                    "Invalid schedule_timeline_uid for at encountered (ignored): %s",
+                    "Invalid schedule_timeline_uid format encountered (ignored): %s",
                     uid,
                 )
 

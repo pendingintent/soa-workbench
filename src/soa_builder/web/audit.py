@@ -243,7 +243,7 @@ def _record_schedule_timeline_audit(
         conn.commit()
         conn.close()
     except Exception as e:
-        logger.warning("Failed recroding schedule timeline audit: %s", e)
+        logger.warning("Failed recording schedule timeline audit: %s", e)
 
 
 def _record_instance_audit(
