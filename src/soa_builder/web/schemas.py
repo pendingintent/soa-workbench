@@ -38,6 +38,7 @@ class TimingCreate(BaseModel):
     window_label: Optional[str] = None
     window_upper: Optional[str] = None
     window_lower: Optional[str] = None
+    member_of_timeline: Optional[str] = None
 
 
 class TimingUpdate(BaseModel):
@@ -53,6 +54,7 @@ class TimingUpdate(BaseModel):
     window_label: Optional[str] = None
     window_upper: Optional[str] = None
     window_lower: Optional[str] = None
+    member_of_timeline: Optional[str] = None
 
 
 class ScheduleTimelineCreate(BaseModel):
