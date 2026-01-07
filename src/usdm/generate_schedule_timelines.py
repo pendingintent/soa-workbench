@@ -59,12 +59,38 @@ def _load_generate_study_timings():
     raise ImportError("usdm.generate_study_timings missing expected builder function")
 
 
+def _load_generate_study_instances():
+    """Return the instances builder from usdm.generate_scheduled_activity_instances."""
+    try:
+        import usdm.generate_scheduled_activity_instances as gsai
+    except Exception:
+        import sys
+        from pathlib import Path
+
+        here = Path(__file__).resolve()
+        src_dir = here.parents[2] / "src"
+        if src_dir.exists() and str(src_dir) not in sys.path:
+            sys.path.insert(0, str(src_dir))
+        import usdm.generate_scheduled_activity_instances as gsai
+    for name in (
+        "build_usdm_instances",
+        "generate_scheduled_activity_instances",
+    ):
+        fn = getattr(gsai, name, None)
+        if callable(fn):
+            return fn
+    raise ImportError(
+        "usdm.generate_scheduled_activity_instances missiung expected builder function"
+    )
+
+
 def _nz(s: Optional[str]) -> Optional[str]:
     s = (s or "").strip()
     return s or None
 
 
 generate_study_timings = _load_generate_study_timings()
+generate_study_instances = _load_generate_study_instances()
 
 
 def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
@@ -193,7 +219,7 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
             "entryId": _nz(entryId),
             "exits": [],
             "timings": generate_study_timings(soa_id, schedule_timeline_uid),
-            "instances": [],
+            "instances": generate_study_instances(soa_id, schedule_timeline_uid),
             "plannedDuration": None,
             "instanceType": "ScheduleTimeline",
         }
