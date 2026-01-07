@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Prefer absolute import; fallback to adding src/ to sys.path when run directly
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any
 
 try:
     from soa_builder.web.app import _connect  # reuse existing DB connector
@@ -40,7 +40,9 @@ def _get_activity_ids(soa_id: int, encounter_uid: str) -> List[str]:
     return activity_uids
 
 
-def build_usdm_instances(soa_id: int) -> List[Dict[str, Any]]:
+def build_usdm_instances(
+    soa_id: int, member_of_timeline: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     Build USDM instances objects for the given SOA
 
@@ -60,11 +62,24 @@ def build_usdm_instances(soa_id: int) -> List[Dict[str, Any]]:
     """
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT id,instance_uid,name,label,description,default_condition_uid,epoch_uid,"
-        "timeline_id,timeline_exit_id,encounter_uid FROM instances where soa_id=? ORDER BY instance_uid",
-        (soa_id,),
-    )
+    if member_of_timeline and member_of_timeline.strip():
+        cur.execute(
+            """
+            SELECT id,instance_uid,name,label,description,default_condition_uid,epoch_uid,
+            timeline_id,timeline_exit_id,encounter_uid FROM instances where soa_id=? AND member_of_timeline=? 
+            ORDER BY length(instance_uid), instance_uid
+            """,
+            (soa_id, member_of_timeline.strip()),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT id,instance_uid,name,label,description,default_condition_uid,epoch_uid,
+            timeline_id,timeline_exit_id,encounter_uid FROM instances where soa_id=?  
+            ORDER BY length(instance_uid), instance_uid
+            """,
+            (soa_id,),
+        )
     rows = cur.fetchall()
     conn.close()
     out: List[Dict[str, Any]] = []
@@ -131,6 +146,12 @@ if __name__ == "__main__":
         "-o", "--output", default="-", help="Output file path or '-' for stdout"
     )
     parser.add_argument("--indent", type=int, default=2, help="JSON indent")
+    parser.add_argument(
+        "--member-of-timeline",
+        dest="member_of_timeline",
+        default=None,
+        help="Optional schedule_timeline_uid to filter instances",
+    )
     args = parser.parse_args()
 
     try:

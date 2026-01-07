@@ -62,6 +62,7 @@ from .migrate_database import (
     _migrate_add_epoch_type,
     _migrate_visit_columns,
     _migrate_timing_add_member_of_timeline,
+    _migrate_instances_add_member_of_timeline,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -161,6 +162,7 @@ _init_db()
 
 
 # Database migration steps
+_migrate_instances_add_member_of_timeline()
 _migrate_timing_add_member_of_timeline()
 _migrate_visit_columns()
 _migrate_add_epoch_type()

@@ -42,7 +42,9 @@ def _get_timing_code_values(soa_id: int, code_uid: str) -> Tuple[str, str, str, 
     return code_code, code_decode, code_system, code_system_version
 
 
-def build_usdm_timings(soa_id: int) -> List[Dict[str, Any]]:
+def build_usdm_timings(
+    soa_id: int, member_of_timeline: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     Build USDM Timings-Output objects for the given SOA.
 
@@ -81,12 +83,25 @@ def build_usdm_timings(soa_id: int) -> List[Dict[str, Any]]:
     """
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT id,timing_uid,name,label,description,type,value,value_label,relative_to_from,"
-        "relative_from_schedule_instance,relative_to_schedule_instance,window_label,window_upper,"
-        "window_lower,order_index FROM timing WHERE soa_id=? order by timing_uid",
-        (soa_id,),
-    )
+    if member_of_timeline and member_of_timeline.strip():
+        cur.execute(
+            """
+            SELECT id,timing_uid,name,label,description,type,value,value_label,relative_to_from,
+            relative_from_schedule_instance,relative_to_schedule_instance,window_label,window_upper,
+            window_lower,order_index FROM timing WHERE soa_id=? AND member_of_timeline=? order by length(timing_uid),
+            timing_uid
+            """,
+            (soa_id, member_of_timeline.strip()),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT id,timing_uid,name,label,description,type,value,value_label,relative_to_from,
+            relative_from_schedule_instance,relative_to_schedule_instance,window_label,window_upper,
+            window_lower,order_index FROM timing WHERE soa_id=? order by length(timing_uid), timing_uid
+            """,
+            (soa_id,),
+        )
     rows = cur.fetchall()
     conn.close()
     out: List[Dict[str, Any]] = []
@@ -184,10 +199,18 @@ if __name__ == "__main__":
         "-o", "--output", default="-", help="Output file path or '-' for stdout"
     )
     parser.add_argument("--indent", type=int, default=2, help="JSON indent")
+    parser.add_argument(
+        "--member-of-timeline",
+        dest="member_of_timeline",
+        default=None,
+        help="Optional schedule_timeline_uid to filter timings",
+    )
     args = parser.parse_args()
 
     try:
-        activities = build_usdm_timings(args.soa_id)
+        activities = build_usdm_timings(
+            args.soa_id, member_of_timeline=args.member_of_timeline
+        )
     except Exception:
         logger.exception("Failed to build timings for soa_id=%s", args.soa_id)
         sys.exit(1)
