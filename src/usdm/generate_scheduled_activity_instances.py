@@ -150,7 +150,7 @@ if __name__ == "__main__":
         "--member-of-timeline",
         dest="member_of_timeline",
         default=None,
-        help="Optional schedule_timeline_uid to filter timings",
+        help="Optional schedule_timeline_uid to filter instances",
     )
     args = parser.parse_args()
 
