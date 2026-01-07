@@ -61,7 +61,8 @@
     {% for st in schedule_timelines %}
     <tr>
         <form method="post" action="/ui/soa/{{ soa_id }}/schedule_timelines/{{ st.id }}/update">
-            <td style="padding:4px;white-space:nowrap;">{{ st.schedule_timeline_uid }}</td>
+            <td style="padding:4px;white-space:nowrap;"><strong>{{ st.schedule_timeline_uid }}</strong></td>
+            <td style="padding:4px;white-space:nowrap;"><strong></strong>{{ st.schedule_timeline_uid }}</td>
             <td style="padding:4px;"><input name="name" value="{{ st.name }}" required /></td>
             <td style="padding:4px;"><input name="label" value="{{ st.label or '' }}" placeholder="Label" /></td>
             <td style="padding:4px;"><input name="description" value="{{ st.description or '' }}" placeholder="Description" /></td>

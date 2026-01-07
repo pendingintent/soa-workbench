@@ -83,7 +83,7 @@
 <div class="flex">
   <div>
     <details id="visits-section" open class="collapsible">
-      <summary>Visits ({{ visits|length }}) <span class="hint">(drag to reorder)</span></summary>
+      <summary>Visits/Encounters ({{ visits|length }}) <span class="hint">(drag to reorder)</span></summary>
       <ul id="visits-list" class="drag-list">
         {% for v in visits %}
         <li class="drag-item" draggable="true" data-id="{{ v.id }}">
@@ -93,7 +93,7 @@
           <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_epoch" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
             <select name="epoch_id" style="font-size:0.65em;" onchange="this.form.submit()">
-              <option value="" {% if not v.epoch_id %}selected{% endif %}>No Epoch selected</option>
+              <option value="" {% if not v.epoch_id %}selected{% endif %}>-- Select Epoch --</option>
               {% for e in epochs %}
                 <option value="{{ e.id }}" {% if v.epoch_id == e.id %}selected{% endif %}>{{ e.name }}</option>
               {% endfor %}
@@ -104,7 +104,7 @@
           <form method="post" action="/ui/soa/{{ soa_id }}/set_timing" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
             <select name="timing_id" style="font-size:0.65em;" onchange="this.form.submit()">
-              <option value="" {% if not v.scheduledAtId %}selected{% endif %}>No Timing selected</option>
+              <option value="" {% if not v.scheduledAtId %}selected{% endif %}>-- Select Scheduled at Timing --</option>
               {% for t in timings %}
                 <option value="{{ t.id }}" {% if (v.scheduledAtId|string) == (t.id|string) %}selected{% endif %}>{{ t.name }}</option>
               {% endfor %}
@@ -115,7 +115,7 @@
           <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_transition_start_rule" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
             <select name="visit_transition_start_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
-              <option value="" {% if not v.transitionStartRule %}selected{% endif %}>No START rule selected</option>
+              <option value="" {% if not v.transitionStartRule %}selected{% endif %}>-- Select Transition START Rule --</option>
               {% for tr in transition_rules %}
               <option value="{{ tr.transition_rule_uid }}" {% if (v.transitionStartRule|string) == (tr.transition_rule_uid|string) %}selected{% endif %}>{{ tr.name }}</option>
               {% endfor %}
@@ -124,7 +124,7 @@
           <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_transition_end_rule" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
             <select name="visit_transition_end_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
-              <option value="" {% if not v.transitionEndRule %}selected{% endif %}>No END rule selected</option>
+              <option value="" {% if not v.transitionEndRule %}selected{% endif %}>-- Select Transition END Rule --</option>
               {% for tr in transition_rules %}
               <option value="{{ tr.transition_rule_uid }}" {% if (v.transitionEndRule|string) == (tr.transition_rule_uid|string) %}selected{% endif %}>{{ tr.name }}</option>
               {% endfor %}
@@ -206,7 +206,7 @@
               <input name="epoch_label" value="{{ e.epoch_label or '' }}" placeholder="Label" style="width:70px;" />
               <input name="epoch_description" value="{{ e.epoch_description or '' }}" placeholder="Desc" style="width:120px;" />
               <select name="epoch_type_submission_value" style="font-size:0.65em;">
-                <option value="">[Epoch Type]</option>
+                <option value="">-- Select Epoch Type (C99079) --</option>
                 {% for opt in epoch_type_options or [] %}
                   <option value="{{ opt }}" {% if e.epoch_type_submission_value == opt %}selected{% endif %}>{{ opt }}</option>
                 {% endfor %}
@@ -228,7 +228,7 @@
         <input name="epoch_label" placeholder="Label (optional)" style="flex:1;min-width:110px;" />
         <input name="epoch_description" placeholder="Description (optional)" style="flex:2;min-width:160px;" />
         <select name="epoch_type_submission_value" style="font-size:0.7em;min-width:140px;">
-          <option value="">Select Epoch Type (C99079)</option>
+          <option value="">-- Select Epoch Type (C99079)--</option>
           {% for opt in epoch_type_options or [] %}
             <option value="{{ opt }}">{{ opt }}</option>
           {% endfor %}
@@ -247,7 +247,7 @@
             <form method="post" action="/ui/soa/{{ soa_id }}/set_element_transition_start_rule" style="display:inline;margin-left:6px;">
               <input type="hidden" name="element_id" value="{{ el.id }}" />
               <select name="element_transition_start_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
-                <option value="" {% if not el.testrl %}selected{% endif %}>No START rule selected</option>
+                <option value="" {% if not el.testrl %}selected{% endif %}>-- Select Transition START Rule --</option>
                 {% for tr in transition_rules %}
                 <option value="{{ tr.transition_rule_uid }}" {% if (el.testrl|string) == (tr.transition_rule_uid|string) %}selected{% endif %}>{{ tr.name }}</option>
                 {% endfor %}
@@ -256,7 +256,7 @@
             <form method="post" action="/ui/soa/{{ soa_id }}/set_element_transition_end_rule" style="display:inline;margin-left:6px;">
               <input type="hidden" name="element_id" value="{{ el.id }}" />
               <select name="element_transition_end_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
-                <option value="" {% if not el.teenrl %}selected{% endif %}>No END rule selected</option>
+                <option value="" {% if not el.teenrl %}selected{% endif %}>-- Select Transition END Rule --</option>
                 {% for tr in transition_rules %}
                 <option value="{{ tr.transition_rule_uid }}" {% if (el.teenrl|string) == (tr.transition_rule_uid|string) %}selected{% endif %}>{{ tr.name }}</option>
                 {% endfor %}
@@ -303,7 +303,7 @@
               {# Type selection from protocol terminology C174222 #}
               {% if protocol_terminology_C174222 %}
               <select name="arm-type" style="width:200px;" title="Type">
-                <option value="">Type</option>
+                <option value="">-- Select Epoch Type (C174222) --</option>
                 {% for opt in protocol_terminology_C174222 %}
                   {% set text = (opt.cdisc_submission_value or '') %}
                   {% set td = (arm.type_display or '') %}
@@ -314,7 +314,7 @@
               {# Type selection from ddf terminology C188727 #}
               {% if ddf_terminology_C188727 %}
               <select name="data-origin-type" style="width:200px;" title="Data Origin Type">
-                <option value="">DataOriginType</option>
+                <option value="">-- Select Arm DataOriginType (C18872) --</option>
                 {% for ddf_opt in ddf_terminology_C188727 %}
                   {% set text = (ddf_opt.cdisc_submission_value or '') %}
                   {% set td = (arm.data_origin_type_display or '') %}

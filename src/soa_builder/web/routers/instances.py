@@ -9,7 +9,13 @@ from fastapi.templating import Jinja2Templates
 from ..audit import _record_instance_audit
 from ..db import _connect
 from ..schemas import InstanceCreate, InstanceUpdate
-from ..utils import soa_exists, get_encounter_id, get_epoch_uid, get_schedule_timeline
+from ..utils import (
+    soa_exists,
+    get_encounter_id,
+    get_epoch_uid,
+    get_schedule_timeline,
+    get_scheduled_activity_instance,
+)
 
 router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.instances")
@@ -67,6 +73,7 @@ def ui_list_instances(request: Request, soa_id: int):
     encounter_options = get_encounter_id(soa_id)
     epoch_options = get_epoch_uid(soa_id)
     schedule_timelines_options = get_schedule_timeline(soa_id)
+    instance_options = get_scheduled_activity_instance(soa_id)
 
     return templates.TemplateResponse(
         "instances.html",
@@ -77,6 +84,7 @@ def ui_list_instances(request: Request, soa_id: int):
             "encounter_options": encounter_options,
             "epoch_options": epoch_options,
             "schedule_timelines_options": schedule_timelines_options,
+            "instance_options": instance_options,
         },
     )
 
