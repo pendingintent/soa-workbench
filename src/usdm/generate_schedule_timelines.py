@@ -80,7 +80,7 @@ def _load_generate_study_instances():
         if callable(fn):
             return fn
     raise ImportError(
-        "usdm.generate_scheduled_activity_instances missiung expected builder function"
+        "usdm.generate_scheduled_activity_instances missing expected builder function"
     )
 
 
