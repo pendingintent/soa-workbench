@@ -6,23 +6,23 @@
 <div style="margin-bottom:2px;">
     <form method="post" action="/ui/soa/{{ soa_id }}/instances/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
         <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label>Name *</label>
+            <label><strong>Name *</strong></label>
             <input name="name" placeholder="Instance Name" required />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Label</label>
+            <label><strong>Label</strong></label>
             <input name="label" placeholder="Label (optional)" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Description</label>
+            <label><strong>Description</strong></label>
             <input name="description" placeholder="Description (Optional)" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Default Condition ID</label>
+            <label><strong>Default Condition ID</strong></label>
             <input name="default_condition_uid" placeholder="Default Condition ID (Optional)" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Epoch ID</label>
+            <label><strong>Epoch ID</strong></label>
             <select name="epoch_uid">
                 <option value="">-- Select epoch --</option>
                 {% for name, epoch_uid in (epoch_options or {}).items() %}
@@ -31,19 +31,28 @@
             </select>
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Timeline ID</label>
+            <label><strong>Timeline ID</strong></label>
             <input name="timeline_id" placeholder="Timeline ID (Optional)" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Timeline Exit ID</label>
+            <label><strong>Timeline Exit ID</strong></label>
             <input name="timeline_exit_id" placeholder="Timeline Exit ID" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label>Encounter</label>
+            <label><strong>Encounter</strong></label>
             <select name="encounter_uid">
                 <option value="">-- Select encounter --</option>
                 {% for name, enc_uid in (encounter_options or {}).items() %}
                     <option value="{{ enc_uid }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display: flex;flex-direction: column;gap:2px;">
+            <label><strong>Member of Timeline</strong></label>
+            <select name="member_of_timeline">
+                <option value="">-- Select Timeline --</option>
+                {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
+                    <option value="{{ schedule_timeline_uid }}">{{ name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -62,6 +71,7 @@
         <th style="text-align:left;padding:4px;">Timeline ID</th>
         <th style="text-align:left;padding:4px;">Timeline Exit ID</th>
         <th style="text-align:left;padding:4px;">Encounter</th>
+        <th style="text-align:left;padding:4px;">Member of Timeline</th>
         <th style="text-align:left;padding:4px;">Save</th>
         <th style="text-align:left;padding:4px;">Delete Instance</th>
     </tr>
@@ -88,6 +98,14 @@
             <option value="">-- Select Encounter --</option>
             {% for name, enc_uid in (encounter_options or {}).items() %}
                 <option value="{{ enc_uid }}" {% if i.encounter_uid == enc_uid %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+      </td>
+      <td style="padding: 4px;">
+        <select name="member_of_timeline">
+            <option value="">-- Select Timeline --</option>
+            {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
+                <option value="{{ schedule_timeline_uid }}" {% if (i.member_of_timeline or '') == schedule_timeline_uid %}selected{% endif %}>{{ name }}</option>
             {% endfor %}
         </select>
       </td>

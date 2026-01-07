@@ -12,6 +12,7 @@ class InstanceUpdate(BaseModel):
     timeline_id: Optional[str] = None
     timeline_exit_id: Optional[str] = None
     encounter_uid: Optional[str] = None
+    member_of_timeline: Optional[str] = None
 
 
 class InstanceCreate(BaseModel):
@@ -23,6 +24,7 @@ class InstanceCreate(BaseModel):
     timeline_id: Optional[str] = None
     timeline_exit_id: Optional[str] = None
     encounter_uid: Optional[str] = None
+    member_of_timeline: Optional[str] = None
 
 
 class TimingCreate(BaseModel):
