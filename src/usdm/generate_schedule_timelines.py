@@ -105,7 +105,7 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
 
     Output:
         - id: string
-        - entensionAttributes?: string[]
+        - extensionAttributes?: string[]
         - name: string
         - label?: string
         - description?: string
