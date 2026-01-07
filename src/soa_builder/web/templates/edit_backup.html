@@ -89,7 +89,18 @@
         <li class="drag-item" draggable="true" data-id="{{ v.id }}">
           <span class="ord">{{ v.order_index }}</span>. <strong>{{ v.name }}</strong>
           <span class="visit-actions">
-            {% if timings %}
+          {% if epochs %}
+          <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_epoch" style="display:inline;margin-left:6px;">
+            <input type="hidden" name="visit_id" value="{{ v.id }}" />
+            <select name="epoch_id" style="font-size:0.65em;" onchange="this.form.submit()">
+              <option value="" {% if not v.epoch_id %}selected{% endif %}>-- Select Epoch --</option>
+              {% for e in epochs %}
+                <option value="{{ e.id }}" {% if v.epoch_id == e.id %}selected{% endif %}>{{ e.name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+          {% endif %}
+          {% if timings %}
           <form method="post" action="/ui/soa/{{ soa_id }}/set_timing" style="display:inline;margin-left:6px;">
             <input type="hidden" name="visit_id" value="{{ v.id }}" />
             <select name="timing_id" style="font-size:0.65em;" onchange="this.form.submit()">
@@ -141,7 +152,12 @@
         <input name="name" placeholder="Visit Name" required />
         <input name="label" placeholder="Label (optional)" />
         <input name="description" placeholder="Description (optional)" />
-        
+        {% if epochs %}
+          <select name="epoch_id" style="font-size:0.7em;">
+            <option value="">Epoch (optional)</option>
+            {% for e in epochs %}<option value="{{ e.id }}">E{{ e.epoch_seq }} {{ e.name }}{% if e.epoch_label %} - {{ e.epoch_label }}{% endif %}</option>{% endfor %}
+          </select>
+        {% endif %}
         <button>Add Visit</button>
       </form>
     </details>
