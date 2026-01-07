@@ -941,3 +941,25 @@ def _migrate_timing_add_member_of_timeline():
         conn.close()
     except Exception as e:  # pragma: no cover
         logger.warning("timing member_of_timeline migration failed: %s", e)
+
+
+def _migrate_instances_add_member_of_timeline():
+    """Add optional member_of_timeline"""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='instances'"
+        )
+        if not cur.fetchone():
+            conn.close()
+            return
+        cur.execute("PRAGMA table_info(instances)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "member_of_timeline" not in cols:
+            cur.execute("ALTER TABLE instances ADD COLUMN member_of_timeline TEXT")
+            conn.commit()
+            logger.info("Added member_of_timeline column to instances table")
+        conn.close()
+    except Exception as e:
+        logger.warning("instances member_of_timeline migration failed: %s", e)
