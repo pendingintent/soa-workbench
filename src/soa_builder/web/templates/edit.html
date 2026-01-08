@@ -454,9 +454,11 @@
     <th>Activity</th>
     <th>Concepts</th>
     {% for inst in instances %}
-    <th style="min-width: 70px;" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
+    <th style="min-width: 70px; vertical-align: top;" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
+      <div style="font-size:0.65em;color:#555;line-height:1.1;text-align:left;">{% if inst.timeline_name %}{{ inst.timeline_name or '' }}{% endif %}</div>
       <div>{{ inst.name }}</div>
-      <div style="font-size:0.65em;color:#555;line-height:1.1;">Timeline: {{ inst.member_of_timeline or '' }}></div>
+      <div style="font-size:0.65em;color:#555;line-height:1.1;text-align:left;">{% if inst.encounter_name %}{{ inst.encounter_name }}{% endif %}</div>
+      <div style="font-size:0.65em;color:#555;line-height:1.1;text-align:left;">{% if inst.epoch_name %}{{ inst.epoch_name }}{% endif %}</div>
     </th>
     {% endfor %}
   </tr>

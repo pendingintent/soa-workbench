@@ -3733,13 +3733,24 @@ def ui_edit(request: Request, soa_id: int):
     cur_inst = conn_inst.cursor()
     cur_inst.execute(
         """
-        SELECT id,name,instance_uid,member_of_timeline FROM instances WHERE soa_id=?
+        SELECT i.id,i.name,i.instance_uid,
+        (SELECT t.name from schedule_timelines t WHERE t.schedule_timeline_uid=i.member_of_timeline AND t.soa_id=i.soa_id) as timeline_name,
+        (SELECT v.name from visit v WHERE v.encounter_uid=i.encounter_uid and v.soa_id=i.soa_id) as encounter_name,
+        (SELECT e.name FROM epoch e WHERE e.epoch_uid=i.epoch_uid AND e.soa_id=i.soa_id) as epoch_name
+        FROM instances i WHERE soa_id=?
         ORDER BY member_of_timeline,length(instance_uid),instance_uid
         """,
         (soa_id,),
     )
     instances = [
-        {"id": r[0], "name": r[1], "instance_uid": r[2], "member_of_timeline": r[3]}
+        {
+            "id": r[0],
+            "name": r[1],
+            "instance_uid": r[2],
+            "timeline_name": r[3],
+            "encounter_name": r[4],
+            "epoch_name": r[5],
+        }
         for r in cur_inst.fetchall()
     ]
     cur_inst.close()
