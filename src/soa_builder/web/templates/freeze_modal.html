@@ -1,3 +1,32 @@
+{% macro cell_axis_label(cell) -%}
+  {% set axis_type = cell.axis_type if cell.axis_type is defined and cell.axis_type else None %}
+  {% if not axis_type %}
+    {% if cell.instance_id is defined and cell.instance_id is not none %}
+      {% set axis_type = 'instance' %}
+    {% elif cell.visit_id is defined and cell.visit_id is not none %}
+      {% set axis_type = 'visit' %}
+    {% endif %}
+  {% endif %}
+  {% set axis_value = None %}
+  {% if axis_type == 'instance' %}
+    {% if cell.instance_id is defined and cell.instance_id is not none %}
+      {% set axis_value = cell.instance_id %}
+    {% elif cell.axis_id is defined and cell.axis_id is not none %}
+      {% set axis_value = cell.axis_id %}
+    {% elif cell.visit_id is defined and cell.visit_id is not none %}
+      {% set axis_value = cell.visit_id %}
+    {% endif %}
+  {% else %}
+    {% if cell.visit_id is defined and cell.visit_id is not none %}
+      {% set axis_value = cell.visit_id %}
+    {% elif cell.axis_id is defined and cell.axis_id is not none %}
+      {% set axis_value = cell.axis_id %}
+    {% elif cell.instance_id is defined and cell.instance_id is not none %}
+      {% set axis_value = cell.instance_id %}
+    {% endif %}
+  {% endif %}
+  {% if axis_type == 'instance' %}Inst {{ axis_value or '?' }}{% else %}Visit {{ axis_value or '?' }}{% endif %}
+{%- endmacro %}
 <div class="modal-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:500;">
   <div class="modal" style="background:#fff;max-width:900px;width:90%;max-height:80%;overflow:auto;padding:14px 18px;border-radius:6px;box-shadow:0 4px 18px rgba(0,0,0,0.3);font-size:0.75em;line-height:1.3;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -11,7 +40,7 @@
     {% if mode == 'view' %}
       {% set snap = freeze.snapshot %}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;margin-bottom:10px;font-size:0.7em;">
-        <div><strong>Visits:</strong> {{ snap.visits|length }}</div>
+        <div><strong>Scheduled Activity Instance:</strong> {{ snap.visits|length }}</div>
         <div><strong>Activities:</strong> {{ snap.activities|length }}</div>
         <div><strong>Cells:</strong> {{ snap.cells|length }}</div>
         <div><strong>Concept Mappings:</strong> {{ snap.activity_concepts|length }}</div>
@@ -47,7 +76,7 @@
       <details>
         <summary style="cursor:pointer;font-weight:bold;">Cells (non-empty)</summary>
         <ul style="margin:4px 0 8px 14px;padding:0;">
-          {% for c in snap.cells if c.status %}<li>Visit {{ c.visit_id }} / Activity {{ c.activity_id }} = {{ c.status }}</li>{% endfor %}
+          {% for c in snap.cells if c.status %}<li>{{ cell_axis_label(c) }} / Activity {{ c.activity_id }} = {{ c.status }}</li>{% endfor %}
         </ul>
       </details>
   {% elif mode == 'diff' %}
@@ -102,19 +131,19 @@
         <div style="display:flex;gap:26px;flex-wrap:wrap;">
           <div><strong>Added</strong>
             <ul style="margin:4px 0 8px 14px;padding:0;">
-              {% for c in diff.cells.added %}<li>V{{ c.visit_id }} / A{{ c.activity_id }} = {{ c.status }}</li>{% endfor %}
+              {% for c in diff.cells.added %}<li>{{ cell_axis_label(c) }} / A{{ c.activity_id }} = {{ c.status }}</li>{% endfor %}
               {% if diff.cells.added|length == 0 %}<li style="color:#777;">None</li>{% endif %}
             </ul>
           </div>
           <div><strong>Removed</strong>
             <ul style="margin:4px 0 8px 14px;padding:0;">
-              {% for c in diff.cells.removed %}<li>V{{ c.visit_id }} / A{{ c.activity_id }} = {{ c.status }}</li>{% endfor %}
+              {% for c in diff.cells.removed %}<li>{{ cell_axis_label(c) }} / A{{ c.activity_id }} = {{ c.status }}</li>{% endfor %}
               {% if diff.cells.removed|length == 0 %}<li style="color:#777;">None</li>{% endif %}
             </ul>
           </div>
           <div><strong>Changed</strong>
             <ul style="margin:4px 0 8px 14px;padding:0;">
-              {% for c in diff.cells.changed %}<li>V{{ c.visit_id }} / A{{ c.activity_id }}: {{ c.old_status }} → {{ c.new_status }}</li>{% endfor %}
+              {% for c in diff.cells.changed %}<li>{{ cell_axis_label(c) }} / A{{ c.activity_id }}: {{ c.old_status }} → {{ c.new_status }}</li>{% endfor %}
               {% if diff.cells.changed|length == 0 %}<li style="color:#777;">None</li>{% endif %}
             </ul>
           </div>

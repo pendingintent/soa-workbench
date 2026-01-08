@@ -482,7 +482,13 @@
 </table>
 <p><a href="/soa/{{ soa_id }}/normalized" target="_blank">Generate Normalized Summary (JSON)</a></p>
 <div class="export-buttons">
-  <a class="btn" href="/soa/{{ soa_id }}/export/xlsx" title="Download Excel workbook">⬇ XLSX</a>
+  <a
+    id="export-xlsx-link"
+    class="btn"
+    data-base-href="/soa/{{ soa_id }}/export/xlsx"
+    href="/soa/{{ soa_id }}/export/xlsx"
+    title="Download Excel workbook"
+  >⬇ XLSX</a>
 </div>
 <style>
   .delete-btn { background:#c62828; color:#fff; border:none; padding:0 6px; cursor:pointer; }
@@ -531,6 +537,29 @@ persistSection('epoch-audit-section');
 persistSection('study-cells-section');
 persistSection('study-cell-audit-section');
 persistSection('transition-rules-section');
+
+// --- XLSX export link updates to include optional diff parameters ---
+function updateExportXlsxLink(){
+  const link = document.getElementById('export-xlsx-link');
+  if(!link) return;
+  const base = link.dataset.baseHref || link.getAttribute('href') || '';
+  const leftSel = document.getElementById('diff-left');
+  const rightSel = document.getElementById('diff-right');
+  const leftVal = leftSel && leftSel.value;
+  const rightVal = rightSel && rightSel.value;
+  let nextHref = base;
+  if(leftVal && rightVal && leftVal !== rightVal){
+    const params = new URLSearchParams({left: leftVal, right: rightVal});
+    const joiner = base.includes('?') ? '&' : '?';
+    nextHref = base + joiner + params.toString();
+  }
+  link.setAttribute('href', nextHref);
+}
+['diff-left','diff-right'].forEach(id=>{
+  const sel = document.getElementById(id);
+  if(sel){ sel.addEventListener('change', updateExportXlsxLink); }
+});
+updateExportXlsxLink();
 
 // --- Drag & drop reorder utility ---
 function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){

@@ -632,17 +632,51 @@ def _diff_freezes_limited(
     }
     acts_added_all = [r_act[k] for k in r_act.keys() - l_act.keys()]
     acts_removed_all = [l_act[k] for k in l_act.keys() - r_act.keys()]
-    # Cells (status changes)
-    l_cells = {
-        (c["visit_id"], c["activity_id"]): c
-        for c in l_snap.get("cells", [])
-        if isinstance(c, dict)
-    }
-    r_cells = {
-        (c["visit_id"], c["activity_id"]): c
-        for c in r_snap.get("cells", [])
-        if isinstance(c, dict)
-    }
+    # Cells (status changes). Newer snapshots key by instance_id; older ones used visit_id.
+
+    def _cell_key(cell: dict) -> Optional[tuple[str, int, int]]:
+        if not isinstance(cell, dict):
+            return None
+        activity_id = cell.get("activity_id")
+        if activity_id is None:
+            return None
+        if cell.get("instance_id") is not None:
+            return ("instance", int(cell["instance_id"]), int(activity_id))
+        if cell.get("visit_id") is not None:
+            return ("visit", int(cell["visit_id"]), int(activity_id))
+        return None
+
+    def _normalize_cell(cell: dict) -> dict:
+        axis_type = (
+            "instance"
+            if cell.get("instance_id") is not None
+            else "visit" if cell.get("visit_id") is not None else None
+        )
+        axis_id = None
+        if axis_type == "instance":
+            axis_id = cell.get("instance_id")
+        elif axis_type == "visit":
+            axis_id = cell.get("visit_id")
+        return {
+            "axis_type": axis_type,
+            "axis_id": axis_id,
+            "instance_id": cell.get("instance_id"),
+            "visit_id": cell.get("visit_id"),
+            "activity_id": cell.get("activity_id"),
+            "status": cell.get("status"),
+        }
+
+    def _build_cell_map(snapshot_cells: list[dict]) -> dict:
+        mapped = {}
+        for raw in snapshot_cells or []:
+            key = _cell_key(raw)
+            if not key:
+                continue
+            mapped[key] = _normalize_cell(raw)
+        return mapped
+
+    l_cells = _build_cell_map(l_snap.get("cells", []))
+    r_cells = _build_cell_map(r_snap.get("cells", []))
     cells_added_all = [r_cells[k] for k in r_cells.keys() - l_cells.keys()]
     cells_removed_all = [l_cells[k] for k in l_cells.keys() - r_cells.keys()]
     cells_changed_all = []
@@ -650,8 +684,11 @@ def _diff_freezes_limited(
         if r_cells[k].get("status") != l_cells[k].get("status"):
             cells_changed_all.append(
                 {
-                    "visit_id": k[0],
-                    "activity_id": k[1],
+                    "axis_type": l_cells[k].get("axis_type"),
+                    "axis_id": l_cells[k].get("axis_id"),
+                    "visit_id": l_cells[k].get("visit_id"),
+                    "instance_id": l_cells[k].get("instance_id"),
+                    "activity_id": l_cells[k].get("activity_id"),
                     "old_status": l_cells[k].get("status"),
                     "new_status": r_cells[k].get("status"),
                 }
@@ -2005,7 +2042,11 @@ def _matrix_arrays(soa_id: int):
     """Return schedule instance headers list and rows (activity name + statuses)."""
     instances, activities, cells = _fetch_matrix(soa_id)
     instance_headers = [i["name"] for i in instances]
-    cell_lookup = {[c["instance_id"], c["activity_id"], c["status"]] for c in cells}
+    cell_lookup = {
+        (c["instance_id"], c["activity_id"]): c.get("status", "")
+        for c in cells
+        if c.get("instance_id") is not None and c.get("activity_id") is not None
+    }
     rows = []
     for a in activities:
         row = [a["name"]]
@@ -2543,7 +2584,7 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     visits, activities, cells = _fetch_matrix(soa_id)
     if not visits or not activities:
         raise HTTPException(
-            400, "Cannot export empty matrix (need visits and activities)"
+            400, "Cannot export empty matrix (need instances and activities)"
         )
     headers, rows = _matrix_arrays(soa_id)
     # Build DataFrame, then inject Concepts column (second position)
@@ -2694,7 +2735,7 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
         ["Study Label", study_label_val or ""],
         ["Study Description", (study_desc_val or "")[:4000]],
         ["Created At", created_at_val or ""],
-        ["Visit Count", str(len(visits))],
+        ["Scheduled Activity Instances Count", str(len(visits))],
         ["Activity Count", str(len(activities))],
         ["Cell Count", str(cell_count)],
         ["Concept Mapping Count", str(concept_mapping_count)],
