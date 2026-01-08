@@ -30,10 +30,10 @@ def test_matrix_import_endpoint():
     r = client.post("/soa", json={"name": "Matrix Trial"})
     soa_id = r.json()["id"]
     payload = {
-        "visits": [
-            {"name": "C1D1", "label": "Cycle 1 Day 1 (C1D1)"},
-            {"name": "C1D8"},
-            {"name": "C1D15"},
+        "instances": [
+            {"name": "SCREEN1", "label": "Screening 1 instance"},
+            {"name": "SCREEN2"},
+            {"name": "BASELINE"},
         ],
         "activities": [
             {"name": "Hematology", "statuses": ["X", "X", "O"]},
@@ -45,22 +45,22 @@ def test_matrix_import_endpoint():
     resp = client.post(f"/soa/{soa_id}/matrix/import", json=payload)
     assert resp.status_code == 200, resp.text
     data = resp.json()
-    assert data["visits_added"] == 3
+    assert data["instances_added"] == 3
     assert data["activities_added"] == 3
     # matrix_cells: Hematology (3 non-empty), Chemistry (1), ECG (2) => 6
     assert data["cells_inserted"] == 6
     # verify matrix fetch
     m = client.get(f"/soa/{soa_id}/matrix").json()
-    assert len(m["visits"]) == 3
+    assert len(m["instances"]) == 3
     assert len(m["activities"]) == 3
     # Ensure a specific matrix_cell present (C1D15, Hematology -> O)
-    # Need to map visit/activity names to ids then check matrix_cell list
-    visit_map = {v["name"]: v["id"] for v in m["visits"]}
+    # Need to map instance/activity names to ids then check matrix_cell list
+    instance_map = {i["name"]: i["id"] for i in m["instances"]}
     activity_map = {a["name"]: a["id"] for a in m["activities"]}
     target_matrix_cells = [
         c
         for c in m["cells"]
-        if c["visit_id"] == visit_map["C1D15"]
+        if c["instance_id"] == instance_map["BASELINE"]
         and c["activity_id"] == activity_map["Hematology"]
     ]
     assert target_matrix_cells and target_matrix_cells[0]["status"] == "O"

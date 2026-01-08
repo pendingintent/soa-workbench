@@ -181,7 +181,7 @@ class CellCreate(BaseModel):
     status: str
 
 
-class MatrixVisit(BaseModel):
+class MatrixInstance(BaseModel):
     name: str
     label: Optional[str] = None
 
@@ -192,6 +192,6 @@ class MatrixActivity(BaseModel):
 
 
 class MatrixImport(BaseModel):
-    visits: List[MatrixVisit]
+    instances: List[MatrixInstance]
     activities: List[MatrixActivity]
     reset: bool = True

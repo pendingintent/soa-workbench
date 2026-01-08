@@ -63,6 +63,7 @@ from .migrate_database import (
     _migrate_visit_columns,
     _migrate_timing_add_member_of_timeline,
     _migrate_instances_add_member_of_timeline,
+    _migrate_matrix_cells_add_instance_id,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -149,6 +150,7 @@ if not logger.handlers:
     _h.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(message)s"))
     logger.addHandler(_h)
 logger.setLevel(logging.INFO)
+
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
@@ -162,6 +164,7 @@ _init_db()
 
 
 # Database migration steps
+_migrate_matrix_cells_add_instance_id()
 _migrate_instances_add_member_of_timeline()
 _migrate_timing_add_member_of_timeline()
 _migrate_visit_columns()
@@ -1067,24 +1070,22 @@ def _rollback_preview(soa_id: int, freeze_id: int) -> dict:
 def _fetch_matrix(soa_id: int):
     conn = _connect()
     cur = conn.cursor()
-    # Epochs not part of matrix axes currently; retrieved separately where needed.
+    # Axis now uses ScheduledActivityInstance rows
     cur.execute(
-        "SELECT id,name,label,order_index,epoch_id,description,scheduledAtId,transitionStartRule,transitionEndRule FROM visit WHERE soa_id=? ORDER BY order_index",
+        """
+    SELECT id,name,epoch_uid,encounter_uid,instance_uid,member_of_timeline FROM instances
+    WHERE soa_id=? ORDER BY member_of_timeline,id
+    """,
         (soa_id,),
     )
-    visits = [
+    instances = [
         dict(
             id=r[0],
             name=r[1],
-            label=r[2],
-            order_index=r[3],
-            epoch_id=r[4],
-            description=r[5],
-            scheduledAtId=(
-                int(r[6]) if (r[6] is not None and str(r[6]).isdigit()) else None
-            ),
-            transitionStartRule=(r[7] if r[7] else None),
-            transitionEndRule=(r[8] if r[8] else None),
+            epoch_uid=r[2],
+            encounter_uid=r[3],
+            instance_uid=r[4],
+            member_of_timeline=r[5],
         )
         for r in cur.fetchall()
     ]
@@ -1124,12 +1125,16 @@ def _fetch_matrix(soa_id: int):
             for r in cur.fetchall()
         ]
     cur.execute(
-        "SELECT visit_id, activity_id, status FROM matrix_cells WHERE soa_id=?",
+        """
+        SELECT instance_id, activity_id, status FROM matrix_cells WHERE soa_id=? AND instance_id IS NOT NULL
+        """,
         (soa_id,),
     )
-    cells = [dict(visit_id=r[0], activity_id=r[1], status=r[2]) for r in cur.fetchall()]
+    cells = [
+        dict(instance_id=r[0], activity_id=r[1], status=r[2]) for r in cur.fetchall()
+    ]
     conn.close()
-    return visits, activities, cells
+    return instances, activities, cells
 
 
 def _list_study_cells(soa_id: int) -> list[dict]:
@@ -1967,22 +1972,22 @@ def _wide_csv_path(soa_id: int) -> str:
 
 
 def _generate_wide_csv(soa_id: int) -> str:
-    visits, activities, cells = _fetch_matrix(soa_id)
-    if not visits or not activities:
+    instances, activities, cells = _fetch_matrix(soa_id)
+    if not instances or not activities:
         raise ValueError(
-            "Cannot generate CSV: need at least one visit and one activity"
+            "Cannot generate CSV: need at least one scheduled instance and one activity"
         )
     # Build matrix with first column Activity, subsequent visit headers using label or name
-    visit_headers = [v["label"] or v["name"] for v in visits]
+    instance_headers = [i["name"] for i in instances]
     matrix = []
     for a in activities:
         row = [a["name"]]
-        for v in visits:
+        for inst in instances:
             match = next(
                 (
                     c["status"]
                     for c in cells
-                    if c["visit_id"] == v["id"] and c["activity_id"] == a["id"]
+                    if c["instance_id"] == inst["id"] and c["activity_id"] == a["id"]
                 ),
                 "",
             )
@@ -1991,23 +1996,23 @@ def _generate_wide_csv(soa_id: int) -> str:
     path = _wide_csv_path(soa_id)
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["Activity"] + visit_headers)
+        writer.writerow(["Activity"] + instance_headers)
         writer.writerows(matrix)
     return path
 
 
 def _matrix_arrays(soa_id: int):
-    """Return visit headers list and rows (activity name + statuses)."""
-    visits, activities, cells = _fetch_matrix(soa_id)
-    visit_headers = [v["label"] or v["name"] for v in visits]
-    cell_lookup = {(c["visit_id"], c["activity_id"]): c["status"] for c in cells}
+    """Return schedule instance headers list and rows (activity name + statuses)."""
+    instances, activities, cells = _fetch_matrix(soa_id)
+    instance_headers = [i["name"] for i in instances]
+    cell_lookup = {[c["instance_id"], c["activity_id"], c["status"]] for c in cells}
     rows = []
     for a in activities:
         row = [a["name"]]
-        for v in visits:
-            row.append(cell_lookup.get((v["id"], a["id"]), ""))
+        for inst in instances:
+            row.append(cell_lookup.get((inst["id"], a["id"]), ""))
         rows.append(row)
-    return visit_headers, rows
+    return instance_headers, rows
 
 
 # API endpoint for creating new Study/SOA
@@ -2442,11 +2447,91 @@ def set_cell(soa_id: int, payload: CellCreate):
 # API endpoint fr returning a matrix for a Study/SOA
 @app.get("/soa/{soa_id}/matrix")
 def get_matrix(soa_id: int):
-    """Return SoA Matrix for Visits, Activities and assigned Matrix Cells."""
+    """Return SoA Matrix for Schedule Activity Instances, Activities and assigned Matrix Cells."""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    visits, activities, cells = _fetch_matrix(soa_id)
-    return {"visits": visits, "activities": activities, "cells": cells}
+
+    instances, activities, cells = _fetch_matrix(soa_id)
+    return {"instances": instances, "activities": activities, "cells": cells}
+
+
+@app.post("/soa/{soa_id}/cells_instance")
+def set_cell_instance(soa_id: int, payload: dict):
+    """Set matrix cell by instance_id instead of visit_id. Body: {instance_id, activity_id, status}"""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    instance_id = int(payload.get("instance_id") or 0)
+    activity_id = int(payload.get("activity_id") or 0)
+    status = str(payload.get("status") or "").strip()
+    if not instance_id or not activity_id:
+        raise HTTPException(400, "instance_id and activity_id required")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (soa_id, instance_id, activity_id),
+    )
+    row = cur.fetchone()
+    if status == "":
+        if row:
+            cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[0],))
+            cid = row[0]
+            conn.commit()
+            conn.close()
+            return {"cell_id": cid, "status": "", "deleted": True}
+        conn.close()
+        return {"cell_id": None, "status": "", "deleted": False}
+    if row:
+        cur.execute("UPDATE matrix_cells SET status=? WHERE id=?", (status, row[0]))
+        cid = row[0]
+    else:
+        cur.execute(
+            "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, status) VALUES (?,?,?,?)",
+            (soa_id, instance_id, activity_id, status),
+        )
+        cid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return {"cell_id": cid, "status": status}
+
+
+@app.post("/ui/soa/{soa_id}/toggle_cell_instance", response_class=HTMLResponse)
+def ui_toggle_cell_instance(
+    request: Request,
+    soa_id: int,
+    instance_id: int = Form(...),
+    activity_id: int = Form(...),
+):
+    """Toggle assignment by instance_id."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT status,id FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (soa_id, instance_id, activity_id),
+    )
+    row = cur.fetchone()
+    if row and row[0] == "X":
+        cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
+        conn.commit()
+        conn.close()
+        current = ""
+    elif row:
+        cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
+        conn.commit()
+        conn.close()
+        current = ""
+    else:
+        cur.execute(
+            "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, status) VALUES (?,?,?,?)",
+            (soa_id, instance_id, activity_id, "X"),
+        )
+        conn.commit()
+        conn.close()
+        current = "X"
+    cell_html = f'<td hx-post="/ui/soa/{soa_id}/toggle_cell_instance" hx-vals=\'{{"instance_id": {instance_id}, "activity_id": {activity_id}}}\' hx-swap="outerHTML" class="cell">{current}</td>'
+    return HTMLResponse(cell_html)
 
 
 # API endpoint for exporting the Matrix as XLSX
@@ -2919,70 +3004,101 @@ def import_matrix(soa_id: int, payload: MatrixImport):
     """Import SoA Matrix."""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    if not payload.visits:
-        raise HTTPException(400, "visits list empty")
+    if not payload.instances:
+        raise HTTPException(400, "instances list empty")
     if not payload.activities:
         raise HTTPException(400, "activities list empty")
-    visit_count = len(payload.visits)
-    # Validate statuses length for each activity
+    instance_count = len(payload.instances)
     for act in payload.activities:
-        if len(act.statuses) != visit_count:
+        if len(act.statuses) != instance_count:
             raise HTTPException(
                 400,
-                f"Activity '{act.name}' statuses length {len(act.statuses)} != visits length {visit_count}",
+                f"Activity '{act.name}' statuses length {len(act.statuses)} != instances length {instance_count}",
             )
     conn = _connect()
     cur = conn.cursor()
     if payload.reset:
         cur.execute("DELETE FROM matrix_cells WHERE soa_id=?", (soa_id,))
-        cur.execute("DELETE FROM visit WHERE soa_id=?", (soa_id,))
+        cur.execute("DELETE FROM instances WHERE soa_id=?", (soa_id,))
         cur.execute("DELETE FROM activity WHERE soa_id=?", (soa_id,))
-    # Insert visits respecting order
-    cur.execute("SELECT COUNT(*) FROM visit WHERE soa_id=?", (soa_id,))
-    vstart = cur.fetchone()[0]
-    v_index = vstart
-    visit_id_map = []
-    for v in payload.visits:
-        v_index += 1
+
+    # Insert instances
+    cur.execute("PRAGMA table_info(instances)")
+    inst_cols = {row[1] for row in cur.fetchall()}
+    has_label = "label" in inst_cols
+    has_instance_uid = "instance_uid" in inst_cols
+    next_instance_seq = 1
+    if has_instance_uid:
         cur.execute(
-            "INSERT INTO visit (soa_id,name,label,order_index) VALUES (?,?,?,?)",
-            (soa_id, v.name, v.label or v.name, v_index),
+            "SELECT COALESCE(MAX(CAST(substr(instance_uid, instr(instance_uid, '_') + 1) AS INTEGER)), 0) "
+            "FROM instances WHERE soa_id=?",
+            (soa_id,),
         )
-        visit_id_map.append(cur.lastrowid)
-    # Insert activities
-    cur.execute("SELECT COUNT(*) FROM activity WHERE soa_id=?", (soa_id,))
-    astart = cur.fetchone()[0]
-    a_index = astart
-    activity_id_map = []
-    for a in payload.activities:
-        a_index += 1
+        next_instance_seq = (cur.fetchone() or [0])[0] + 1
+    ordered_instance_ids: List[int] = []
+    for inst in payload.instances:
+        cols = ["soa_id", "name"]
+        vals: List[Any] = [soa_id, inst.name.strip()]
+        if has_label:
+            cols.append("label")
+            vals.append((inst.label or inst.name).strip())
+        if has_instance_uid:
+            cols.append("instance_uid")
+            vals.append(f"ScheduledActivityInstance_{soa_id}_{next_instance_seq}")
+            next_instance_seq += 1
         cur.execute(
-            "INSERT INTO activity (soa_id,name,order_index,activity_uid) VALUES (?,?,?,?)",
-            (soa_id, a.name, a_index, f"Activity_{a_index}"),
+            f"INSERT INTO instances ({','.join(cols)}) VALUES ({','.join(['?'] * len(vals))})",
+            vals,
+        )
+        ordered_instance_ids.append(cur.lastrowid)
+
+    # Insert activities
+    cur.execute("PRAGMA table_info(activity)")
+    act_cols = {row[1] for row in cur.fetchall()}
+    has_order_index = "order_index" in act_cols
+    has_activity_uid = "activity_uid" in act_cols
+    cur.execute(
+        "SELECT COALESCE(MAX(order_index), 0) FROM activity WHERE soa_id=?", (soa_id,)
+    )
+    next_order = (cur.fetchone() or [0])[0] + 1
+    activity_id_map: List[int] = []
+
+    for a in payload.activities:
+        cols = ["soa_id", "name"]
+        vals = [soa_id, a.name.strip()]
+        if has_order_index:
+            cols.append("order_index")
+            vals.append(next_order)
+            next_order += 1
+        if has_activity_uid:
+            cols.append("activity_uid")
+            vals.append(f"Activity_{soa_id}_{next_order}")
+        cur.execute(
+            f"INSERT INTO activity ({','.join(cols)}) VALUES ({','.join(['?'] * len(vals))})",
+            vals,
         )
         activity_id_map.append(cur.lastrowid)
+
     # Insert cells
+    cells_inserted = 0
     for a_idx, a in enumerate(payload.activities):
         aid = activity_id_map[a_idx]
-        for v_idx, status in enumerate(a.statuses):
-            if status is None:
-                status = ""
-            status_str = str(status).strip()
-            if status_str == "":
+        for inst_idx, status in enumerate(a.statuses):
+            status_str = (status or "").strip()
+            if not status_str:
                 continue
-            vid = visit_id_map[v_idx]
             cur.execute(
-                "INSERT INTO matrix_cells (soa_id, visit_id, activity_id, status) VALUES (?,?,?,?)",
-                (soa_id, vid, aid, status_str),
+                "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, status) VALUES (?,?,?,?)",
+                (soa_id, ordered_instance_ids[inst_idx], aid, status_str),
             )
+            cells_inserted += 1
+
     conn.commit()
     conn.close()
     return {
-        "visits_added": len(payload.visits),
+        "instances_added": len(ordered_instance_ids),
         "activities_added": len(payload.activities),
-        "cells_inserted": sum(
-            1 for a in payload.activities for s in a.statuses if str(s).strip() != ""
-        ),
+        "cells_inserted": cells_inserted,
     }
 
 
@@ -3293,7 +3409,7 @@ def ui_edit(request: Request, soa_id: int):
     """Render edit HTML page for an SoA."""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    visits, activities, cells = _fetch_matrix(soa_id)
+    instances, activities, cells = _fetch_matrix(soa_id)
     # Epochs list
     conn_ep = _connect()
     cur_ep = conn_ep.cursor()
@@ -3338,7 +3454,7 @@ def ui_edit(request: Request, soa_id: int):
     # No pagination: use all activities
     activities_page = activities
     # Build cell lookup
-    cell_map = {(c["visit_id"], c["activity_id"]): c["status"] for c in cells}
+    cell_map = {(c["instance_id"], c["activity_id"]): c["status"] for c in cells}
     concepts = fetch_biomedical_concepts()
     activity_ids = [a["id"] for a in activities_page]
     activity_concepts = {}
@@ -3489,95 +3605,6 @@ def ui_edit(request: Request, soa_id: int):
                 "data_origin_type_display": data_origin_type_display,
             }
         )
-
-    # Admin audit view: recent activity audits for this SOA
-    """
-    conn_activity_audit = _connect()
-    cur_activity_audit = conn_activity_audit.cursor()
-    cur_activity_audit.execute(
-        "SELECT id, activity_id, action, before_json, after_json, performed_at FROM activity_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
-        (soa_id,),
-    )
-    activity_audits = [
-        {
-            "id": r[0],
-            "activity_id": r[1],
-            "action": r[2],
-            "before_json": r[3],
-            "after_json": r[4],
-            "performed_at": r[5],
-        }
-        for r in cur_activity_audit.fetchall()
-    ]
-    conn_activity_audit.close()
-    """
-
-    # Admin audit view: recent arm audits for this SOA
-    """
-    conn_arm_audit = _connect()
-    cur_arm_audit = conn_arm_audit.cursor()
-    cur_arm_audit.execute(
-        "SELECT id, arm_id, action, before_json, after_json, performed_at FROM arm_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
-        (soa_id,),
-    )
-    arm_audits = [
-        {
-            "id": r[0],
-            "arm_id": r[1],
-            "action": r[2],
-            "before_json": r[3],
-            "after_json": r[4],
-            "performed_at": r[5],
-        }
-        for r in cur_arm_audit.fetchall()
-    ]
-    conn_arm_audit.close()
-    """
-
-    # Admin audit view: recent epoch audits for this SoA
-    """
-    conn_epoch_audit = _connect()
-    cur_epoch_audit = conn_epoch_audit.cursor()
-    cur_epoch_audit.execute(
-        "SELECT id, epoch_id, action, before_json, after_json, performed_at FROM epoch_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
-        (soa_id,),
-    )
-    epoch_audits = [
-        {
-            "id": r[0],
-            "epoch_id": r[1],
-            "action": r[2],
-            "before_json": r[3],
-            "after_json": r[4],
-            "performed_at": r[5],
-        }
-        for r in cur_epoch_audit.fetchall()
-    ]
-    conn_epoch_audit.close()
-    """
-
-    # Admin audit view: recent study cell audits for this SoA -> moved to audits.py, audits.html
-    """
-    conn_sc_audit = _connect()
-    cur_sc_audit = conn_sc_audit.cursor()
-    cur_sc_audit.execute(
-        "SELECT id, study_cell_id, action, before_json, after_json, performed_at FROM study_cell_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20",
-        (soa_id,),
-    )
-    study_cell_audits = [
-        {
-            "id": r[0],
-            "study_cell_id": r[1],
-            "action": r[2],
-            "before_json": r[3],
-            "after_json": r[4],
-            "performed_at": r[5],
-        }
-        for r in cur_sc_audit.fetchall()
-    ]
-    conn_sc_audit.close()
-    """
-
     # Enrich epochs using API-only map: code -> submissionValue
     # Resolve stored epoch.type (code_uid) to terminology code via code table, then map to submissionValue.
     code_map: dict[int, str] = {}
@@ -3614,6 +3641,7 @@ def ui_edit(request: Request, soa_id: int):
         ", ".join(epoch_type_options) if epoch_type_options else "<none>",
     )
     # Additional diagnostics
+    """
     try:
         from . import utils as _u
 
@@ -3625,7 +3653,7 @@ def ui_edit(request: Request, soa_id: int):
         )
     except Exception:
         pass
-
+        """
     study_cells = _list_study_cells(soa_id)
 
     # Transition Rules list
@@ -3659,13 +3687,29 @@ def ui_edit(request: Request, soa_id: int):
     timings = [{"id": r[0], "name": r[1]} for r in cur_tm.fetchall()]
     conn_tm.close()
 
+    # Load instances
+    conn_inst = _connect()
+    cur_inst = conn_inst.cursor()
+    cur_inst.execute(
+        """
+        SELECT id,name,instance_uid,member_of_timeline FROM instances WHERE soa_id=?
+        ORDER BY member_of_timeline,length(instance_uid),instance_uid
+        """,
+        (soa_id,),
+    )
+    instances = [
+        {"id": r[0], "name": r[1], "instance_uid": r[2], "member_of_timeline": r[3]}
+        for r in cur_inst.fetchall()
+    ]
+    cur_inst.close()
+
     return templates.TemplateResponse(
         request,
         "edit.html",
         {
             "soa_id": soa_id,
             "epochs": epochs,
-            "visits": visits,
+            "instances": instances,
             "activities": activities_page,
             "elements": elements,
             "arms": arms_enriched,
@@ -3682,11 +3726,6 @@ def ui_edit(request: Request, soa_id: int):
             **study_meta,
             "protocol_terminology_C174222": protocol_terminology_C174222,
             "ddf_terminology_C188727": ddf_terminology_C188727,
-            # "arm_audits": arm_audits,
-            # "epoch_audits": epoch_audits,
-            # "activity_audits": activity_audits,
-            # "study_cell_audits": study_cell_audits,
-            # "element_audits": element_audits,
             # Epoch Type options (C99079)
             "epoch_type_options": epoch_type_options,
             # Study Cells
@@ -5842,45 +5881,69 @@ def ui_set_cell(
 def ui_toggle_cell(
     request: Request,
     soa_id: int,
-    visit_id: int = Form(...),
     activity_id: int = Form(...),
+    visit_id: Optional[int] = Form(None),
+    instance_id: Optional[int] = Form(None),
 ):
-    """Toggle logic: blank -> X, X -> blank (delete row). Returns updated <td> snippet with next action encoded.
-    This avoids stale hx-vals attributes after a partial swap."""
+    """Toggle"""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     # Determine current status
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT status,id FROM matrix_cells WHERE soa_id=? AND visit_id=? AND activity_id=?",
-        (soa_id, visit_id, activity_id),
-    )
-    row = cur.fetchone()
-    if row and row[0] == "X":
-        # clear
-        cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
-        conn.commit()
-        conn.close()
-        current = ""
-    elif row:
-        # Any non-blank treated as blank visually, remove
-        cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
-        conn.commit()
-        conn.close()
-        current = ""
-    else:
-        # create X
+    if instance_id:
+        # Instance-based toggle
         cur.execute(
-            "INSERT INTO matrix_cells (soa_id, visit_id, activity_id, status) VALUES (?,?,?,?)",
-            (soa_id, visit_id, activity_id, "X"),
+            "SELECT status,id FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
+            (soa_id, int(instance_id), activity_id),
         )
-        conn.commit()
-        conn.close()
-        current = "X"
-    # Next status (for hx-vals) depends on current
-    # next_status = "X" if current == "" else ""
-    cell_html = f'<td hx-post="/ui/soa/{soa_id}/toggle_cell" hx-vals=\'{{"visit_id": {visit_id}, "activity_id": {activity_id}}}\' hx-swap="outerHTML" class="cell">{current}</td>'
+        row = cur.fetchone()
+        if row:
+            cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
+            conn.commit()
+            conn.close()
+            current = ""
+        else:
+            cur.execute(
+                "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, status) VALUES (?,?,?,?)",
+                (soa_id, int(instance_id), activity_id, "X"),
+            )
+            conn.commit()
+            conn.close()
+            current = "X"
+        cell_html = (
+            f'<td hx-post="/ui/soa/{soa_id}/toggle_cell" '
+            f'hx-vals=\'{{"instance_id": {int(instance_id)}, "activity_id": {activity_id}}}\' '
+            f'hx-swap="outerHTML" class="cell">{current}</td>'
+        )
+    else:
+        # Legacy visit-based toggle
+        if visit_id is None:
+            conn.close()
+            raise HTTPException(400, "visit_id or instance_id required")
+        cur.execute(
+            "SELECT status,id FROM matrix_cells WHERE soa_id=? AND visit_id=? AND activity_id=?",
+            (soa_id, int(visit_id), activity_id),
+        )
+        row = cur.fetchone()
+        if row:
+            cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
+            conn.commit()
+            conn.close()
+            current = ""
+        else:
+            cur.execute(
+                "INSERT INTO matrix_cells (soa_id, visit_id, activity_id, status) VALUES (?,?,?,?)",
+                (soa_id, int(visit_id), activity_id, "X"),
+            )
+            conn.commit()
+            conn.close()
+            current = "X"
+        cell_html = (
+            f'<td hx-post="/ui/soa/{soa_id}/toggle_cell" '
+            f'hx-vals=\'{{"visit_id": {int(visit_id)}, "activity_id": {activity_id}}}\' '
+            f'hx-swap="outerHTML" class="cell">{current}</td>'
+        )
     return HTMLResponse(cell_html)
 
 

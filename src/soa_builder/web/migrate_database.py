@@ -963,3 +963,19 @@ def _migrate_instances_add_member_of_timeline():
         conn.close()
     except Exception as e:
         logger.warning("instances member_of_timeline migration failed: %s", e)
+
+
+def _migrate_matrix_cells_add_instance_id():
+    """Add instance_id column to matrix_cells if missing (idempotent)"""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(matrix_cells)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "instance_id" not in cols:
+            cur.execute("ALTER TABLE matrix_cells ADD COLUMN instance_id INTEGER")
+            conn.commit()
+            logger.info("Added instance_id column to matrix_cells")
+        conn.close()
+    except Exception as e:
+        logger.warning("matrix_cells insatnce_id migration failed: %s", e)

@@ -453,29 +453,29 @@
   <tr>
     <th>Activity</th>
     <th>Concepts</th>
-    {% for v in visits %}
-      <th style="min-width:70px;" data-visit-id="{{ v.id }}">
-        <div>{{ v.name }}</div>
-        <div style="font-size:0.65em;color:#555;line-height:1.1;">Encounter: {{ v.name }}</div>
-        {% if v.epoch_id %}
-          {% set ep = (epochs | selectattr('id','equalto', v.epoch_id) | list) %}
-          {% if ep and ep[0] %}<div style="font-size:0.6em;color:#2e7d32;line-height:1.1;">Epoch: {{ ep[0].name }}</div>{% endif %}
-        {% endif %}
-      </th>
+    {% for inst in instances %}
+    <th style="min-width: 70px;" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
+      <div>{{ inst.name }}</div>
+      <div style="font-size:0.65em;color:#555;line-height:1.1;">Timeline: {{ inst.member_of_timeline or '' }}></div>
+    </th>
     {% endfor %}
   </tr>
   {% for a in activities %}
   <tr data-activity-id="{{ a.id }}">
     <td>{{ a.name }}</td>
-  {% set concepts_list = activity_concepts.get(a.id, []) %}
-  {% set selected_list = concepts_list %}
-  {% set selected_codes = concepts_list | map(attribute='code') | list %}
-  {% set activity_id = a.id %}
-  {% include 'concepts_cell.html' %}
-    {% for v in visits %}
-      {% set raw_status = cell_map.get((v.id, a.id), '') %}
+    {% set concepts_list = activity_concepts.get(a.id, []) %}
+    {% set selected_list = concepts_list %}
+    {% set selected_codes = concepts_list | map(attribute='code') | list %}
+    {% set activity_id = a.id %}
+    {% include 'concepts_cell.html' %}
+    {% for inst in instances %}
+      {% set raw_status = cell_map.get((inst.id, a.id), '') %}
       {% set display = 'X' if raw_status == 'X' else '' %}
-      <td data-visit-id="{{ v.id }}" hx-post="/ui/soa/{{ soa_id }}/toggle_cell" hx-vals='{"visit_id": {{ v.id }}, "activity_id": {{ a.id }} }' hx-swap="outerHTML" class="cell">{{ display }}</td>
+      <td data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}" 
+      hx-post="/ui/soa/{{ soa_id }}/toggle_cell" 
+      hx-vals='{"instance_id": {{ inst.id }}, "activity_id": {{ a.id }} }' 
+      hx-swap="outerHTML" class="cell">{{ display }}
+      </td>
     {% endfor %}
   </tr>
   {% endfor %}
