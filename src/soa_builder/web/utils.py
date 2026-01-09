@@ -384,6 +384,19 @@ def get_epoch_uid(soa_id: int) -> Dict[str, str]:
     return {str(name): str(epoch_uid) for (name, epoch_uid) in rows if name is not None}
 
 
+def get_epoch_id(soa_id: int) -> Dict[str, str]:
+    """Return dictionary of {id: name} from epoch table"""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name FROM epoch WHERE soa_id=? ORDER BY id,name",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {int(id): str(name) for (id, name) in rows if id is not None}
+
+
 def get_sdtm_submission_values(url: str, codelist_code: str) -> Dict[str, str]:
     """Return a mapping of {conceptId: submissionValue} from the CDISC Library
     for the given codelist_code. `url` should be the codelists base endpoint.
@@ -486,3 +499,16 @@ def get_study_transition_rules(soa_id: int) -> Dict[str, str]:
         for (name, transition_rule_uid) in rows
         if name is not None
     }
+
+
+def get_timing_id(soa_id: int) -> Dict[str, str]:
+    """Return a dictionary of {id: name} from timing table"""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name from timing WHERE soa_id=? ORDER BY id,name",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {int(id): str(name) for (id, name) in rows if id is not None}

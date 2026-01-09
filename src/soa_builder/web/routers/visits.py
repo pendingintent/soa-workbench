@@ -11,6 +11,8 @@ from ..utils import (
     soa_exists,
     get_next_code_uid as _get_next_code_uid,
     get_study_transition_rules,
+    get_epoch_id,
+    get_timing_id,
 )
 from ..schemas import VisitCreate, VisitUpdate
 from fastapi.templating import Jinja2Templates
@@ -71,6 +73,8 @@ def ui_list_visits(request: Request, soa_id: int):
 
     encounters = list_visits(soa_id)
     transition_rule_options = get_study_transition_rules(soa_id)
+    epoch_options = get_epoch_id(soa_id)
+    timing_options = get_timing_id(soa_id)
 
     return templates.TemplateResponse(
         request,
@@ -80,6 +84,8 @@ def ui_list_visits(request: Request, soa_id: int):
             "soa_id": soa_id,
             "encounters": encounters,
             "transition_rule_options": transition_rule_options,
+            "epoch_options": epoch_options,
+            "timing_options": timing_options,
         },
     )
 
@@ -420,6 +426,7 @@ def ui_update_visit(
     name: Optional[str] = Form(None),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
+    epoch_id: Optional[int] = Form(None),
     transitionStartRule: Optional[str] = Form(None),
     transitionEndRule: Optional[str] = Form(None),
     scheduledAtId: Optional[str] = Form(None),
@@ -428,6 +435,7 @@ def ui_update_visit(
         name=name,
         label=label,
         description=description,
+        epoch_id=epoch_id,
         transitionStartRule=transitionStartRule,
         transitionEndRule=transitionEndRule,
         scheduledAtId=scheduledAtId,

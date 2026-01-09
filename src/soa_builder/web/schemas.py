@@ -129,6 +129,7 @@ class VisitCreate(BaseModel):
     epoch_id: Optional[int] = None
     description: Optional[str] = None
     type: Optional[str] = None
+    epoch_id: Optional[int] = None
     transitionStartRule: Optional[str] = None
     transitionEndRule: Optional[str] = None
     scheduledAtId: Optional[str] = None
@@ -141,6 +142,7 @@ class VisitUpdate(BaseModel):
     epoch_id: Optional[int] = None
     description: Optional[str] = None
     type: Optional[str] = None
+    epoch_id: Optional[int] = None
     transitionStartRule: Optional[str] = None
     transitionEndRule: Optional[str] = None
     scheduledAtId: Optional[str] = None

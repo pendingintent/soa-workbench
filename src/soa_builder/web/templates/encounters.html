@@ -44,8 +44,22 @@
         <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
         <td style="padding:4px;"><input name="label" value="{{ e.label or '' }}" placeholder="Label" /></td>
         <td style="padding:4px;"><input name="description" value="{{ e.description or '' }}" placeholder="Description" /></td>
-        <td style="padding:4px;">{{ e.epoch_id }}</td>
-        <td style="padding:4px;">{{ e.scheduledAtId }}</td>
+        <td style="padding:4px;">
+            <select name="epoch_id">
+                <option value="">-- Select Epoch --</option>
+                {% for id,name in (epoch_options or {}).items() %}
+                    <option value="{{ id }}" {% if (e.epoch_id or '') == id %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td style="padding:4px;">
+            <select name="scheduledAtId">
+                <option value="">-- Select a Study Timing --</option>
+                {% for id,name in (timing_options or {}).items() %}
+                    <option value="{{ id }}" {% if (e.scheduledAtId | string  or '') == id | string %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </td>
         <td style="padding:4px;">{{ e.type }}</td>
         <td style="padding:4px;">{{ e.environmentalSettings }}</td>
         <td style="padding:4px;">
