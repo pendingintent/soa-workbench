@@ -85,8 +85,6 @@ from .schemas import (
     ArmCreate,
     SOACreate,
     SOAMetadataUpdate,
-    VisitCreate,
-    VisitUpdate,
     ConceptsUpdate,
     ElementCreate,
     ElementUpdate,
@@ -3676,25 +3674,6 @@ def ui_edit(request: Request, soa_id: int):
 
     # Epoch Type options (C99079) must come from CDISC API only
     epoch_type_options = load_epoch_type_options(force=False) or []
-    logger.info(
-        "Epoch Type options (API only) count=%d values=%s",
-        len(epoch_type_options),
-        ", ".join(epoch_type_options) if epoch_type_options else "<none>",
-    )
-    # Additional diagnostics
-    """
-    try:
-        from . import utils as _u
-
-        logger.info(
-            "Epoch Type diagnostics last_status=%s last_url=%s last_error=%s",
-            _u._epoch_type_cache.get("last_status"),
-            _u._epoch_type_cache.get("last_url"),
-            _u._epoch_type_cache.get("last_error"),
-        )
-    except Exception:
-        pass
-        """
     study_cells = _list_study_cells(soa_id)
 
     # Transition Rules list
@@ -4057,6 +4036,7 @@ def ui_concept_detail(code: str, request: Request):
     )
 
 
+"""
 # UI endpoint for creating an Encounter/Visit
 @app.post("/ui/soa/{soa_id}/add_visit", response_class=HTMLResponse)
 def ui_add_visit(
@@ -4095,6 +4075,7 @@ def ui_add_visit(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+    """
 
 
 # UI endpoint for adding a new Arm
@@ -5999,6 +5980,7 @@ def ui_toggle_cell(
     return HTMLResponse(cell_html)
 
 
+"""
 # UI code to delete an Encounter/Visit from an SOA
 @app.post("/ui/soa/{soa_id}/delete_visit", response_class=HTMLResponse)
 def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
@@ -6017,6 +5999,7 @@ def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+"""
 
 
 # UI endpoint for associating an Epoch with a Visit/Encounter
@@ -6330,7 +6313,7 @@ def ui_set_timing(
         (parsed_timing, visit_id),
     )
     conn.commit()
-    # Fecth after record audit
+    # Fetch after record audit
     cur.execute(
         "SELECT id,name,label,order_index,encounter_uid,description,scheduledAtId FROM visit WHERE id=? AND soa_id=?",
         (visit_id, soa_id),
@@ -6363,6 +6346,7 @@ def ui_set_timing(
     )
 
 
+'''
 # UI endpoint for updating an Encounter/Visit
 @app.post("/ui/soa/{soa_id}/update_visit", response_class=HTMLResponse)
 def ui_update_visit(
@@ -6388,6 +6372,7 @@ def ui_update_visit(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+'''
 
 
 # UI endpoint for deleting an Activity

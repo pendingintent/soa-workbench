@@ -1,16 +1,25 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Form
+import os
 import logging
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 
 from ..audit import _record_reorder_audit, _record_visit_audit
 from ..db import _connect
-from ..utils import soa_exists, get_next_code_uid as _get_next_code_uid
+from ..utils import (
+    soa_exists,
+    get_next_code_uid as _get_next_code_uid,
+    get_study_transition_rules,
+)
 from ..schemas import VisitCreate, VisitUpdate
+from fastapi.templating import Jinja2Templates
 
-router = APIRouter(prefix="/soa/{soa_id}")
-logger = logging.getLogger("soa_builder.web.routers.visits")
+router = APIRouter()
+logger = logging.getLogger("soa_builder.web.routers.encounters")
+templates = Jinja2Templates(
+    directory=os.path.join(os.path.dirname(__file__), "..", "templates")
+)
 
 
 def _nz(s: Optional[str]) -> Optional[str]:
@@ -19,34 +28,64 @@ def _nz(s: Optional[str]) -> Optional[str]:
 
 
 # API endpoint to list encounters for an SOA
-@router.get("/visits", response_class=JSONResponse)
+@router.get("/soa/{soa_id}/visits", response_class=JSONResponse, response_model=None)
 def list_visits(soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,name,label,order_index,epoch_id,encounter_uid,description FROM visit WHERE soa_id=? ORDER BY order_index",
+        """
+        SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
+        transitionEndRule,epoch_id,scheduledAtId,order_index FROM visit WHERE soa_id=? ORDER BY order_index, id
+        """,
         (soa_id,),
     )
     rows = [
         {
             "id": r[0],
-            "name": r[1],
-            "label": r[2],
-            "order_index": r[3],
-            "epoch_id": r[4],
-            "encounter_uid": r[5],
-            "description": r[6],
+            "encounter_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "description": r[4],
+            "type": r[5],
+            "environmentalSettings": r[6],
+            "transitionStartRule": r[7],
+            "transitionEndRule": r[8],
+            "epoch_id": r[9],
+            "scheduledAtId": r[10],
+            "order_index": r[11],
         }
         for r in cur.fetchall()
     ]
     conn.close()
-    return JSONResponse(rows)
+    return rows
 
 
-# API endpoint to return a visit
-@router.get("/visits/{visit_id}", response_class=JSONResponse)
+# UI code to list encounters in an SOA
+@router.get("/ui/soa/{soa_id}/visits", response_class=HTMLResponse)
+def ui_list_visits(request: Request, soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    encounters = list_visits(soa_id)
+    transition_rule_options = get_study_transition_rules(soa_id)
+
+    return templates.TemplateResponse(
+        request,
+        "encounters.html",
+        {
+            "request": request,
+            "soa_id": soa_id,
+            "encounters": encounters,
+            "transition_rule_options": transition_rule_options,
+        },
+    )
+
+
+# API endpoint to return a visit <- Deprecated
+@router.get("/soa/visits/{visit_id}", response_class=JSONResponse)
 def get_visit(soa_id: int, visit_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -72,8 +111,13 @@ def get_visit(soa_id: int, visit_id: int):
     }
 
 
-# API endpoint to add a visit
-@router.post("/visits", response_class=JSONResponse)
+# API endpoint to create an encounter
+@router.post(
+    "/soa/{soa_id}/visits",
+    response_class=JSONResponse,
+    status_code=201,
+    response_model=None,
+)
 def add_visit(soa_id: int, payload: VisitCreate):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -121,15 +165,15 @@ def add_visit(soa_id: int, payload: VisitCreate):
             raise HTTPException(400, "Invalid epoch_id for this SOA")
 
     # Generate Code_{N} for encounter.type
-    type_uid = _get_next_code_uid(cur, soa_id)
-    logger.info("type_uid=%s", type_uid)
+    type = _get_next_code_uid(cur, soa_id)
+    logger.info("type=%s", type)
 
-    if type_uid:
+    if type:
         cur.execute(
             "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
             (
                 soa_id,
-                type_uid,
+                type,
                 "ddf_terminology",
                 "C188728",
                 "C25716",
@@ -137,15 +181,15 @@ def add_visit(soa_id: int, payload: VisitCreate):
         )
 
     # Generate Code_{N} for environmentalSettings.type
-    es_uid = _get_next_code_uid(cur, soa_id)
-    logger.info("es_uid=%s", es_uid)
+    environmentalSettings = _get_next_code_uid(cur, soa_id)
+    logger.info("environmentalSettings=%s", environmentalSettings)
 
-    if es_uid:
+    if environmentalSettings:
         cur.execute(
             "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
             (
                 soa_id,
-                es_uid,
+                environmentalSettings,
                 "http://www.cdisc.org",
                 "C127262",
                 "C51282",
@@ -153,7 +197,11 @@ def add_visit(soa_id: int, payload: VisitCreate):
         )
 
     cur.execute(
-        "INSERT INTO visit (soa_id,name,label,order_index,epoch_id,encounter_uid,description,type,environmentalSettings) VALUES (?,?,?,?,?,?,?,?,?)",
+        """
+        INSERT INTO visit (soa_id,name,label,order_index,epoch_id,encounter_uid,
+        description,type,environmentalSettings,transitionStartRule,transitionEndRule,scheduledAtId)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        """,
         (
             soa_id,
             name,
@@ -162,8 +210,11 @@ def add_visit(soa_id: int, payload: VisitCreate):
             payload.epoch_id,
             new_uid,
             _nz(payload.description),
-            type_uid,
-            es_uid,
+            type,
+            environmentalSettings,
+            _nz(payload.transitionStartRule),
+            _nz(payload.transitionEndRule),
+            _nz(payload.scheduledAtId),
         ),
     )
     encounter_id = cur.lastrowid
@@ -173,37 +224,91 @@ def add_visit(soa_id: int, payload: VisitCreate):
         "id": encounter_id,
         "name": payload.name,
         "label": (payload.label or "").strip() or None,
-        "epoch_id": payload.epoch_id,
         "description": (payload.description or "").strip() or None,
+        "type": (payload.type or "").strip() or None,
+        "environmental_settings": (payload.environmentalSettings or "").strip() or None,
+        "transitionStartRule": (payload.transitionStartRule or "").strip() or None,
+        "transitionEndRule": (payload.transitionEndRule or "").strip() or None,
+        "scheduledAtId": (payload.scheduledAtId or "").strip() or None,
     }
     _record_visit_audit(soa_id, "create", encounter_id, before=None, after=after)
     # Backwards-compatible field expected in tests
-    return {**after, "visit_id": encounter_id}
+    return after
 
 
-# API endpoint to update a visit
-@router.patch("/visits/{visit_id}", response_class=JSONResponse)
+# UI code to create an encounter for an SOA
+@router.post("/ui/soa/{soa_id}/visits/create")
+def ui_create_visit(
+    request: Request,
+    soa_id: int,
+    name: str = Form(...),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    epoch_id: Optional[str] = Form(None),
+    transitionStartRule: Optional[str] = Form(None),
+    transitionEndRule: Optional[str] = Form(None),
+    scheduledAtId: Optional[str] = Form(None),
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    # Coerce empty epoch_id from form to None, otherwise to int
+    parsed_epoch_id: Optional[int] = None
+    if epoch_id is not None:
+        eid = str(epoch_id).strip()
+        if eid:
+            try:
+                parsed_epoch_id = int(eid)
+            except ValueError:
+                parsed_epoch_id = None
+
+    payload = VisitCreate(
+        name=name,
+        label=label,
+        description=description,
+        epoch_id=parsed_epoch_id,
+        transitionStartRule=transitionStartRule,
+        transitionEndRule=transitionEndRule,
+        scheduledAtId=scheduledAtId,
+    )
+
+    add_visit(soa_id, payload)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/visits", status_code=303)
+
+
+# API endpoint to update an encounter
+@router.patch("/soa/{soa_id}/visits/{visit_id}", response_class=JSONResponse)
 def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,name,label,order_index,epoch_id,encounter_uid,description FROM visit WHERE id=? AND soa_id=?",
+        """
+        SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
+        transitionEndRule,epoch_id,scheduledAtId,order_index FROM visit WHERE id=? AND soa_id=? ORDER BY order_index, id
+        """,
         (visit_id, soa_id),
     )
     row = cur.fetchone()
     if not row:
         conn.close()
-        raise HTTPException(404, "Visit not found")
+        raise HTTPException(404, f"Encounter id={int(visit_id)} not found")
+
     before = {
         "id": row[0],
-        "name": row[1],
-        "label": row[2],
-        "order_index": row[3],
-        "epoch_id": row[4],
-        "encounter_uid": row[5],
-        "description": row[6],
+        "encounter_uid": row[1],
+        "name": row[2],
+        "label": row[3],
+        "description": row[4],
+        "type": row[5],
+        "environmentalSettings": row[6],
+        "transitionStartRule": row[7],
+        "transitionEndRule": row[8],
+        "epoch_id": row[9],
+        "scheduledAtId": row[10],
+        "order_index": row[11],
     }
 
     new_name = (payload.name if payload.name is not None else before["name"]) or ""
@@ -216,43 +321,70 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
             raise HTTPException(400, "Invalid epoch_id for this SOA")
 
     new_label = payload.label if payload.label is not None else before["label"]
-    new_epoch_id = (
-        payload.epoch_id if payload.epoch_id is not None else before["epoch_id"]
-    )
     new_description = (
         payload.description
         if payload.description is not None
         else before["description"]
     )
+    new_epoch_id = (
+        payload.epoch_id if payload.epoch_id is not None else before["epoch_id"]
+    )
+    new_transition_start_rule = (
+        payload.transitionStartRule
+        if payload.transitionStartRule is not None
+        else before["transitionStartRule"]
+    )
+    new_transition_end_rule = (
+        payload.transitionEndRule
+        if payload.transitionEndRule is not None
+        else before["transitionEndRule"]
+    )
+    new_scheduled_at_id = (
+        payload.scheduledAtId
+        if payload.scheduledAtId is not None
+        else before["scheduledAtId"]
+    )
 
     cur.execute(
-        "UPDATE visit SET name=?, label=?, epoch_id=?, description=? WHERE id=?",
+        "UPDATE visit SET name=?, label=?, epoch_id=?, description=?,transitionStartRule=?,transitionEndRule=?,scheduledAtId=? WHERE id=? AND soa_id=?",
         (
             _nz(new_name),
             _nz(new_label),
             new_epoch_id,
             _nz(new_description),
+            _nz(new_transition_start_rule),
+            _nz(new_transition_end_rule),
+            _nz(new_scheduled_at_id),
             visit_id,
+            soa_id,
         ),
     )
     conn.commit()
     cur.execute(
-        "SELECT id,name,label,order_index,epoch_id,encounter_uid,description FROM visit WHERE soa_id=? AND id=?",
+        """
+        SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
+        transitionEndRule,epoch_id,scheduledAtId,order_index FROM visit WHERE id=? AND soa_id=? ORDER BY order_index, id
+        """,
         (
-            soa_id,
             visit_id,
+            soa_id,
         ),
     )
     r = cur.fetchone()
     conn.close()
     after = {
         "id": r[0],
-        "name": r[1],
-        "label": r[2],
-        "order_index": r[3],
-        "epoch_id": r[4],
-        "encounter_uid": r[5],
-        "description": r[6],
+        "encounter_uid": r[1],
+        "name": r[2],
+        "label": r[3],
+        "description": r[4],
+        "type": r[5],
+        "environmentalSettings": r[6],
+        "transitionStartRule": r[7],
+        "transitionEndRule": r[8],
+        "epoch_id": r[9],
+        "scheduledAtId": r[10],
+        "order_index": r[11],
     }
 
     mutable = [
@@ -260,6 +392,9 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         "label",
         "epoch_id",
         "description",
+        "transitionStartRule",
+        "transitionEndRule",
+        "scheduledAtId",
     ]
 
     updated_fields = [
@@ -273,13 +408,39 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         before=before,
         after={**after, "updated_fields": updated_fields},
     )
-    return JSONResponse({**after, "updated_fields": updated_fields})
+    return {**after, "updated_fields": updated_fields}
+
+
+# UI code to update an encounter for an SOA
+@router.post("/ui/soa/{soa_id}/visits/{visit_id}/update")
+def ui_update_visit(
+    request: Request,
+    soa_id: int,
+    visit_id: int,
+    name: Optional[str] = Form(None),
+    label: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    transitionStartRule: Optional[str] = Form(None),
+    transitionEndRule: Optional[str] = Form(None),
+    scheduledAtId: Optional[str] = Form(None),
+):
+    payload = VisitUpdate(
+        name=name,
+        label=label,
+        description=description,
+        transitionStartRule=transitionStartRule,
+        transitionEndRule=transitionEndRule,
+        scheduledAtId=scheduledAtId,
+    )
+    update_visit(soa_id, visit_id, payload)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/visits", status_code=303)
 
 
 # API endpoint to delete a visit from an SOA
 @router.delete(
-    "/visits/{visit_id}",
+    "/soa/{soa_id}/visits/{visit_id}",
     response_class=JSONResponse,
+    response_model=None,
 )
 def delete_visit(soa_id: int, visit_id: int):
     if not soa_exists(soa_id):
@@ -319,6 +480,13 @@ def delete_visit(soa_id: int, visit_id: int):
     conn.close()
     _record_visit_audit(soa_id, "delete", visit_id, before, after=None)
     return {"deleted": True, "id": visit_id}
+
+
+# UI code to delete an encounter from an SOA
+@router.post("/ui/soa/{soa_id}/visits/{visit_id}/delete")
+def ui_delete_visit(request: Request, soa_id: int, visit_id: int):
+    delete_visit(soa_id, visit_id)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/visits", status_code=303)
 
 
 # API endpoint to reorder a visit

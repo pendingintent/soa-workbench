@@ -168,6 +168,7 @@ def create_timing(soa_id: int, payload: TimingCreate):
     # Always pick max(existing) + 1, do not fill gaps
     next_n = (max(used_nums) if used_nums else 0) + 1
     new_uid = f"Timing_{next_n}"
+
     cur.execute(
         """INSERT INTO timing (soa_id,timing_uid,name,label,description,type,value,value_label,
         relative_to_from,relative_from_schedule_instance,relative_to_schedule_instance,window_label,

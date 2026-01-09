@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Timings for SoA {{ soa_id }}</h2>
+
+<div style="margin-bottom:12px">
+    <form method="post" action="/ui/soa/{{ soa_id }}/visits/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Name *</strong></label>
+            <input name="name" placeholder="Encounter Name" required />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Label</strong></label>
+            <input name="label" placeholder="Label (optional)" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Description</strong></label>
+            <input name="description" placeholder="Description (optional)" />
+        </div>
+        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Encounter</button>
+    </form>
+</div>
+
+
+
+<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
+  <tr style="background:#eee;">
+    <th style="text-align:left;padding:4px;">UID</th>
+    <th style="text-align:left;padding:4px;">Name</th>
+    <th style="text-align:left;padding:4px;">Label</th>
+    <th style="text-align:left;padding:4px;">Description</th>
+    <th style="text-align:left;padding:4px;">Epoch</th>
+    <th style="text-align:left;padding:4px;">Scheduled at Timing</th>
+    <th style="text-align:left;padding:4px;">Type</th>
+    <th style="text-align:left;padding:4px;">Environmental Setting</th>
+    <th style="text-align:left;padding:4px;">Transition Start Rule</th>
+    <th style="text-align:left;padding:4px;">Transition End Rule</th>
+    <th style="text-align:left;padding:4px;">Save</th>
+    <th style="text-align:left;padding:4px;">Delete</th>
+</tr>
+{% for e in encounters %}
+<tr>
+    <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/update">
+        <td style="padding:4px;white-space:nowrap;"><strong>{{ e.encounter_uid }}</strong></td>
+        <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
+        <td style="padding:4px;"><input name="label" value="{{ e.label or '' }}" placeholder="Label" /></td>
+        <td style="padding:4px;"><input name="description" value="{{ e.description or '' }}" placeholder="Description" /></td>
+        <td style="padding:4px;">{{ e.epoch_id }}</td>
+        <td style="padding:4px;">{{ e.scheduledAtId }}</td>
+        <td style="padding:4px;">{{ e.type }}</td>
+        <td style="padding:4px;">{{ e.environmentalSettings }}</td>
+        <td style="padding:4px;">
+            <select name="transitionStartRule">
+                <option value="">-- Select START Rule --</option>
+                {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+                    <option value="{{ transition_rule_uid }}" {% if (e.transitionStartRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td style="padding:4px;">
+            <select name="transitionEndRule">
+                <option value="">-- Select END Rule --</option>
+                {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+                    <option value="{{ transition_rule_uid }}" {% if (e.transitionEndRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td style="padding:4px;">
+            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+         </td>
+    </form>
+    <td style="padding:4px;">
+        <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/delete">
+            <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+            Delete
+            </button>
+        </form>
+    </td>
+</tr>
+{% else %}
+  <tr><td colspan="12" style="padding:6px;color:#777;">No encounters yet.</td></tr>
+</table> 
+{% endfor %}
+
+
+
+
+
+
+{% endblock %}
