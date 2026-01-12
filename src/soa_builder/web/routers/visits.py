@@ -438,7 +438,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
             )
             cur.execute(
                 "UPDATE visit SET environmentalSettings=? WHERE id=? AND soa_id=?",
-                (env_code_uid, soa_id),
+                (env_code_uid, visit_id, soa_id),
             )
         else:
             cur.execute(

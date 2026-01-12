@@ -978,4 +978,4 @@ def _migrate_matrix_cells_add_instance_id():
             logger.info("Added instance_id column to matrix_cells")
         conn.close()
     except Exception as e:
-        logger.warning("matrix_cells insatnce_id migration failed: %s", e)
+        logger.warning("matrix_cells instance_id migration failed: %s", e)

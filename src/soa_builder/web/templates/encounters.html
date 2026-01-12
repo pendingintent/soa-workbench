@@ -65,7 +65,7 @@
             <select name="transitionEndRule">
                 <option value="">-- Select END Rule --</option>
                 {% for name, transition_rule_uid  in (transition_rule_options or {}).items() %}
-                <option value="{{ transition_rule_uid }}">{{ name }}</option>"
+                <option value="{{ transition_rule_uid }}">{{ name }}</option>
                 {% endfor %}
             </select>
         </div>
