@@ -14,7 +14,8 @@ from ..utils import (
     get_epoch_id,
     get_timing_id,
     get_encounter_type_sv,
-    get_encounter_environment_sv,
+    load_environmental_setting_options,
+    get_latest_sdtm_ct_href,
 )
 from ..schemas import VisitCreate, VisitUpdate
 from fastapi.templating import Jinja2Templates
@@ -67,22 +68,47 @@ def list_visits(soa_id: int):
     return rows
 
 
+def _load_code_value_map(soa_id: int) -> dict[str, str]:
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT code_uid, code FROM code WHERE soa_id=?",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {row[0]: row[1] for row in rows if row[0]}
+
+
 # UI code to list encounters in an SOA
 @router.get("/ui/soa/{soa_id}/visits", response_class=HTMLResponse)
 def ui_list_visits(request: Request, soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
 
+    code_map = _load_code_value_map(soa_id)
+    environmental_setting_options = load_environmental_setting_options()
+    env_option_lookup = {
+        str(opt["conceptId"]).strip(): str(opt["submissionValue"]).strip()
+        for opt in environmental_setting_options
+    }
+
     encounters = list_visits(soa_id)
     for e in encounters:
         tsv = get_encounter_type_sv(soa_id, e.get("type") or "")
-        esv = get_encounter_environment_sv(soa_id, e.get("environmentalSettings") or "")
+
         e["type_submission_value"] = tsv[0] if tsv else None
-        e["environmental_submission_value"] = esv or None
+
+        code_uid = e.get("environmentalSettings") or ""
+        concept_id = code_map.get(code_uid, "") if code_uid else ""
+        e["environmental_concept_id"] = concept_id
+        e["environmental_submission_value"] = env_option_lookup.get(concept_id)
 
     transition_rule_options = get_study_transition_rules(soa_id)
     epoch_options = get_epoch_id(soa_id)
     timing_options = get_timing_id(soa_id)
+
+    logger.info(environmental_setting_options)
 
     return templates.TemplateResponse(
         request,
@@ -94,6 +120,7 @@ def ui_list_visits(request: Request, soa_id: int):
             "transition_rule_options": transition_rule_options,
             "epoch_options": epoch_options,
             "timing_options": timing_options,
+            "environmental_setting_options": environmental_setting_options,
         },
     )
 
@@ -197,6 +224,13 @@ def add_visit(soa_id: int, payload: VisitCreate):
     # Generate Code_{N} for environmentalSettings.type
     environmentalSettings = _get_next_code_uid(cur, soa_id)
     logger.info("environmentalSettings=%s", environmentalSettings)
+    env_code_value = (payload.environmentalSettings or "").strip() or None
+    env_package_slug = get_latest_sdtm_ct_href() or ""
+    env_codelist_table = (
+        f"/mdr/ct/packages/{env_package_slug}"
+        if env_package_slug
+        else "/mdr/ct/packages"
+    )
 
     if environmentalSettings:
         cur.execute(
@@ -204,9 +238,9 @@ def add_visit(soa_id: int, payload: VisitCreate):
             (
                 soa_id,
                 environmentalSettings,
-                "http://www.cdisc.org",
+                env_codelist_table,
                 "C127262",
-                "C51282",
+                env_code_value,
             ),
         )
 
@@ -262,6 +296,7 @@ def ui_create_visit(
     transitionStartRule: Optional[str] = Form(None),
     transitionEndRule: Optional[str] = Form(None),
     scheduledAtId: Optional[str] = Form(None),
+    environmentalSettings: Optional[str] = Form(None),
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -284,6 +319,7 @@ def ui_create_visit(
         transitionStartRule=transitionStartRule,
         transitionEndRule=transitionEndRule,
         scheduledAtId=scheduledAtId,
+        environmentalSettings=environmentalSettings,
     )
 
     add_visit(soa_id, payload)
@@ -358,6 +394,18 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         if payload.scheduledAtId is not None
         else before["scheduledAtId"]
     )
+    new_environmental_value = (
+        (payload.environmentalSettings or "").strip()
+        if payload.environmentalSettings is not None
+        else None
+    )
+    env_code_uid = before["environmentalSettings"]
+    env_package_slug = get_latest_sdtm_ct_href() or ""
+    env_codelist_table = (
+        f"/mdr/ct/packages/{env_package_slug}"
+        if env_package_slug
+        else "/mdr/ct/packages"
+    )
 
     cur.execute(
         "UPDATE visit SET name=?, label=?, epoch_id=?, description=?,transitionStartRule=?,transitionEndRule=?,scheduledAtId=? WHERE id=? AND soa_id=?",
@@ -374,6 +422,48 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         ),
     )
     conn.commit()
+
+    if new_environmental_value is not None:
+        if not env_code_uid:
+            env_code_uid = _get_next_code_uid(cur, soa_id)
+            cur.execute(
+                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                (
+                    soa_id,
+                    env_code_uid,
+                    env_codelist_table,
+                    "C127262",
+                    new_environmental_value,
+                ),
+            )
+            cur.execute(
+                "UPDATE visit SET environmentalSettings=? WHERE id=? AND soa_id=?",
+                (env_code_uid, soa_id),
+            )
+        else:
+            cur.execute(
+                "UPDATE code SET code=? WHERE soa_id=? AND code_uid=?",
+                (new_environmental_value, soa_id, env_code_uid),
+            )
+            if cur.rowcount == 0:
+                env_code_uid = _get_next_code_uid(cur, soa_id)
+                cur.execute(
+                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    (
+                        soa_id,
+                        env_code_uid,
+                        env_codelist_table,
+                        "C127262",
+                        new_environmental_value,
+                    ),
+                )
+                cur.execute(
+                    "UPDATE visit SET environmentalSettings=? WHERE id=? AND soa_id=?",
+                    (env_code_uid, visit_id, soa_id),
+                )
+
+        conn.commit()
+
     cur.execute(
         """
         SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
@@ -438,6 +528,7 @@ def ui_update_visit(
     transitionStartRule: Optional[str] = Form(None),
     transitionEndRule: Optional[str] = Form(None),
     scheduledAtId: Optional[str] = Form(None),
+    environmentalSettings: Optional[str] = Form(None),
 ):
     payload = VisitUpdate(
         name=name,
@@ -447,6 +538,7 @@ def ui_update_visit(
         transitionStartRule=transitionStartRule,
         transitionEndRule=transitionEndRule,
         scheduledAtId=scheduledAtId,
+        environmentalSettings=environmentalSettings,
     )
     update_visit(soa_id, visit_id, payload)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/visits", status_code=303)

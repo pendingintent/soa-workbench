@@ -82,69 +82,7 @@
 </div>
 <div class="flex">
   <div>
-    <details id="visits-section" open class="collapsible">
-      <summary>Visits/Encounters ({{ visits|length }}) <span class="hint">(drag to reorder)</span></summary>
-      <ul id="visits-list" class="drag-list">
-        {% for v in visits %}
-        <li class="drag-item" draggable="true" data-id="{{ v.id }}">
-          <span class="ord">{{ v.order_index }}</span>. <strong>{{ v.name }}</strong>
-          <span class="visit-actions">
-            {% if timings %}
-          <form method="post" action="/ui/soa/{{ soa_id }}/set_timing" style="display:inline;margin-left:6px;">
-            <input type="hidden" name="visit_id" value="{{ v.id }}" />
-            <select name="timing_id" style="font-size:0.65em;" onchange="this.form.submit()">
-              <option value="" {% if not v.scheduledAtId %}selected{% endif %}>-- Select Scheduled at Timing --</option>
-              {% for t in timings %}
-                <option value="{{ t.id }}" {% if (v.scheduledAtId|string) == (t.id|string) %}selected{% endif %}>{{ t.name }}</option>
-              {% endfor %}
-            </select>
-          </form>
-          {% endif %}
-          {% if transition_rules %}
-          <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_transition_start_rule" style="display:inline;margin-left:6px;">
-            <input type="hidden" name="visit_id" value="{{ v.id }}" />
-            <select name="visit_transition_start_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
-              <option value="" {% if not v.transitionStartRule %}selected{% endif %}>-- Select Transition START Rule --</option>
-              {% for tr in transition_rules %}
-              <option value="{{ tr.transition_rule_uid }}" {% if (v.transitionStartRule|string) == (tr.transition_rule_uid|string) %}selected{% endif %}>{{ tr.name }}</option>
-              {% endfor %}
-            </select>
-          </form>
-          <form method="post" action="/ui/soa/{{ soa_id }}/set_visit_transition_end_rule" style="display:inline;margin-left:6px;">
-            <input type="hidden" name="visit_id" value="{{ v.id }}" />
-            <select name="visit_transition_end_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
-              <option value="" {% if not v.transitionEndRule %}selected{% endif %}>-- Select Transition END Rule --</option>
-              {% for tr in transition_rules %}
-              <option value="{{ tr.transition_rule_uid }}" {% if (v.transitionEndRule|string) == (tr.transition_rule_uid|string) %}selected{% endif %}>{{ tr.name }}</option>
-              {% endfor %}
-            </select>
-          </form>
-          {% endif %}
-          
-            <form method="post" action="/ui/soa/{{ soa_id }}/update_visit" style="display:inline;font-size:0.6em;">
-              <input type="hidden" name="visit_id" value="{{ v.id }}" />
-              <input name="label" value="{{ v.label or '' }}" placeholder="Label (opt)" style="width:100px;" />
-              <input name="description" value="{{ v.description or '' }}" placeholder="Description (optional)" style="width:160px;" />
-              <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </form>
-            <form method="post" action="/ui/soa/{{ soa_id }}/delete_visit" style="display:inline;">
-              <input type="hidden" name="visit_id" value="{{ v.id }}" />
-              <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-                Delete
-              </button>
-            </form>
-          </span>
-        </li>
-        {% endfor %}
-      </ul>
-      <form method="post" action="/ui/soa/{{ soa_id }}/add_visit" style="margin-top:6px;">
-        <input name="name" placeholder="Visit Name" required />
-        <input name="label" placeholder="Label (optional)" />
-        <input name="description" placeholder="Description (optional)" />
-        
-        <button>Add Visit</button>
-      </form>
-    </details>
+    
     <details id="activities-section" open class="collapsible">
       <summary>Activities ({{ activities|length }}) <span class="hint">(drag to reorder)</span></summary>
       <ul id="activities-list" class="drag-list">

@@ -16,6 +16,59 @@
             <label><strong>Description</strong></label>
             <input name="description" placeholder="Description (optional)" />
         </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Epoch</strong></label>
+            <select name="epoch_id">
+                <option value="">-- Select Epoch --</option>
+                {% for id, name in (epoch_options or {}).items() %}
+                    <option value="{{ id }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Scheduled At Timing</strong></label>
+            <select name="scheduledAtId">
+                <option value="">-- Select Study Timing --</option>
+                {% for id,name in (timing_options or {}).items() %}
+                    <option value="{{ id }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Environmental Setting</strong></label>
+            {% if environmental_setting_options %}
+            <select name="environmentalSettings">
+                <option value="">-- Select Environmental Setting --</option>
+                    {% for option in environmental_setting_options %}
+                    <option value="{{ option.conceptId }}">
+                        {{ option.submissionValue }} ({{ option.conceptId }})
+                    </option>
+                    {% endfor %}
+            </select>
+            {% else %}
+            <select disabled>
+                <option>Environmental settings unavailable</option>
+            </select>
+            {% endif %}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Transition Start Rule</strong></label>
+            <select name="transitionStartRule">
+                <option value="">-- Select START Rule --</option>
+                {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+                <option value="{{ transition_rule_uid }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Transition End Rule</strong></label>
+            <select name="transitionEndRule">
+                <option value="">-- Select END Rule --</option>
+                {% for name, transition_rule_uid  in (transition_rule_options or {}).items() %}
+                <option value="{{ transition_rule_uid }}">{{ name }}</option>"
+                {% endfor %}
+            </select>
+        </div>
         <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Encounter</button>
     </form>
 </div>
@@ -30,8 +83,8 @@
     <th style="text-align:left;padding:4px;">Description</th>
     <th style="text-align:left;padding:4px;">Epoch</th>
     <th style="text-align:left;padding:4px;">Scheduled at Timing</th>
-    <th style="text-align:left;padding:4px;">Type</th>
-    <th style="text-align:left;padding:4px;">Environmental Setting</th>
+    <th style="text-align:left;padding:4px;">Type (C188728)</th>
+    <th style="text-align:left;padding:4px;">Environmental Setting (C127262)</th>
     <th style="text-align:left;padding:4px;">Transition Start Rule</th>
     <th style="text-align:left;padding:4px;">Transition End Rule</th>
     <th style="text-align:left;padding:4px;">Save</th>
@@ -61,10 +114,26 @@
             </select>
         </td>
         <td style="padding:4px;">
-            {{ e.type_submission_value or e.type or "-" }}
+            {{ e.type_submission_value or e.type or "-" }} (C25716)
         </td>
         <td style="padding:4px;">
-            {{ e.environmental_submission_value or e.environmentalSettings or "-" }}
+        {% if environmental_setting_options %}
+            {% set selected_env = (e.environmental_concept_id or e.environmentalSettings or '') | string %}
+            <select name="environmentalSettings">
+                <option value="">-- Select Environmental Setting --</option>
+                    {% for option in environmental_setting_options %}
+                    {% set option_code = option.conceptId | string %}
+                        <option value="{{ option_code }}" {% if selected_env == option_code %}selected{% endif %}>
+                        {{ option.submissionValue }} ({{ option.conceptId }})
+                    </option>
+                    {% endfor %}
+            </select>
+         {% else %}
+         <select disabled>
+                <option>Environmental settings unavailable</option>
+            </select>
+        {% endif %}
+
         </td>
         <td style="padding:4px;">
             <select name="transitionStartRule">
