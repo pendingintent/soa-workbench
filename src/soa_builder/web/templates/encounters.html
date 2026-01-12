@@ -17,15 +17,6 @@
             <input name="description" placeholder="Description (optional)" />
         </div>
         <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Epoch</strong></label>
-            <select name="epoch_id">
-                <option value="">-- Select Epoch --</option>
-                {% for id, name in (epoch_options or {}).items() %}
-                    <option value="{{ id }}">{{ name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
             <label><strong>Scheduled At Timing</strong></label>
             <select name="scheduledAtId">
                 <option value="">-- Select Study Timing --</option>
@@ -81,7 +72,6 @@
     <th style="text-align:left;padding:4px;">Name</th>
     <th style="text-align:left;padding:4px;">Label</th>
     <th style="text-align:left;padding:4px;">Description</th>
-    <th style="text-align:left;padding:4px;">Epoch</th>
     <th style="text-align:left;padding:4px;">Scheduled at Timing</th>
     <th style="text-align:left;padding:4px;">Type (C188728)</th>
     <th style="text-align:left;padding:4px;">Environmental Setting (C127262)</th>
@@ -97,14 +87,6 @@
         <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
         <td style="padding:4px;"><input name="label" value="{{ e.label or '' }}" placeholder="Label" /></td>
         <td style="padding:4px;"><input name="description" value="{{ e.description or '' }}" placeholder="Description" /></td>
-        <td style="padding:4px;">
-            <select name="epoch_id">
-                <option value="">-- Select Epoch --</option>
-                {% for id,name in (epoch_options or {}).items() %}
-                    <option value="{{ id }}" {% if (e.epoch_id or '') == id %}selected{% endif %}>{{ name }}</option>
-                {% endfor %}
-            </select>
-        </td>
         <td style="padding:4px;">
             <select name="scheduledAtId">
                 <option value="">-- Select a Study Timing --</option>

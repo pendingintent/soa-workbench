@@ -11,7 +11,6 @@ from ..utils import (
     soa_exists,
     get_next_code_uid as _get_next_code_uid,
     get_study_transition_rules,
-    get_epoch_id,
     get_timing_id,
     get_encounter_type_sv,
     load_environmental_setting_options,
@@ -43,7 +42,7 @@ def list_visits(soa_id: int):
     cur.execute(
         """
         SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
-        transitionEndRule,epoch_id,scheduledAtId,order_index FROM visit WHERE soa_id=? ORDER BY order_index, id
+        transitionEndRule,scheduledAtId,order_index FROM visit WHERE soa_id=? ORDER BY order_index, id
         """,
         (soa_id,),
     )
@@ -58,9 +57,8 @@ def list_visits(soa_id: int):
             "environmentalSettings": r[6],
             "transitionStartRule": r[7],
             "transitionEndRule": r[8],
-            "epoch_id": r[9],
-            "scheduledAtId": r[10],
-            "order_index": r[11],
+            "scheduledAtId": r[9],
+            "order_index": r[10],
         }
         for r in cur.fetchall()
     ]
@@ -105,7 +103,6 @@ def ui_list_visits(request: Request, soa_id: int):
         e["environmental_submission_value"] = env_option_lookup.get(concept_id)
 
     transition_rule_options = get_study_transition_rules(soa_id)
-    epoch_options = get_epoch_id(soa_id)
     timing_options = get_timing_id(soa_id)
 
     logger.info(environmental_setting_options)
@@ -118,7 +115,6 @@ def ui_list_visits(request: Request, soa_id: int):
             "soa_id": soa_id,
             "encounters": encounters,
             "transition_rule_options": transition_rule_options,
-            "epoch_options": epoch_options,
             "timing_options": timing_options,
             "environmental_setting_options": environmental_setting_options,
         },
@@ -133,7 +129,7 @@ def get_visit(soa_id: int, visit_id: int):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,name,label,order_index,epoch_id,encounter_uid,description FROM visit WHERE id=? AND soa_id=?",
+        "SELECT id,name,label,order_index,encounter_uid,description FROM visit WHERE id=? AND soa_id=?",
         (visit_id, soa_id),
     )
     row = cur.fetchone()
@@ -146,9 +142,8 @@ def get_visit(soa_id: int, visit_id: int):
         "name": row[1],
         "label": row[2],
         "order_index": row[3],
-        "epoch_id": row[4],
-        "encounter_uid": row[5],
-        "description": row[6],
+        "encounter_uid": row[4],
+        "description": row[5],
     }
 
 
@@ -197,14 +192,6 @@ def add_visit(soa_id: int, payload: VisitCreate):
     next_n = (max(used_nums) if used_nums else 0) + 1
     new_uid = f"Encounter_{next_n}"
 
-    if payload.epoch_id is not None:
-        cur.execute(
-            "SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (payload.epoch_id, soa_id)
-        )
-        if not cur.fetchone():
-            conn.close()
-            raise HTTPException(400, "Invalid epoch_id for this SOA")
-
     # Generate Code_{N} for encounter.type
     type = _get_next_code_uid(cur, soa_id)
     logger.info("type=%s", type)
@@ -246,16 +233,15 @@ def add_visit(soa_id: int, payload: VisitCreate):
 
     cur.execute(
         """
-        INSERT INTO visit (soa_id,name,label,order_index,epoch_id,encounter_uid,
+        INSERT INTO visit (soa_id,name,label,order_index,encounter_uid,
         description,type,environmentalSettings,transitionStartRule,transitionEndRule,scheduledAtId)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
             soa_id,
             name,
             _nz(payload.label),
             next_ord,
-            payload.epoch_id,
             new_uid,
             _nz(payload.description),
             type,
@@ -292,7 +278,6 @@ def ui_create_visit(
     name: str = Form(...),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    epoch_id: Optional[str] = Form(None),
     transitionStartRule: Optional[str] = Form(None),
     transitionEndRule: Optional[str] = Form(None),
     scheduledAtId: Optional[str] = Form(None),
@@ -301,21 +286,10 @@ def ui_create_visit(
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
 
-    # Coerce empty epoch_id from form to None, otherwise to int
-    parsed_epoch_id: Optional[int] = None
-    if epoch_id is not None:
-        eid = str(epoch_id).strip()
-        if eid:
-            try:
-                parsed_epoch_id = int(eid)
-            except ValueError:
-                parsed_epoch_id = None
-
     payload = VisitCreate(
         name=name,
         label=label,
         description=description,
-        epoch_id=parsed_epoch_id,
         transitionStartRule=transitionStartRule,
         transitionEndRule=transitionEndRule,
         scheduledAtId=scheduledAtId,
@@ -337,7 +311,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
     cur.execute(
         """
         SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
-        transitionEndRule,epoch_id,scheduledAtId,order_index FROM visit WHERE id=? AND soa_id=? ORDER BY order_index, id
+        transitionEndRule,scheduledAtId,order_index FROM visit WHERE id=? AND soa_id=? ORDER BY order_index, id
         """,
         (visit_id, soa_id),
     )
@@ -356,28 +330,16 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         "environmentalSettings": row[6],
         "transitionStartRule": row[7],
         "transitionEndRule": row[8],
-        "epoch_id": row[9],
-        "scheduledAtId": row[10],
-        "order_index": row[11],
+        "scheduledAtId": row[9],
+        "order_index": row[10],
     }
 
     new_name = (payload.name if payload.name is not None else before["name"]) or ""
-    if payload.epoch_id is not None:
-        cur.execute(
-            "SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (payload.epoch_id, soa_id)
-        )
-        if not cur.fetchone():
-            conn.close()
-            raise HTTPException(400, "Invalid epoch_id for this SOA")
-
     new_label = payload.label if payload.label is not None else before["label"]
     new_description = (
         payload.description
         if payload.description is not None
         else before["description"]
-    )
-    new_epoch_id = (
-        payload.epoch_id if payload.epoch_id is not None else before["epoch_id"]
     )
     new_transition_start_rule = (
         payload.transitionStartRule
@@ -408,11 +370,10 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
     )
 
     cur.execute(
-        "UPDATE visit SET name=?, label=?, epoch_id=?, description=?,transitionStartRule=?,transitionEndRule=?,scheduledAtId=? WHERE id=? AND soa_id=?",
+        "UPDATE visit SET name=?, label=?, description=?,transitionStartRule=?,transitionEndRule=?,scheduledAtId=? WHERE id=? AND soa_id=?",
         (
             _nz(new_name),
             _nz(new_label),
-            new_epoch_id,
             _nz(new_description),
             _nz(new_transition_start_rule),
             _nz(new_transition_end_rule),
@@ -467,7 +428,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
     cur.execute(
         """
         SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
-        transitionEndRule,epoch_id,scheduledAtId,order_index FROM visit WHERE id=? AND soa_id=? ORDER BY order_index, id
+        transitionEndRule,scheduledAtId,order_index FROM visit WHERE id=? AND soa_id=? ORDER BY order_index, id
         """,
         (
             visit_id,
@@ -486,16 +447,15 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         "environmentalSettings": r[6],
         "transitionStartRule": r[7],
         "transitionEndRule": r[8],
-        "epoch_id": r[9],
-        "scheduledAtId": r[10],
-        "order_index": r[11],
+        "scheduledAtId": r[9],
+        "order_index": r[10],
     }
 
     mutable = [
         "name",
         "label",
-        "epoch_id",
         "description",
+        "environmentalSettings",
         "transitionStartRule",
         "transitionEndRule",
         "scheduledAtId",
@@ -524,7 +484,6 @@ def ui_update_visit(
     name: Optional[str] = Form(None),
     label: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    epoch_id: Optional[int] = Form(None),
     transitionStartRule: Optional[str] = Form(None),
     transitionEndRule: Optional[str] = Form(None),
     scheduledAtId: Optional[str] = Form(None),
@@ -534,7 +493,6 @@ def ui_update_visit(
         name=name,
         label=label,
         description=description,
-        epoch_id=epoch_id,
         transitionStartRule=transitionStartRule,
         transitionEndRule=transitionEndRule,
         scheduledAtId=scheduledAtId,
