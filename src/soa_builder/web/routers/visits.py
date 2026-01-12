@@ -13,6 +13,8 @@ from ..utils import (
     get_study_transition_rules,
     get_epoch_id,
     get_timing_id,
+    get_encounter_type_sv,
+    get_encounter_environment_sv,
 )
 from ..schemas import VisitCreate, VisitUpdate
 from fastapi.templating import Jinja2Templates
@@ -72,6 +74,12 @@ def ui_list_visits(request: Request, soa_id: int):
         raise HTTPException(404, "SOA not found")
 
     encounters = list_visits(soa_id)
+    for e in encounters:
+        tsv = get_encounter_type_sv(soa_id, e.get("type") or "")
+        esv = get_encounter_environment_sv(soa_id, e.get("environmentalSettings") or "")
+        e["type_submission_value"] = tsv[0] if tsv else None
+        e["environmental_submission_value"] = esv or None
+
     transition_rule_options = get_study_transition_rules(soa_id)
     epoch_options = get_epoch_id(soa_id)
     timing_options = get_timing_id(soa_id)

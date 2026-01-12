@@ -14,6 +14,13 @@ _epoch_type_cache: dict[str, Any] = {
 }
 _EPOCH_TYPE_CACHE_TTL = 60 * 60  # 1 hour
 
+_env_setting_cache: dict[str, Any] = {
+    "options": None,
+    "fetched_at": 0,
+    "last_error": None,
+}
+_ENV_SETTING_CACHE_TTL = 60 * 60  # 1 hour
+
 
 def get_cdisc_api_key():
     return os.environ.get("CDISC_API_KEY")
@@ -512,3 +519,281 @@ def get_timing_id(soa_id: int) -> Dict[str, str]:
     rows = cur.fetchall()
     conn.close()
     return {int(id): str(name) for (id, name) in rows if id is not None}
+
+
+def get_encounter_type_sv(soa_id: int, code_uid: str):
+    """Return the submission value for the encounter type using Code_{n} value"""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT ddf.cdisc_submission_value FROM visit v
+        INNER JOIN code c ON v.type=c.code_uid AND v.soa_id=c.soa_id
+        INNER JOIN ddf_terminology ddf ON c.codelist_code=ddf.codelist_code AND c.code=ddf.code
+        WHERE v.soa_id =? AND v.type=?
+        """,
+        (soa_id, code_uid),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return row
+
+
+def get_latest_sdtm_ct_href(timeout: int = 10) -> str | None:
+    """Return the href for the latest SDTM Controlled Terminology package."""
+    url = "https://library.cdisc.org/api/mdr/ct/packages"
+    headers: dict[str, str] = {"Accept": "application/json"}
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = os.environ.get("CDISC_API_KEY") or subscription_key
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    def _extract_date(name: str) -> tuple:
+        parts = name.split("-")
+        if len(parts) >= 4 and parts[0].lower() == "sdtmct":
+            try:
+                return int(parts[1]), int(parts[2]), int(parts[3])
+            except ValueError:
+                pass
+        return (0, 0, 0)
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=timeout)
+        if resp.status_code != 200:
+            return None
+        payload = resp.json() or {}
+    except Exception:
+        return None
+
+    packages = []
+    if isinstance(payload, list):
+        packages = payload
+    elif isinstance(payload, dict):
+        packages = (
+            payload.get("packages")
+            or payload.get("_embedded", {}).get("packages")
+            or payload.get("items")
+            or payload.get("_links", {}).get("packages")
+            or []
+        )
+
+    latest = None
+    latest_date = (0, 0, 0)
+    for pkg in packages:
+        if not isinstance(pkg, dict):
+            continue
+        raw_href = (
+            pkg.get("href")
+            or pkg.get("url")
+            or pkg.get("_links", {}).get("self", {}).get("href")
+        )
+        title = pkg.get("name") or pkg.get("packageName") or pkg.get("title") or ""
+        segment = (raw_href or "").rstrip("/").split("/")[-1]
+        name = (segment or title).lower()
+        if not name.startswith("sdtmct-"):
+            continue
+        date_tuple = _extract_date(name)
+        if date_tuple <= latest_date:
+            continue
+        latest = name
+        latest_date = date_tuple
+
+    return latest
+
+
+def get_encounter_environment_sv(soa_id: int, code_uid: str):
+    """Resolve the environmental setting submission value via CDISC Library."""
+    if not code_uid:
+        return None
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+        (soa_id, code_uid),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    target_code = str(row[0]).strip()
+
+    package_slug = get_latest_sdtm_ct_href()
+    if not package_slug:
+        return None
+
+    url = (
+        f"https://library.cdisc.org/api/mdr/ct/packages/"
+        f"{package_slug}/codelists/C127262"
+    )
+
+    headers: dict[str, str] = {"Accept": "application/json"}
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = os.environ.get("CDISC_API_KEY") or subscription_key
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    def _match_term(term: dict[str, Any]) -> str | None:
+        term_id = next(
+            (
+                term.get(field)
+                for field in (
+                    "conceptId",
+                    "concept_id",
+                    "code",
+                    "termCode",
+                    "term_code",
+                )
+                if term.get(field)
+            ),
+            None,
+        )
+        if term_id and str(term_id).lower() == target_code.lower():
+            submission = term.get("submissionValue") or term.get(
+                "cdisc_submission_value"
+            )
+            if submission:
+                return str(submission).strip()
+        return None
+
+    def _extract_terms(data: Any) -> List[dict]:
+        if isinstance(data, list):
+            return [t for t in data if isinstance(t, dict)]
+        if isinstance(data, dict):
+            if isinstance(data.get("terms"), list):
+                return [t for t in data["terms"] if isinstance(t, dict)]
+            embedded = data.get("_embedded", {})
+            if isinstance(embedded, dict) and isinstance(embedded.get("terms"), list):
+                return [t for t in embedded["terms"] if isinstance(t, dict)]
+        return []
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return None
+        payload = resp.json() or {}
+    except Exception:
+        return None
+
+    for term in _extract_terms(payload):
+        submission = _match_term(term)
+        if submission:
+            return submission
+
+    term_links = payload.get("_links", {}).get("terms") or []
+    if isinstance(term_links, dict):
+        term_links = [term_links]
+
+    for link in term_links:
+        href = link.get("href")
+        if not href:
+            continue
+        if href.startswith("/"):
+            href = f"https://library.cdisc.org{href}"
+        try:
+            term_resp = requests.get(href, headers=headers, timeout=10)
+            if term_resp.status_code != 200:
+                continue
+            term_data = term_resp.json() or {}
+        except Exception:
+            continue
+        submission = _match_term(term_data if isinstance(term_data, dict) else {})
+        if submission:
+            return submission
+
+    return None
+
+
+def load_environmental_setting_options(force: bool = False) -> List[dict[str, str]]:
+    """Return [{'submissionValue': ..., 'conceptId': ...}, ...] for env settings."""
+    now = time.time()
+    if (
+        not force
+        and _env_setting_cache["options"]
+        and now - _env_setting_cache["fetched_at"] < _ENV_SETTING_CACHE_TTL
+    ):
+        return _env_setting_cache["options"]
+
+    slug = get_latest_sdtm_ct_href()
+    if not slug:
+        _env_setting_cache.update(options=[], fetched_at=now, last_error="missing slug")
+        return []
+
+    url = f"https://library.cdisc.org/api/mdr/ct/packages/" f"{slug}/codelists/C127262"
+    headers: dict[str, str] = {"Accept": "application/json"}
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = os.environ.get("CDISC_API_KEY") or subscription_key
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    def _collect_terms(payload: Any) -> List[dict]:
+        if isinstance(payload, list):
+            return [t for t in payload if isinstance(t, dict)]
+        if isinstance(payload, dict):
+            if isinstance(payload.get("terms"), list):
+                return [t for t in payload["terms"] if isinstance(t, dict)]
+            embedded = payload.get("_embedded", {})
+            if isinstance(embedded, dict) and isinstance(embedded.get("terms"), list):
+                return [t for t in embedded["terms"] if isinstance(t, dict)]
+        return []
+
+    options: list[dict[str, str]] = []
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            raise RuntimeError(f"HTTP {resp.status_code}")
+        data = resp.json() or {}
+        terms = _collect_terms(data)
+
+        def _ensure_option(term: dict) -> None:
+            concept = term.get("conceptId") or term.get("code") or term.get("termCode")
+            submission = term.get("submissionValue") or term.get(
+                "cdisc_submission_value"
+            )
+            if concept and submission:
+                options.append(
+                    {
+                        "conceptId": str(concept).strip(),
+                        "submissionValue": str(submission).strip(),
+                        "package": slug,
+                    }
+                )
+
+        for term in terms:
+            _ensure_option(term)
+
+        if not options:
+            for term in terms:
+                href = term.get("href") or term.get("_href")
+                if not href:
+                    link_self = term.get("_links", {}).get("self", {})
+                    href = (
+                        link_self.get("href") if isinstance(link_self, dict) else None
+                    )
+                if not href:
+                    continue
+                if href.startswith("/"):
+                    href = f"https://library.cdisc.org{href}"
+                try:
+                    t_resp = requests.get(href, headers=headers, timeout=10)
+                    if t_resp.status_code == 200:
+                        _ensure_option(t_resp.json() or {})
+                except Exception:
+                    continue
+
+        options.sort(key=lambda item: item["submissionValue"])
+        _env_setting_cache.update(options=options, fetched_at=now, last_error=None)
+    except Exception as exc:
+        _env_setting_cache.update(options=[], fetched_at=now, last_error=str(exc))
+        options = []
+
+    return options

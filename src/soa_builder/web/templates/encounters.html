@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Timings for SoA {{ soa_id }}</h2>
+<h2>Encounters for SoA {{ soa_id }}</h2>
 
 <div style="margin-bottom:12px">
     <form method="post" action="/ui/soa/{{ soa_id }}/visits/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
@@ -60,8 +60,12 @@
                 {% endfor %}
             </select>
         </td>
-        <td style="padding:4px;">{{ e.type }}</td>
-        <td style="padding:4px;">{{ e.environmentalSettings }}</td>
+        <td style="padding:4px;">
+            {{ e.type_submission_value or e.type or "-" }}
+        </td>
+        <td style="padding:4px;">
+            {{ e.environmental_submission_value or e.environmentalSettings or "-" }}
+        </td>
         <td style="padding:4px;">
             <select name="transitionStartRule">
                 <option value="">-- Select START Rule --</option>
