@@ -19,14 +19,19 @@
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
             <label><strong>Default Condition ID</strong></label>
-            <input name="default_condition_uid" placeholder="Default Condition ID (Optional)" />
+            <select name="default_condition_uid">
+                <option name="">-- Select Activity Instance --</option>
+                {% for name, instance_uid in (instance_options or {}).items() %}
+                    <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
+                {% endfor %}
+            </select>
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
             <label><strong>Epoch ID</strong></label>
             <select name="epoch_uid">
                 <option value="">-- Select epoch --</option>
                 {% for name, epoch_uid in (epoch_options or {}).items() %}
-                    <option value="{{ epoch_uid }}">{{ name }}</option>
+                    <option value="{{ epoch_uid }}">{{ name }}: [{{ epoch_uid }}]</option>
                 {% endfor %}
             </select>
         </div>
@@ -43,7 +48,7 @@
             <select name="encounter_uid">
                 <option value="">-- Select encounter --</option>
                 {% for name, enc_uid in (encounter_options or {}).items() %}
-                    <option value="{{ enc_uid }}">{{ name }}</option>
+                    <option value="{{ enc_uid }}">{{ name }}: [{{ enc_uid }}]</option>
                 {% endfor %}
             </select>
         </div>
@@ -52,7 +57,7 @@
             <select name="member_of_timeline">
                 <option value="">-- Select Timeline --</option>
                 {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
-                    <option value="{{ schedule_timeline_uid }}">{{ name }}</option>
+                    <option value="{{ schedule_timeline_uid }}">{{ name }}: [{{ schedule_timeline_uid }}]</option>
                 {% endfor %}
             </select>
         </div>
@@ -78,11 +83,18 @@
     {% for i in instances or [] %}
   <tr>
     <form method="post" action="/ui/soa/{{ soa_id }}/instances/{{ i.id }}/update">
-      <td style="padding:4px;white-space:nowrap;">{{ i.instance_uid }}</td>
+      <td style="padding:4px;white-space:nowrap;"><strong>{{ i.instance_uid }}</strong></td>
       <td style="padding:4px;"><input name="name" value="{{ i.name or '' }}" placeholder="Name" /></td>
       <td style="padding:4px;"><input name="label" value="{{ i.label or '' }}" placeholder="Label" /></td>
       <td style="padding:4px;"><input name="description" value="{{ i.description or '' }}" placeholder="Description" /></td>
-      <td style="padding:4px;"><input name="default_condition_uid" value="{{ i.default_condition_uid or '' }}" placeholder="Default Condition ID" /></td>
+      <td style="padding:4px;">
+        <select name="default_condition_uid">
+            <option value="">-- Select Activity Instance --</option>
+            {% for name, instance_uid in (instance_options or {}).items() %}
+                <option value="{{ instance_uid }}" {% if (i.default_condition_uid or '') == instance_uid %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+      </td>
       <td style="padding:4px;">
         <select name="epoch_uid">
             <option value="">-- Select Epoch --</option>

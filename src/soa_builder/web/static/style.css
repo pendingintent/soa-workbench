@@ -1,6 +1,48 @@
-body { font-family: Arial, Helvetica, sans-serif; margin: 1.5rem; }
-header h1 { margin: 0; }
-nav a { margin-right: 1rem; }
+
+.sidenav {
+    height: 100%;
+    width: 200px;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: #111;
+    overflow-x: hidden;
+    padding-top: 20px;
+}
+
+.sidenav a {
+    padding: 6px 8px 6px 16px;
+    text-decoration: none;
+    font-size: 20px;
+    color: #818181;
+    display: block;
+}
+
+.sidenav a:hover {
+    color: #f1f1f1;
+    background-color: #575757;
+}
+
+body {
+    margin: 0; /* Zero-out body margin and put the spacing on main */
+    font-family: Arial, Helvetica, sans-serif
+}
+
+/* Let the sidebar sit flush left while keeping content padded */
+.main {
+    margin-left: 220px;
+    padding: 1.5rem;
+}
+
+/* Let the heading class (h1) sit flush while keeping the content padded */
+.heading {
+    margin-left: 220px;
+    padding: 1.5rem;
+}
+
+
+/*nav a { margin-right: 1rem; } */
 .table, table { border-collapse: collapse; }
 th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 0.9rem; }
 th { background: #f2f2f2; }
@@ -28,3 +70,10 @@ details.collapsible[open] { background:#fdfdfd; }
 .visit-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
 .activity-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
 .hint { font-weight:400; font-size:0.7em; color:#666; }
+
+
+/* Media queries for responsiveness */
+@media screen and (max-height: 450px) {
+    .sidenav {padding-top: 15px;}
+    .sidenav a {font-size: 18px;}
+}

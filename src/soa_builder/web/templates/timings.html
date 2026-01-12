@@ -107,7 +107,7 @@
   {% for t in timings %}
   <tr>
     <form method="post" action="/ui/soa/{{ soa_id }}/timings/{{ t.id }}/update">
-      <td style="padding:4px;white-space:nowrap;">{{ t.timing_uid }}</td>
+      <td style="padding:4px;white-space:nowrap;"><strong>{{ t.timing_uid }}</strong></td>
       <td style="padding:4px;"><input name="name" value="{{ t.name }}" required /></td>
       <td style="padding:4px;"><input name="label" value="{{ t.label or '' }}" placeholder="Label" /></td>
       <td style="padding:4px;"><input name="description" value="{{ t.description or '' }}" placeholder="Description" /></td>

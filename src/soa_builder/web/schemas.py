@@ -128,6 +128,11 @@ class VisitCreate(BaseModel):
     label: Optional[str] = None
     epoch_id: Optional[int] = None
     description: Optional[str] = None
+    type: Optional[str] = None
+    transitionStartRule: Optional[str] = None
+    transitionEndRule: Optional[str] = None
+    scheduledAtId: Optional[str] = None
+    environmentalSettings: Optional[str] = None
 
 
 class VisitUpdate(BaseModel):
@@ -135,6 +140,11 @@ class VisitUpdate(BaseModel):
     label: Optional[str] = None
     epoch_id: Optional[int] = None
     description: Optional[str] = None
+    type: Optional[str] = None
+    transitionStartRule: Optional[str] = None
+    transitionEndRule: Optional[str] = None
+    scheduledAtId: Optional[str] = None
+    environmentalSettings: Optional[str] = None
 
 
 class ArmCreate(BaseModel):
@@ -181,7 +191,7 @@ class CellCreate(BaseModel):
     status: str
 
 
-class MatrixVisit(BaseModel):
+class MatrixInstance(BaseModel):
     name: str
     label: Optional[str] = None
 
@@ -192,6 +202,6 @@ class MatrixActivity(BaseModel):
 
 
 class MatrixImport(BaseModel):
-    visits: List[MatrixVisit]
+    instances: List[MatrixInstance]
     activities: List[MatrixActivity]
     reset: bool = True
