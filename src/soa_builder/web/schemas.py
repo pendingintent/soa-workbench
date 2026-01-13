@@ -133,6 +133,7 @@ class VisitCreate(BaseModel):
     transitionEndRule: Optional[str] = None
     scheduledAtId: Optional[str] = None
     environmentalSettings: Optional[str] = None
+    contactModes: Optional[str] = None
 
 
 class VisitUpdate(BaseModel):
@@ -145,6 +146,7 @@ class VisitUpdate(BaseModel):
     transitionEndRule: Optional[str] = None
     scheduledAtId: Optional[str] = None
     environmentalSettings: Optional[str] = None
+    contactModes: Optional[str] = None
 
 
 class ArmCreate(BaseModel):

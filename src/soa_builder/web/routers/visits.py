@@ -15,6 +15,7 @@ from ..utils import (
     get_encounter_type_sv,
     load_environmental_setting_options,
     get_latest_sdtm_ct_href,
+    load_contact_mode_options,
 )
 from ..schemas import VisitCreate, VisitUpdate
 from fastapi.templating import Jinja2Templates
@@ -42,7 +43,7 @@ def list_visits(soa_id: int):
     cur.execute(
         """
         SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
-        transitionEndRule,scheduledAtId,order_index FROM visit WHERE soa_id=? ORDER BY order_index, id
+        transitionEndRule,scheduledAtId,order_index,contactModes FROM visit WHERE soa_id=? ORDER BY order_index, id
         """,
         (soa_id,),
     )
@@ -59,6 +60,7 @@ def list_visits(soa_id: int):
             "transitionEndRule": r[8],
             "scheduledAtId": r[9],
             "order_index": r[10],
+            "contactModes": r[11],
         }
         for r in cur.fetchall()
     ]
@@ -91,6 +93,12 @@ def ui_list_visits(request: Request, soa_id: int):
         for opt in environmental_setting_options
     }
 
+    contact_mode_options = load_contact_mode_options()
+    con_mode_lookup = {
+        str(opt["conceptId"]).strip(): str(opt["submissionValue"]).strip()
+        for opt in contact_mode_options
+    }
+
     encounters = list_visits(soa_id)
     for e in encounters:
         tsv = get_encounter_type_sv(soa_id, e.get("type") or "")
@@ -101,6 +109,13 @@ def ui_list_visits(request: Request, soa_id: int):
         concept_id = code_map.get(code_uid, "") if code_uid else ""
         e["environmental_concept_id"] = concept_id
         e["environmental_submission_value"] = env_option_lookup.get(concept_id)
+
+        contact_code_uid = e.get("contactModes") or ""
+        contact_concept_id = (
+            code_map.get(contact_code_uid, "") if contact_code_uid else ""
+        )
+        e["contact_mode_concept_id"] = contact_concept_id
+        e["contact_mode_submission_value"] = con_mode_lookup.get(contact_concept_id)
 
     transition_rule_options = get_study_transition_rules(soa_id)
     timing_options = get_timing_id(soa_id)
@@ -117,6 +132,7 @@ def ui_list_visits(request: Request, soa_id: int):
             "transition_rule_options": transition_rule_options,
             "timing_options": timing_options,
             "environmental_setting_options": environmental_setting_options,
+            "contact_mode_options": contact_mode_options,
         },
     )
 
@@ -208,7 +224,8 @@ def add_visit(soa_id: int, payload: VisitCreate):
             ),
         )
 
-    # Generate Code_{N} for environmentalSettings.type
+    # Generate Code_{N} for environmentalSettings **only if value selected
+    """
     environmentalSettings = _get_next_code_uid(cur, soa_id)
     logger.info("environmentalSettings=%s", environmentalSettings)
     env_code_value = (payload.environmentalSettings or "").strip() or None
@@ -230,12 +247,80 @@ def add_visit(soa_id: int, payload: VisitCreate):
                 env_code_value,
             ),
         )
+    """
+    env_code_value = (payload.environmentalSettings or "").strip()
+    environmentalSettings = None
+    if env_code_value:
+        environmentalSettings = _get_next_code_uid(cur, soa_id)
+        logger.info("environmentalSettings=%s", environmentalSettings)
+        env_package_slug = get_latest_sdtm_ct_href() or ""
+        env_codelist_table = (
+            f"/mdr/ct/packages/{env_package_slug}"
+            if env_package_slug
+            else "/mdr/ct/packages"
+        )
+        cur.execute(
+            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            (
+                soa_id,
+                environmentalSettings,
+                env_codelist_table,
+                "C127262",
+                env_code_value,
+            ),
+        )
+
+    # Generate Code_{N} for contactModes **only if value selected
+    """
+    contactModes = _get_next_code_uid(cur, soa_id)
+    logger.info("contactModes=%s", contactModes)
+    contact_mode_value = (payload.contactModes or "").strip() or None
+    contact_mode_slug = get_latest_sdtm_ct_href() or ""
+    contact_mode_codelist_table = (
+        f"/mdr/ct/packages/{contact_mode_slug}"
+        if contact_mode_slug
+        else "/mdr/ct/packages"
+    )
+
+    if contactModes:
+        cur.execute(
+            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            (
+                soa_id,
+                contactModes,
+                contact_mode_codelist_table,
+                "C171445",
+                contact_mode_value,
+            ),
+        )
+    """
+    contact_mode_value = (payload.contactModes or "").strip()
+    contactModes = None
+    if contact_mode_value:
+        contactModes = _get_next_code_uid(cur, soa_id)
+        logger.info("contactModes=%s", contactModes)
+        contact_mode_slug = get_latest_sdtm_ct_href() or ""
+        contact_mode_codelist_table = (
+            f"/mdr/ct/packages/{contact_mode_slug}"
+            if contact_mode_slug
+            else "/mdr/ct/packages"
+        )
+        cur.execute(
+            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            (
+                soa_id,
+                contactModes,
+                contact_mode_codelist_table,
+                "C171445",
+                contact_mode_value,
+            ),
+        )
 
     cur.execute(
         """
         INSERT INTO visit (soa_id,name,label,order_index,encounter_uid,
-        description,type,environmentalSettings,transitionStartRule,transitionEndRule,scheduledAtId)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        description,type,environmentalSettings,transitionStartRule,transitionEndRule,scheduledAtId,contactModes)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
             soa_id,
@@ -245,10 +330,11 @@ def add_visit(soa_id: int, payload: VisitCreate):
             new_uid,
             _nz(payload.description),
             type,
-            environmentalSettings,
+            environmentalSettings,  # can be None
             _nz(payload.transitionStartRule),
             _nz(payload.transitionEndRule),
             _nz(payload.scheduledAtId),
+            contactModes,  # can be None
         ),
     )
     encounter_id = cur.lastrowid
@@ -261,6 +347,7 @@ def add_visit(soa_id: int, payload: VisitCreate):
         "description": (payload.description or "").strip() or None,
         "type": (payload.type or "").strip() or None,
         "environmental_settings": (payload.environmentalSettings or "").strip() or None,
+        "contactModes": (payload.contactModes or "").strip() or None,
         "transitionStartRule": (payload.transitionStartRule or "").strip() or None,
         "transitionEndRule": (payload.transitionEndRule or "").strip() or None,
         "scheduledAtId": (payload.scheduledAtId or "").strip() or None,
@@ -282,6 +369,7 @@ def ui_create_visit(
     transitionEndRule: Optional[str] = Form(None),
     scheduledAtId: Optional[str] = Form(None),
     environmentalSettings: Optional[str] = Form(None),
+    contactModes: Optional[str] = Form(None),
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -294,6 +382,7 @@ def ui_create_visit(
         transitionEndRule=transitionEndRule,
         scheduledAtId=scheduledAtId,
         environmentalSettings=environmentalSettings,
+        contactModes=contactModes,
     )
 
     add_visit(soa_id, payload)
@@ -310,7 +399,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
+        SELECT id,encounter_uid,name,label,description,type,environmentalSettings,contactModes,transitionStartRule,
         transitionEndRule,scheduledAtId,order_index FROM visit WHERE id=? AND soa_id=? ORDER BY order_index, id
         """,
         (visit_id, soa_id),
@@ -328,10 +417,11 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         "description": row[4],
         "type": row[5],
         "environmentalSettings": row[6],
-        "transitionStartRule": row[7],
-        "transitionEndRule": row[8],
-        "scheduledAtId": row[9],
-        "order_index": row[10],
+        "contactModes": row[7],
+        "transitionStartRule": row[8],
+        "transitionEndRule": row[9],
+        "scheduledAtId": row[10],
+        "order_index": row[11],
     }
 
     new_name = (payload.name if payload.name is not None else before["name"]) or ""
@@ -366,6 +456,19 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
     env_codelist_table = (
         f"/mdr/ct/packages/{env_package_slug}"
         if env_package_slug
+        else "/mdr/ct/packages"
+    )
+
+    new_contact_mode = (
+        (payload.contactModes or "").strip()
+        if payload.contactModes is not None
+        else None
+    )
+    contact_mode_code_uid = before["contactModes"]
+    contact_mode_package_slug = get_latest_sdtm_ct_href() or ""
+    contact_mode_codelist_table = (
+        f"/mdr/ct/packages/{contact_mode_package_slug}"
+        if contact_mode_package_slug
         else "/mdr/ct/packages"
     )
 
@@ -425,9 +528,50 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
 
         conn.commit()
 
+    if new_contact_mode is not None:
+        if not contact_mode_code_uid:
+            contact_mode_code_uid = _get_next_code_uid(cur, soa_id)
+            cur.execute(
+                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                (
+                    soa_id,
+                    contact_mode_code_uid,
+                    contact_mode_codelist_table,
+                    "C171445",
+                    new_contact_mode,
+                ),
+            )
+            cur.execute(
+                "UPDATE visit SET contactModes=? WHERE id=? AND soa_id=?",
+                (contact_mode_code_uid, visit_id, soa_id),
+            )
+        else:
+            cur.execute(
+                "UPDATE code SET code=? WHERE soa_id=? AND code_uid=?",
+                (new_contact_mode, soa_id, contact_mode_code_uid),
+            )
+            if cur.rowcount == 0:
+                contact_mode_code_uid = _get_next_code_uid(cur, soa_id)
+                cur.execute(
+                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    (
+                        soa_id,
+                        contact_mode_code_uid,
+                        contact_mode_codelist_table,
+                        "C171445",
+                        new_contact_mode,
+                    ),
+                )
+                cur.execute(
+                    "UPDATE visit SET contactModes=? WHERE id=? AND soa_id=?",
+                    (contact_mode_code_uid, visit_id, soa_id),
+                )
+
+        conn.commit()
+
     cur.execute(
         """
-        SELECT id,encounter_uid,name,label,description,type,environmentalSettings,transitionStartRule,
+        SELECT id,encounter_uid,name,label,description,type,environmentalSettings,contactModes,transitionStartRule,
         transitionEndRule,scheduledAtId,order_index FROM visit WHERE id=? AND soa_id=? ORDER BY order_index, id
         """,
         (
@@ -445,10 +589,11 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         "description": r[4],
         "type": r[5],
         "environmentalSettings": r[6],
-        "transitionStartRule": r[7],
-        "transitionEndRule": r[8],
-        "scheduledAtId": r[9],
-        "order_index": r[10],
+        "contactModes": r[7],
+        "transitionStartRule": r[8],
+        "transitionEndRule": r[9],
+        "scheduledAtId": r[10],
+        "order_index": r[11],
     }
 
     mutable = [
@@ -456,6 +601,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         "label",
         "description",
         "environmentalSettings",
+        "contactModes",
         "transitionStartRule",
         "transitionEndRule",
         "scheduledAtId",
@@ -488,6 +634,7 @@ def ui_update_visit(
     transitionEndRule: Optional[str] = Form(None),
     scheduledAtId: Optional[str] = Form(None),
     environmentalSettings: Optional[str] = Form(None),
+    contactModes: Optional[str] = Form(None),
 ):
     payload = VisitUpdate(
         name=name,
@@ -497,6 +644,7 @@ def ui_update_visit(
         transitionEndRule=transitionEndRule,
         scheduledAtId=scheduledAtId,
         environmentalSettings=environmentalSettings,
+        contactModes=contactModes,
     )
     update_visit(soa_id, visit_id, payload)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/visits", status_code=303)

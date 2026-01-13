@@ -21,6 +21,13 @@ _env_setting_cache: dict[str, Any] = {
 }
 _ENV_SETTING_CACHE_TTL = 60 * 60  # 1 hour
 
+_contact_mode_cache: dict[str, Any] = {
+    "options": None,
+    "fetched_at": 0,
+    "last_error": None,
+}
+_CONTACT_MODE_CACHE_TTL = 60 * 60  # 1 hour
+
 
 def get_cdisc_api_key():
     return os.environ.get("CDISC_API_KEY")
@@ -710,6 +717,7 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
     return None
 
 
+# Return environmentalSettings options from CDISC Library API
 def load_environmental_setting_options(force: bool = False) -> List[dict[str, str]]:
     """Return [{'submissionValue': ..., 'conceptId': ...}, ...] for env settings."""
     now = time.time()
@@ -794,6 +802,98 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
         _env_setting_cache.update(options=options, fetched_at=now, last_error=None)
     except Exception as exc:
         _env_setting_cache.update(options=[], fetched_at=now, last_error=str(exc))
+        options = []
+
+    return options
+
+
+# Return contact mode options from CDISC Library API
+def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
+    """Return [{'submissionValue': ..., 'conceptId': ...}] for contact modes"""
+    now = time.time()
+    if (
+        not force
+        and _contact_mode_cache["options"]
+        and now - _contact_mode_cache["fetched_at"] < _ENV_SETTING_CACHE_TTL
+    ):
+        return _contact_mode_cache["options"]
+
+    slug = get_latest_sdtm_ct_href()
+    if not slug:
+        _contact_mode_cache.update(
+            optoins=[], fetched_at=now, last_error="missing_slug"
+        )
+        return []
+
+    url = f"https://library.cdisc.org/api/mdr/ct/packages/" f"{slug}/codelists/C171445"
+    headers: dict[str, str] = {"Accept": "application/json"}
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = os.environ.get("CDISC_API_KEY") or subscription_key
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    def _collect_terms(payload: Any) -> List[dict]:
+        if isinstance(payload, list):
+            return [t for t in payload if isinstance(t, dict)]
+        if isinstance(payload, dict):
+            if isinstance(payload.get("terms"), list):
+                return [t for t in payload["terms"] if isinstance(t, dict)]
+            embedded = payload.get("_embedded", {})
+            if isinstance(embedded, dict) and isinstance(embedded.get("terms"), list):
+                return [t for t in embedded["terms"] if isinstance(t, dict)]
+        return []
+
+    options: list[dict[str, str]] = []
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            raise RuntimeError(f"HTTP {resp.status_code}")
+        data = resp.json() or {}
+        terms = _collect_terms(data)
+
+        def _ensure_options(term: dict) -> None:
+            concept = term.get("conceptId") or term.get("code") or term.get("termCode")
+            submission = term.get("submissionValue") or term.get(
+                "cdisc_submission_value"
+            )
+            if concept and submission:
+                options.append(
+                    {
+                        "conceptId": str(concept).strip(),
+                        "submissionValue": str(submission).strip(),
+                        "package": slug,
+                    }
+                )
+
+        for term in terms:
+            _ensure_options(term)
+
+        if not options:
+            for term in terms:
+                href = term.get("href") or term.get("_href")
+                if not href:
+                    link_self = term.gbet("_links", {}).get("self", {})
+                    href = (
+                        link_self.get("href") if isinstance(link_self, dict) else None
+                    )
+                if not href:
+                    continue
+                if href.startswith("/"):
+                    href = f"https://library.cdisc.org{href}"
+                try:
+                    t_resp = requests.get(href, headers=headers, timeout=10)
+                    if t_resp.status_code == 200:
+                        _ensure_options(t_resp.json() or {})
+                except Exception:
+                    continue
+
+            options.sort(key=lambda item: item["submissionValue"])
+            _contact_mode_cache.update(options=options, fetched_at=now, last_error=None)
+    except Exception as exc:
+        _contact_mode_cache.update(options=[], fetched_at=now, last_error=str(exc))
         options = []
 
     return options
