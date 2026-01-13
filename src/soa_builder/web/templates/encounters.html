@@ -17,15 +17,6 @@
             <input name="description" placeholder="Description (optional)" />
         </div>
         <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Epoch</strong></label>
-            <select name="epoch_id">
-                <option value="">-- Select Epoch --</option>
-                {% for id, name in (epoch_options or {}).items() %}
-                    <option value="{{ id }}">{{ name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
             <label><strong>Scheduled At Timing</strong></label>
             <select name="scheduledAtId">
                 <option value="">-- Select Study Timing --</option>
@@ -48,6 +39,23 @@
             {% else %}
             <select disabled>
                 <option>Environmental settings unavailable</option>
+            </select>
+            {% endif %}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Contact Mode</strong></label>
+            {% if contact_mode_options %}
+            <select name="contactModes">
+                <option value="">-- Select Contact Mode --</option>
+                {% for option in contact_mode_options %}
+                <option value="{{ option.conceptId }}">
+                    {{ option.submissionValue }} ({{ option.conceptId }})
+                </option>
+                {% endfor %}
+            </select>
+            {% else %}
+            <select disabled>
+                <option>Contact Mode options unavailable</option>
             </select>
             {% endif %}
         </div>
@@ -76,101 +84,105 @@
 
 
 <table style="width:100%;font-size:0.85em;border-collapse:collapse;">
-  <tr style="background:#eee;">
-    <th style="text-align:left;padding:4px;">UID</th>
-    <th style="text-align:left;padding:4px;">Name</th>
-    <th style="text-align:left;padding:4px;">Label</th>
-    <th style="text-align:left;padding:4px;">Description</th>
-    <th style="text-align:left;padding:4px;">Epoch</th>
-    <th style="text-align:left;padding:4px;">Scheduled at Timing</th>
-    <th style="text-align:left;padding:4px;">Type (C188728)</th>
-    <th style="text-align:left;padding:4px;">Environmental Setting (C127262)</th>
-    <th style="text-align:left;padding:4px;">Transition Start Rule</th>
-    <th style="text-align:left;padding:4px;">Transition End Rule</th>
-    <th style="text-align:left;padding:4px;">Save</th>
-    <th style="text-align:left;padding:4px;">Delete</th>
-</tr>
-{% for e in encounters %}
-<tr>
-    <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/update">
-        <td style="padding:4px;white-space:nowrap;"><strong>{{ e.encounter_uid }}</strong></td>
-        <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
-        <td style="padding:4px;"><input name="label" value="{{ e.label or '' }}" placeholder="Label" /></td>
-        <td style="padding:4px;"><input name="description" value="{{ e.description or '' }}" placeholder="Description" /></td>
-        <td style="padding:4px;">
-            <select name="epoch_id">
-                <option value="">-- Select Epoch --</option>
-                {% for id,name in (epoch_options or {}).items() %}
-                    <option value="{{ id }}" {% if (e.epoch_id or '') == id %}selected{% endif %}>{{ name }}</option>
-                {% endfor %}
-            </select>
-        </td>
-        <td style="padding:4px;">
-            <select name="scheduledAtId">
-                <option value="">-- Select a Study Timing --</option>
-                {% for id,name in (timing_options or {}).items() %}
-                    <option value="{{ id }}" {% if (e.scheduledAtId | string  or '') == id | string %}selected{% endif %}>{{ name }}</option>
-                {% endfor %}
-            </select>
-        </td>
-        <td style="padding:4px;">
-            {{ e.type_submission_value or e.type or "-" }} (C25716)
-        </td>
-        <td style="padding:4px;">
-        {% if environmental_setting_options %}
-            {% set selected_env = (e.environmental_concept_id or e.environmentalSettings or '') | string %}
-            <select name="environmentalSettings">
-                <option value="">-- Select Environmental Setting --</option>
-                    {% for option in environmental_setting_options %}
+    <tr style="background:#eee;">
+        <th style="text-align:left;padding:4px;">UID</th>
+        <th style="text-align:left;padding:4px;">Name</th>
+        <th style="text-align:left;padding:4px;">Label</th>
+        <th style="text-align:left;padding:4px;">Description</th>
+        <th style="text-align:left;padding:4px;">Scheduled at Timing</th>
+        <th style="text-align:left;padding:4px;">Type (C188728)</th>
+        <th style="text-align:left;padding:4px;">Environmental Setting (C127262)</th>
+        <th style="text-align:left;padding:4px;">Contact Mode (C171445)</th>
+        <th style="text-align:left;padding:4px;">Transition Start Rule</th>
+        <th style="text-align:left;padding:4px;">Transition End Rule</th>
+        <th style="text-align:left;padding:4px;">Save</th>
+        <th style="text-align:left;padding:4px;">Delete</th>
+    </tr>
+    {% for e in encounters %}
+    <tr>
+        <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/update">
+            <td style="padding:4px;white-space:nowrap;"><strong>{{ e.encounter_uid }}</strong></td>
+            <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
+            <td style="padding:4px;"><input name="label" value="{{ e.label or '' }}" placeholder="Label" /></td>
+            <td style="padding:4px;"><input name="description" value="{{ e.description or '' }}" placeholder="Description" /></td>
+            <td style="padding:4px;">
+                <select name="scheduledAtId">
+                    <option value="">-- Select a Study Timing --</option>
+                    {% for id,name in (timing_options or {}).items() %}
+                        <option value="{{ id }}" {% if (e.scheduledAtId | string  or '') == id | string %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="padding:4px;">
+                {{ e.type_submission_value or e.type or "-" }} (C25716)
+            </td>
+            <td style="padding:4px;">
+            {% if environmental_setting_options %}
+                {% set selected_env = (e.environmental_concept_id or e.environmentalSettings or '') | string %}
+                <select name="environmentalSettings">
+                    <option value="">-- Select Environmental Setting --</option>
+                        {% for option in environmental_setting_options %}
+                        {% set option_code = option.conceptId | string %}
+                            <option value="{{ option_code }}" {% if selected_env == option_code %}selected{% endif %}>
+                            {{ option.submissionValue }} ({{ option.conceptId }})
+                        </option>
+                        {% endfor %}
+                </select>
+            {% else %}
+                <select disabled>
+                    <option>Environmental settings unavailable</option>
+                </select>
+            {% endif %}
+            </td>
+            <td style="padding:4px;">
+                {% if contact_mode_options %}
+                {% set selected_cm_option = (e.contact_mode_concept_id or e.contactModes or '') | string %}
+                <select name="contactModes">
+                    <option value="">-- Select Contact Mode --</option>
+                    {% for option in contact_mode_options %}
                     {% set option_code = option.conceptId | string %}
-                        <option value="{{ option_code }}" {% if selected_env == option_code %}selected{% endif %}>
+                    <option value="{{ option_code }}" {% if selected_cm_option == option_code %}selected{% endif %}>
                         {{ option.submissionValue }} ({{ option.conceptId }})
                     </option>
                     {% endfor %}
-            </select>
-         {% else %}
-         <select disabled>
-                <option>Environmental settings unavailable</option>
-            </select>
-        {% endif %}
+                </select>
+                {% else %}
+                <select disabled>
+                    <option>Contact Modes unavailable</option>
+                </select>
+                {% endif %}
+            </td>
 
-        </td>
-        <td style="padding:4px;">
-            <select name="transitionStartRule">
-                <option value="">-- Select START Rule --</option>
-                {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
-                    <option value="{{ transition_rule_uid }}" {% if (e.transitionStartRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
-                {% endfor %}
-            </select>
-        </td>
-        <td style="padding:4px;">
-            <select name="transitionEndRule">
-                <option value="">-- Select END Rule --</option>
-                {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
-                    <option value="{{ transition_rule_uid }}" {% if (e.transitionEndRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
-                {% endfor %}
-            </select>
-        </td>
-        <td style="padding:4px;">
-            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-         </td>
-    </form>
-    <td style="padding:4px;">
-        <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/delete">
-            <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-            Delete
-            </button>
+            <td style="padding:4px;">
+                <select name="transitionStartRule">
+                    <option value="">-- Select START Rule --</option>
+                    {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+                        <option value="{{ transition_rule_uid }}" {% if (e.transitionStartRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="padding:4px;">
+                <select name="transitionEndRule">
+                    <option value="">-- Select END Rule --</option>
+                    {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+                        <option value="{{ transition_rule_uid }}" {% if (e.transitionEndRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="padding:4px;">
+                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </td>
         </form>
-    </td>
-</tr>
-{% else %}
-  <tr><td colspan="12" style="padding:6px;color:#777;">No encounters yet.</td></tr>
-</table> 
-{% endfor %}
-
-
-
-
-
-
+        <td style="padding:4px;">
+            <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/delete">
+                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+                Delete
+                </button>
+            </form>
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="12" style="padding:6px;color:#777;">No encounters yet.</td></tr>
+    </table> 
+    {% endfor %}
 {% endblock %}
