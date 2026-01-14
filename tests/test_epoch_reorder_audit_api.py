@@ -59,7 +59,14 @@ def test_epoch_reorder_audit_api_structure():
     assert r_list.status_code == 200
 
     # API now returns a bare list of epochs, not {"epochs": [...]}
-    epochs = r_list.json()
+    # epochs = r_list.json()
+    # API may return a bare list of epochs, or {"epochs": [...]}
+    epochs_payload = r_list.json()
+    if isinstance(epochs_payload, dict) and "epochs" in epochs_payload:
+        epochs = epochs_payload["epochs"]
+    else:
+        epochs = epochs_payload
+
     old_order_ids = [e["id"] for e in epochs]
     old_order_names = [e["name"] for e in epochs]
 

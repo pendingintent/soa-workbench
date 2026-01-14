@@ -3201,7 +3201,7 @@ def delete_activity(soa_id: int, activity_id: int):
     return {"deleted_activity_id": activity_id}
 
 
-# API endpoint for deleting an Epoch    <- moved to routers/epoch.py
+# API endpoint for deleting an Epoch    <- moved to routers/epochs.py
 
 
 @app.get("/", response_class=HTMLResponse)
