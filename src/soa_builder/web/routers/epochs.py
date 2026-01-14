@@ -188,7 +188,7 @@ def add_epoch(soa_id: int, payload: EpochCreate):
     epoch_type = None
     if epoch_type_value:
         epoch_type = _get_next_code_uid(cur, soa_id)
-        logger.info("epoch type'%s", epoch_type)
+        logger.info("epoch type: %s", epoch_type)
         epoch_type_slug = get_latest_sdtm_ct_href() or ""
         epoch_type_codelist_table = (
             f"/mdr/ct/packages/{epoch_type_slug}"
@@ -438,6 +438,9 @@ def delete_epoch(soa_id: int, epoch_id: int):
         (soa_id, epoch_id),
     )
     row = cur.fetchone()
+    if row is None:
+        conn.close()
+        raise HTTPException(404, "Epoch not found")
 
     before = {
         "id": row[0],
