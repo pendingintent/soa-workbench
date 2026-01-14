@@ -117,7 +117,7 @@ def ui_list_epochs(request: Request, soa_id: int):
         concept_id = type_code_map.get(code_uid, "")
         if not concept_id and code_uid:
             concept_id = code_uid
-        e["type_concept_id"] = type_code_map.get(code_uid, "")
+        e["type_concept_id"] = concept_id
 
     # Epoch Type options (C99079) must come from CDISC API only
     epoch_type_options = load_epoch_type_map()
@@ -230,7 +230,7 @@ def add_epoch(soa_id: int, payload: EpochCreate):
         "epoch_uid": new_uid,
         "label": (payload.epoch_label or "").strip() or None,
         "description": (payload.epoch_description or "").strip() or None,
-        "type": (epoch_type or "").strip() or None,
+        "type": epoch_type,
         "order_index": next_ord,
         "epoch_seq": next_seq,
     }
