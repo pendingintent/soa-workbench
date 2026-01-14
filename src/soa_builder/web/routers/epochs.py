@@ -183,7 +183,7 @@ def add_epoch(soa_id: int, payload: EpochCreate):
     # Always pick max(existing) + 1, do not fill gaps
     next_n = (max(used_nums) if used_nums else 0) + 1
     new_uid = f"StudyEpoch_{next_n}"
-    # Generate Code_{N} got type **only if value selected
+    # Generate Code_{N} for type only if value selected
     epoch_type_value = (payload.type or "").strip()
     epoch_type = None
     if epoch_type_value:
