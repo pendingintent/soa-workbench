@@ -4,6 +4,8 @@ from typing import Optional, List, Dict, Any, Tuple
 
 try:
     from soa_builder.web.app import _connect  # reuse existing DB connector
+    from soa_builder.web.utils import get_encounter_environment_sv
+    from soa_builder.web.utils import get_submission_value_for_code
 except ImportError:
     import sys
     from pathlib import Path
@@ -13,6 +15,8 @@ except ImportError:
     if src_dir.exists() and str(src_dir) not in sys.path:
         sys.path.insert(0, str(src_dir))
     from soa_builder.web.app import _connect  # type: ignore
+    from soa_builder.web.utils import get_encounter_environment_sv
+    from soa_builder.web.utils import get_submission_value_for_code
 
 
 def _nz(s: Optional[str]) -> Optional[str]:
@@ -111,7 +115,7 @@ def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str
     return code_code, code_decode, code_system, code_system_version
 
 
-def _get_environment_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str]:
+def _get_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -126,6 +130,7 @@ def _get_environment_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str]:
     conn.close()
     code_system = [r[0] for r in rows]
     code = [r[1] for r in rows]
+
     return code, code_system
 
 
@@ -171,7 +176,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT name,label,order_index,encounter_uid,description,type,environmentalSettings,scheduledAtId,transitionStartRule,transitionEndRule FROM visit WHERE soa_id=?",
+        "SELECT name,label,order_index,encounter_uid,description,type,environmentalSettings,scheduledAtId,transitionStartRule,transitionEndRule,contactModes FROM visit WHERE soa_id=?",
         (soa_id,),
     )
     rows = cur.fetchall()
@@ -195,6 +200,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             scheduledAtId,
             transition_start_rule_uid,
             transition_end_rule_uid,
+            contactModes,
         ) = (
             r[0],
             r[1],
@@ -206,14 +212,25 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             r[7],
             r[8],
             r[9],
+            r[10],
         )
         eid = encounter_uid
         t_code, t_decode, t_codeSystem, t_codeSystemVersion = _get_type_code_tuple(
             soa_id, type
         )
-        e_code, e_codesystem = _get_environment_code_tuple(
-            soa_id, environmentalSettings
-        )
+
+        e_code: List[str] = []
+        e_codesystem: List[str] = []
+
+        if environmentalSettings:
+            e_code, e_codesystem = _get_code_tuple(soa_id, environmentalSettings)
+
+        c_code: List[str] = []
+        c_codesystem: List[str] = []
+
+        if contactModes:
+            c_code, c_codesystem = _get_code_tuple(soa_id, contactModes)
+
         # print(e_code, e_codesystem)
         prev_id = id_by_index.get(i - 1)
         next_id = id_by_index.get(i + 1)
@@ -235,6 +252,52 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             soa_id, transition_end_rule_uid
         )
 
+        # Build optional environmentalSettings array
+        env_settings: List[Dict[str, Any]] = []
+        if e_code and e_codesystem:
+            code_system_version = e_codesystem[0][
+                e_codesystem[0].index("-") + 1 : len(e_codesystem[0])
+            ]
+            decode = get_submission_value_for_code(
+                soa_id,
+                "C127262",
+                environmentalSettings,
+            )
+            env_settings.append(
+                {
+                    "id": environmentalSettings,
+                    "extensionAttributes": [],
+                    "code": e_code[0],
+                    "codeSystem": e_codesystem[0],
+                    "codeSystemVersion": code_system_version,
+                    "decode": decode,
+                    "instanceType": "Code",
+                }
+            )
+
+        # Build optional contactMode array
+        contact_mode: List[Dict[str, Any]] = []
+        if c_code and c_codesystem:
+            c_code_system_version = c_codesystem[0][
+                c_codesystem[0].index("-") + 1 : len(c_codesystem[0])
+            ]
+            c_decode = get_submission_value_for_code(
+                soa_id,
+                "C171445",
+                contactModes,
+            )
+            contact_mode.append(
+                {
+                    "id": contactModes,
+                    "extensionAttributes": [],
+                    "code": c_code[0],
+                    "codeSystem": c_codesystem[0],
+                    "codeSystemVersion": c_code_system_version,
+                    "decode": c_decode,
+                    "instanceType": "Code",
+                }
+            )
+
         encounter = {
             "id": eid,
             "extensionAttributes": [],
@@ -253,18 +316,8 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             "previousId": prev_id,
             "nextId": next_id,
             "scheduledAt": timing_uid,
-            "environmentSettings": [
-                {
-                    "id": environmentalSettings,
-                    "extensionAttributes": [],
-                    "code": e_code[0],
-                    "codeSystem": e_codesystem[0],
-                    "codeSystemVersion": "2024-09-27",
-                    "decode": "Clinic",
-                    "instanceType": "Code",
-                },
-            ],
-            "contactModes": [],
+            "environmentSettings": env_settings,
+            "contactModes": contact_mode,
             "transitionStartRule": transition_start_rule_obj or {},
             "transitionEndRule": transition_end_rule_obj or {},
             "notes": [],
