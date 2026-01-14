@@ -285,6 +285,8 @@ def _record_activity_audit(
         logger.warning("Failed recording activity audit: %s", e)
 
 
+# Moved to routers/epochs.py
+"""
 def _record_epoch_audit(
     soa_id: int,
     action: str,
@@ -310,6 +312,7 @@ def _record_epoch_audit(
         conn.close()
     except Exception as e:  # pragma: no cover
         logger.warning("Failed recording epoch audit: %s", e)
+"""
 
 
 def _record_arm_audit(
@@ -339,7 +342,7 @@ def _record_arm_audit(
         logger.warning("Failed recording arm audit: %s", e)
 
 
-# API functions for reordering Activities and Encounters/Visits
+# API functions for reordering Encounters/Visits
 @app.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
 def reorder_visits_api(soa_id: int, order: List[int]):
     """JSON reorder endpoint for visits (parity with elements). Body is array of visit IDs in desired order."""
@@ -364,6 +367,7 @@ def reorder_visits_api(soa_id: int, order: List[int]):
     return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})
 
 
+# API functions for reordering Activities
 @app.post("/soa/{soa_id}/activities/reorder", response_class=JSONResponse)
 def reorder_activities_api(soa_id: int, order: List[int]):
     """JSON reorder endpoint for activities."""
@@ -3197,56 +3201,7 @@ def delete_activity(soa_id: int, activity_id: int):
     return {"deleted_activity_id": activity_id}
 
 
-# API endpoint for deleting an Epoch
-@app.delete("/soa/{soa_id}/epochs/{epoch_id}")
-def delete_epoch(soa_id: int, epoch_id: int):
-    """Delete an Epoch from an SoA."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (epoch_id, soa_id))
-    if not cur.fetchone():
-        conn.close()
-        raise HTTPException(404, "Epoch not found")
-    cur.execute(
-        "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description FROM epoch WHERE id=?",
-        (epoch_id,),
-    )
-    b = cur.fetchone()
-    before = None
-    if b:
-        before = {
-            "id": b[0],
-            "name": b[1],
-            "order_index": b[2],
-            "epoch_seq": b[3],
-            "epoch_label": b[4],
-            "epoch_description": b[5],
-        }
-    # Include current type in before snapshot
-    try:
-        cur.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
-        tr = cur.fetchone()
-        if before is not None:
-            before["type"] = tr[0] if tr else None
-    except Exception:
-        pass
-    # Clear visit epoch references to avoid dangling links
-    try:
-        cur.execute(
-            "UPDATE visit SET epoch_id=NULL WHERE soa_id=? AND epoch_id=?",
-            (soa_id, epoch_id),
-        )
-    except Exception:
-        pass
-    # Delete the epoch row
-    cur.execute("DELETE FROM epoch WHERE id=?", (epoch_id,))
-    conn.commit()
-    conn.close()
-    _reindex("epoch", soa_id)
-    _record_epoch_audit(soa_id, "delete", epoch_id, before=before, after=None)
-    return {"deleted_epoch_id": epoch_id}
+# API endpoint for deleting an Epoch    <- moved to routers/epoch.py
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -4036,8 +3991,8 @@ def ui_concept_detail(code: str, request: Request):
     )
 
 
+# UI endpoint for creating an Encounter/Visit   <- moved to routers/visits.py
 """
-# UI endpoint for creating an Encounter/Visit
 @app.post("/ui/soa/{soa_id}/add_visit", response_class=HTMLResponse)
 def ui_add_visit(
     request: Request,
@@ -4075,7 +4030,7 @@ def ui_add_visit(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
-    """
+"""
 
 
 # UI endpoint for adding a new Arm
@@ -5263,7 +5218,8 @@ def ui_delete_study_cell(request: Request, soa_id: int, study_cell_id: int = For
     )
 
 
-# UI endpoint for adding a new Epoch
+# UI endpoint for adding a new Epoch    <- moved to routers/epochs.py
+'''
 @app.post("/ui/soa/{soa_id}/add_epoch", response_class=HTMLResponse)
 def ui_add_epoch(
     request: Request,
@@ -5350,9 +5306,10 @@ def ui_add_epoch(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+'''
 
-
-# UI endpoint for updating an Epoch
+# UI endpoint for updating an Epoch <- moved to routers/epochs.py
+'''
 @app.post("/ui/soa/{soa_id}/update_epoch", response_class=HTMLResponse)
 def ui_update_epoch(
     request: Request,
@@ -5509,6 +5466,7 @@ def ui_update_epoch(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+'''
 
 
 # Function to compute next available TransitionRule_{N}
@@ -5980,8 +5938,8 @@ def ui_toggle_cell(
     return HTMLResponse(cell_html)
 
 
+# UI code to delete an Encounter/Visit from an SOA  <- moved to routers/visits.py
 """
-# UI code to delete an Encounter/Visit from an SOA
 @app.post("/ui/soa/{soa_id}/delete_visit", response_class=HTMLResponse)
 def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
     if not soa_exists(soa_id):
@@ -6002,7 +5960,8 @@ def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
 """
 
 
-# UI endpoint for associating an Epoch with a Visit/Encounter
+# UI endpoint for associating an Epoch with a Visit/Encounter   <- Deprecated (Visits are not directly related to an Epoch)
+'''
 @app.post("/ui/soa/{soa_id}/set_visit_epoch", response_class=HTMLResponse)
 def ui_set_visit_epoch(
     request: Request,
@@ -6089,6 +6048,7 @@ def ui_set_visit_epoch(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+'''
 
 
 # UI endpoint for associating a Transition Start Rule with Visit/Encounter (visit.transitionStartRule)
@@ -6346,8 +6306,8 @@ def ui_set_timing(
     )
 
 
+# UI endpoint for updating an Encounter/Visit       <- moved to routers/visits.py
 '''
-# UI endpoint for updating an Encounter/Visit
 @app.post("/ui/soa/{soa_id}/update_visit", response_class=HTMLResponse)
 def ui_update_visit(
     request: Request,
@@ -6385,7 +6345,8 @@ def ui_delete_activity(request: Request, soa_id: int, activity_id: int = Form(..
     )
 
 
-# UI endpoint for deleting an Epoch
+# UI endpoint for deleting an Epoch <- moved to routers/epochs.py
+'''
 @app.post("/ui/soa/{soa_id}/delete_epoch", response_class=HTMLResponse)
 def ui_delete_epoch(request: Request, soa_id: int, epoch_id: int = Form(...)):
     """Form handler to delete an Epoch."""
@@ -6393,9 +6354,10 @@ def ui_delete_epoch(request: Request, soa_id: int, epoch_id: int = Form(...)):
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+'''
 
-
-# UI endpoint for reordering Encounters/Visits
+# UI endpoint for reordering Encounters/Visits      <- Deprecated
+'''
 @app.post("/ui/soa/{soa_id}/reorder_visits", response_class=HTMLResponse)
 def ui_reorder_visits(request: Request, soa_id: int, order: str = Form("")):
     """Persist new visit ordering. 'order' is a comma-separated list of visit IDs in desired order."""
@@ -6422,6 +6384,7 @@ def ui_reorder_visits(request: Request, soa_id: int, order: str = Form("")):
     conn.close()
     _record_reorder_audit(soa_id, "visit", old_order, ids)
     return HTMLResponse("OK")
+'''
 
 
 # UI endpoint for reordering Activities
@@ -6453,7 +6416,8 @@ def ui_reorder_activities(request: Request, soa_id: int, order: str = Form("")):
     return HTMLResponse("OK")
 
 
-# # UI endpoint for reordering Epochs
+# # UI endpoint for reordering Epochs   <- moved to routers/epochs.py
+'''
 @app.post("/ui/soa/{soa_id}/reorder_epochs", response_class=HTMLResponse)
 def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
     """Form handler to persist new epoch ordering."""
@@ -6500,6 +6464,7 @@ def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
         after={"new_order": ids},
     )
     return HTMLResponse("OK")
+'''
 
 
 # Sanitize column headers in the XLSX export
@@ -7686,6 +7651,60 @@ def ui_protocol_audit(
             "end": end or "",
         },
     )
+
+
+# Moved to routers/epochs.py
+'''
+@app.delete("/soa/{soa_id}/epochs/{epoch_id}")
+def delete_epoch(soa_id: int, epoch_id: int):
+    """Delete an Epoch from an SoA."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (epoch_id, soa_id))
+    if not cur.fetchone():
+        conn.close()
+        raise HTTPException(404, "Epoch not found")
+    cur.execute(
+        "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description FROM epoch WHERE id=?",
+        (epoch_id,),
+    )
+    b = cur.fetchone()
+    before = None
+    if b:
+        before = {
+            "id": b[0],
+            "name": b[1],
+            "order_index": b[2],
+            "epoch_seq": b[3],
+            "epoch_label": b[4],
+            "epoch_description": b[5],
+        }
+    # Include current type in before snapshot
+    try:
+        cur.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
+        tr = cur.fetchone()
+        if before is not None:
+            before["type"] = tr[0] if tr else None
+    except Exception:
+        pass
+    # Clear visit epoch references to avoid dangling links
+    try:
+        cur.execute(
+            "UPDATE visit SET epoch_id=NULL WHERE soa_id=? AND epoch_id=?",
+            (soa_id, epoch_id),
+        )
+    except Exception:
+        pass
+    # Delete the epoch row
+    cur.execute("DELETE FROM epoch WHERE id=?", (epoch_id,))
+    conn.commit()
+    conn.close()
+    _reindex("epoch", soa_id)
+    _record_epoch_audit(soa_id, "delete", epoch_id, before=before, after=None)
+    return {"deleted_epoch_id": epoch_id}
+'''
 
 
 def main():

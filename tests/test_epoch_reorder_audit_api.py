@@ -57,29 +57,36 @@ def test_epoch_reorder_audit_api_structure():
     # List epochs to get current order
     r_list = client.get(f"/soa/{soa_id}/epochs")
     assert r_list.status_code == 200
-    epochs = r_list.json()["epochs"]
-    assert len(epochs) == 3
-    old_order = [e["id"] for e in epochs]
 
-    # New order: reverse
-    new_order = list(reversed(old_order))
-    r_reorder = client.post(f"/soa/{soa_id}/epochs/reorder", json=new_order)
+    # API now returns a bare list of epochs, not {"epochs": [...]}
+    epochs = r_list.json()
+    old_order_ids = [e["id"] for e in epochs]
+    old_order_names = [e["name"] for e in epochs]
+
+    # New desired order (reverse)
+    new_order_ids = list(reversed(old_order_ids))
+    new_order_names = list(reversed(old_order_names))
+
+    # /epochs/reorder expects {"order": [...]} in the JSON body
+    r_reorder = client.post(
+        f"/soa/{soa_id}/epochs/reorder",
+        json={"order": new_order_ids},
+    )
     assert r_reorder.status_code == 200
 
+    # Fetch audits and validate structure
     audits = _fetch_epoch_audits(soa_id)
-    # Find the last reorder audit
     reorder_audits = [a for a in audits if a["action"] == "reorder"]
-    assert len(reorder_audits) >= 1
-    last = reorder_audits[-1]
-    assert last["before"] is not None and last["after"] is not None
-    # Validate before.old_order and before.types exist and types is a list of {id,type}
-    assert "old_order" in last["before"]
-    assert last["before"]["old_order"] == old_order
-    assert "types" in last["before"]
-    assert isinstance(last["before"]["types"], list)
-    if last["before"]["types"]:
-        sample = last["before"]["types"][0]
-        assert set(sample.keys()) == {"id", "type"}
-    # Validate after.new_order equals our new_order
-    assert "new_order" in last["after"]
-    assert last["after"]["new_order"] == new_order
+    assert len(reorder_audits) == 1
+
+    rec = reorder_audits[0]
+    before = rec["before"]
+    after = rec["after"]
+
+    # Audit now records epoch NAMES, not IDs
+    assert before["old_order"] == old_order_names
+    assert after["new_order"] == new_order_names
+
+    # "types" snapshot is still present in before
+    assert "types" in before
+    assert isinstance(before["types"], list)

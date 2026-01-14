@@ -115,12 +115,14 @@ class EpochCreate(BaseModel):
     name: str
     epoch_label: Optional[str] = None
     epoch_description: Optional[str] = None
+    type: Optional[str] = None
 
 
 class EpochUpdate(BaseModel):
     name: Optional[str] = None
     epoch_label: Optional[str] = None
     epoch_description: Optional[str] = None
+    type: Optional[str] = None
 
 
 class VisitCreate(BaseModel):

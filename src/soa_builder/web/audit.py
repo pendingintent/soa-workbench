@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from .db import _connect
 
-logger = logging.getLogger("soa_builder.concepts")
+logger = logging.getLogger("soa_builder.audit")
 
 
 def _record_arm_audit(

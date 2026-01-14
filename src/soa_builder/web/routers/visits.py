@@ -32,6 +32,18 @@ def _nz(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
+def _load_code_value_map(soa_id: int) -> dict[str, str]:
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT code_uid, code FROM code WHERE soa_id=?",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {row[0]: row[1] for row in rows if row[0]}
+
+
 # API endpoint to list encounters for an SOA
 @router.get("/soa/{soa_id}/visits", response_class=JSONResponse, response_model=None)
 def list_visits(soa_id: int):
@@ -66,18 +78,6 @@ def list_visits(soa_id: int):
     ]
     conn.close()
     return rows
-
-
-def _load_code_value_map(soa_id: int) -> dict[str, str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT code_uid, code FROM code WHERE soa_id=?",
-        (soa_id,),
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return {row[0]: row[1] for row in rows if row[0]}
 
 
 # UI code to list encounters in an SOA
