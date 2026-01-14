@@ -183,7 +183,7 @@ def add_epoch(soa_id: int, payload: EpochCreate):
     # Always pick max(existing) + 1, do not fill gaps
     next_n = (max(used_nums) if used_nums else 0) + 1
     new_uid = f"StudyEpoch_{next_n}"
-    # Generate Code_{N} got type **only if value selected
+    # Generate Code_{N} for type only if value selected
     epoch_type_value = (payload.type or "").strip()
     epoch_type = None
     if epoch_type_value:
@@ -391,7 +391,7 @@ def update_epoch(soa_id: int, epoch_id: int, payload: EpochUpdate):
     ]
     _record_epoch_audit(
         soa_id,
-        "udpate",
+        "update",
         epoch_id,
         before=before,
         after={**after, "updated_fields": updated_fields},
@@ -608,7 +608,7 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
 @router.post("/soa/{soa_id}/epochs/reorder", response_class=JSONResponse)
 def reorder_epochs_api(
     soa_id: int,
-    order: List[int] = Body(..., embed=True),  # <‑- read JSON body: {"order":[...]}
+    order: List[int] = Body(..., embed=True),  # <-- read JSON body: {"order":[...]}
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
