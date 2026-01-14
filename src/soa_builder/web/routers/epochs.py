@@ -391,7 +391,7 @@ def update_epoch(soa_id: int, epoch_id: int, payload: EpochUpdate):
     ]
     _record_epoch_audit(
         soa_id,
-        "udpate",
+        "update",
         epoch_id,
         before=before,
         after={**after, "updated_fields": updated_fields},
