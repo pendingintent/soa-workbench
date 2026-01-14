@@ -605,7 +605,7 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
 @router.post("/soa/{soa_id}/epochs/reorder", response_class=JSONResponse)
 def reorder_epochs_api(
     soa_id: int,
-    order: List[int] = Body(..., embed=True),  # <‑- read JSON body: {"order":[...]}
+    order: List[int] = Body(..., embed=True),  # <-- read JSON body: {"order":[...]}
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
