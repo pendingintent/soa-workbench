@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Epochs for SoA {{ soa_id }}</h2>
+
+<div style="margin-bottom:12px">
+    <form method="post" action="/ui/soa/{{ soa_id }}/epochs/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Name *</strong></label>
+            <input name="name" placeholder="Epoch Name" required />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Label</strong></label>
+            <input name="label" placeholder="Epoch Label (optional)" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Description</strong></label>
+            <input name="description" placeholder="Epoch Description (optional)" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Epoch Type</strong></label>
+            <select name="type">
+                <option value="">-- Select Epoch Type --</option>
+                {% for id, name in (epoch_type_options or {}).items() %}
+                <option value="{{ id }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Epoch</button>
+    </form>
+</div>
+
+<table id="epochs-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
+    <tr style="background:#eee;">
+        <th style="text-align:left;padding:4px;">UID</th>
+        <th style="text-align:left;padding:4px;">Order</th>
+        <th style="text-align:left;padding:4px;">Name</th>
+        <th style="text-align:left;padding:4px;">Label</th>
+        <th style="text-align:left;padding:4px;">Description</th>
+        <th style="text-align:left;padding:4px;">Type</th>
+        <th style="text-align:left;padding:4px;">Save</th>
+        <th style="text-align:left;padding:4px;">Delete</th>
+        <th style="text-align:left;padding:4px;">Reorder</th>
+    </tr>
+    {% for e in epochs %}
+    <tr data-epoch-id="{{ e.id }}">
+        <form method="post" action="/ui/soa/{{ soa_id }}/epochs/{{ e.id }}/update">
+            <td style="padding:4px;white-space:nowrap;"><strong>{{ e.epoch_uid }}</strong></td>
+            <td style="padding:4px;white-space:nowrap;"><strong>{{ e.order_index }}</strong></td>
+            <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
+            <td style="padding:4px;"><input name="label" value="{{ e.epoch_label or '' }}" placeholder="Label" /></td>
+            <td style="padding:4px;"><input name="description" value="{{ e.epoch_description or '' }}" placeholder="Description" /></td>
+            <td style="padding:4px;">
+                <select name="type">
+                    <option value="">-- Select Epoch Type --</option>
+                    {% for id, name in (epoch_type_options or {}).items() %}
+                        <option value="{{ id }}" {% if (e.type_concept_id | string or '') == (id | string) %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="padding:4px;">
+                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </td>
+        </form>
+        <td style="padding:4px;">
+            <form method="post" action="/ui/soa/{{ soa_id }}/epochs/{{ e.id }}/delete">
+                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+                Delete
+                </button>
+            </form>
+        </td>
+        <td style="padding:4px;white-space:nowrap;">
+            <button type="button" onclick="moveEpochRow(this, -1)">↑</button>
+            <button type="button" onclick="moveEpochRow(this, 1)">↓</button>
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" style="padding:6px;color:#777;">No epochs yet.</td></tr>
+
+    {% endfor %}
+</table>
+
+<div style="margin-top:8px;">
+    <button type="button"
+            id="save-epoch-order-btn"
+            data-soa-id="{{ soa_id }}"
+            style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">
+        Save Epoch Order
+    </button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('save-epoch-order-btn');
+    if (btn) {
+        btn.addEventListener('click', function () {
+            var soaId = btn.getAttribute('data-soa-id');
+            saveEpochOrder(soaId);
+        });
+    }
+});
+
+function moveEpochRow(button, dir) {
+    var row = button.closest ? button.closest('tr') : button.parentNode.parentNode;
+    if (!row) return;
+    var table = document.getElementById('epochs-table');
+    if (!table) return;
+    var tbody = table.tBodies[0] || table;
+
+    if (dir < 0) {
+        var prev = row.previousElementSibling;
+        if (prev && prev.querySelector && prev.querySelector('td')) {
+            tbody.insertBefore(row, prev);
+        }
+    } else {
+        var next = row.nextElementSibling;
+        if (next) {
+            tbody.insertBefore(next, row);
+        }
+    }
+}
+
+function saveEpochOrder(soaId) {
+    var rows = document.querySelectorAll('#epochs-table tr[data-epoch-id]');
+    var order = [];
+    for (var i = 0; i < rows.length; i++) {
+        var id = parseInt(rows[i].getAttribute('data-epoch-id'), 10);
+        if (!isNaN(id)) {
+            order.push(id);
+        }
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/soa/' + soaId + '/epochs/reorder');
+    xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                window.location.reload();
+            } else {
+                alert('Reorder failed: ' + xhr.responseText);
+            }
+        }
+    };
+    xhr.send(JSON.stringify({ order: order }));
+}
+</script>
+{% endblock %}
