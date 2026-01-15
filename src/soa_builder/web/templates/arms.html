@@ -26,7 +26,7 @@
             </select>
         </div>
         <div style="display:flex;flex-direction:column;gap:2px;">
-            <lablel><strong>Arm Data Origin Type</strong></lablel>
+            <label><strong>Arm Data Origin Type</strong></label>
             <select name="data_origin_type">
                 <option value="">-- Select Arm Data Origin Type --</option>
                 {% for code, sv in (arm_data_origin_type_options or {}).items() %}
@@ -38,7 +38,7 @@
     </form>
 </div>
 
-<table id="epochs-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
+<table id="arms-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
     <tr style="background:#eee;">
         <th style="text-align:left;padding:4px;">UID</th>
         <th style="text-align:left;padding:4px;">Name</th>

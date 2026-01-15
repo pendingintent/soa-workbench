@@ -431,7 +431,7 @@ def ui_update_arm(
     data_origin_type: Optional[str] = Form(None),
 ):
     if not soa_exists(soa_id):
-        raise HTTPException(404, "Arm not found")
+        raise HTTPException(404, "SOA not found")
 
     payload = ArmUpdate(
         name=name,
