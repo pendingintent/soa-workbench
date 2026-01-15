@@ -277,6 +277,7 @@ def update_epoch(soa_id: int, epoch_id: int, payload: EpochUpdate):
     )
     row = cur.fetchone()
     if not row:
+        conn.close()
         raise HTTPException(404, f"Epoch id={int(epoch_id)} not found")
 
     before = {
@@ -605,6 +606,7 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
     return {**after, "updated_fields": updated_fields}
 
 
+# Deprecated (no longer needed)
 @router.post("/soa/{soa_id}/epochs/reorder", response_class=JSONResponse)
 def reorder_epochs_api(
     soa_id: int,

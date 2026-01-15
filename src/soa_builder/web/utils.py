@@ -132,6 +132,44 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
         return []
 
 
+# Function for creating {code: submission_value} for Arm type selector
+def load_arm_type_map() -> Dict[str, str]:
+    """Fetch Arm Type term mapping from the protocol_terminology database table"""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT code,cdisc_submission_value FROM protocol_terminology
+        WHERE codelist_code='C174222'
+        ORDER BY cdisc_submission_value
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {
+        str(code): str(sv) for (code, sv) in rows if code is not None and sv is not None
+    }
+
+
+# Function for creating {code: submission_value} for Arm dataOriginType selector
+def load_arm_data_origin_type_map() -> Dict[str, str]:
+    """Fetch arm data origin type from the ddf_terminology database table"""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT code,cdisc_submission_value FROM ddf_terminology
+        WHERE codelist_code='C188727'
+        ORDER BY cdisc_submission_value
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {
+        str(code): str(sv) for (code, sv) in rows if code is not None and sv is not None
+    }
+
+
 def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
     """Fetch Epoch Type term mapping from CDISC Library API for C99079.
 
