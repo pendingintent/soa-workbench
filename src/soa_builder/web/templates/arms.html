@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Arms for SoA {{ soa_id }}</h2>
+
+<div style="margin-bottom:12px">
+    <form method="post" action="/ui/soa/{{ soa_id }}/arms/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Name *</strong></label>
+            <input name="name" placeholder="Arm Name" required />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Label</strong></label>
+            <input name="label" placeholder="Arm Label (optional)" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Description</strong></label>
+            <input name="description" placeholder="Arm Description (optional)" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Arm Type</strong></label>
+            <select name="type">
+                <option value="">-- Select Arm Type --</option>
+                {% for code, sv in (arm_type_options or {}).items() %}
+                <option value="{{ code }}">{{ sv }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Arm Data Origin Type</strong></label>
+            <select name="data_origin_type">
+                <option value="">-- Select Arm Data Origin Type --</option>
+                {% for code, sv in (arm_data_origin_type_options or {}).items() %}
+                <option value="{{ code }}">{{ sv }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Arm</button>
+    </form>
+</div>
+
+<table id="arms-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
+    <tr style="background:#eee;">
+        <th style="text-align:left;padding:4px;">UID</th>
+        <th style="text-align:left;padding:4px;">Name</th>
+        <th style="text-align:left;padding:4px;">Label</th>
+        <th style="text-align:left;padding:4px;">Description</th>
+        <th style="text-align:left;padding:4px;">Type</th>
+        <th style="text-align:left;padding:4px;">Data Origin Type</th>
+        <th style="text-align:left;padding:4px;">Save</th>
+        <th style="text-align:left;padding:4px;">Delete</th>
+    </tr>
+    {% for a in arms %}
+    <tr>
+        <form method="post" action="/ui/soa/{{ soa_id }}/arms/{{ a.id }}/update">
+            <td style="padding:4px;white-space:nowrap;"><strong>{{ a.arm_uid }}</strong></td>
+            <td style="padding:4px;"><input name="name" value="{{ a.name }}" required /></td>
+            <td style="padding:4px;"><input name="label" value="{{ a.label or '' }}" placeholder="Label" /></td>
+            <td style="padding:4px;"><input name="description" value="{{ a.description or '' }}" placeholder="Description" /></td>
+            <td style="padding:4px;">
+                <select name="type">
+                    <option value="">-- Select Arm Type --</option>
+                    {% for code, sv in (arm_type_options or {}).items() %}
+                        <option value="{{ code }}"
+                            {% if (a.type_concept_id | string or '') == (code | string) %}selected{% endif %}>
+                            {{ sv }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="padding:4px;">
+                <select name="data_origin_type">
+                    <option value="">-- Select Arm Data Origin Type --</option>
+                    {% for code, sv in (arm_data_origin_type_options or {}).items() %}
+                    <option value="{{ code }}"
+                        {% if (a.data_origin_type_concept_id | string or '') == (code | string) %}selected{% endif %}>
+                        {{ sv }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </td>            
+            <td style="padding:4px;">
+                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </td>
+        </form>
+        <td style="padding:4px;">
+            <form method="post" action="/ui/soa/{{ soa_id }}/arms/{{ a.id }}/delete">
+                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+                Delete
+                </button>
+            </form>
+        </td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="12" style="padding:6px;color:#777;">No arms yet.</td></tr>
+    </tr>
+</table>
+{% endfor %}
+
+
+
+{% endblock %}

@@ -132,6 +132,44 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
         return []
 
 
+# Function for creating {code: submission_value} for Arm type selector
+def load_arm_type_map() -> Dict[str, str]:
+    """Fetch Arm Type term mapping from the protocol_terminology database table"""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT code,cdisc_submission_value FROM protocol_terminology
+        WHERE codelist_code='C174222'
+        ORDER BY cdisc_submission_value
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {
+        str(code): str(sv) for (code, sv) in rows if code is not None and sv is not None
+    }
+
+
+# Function for creating {code: submission_value} for Arm dataOriginType selector
+def load_arm_data_origin_type_map() -> Dict[str, str]:
+    """Fetch arm data origin type from the ddf_terminology database table"""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT code,cdisc_submission_value FROM ddf_terminology
+        WHERE codelist_code='C188727'
+        ORDER BY cdisc_submission_value
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {
+        str(code): str(sv) for (code, sv) in rows if code is not None and sv is not None
+    }
+
+
 def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
     """Fetch Epoch Type term mapping from CDISC Library API for C99079.
 
@@ -635,6 +673,113 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
     url = (
         f"https://library.cdisc.org/api/mdr/ct/packages/"
         f"{package_slug}/codelists/C127262"
+    )
+
+    headers: dict[str, str] = {"Accept": "application/json"}
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = os.environ.get("CDISC_API_KEY") or subscription_key
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    def _match_term(term: dict[str, Any]) -> str | None:
+        term_id = next(
+            (
+                term.get(field)
+                for field in (
+                    "conceptId",
+                    "concept_id",
+                    "code",
+                    "termCode",
+                    "term_code",
+                )
+                if term.get(field)
+            ),
+            None,
+        )
+        if term_id and str(term_id).lower() == target_code.lower():
+            submission = term.get("submissionValue") or term.get(
+                "cdisc_submission_value"
+            )
+            if submission:
+                return str(submission).strip()
+        return None
+
+    def _extract_terms(data: Any) -> List[dict]:
+        if isinstance(data, list):
+            return [t for t in data if isinstance(t, dict)]
+        if isinstance(data, dict):
+            if isinstance(data.get("terms"), list):
+                return [t for t in data["terms"] if isinstance(t, dict)]
+            embedded = data.get("_embedded", {})
+            if isinstance(embedded, dict) and isinstance(embedded.get("terms"), list):
+                return [t for t in embedded["terms"] if isinstance(t, dict)]
+        return []
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return None
+        payload = resp.json() or {}
+    except Exception:
+        return None
+
+    for term in _extract_terms(payload):
+        submission = _match_term(term)
+        if submission:
+            return submission
+
+    term_links = payload.get("_links", {}).get("terms") or []
+    if isinstance(term_links, dict):
+        term_links = [term_links]
+
+    for link in term_links:
+        href = link.get("href")
+        if not href:
+            continue
+        if href.startswith("/"):
+            href = f"https://library.cdisc.org{href}"
+        try:
+            term_resp = requests.get(href, headers=headers, timeout=10)
+            if term_resp.status_code != 200:
+                continue
+            term_data = term_resp.json() or {}
+        except Exception:
+            continue
+        submission = _match_term(term_data if isinstance(term_data, dict) else {})
+        if submission:
+            return submission
+
+    return None
+
+
+# Generic function to return submission value for provided codelist_code and code
+def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str):
+    """Resolve the environmental setting submission value via CDISC Library."""
+    if not code_uid:
+        return None
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+        (soa_id, code_uid),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    target_code = str(row[0]).strip()
+
+    package_slug = get_latest_sdtm_ct_href()
+    if not package_slug:
+        return None
+
+    url = (
+        f"https://library.cdisc.org/api/mdr/ct/packages/"
+        f"{package_slug}/codelists/{codelist_code}"
     )
 
     headers: dict[str, str] = {"Accept": "application/json"}
