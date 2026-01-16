@@ -91,7 +91,7 @@ def add_element(soa_id: int, payload: ElementCreate):
 
     name = (payload.name or "").strip()
     if not name:
-        raise HTTPException(404, "Element name required")
+        raise HTTPException(400, "Element name required")
 
     conn = _connect()
     cur = conn.cursor()
@@ -146,7 +146,7 @@ def add_element(soa_id: int, payload: ElementCreate):
     conn.close()
     after = {
         "id": id,
-        "encounter_uid": new_uid,
+        "element_uid": new_uid,
         "name": payload.name,
         "label": (payload.label or "").strip() or None,
         "description": (payload.description or "").strip() or None,
@@ -169,7 +169,7 @@ def ui_create_element(
     teenrl: Optional[str] = Form(None),
 ):
     if not soa_exists(soa_id):
-        raise HTTPException("SOA not found")
+        raise HTTPException(404, "SOA not found")
 
     payload = ElementCreate(
         name=name,

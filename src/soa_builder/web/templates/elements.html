@@ -34,11 +34,11 @@
           {% endfor %}
       </select>
     </div>
-    <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Arm</button>
+    <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Element</button>
   </form>
 </div>
 
-<table id="arms-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
+<table id="elements-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
     <tr style="background:#eee;">
         <th style="text-align:left;padding:4px;">UID</th>
         <th style="text-align:left;padding:4px;">Name</th>
@@ -86,7 +86,7 @@
     </tr>
     {% else %}
     <tr>
-      <td colspan="12" style="padding:6px;color:#777;">No elements yet.</td>
+      <td colspan="8" style="padding:6px;color:#777;">No elements yet.</td>
     </tr>
     {% endfor %}
 </table>

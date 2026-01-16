@@ -89,7 +89,7 @@ def add_rule(soa_id: int, payload: RuleCreate):
 
     name = (payload.name or "").strip()
     if not name:
-        raise HTTPException(404, "Transition Rule name required")
+        raise HTTPException(400, "Transition Rule name required")
 
     conn = _connect()
     cur = conn.cursor()
@@ -196,7 +196,7 @@ def update_rule(soa_id: int, rule_id: int, payload: RuleUpdate):
 
     before = {
         "id": row[0],
-        "transition_rule_id": row[1],
+        "transition_rule_uid": row[1],
         "name": row[2],
         "label": row[3],
         "description": row[4],
