@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 import os
+import re
 import requests
 import time
 from .db import _connect
@@ -27,6 +28,62 @@ _contact_mode_cache: dict[str, Any] = {
     "last_error": None,
 }
 _CONTACT_MODE_CACHE_TTL = 60 * 60  # 1 hour
+
+
+# Constants for the helper function
+_ISO_DURATION_RE = re.compile(
+    r"^P"  # starts with 'P'
+    r"(?:(?P<years>\d+)Y)?"  # years
+    r"(?:(?P<months>\d+)M)?"  # months (date part)
+    r"(?:(?P<weeks>\d+)W)?"  # weeks
+    r"(?:(?P<days>\d+)D)?"  # days
+    r"(?:T"  # time part
+    r"(?:(?P<hours>\d+)H)?"
+    r"(?:(?P<minutes>\d+)M)?"
+    r"(?:(?P<seconds>\d+)S)?"
+    r")?$"
+)
+
+
+# Help function to convert ISO-8601 duration/period strings
+# to days, using these common approximations for years and months
+"""
+    1 year = 365 days
+    1 month = 30 days
+    1 week = 7 days
+    1 hour = 1/24 day
+    1 minute = 1/(24*60) day
+    1 second = 1/(24*3600) day
+"""
+
+
+def iso_duration_to_days(iso_duration: str) -> float:
+    """
+    Convert an ISO-8601 duration (e.g. 'P1D', 'P2W', 'P1Y2M3D', 'P1DT12H')
+    into a number of days (float).
+
+    Uses approximations: 1Y=365d, 1M=30d.
+    Raises ValueError if the string is not a valid duration.
+    """
+    if not iso_duration:
+        return None
+
+    m = _ISO_DURATION_RE.match(iso_duration)
+    if not m:
+        return None
+
+    parts = {k: int(v) if v is not None else 0 for k, v in m.groupdict().items()}
+
+    days = 0.0
+    days += parts["years"] * 365
+    days += parts["months"] * 30
+    days += parts["weeks"] * 7
+    days += parts["days"]
+    days += parts["hours"] / 24.0
+    days += parts["minutes"] / (24.0 * 60.0)
+    days += parts["seconds"] / (24.0 * 3600.0)
+
+    return days
 
 
 def get_cdisc_api_key():
