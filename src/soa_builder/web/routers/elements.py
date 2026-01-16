@@ -146,7 +146,7 @@ def add_element(soa_id: int, payload: ElementCreate):
     conn.close()
     after = {
         "id": id,
-        "encounter_uid": new_uid,
+        "element_uid": new_uid,
         "name": payload.name,
         "label": (payload.label or "").strip() or None,
         "description": (payload.description or "").strip() or None,
