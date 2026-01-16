@@ -169,7 +169,7 @@ def ui_create_element(
     teenrl: Optional[str] = Form(None),
 ):
     if not soa_exists(soa_id):
-        raise HTTPException("SOA not found")
+        raise HTTPException(404, "SOA not found")
 
     payload = ElementCreate(
         name=name,
