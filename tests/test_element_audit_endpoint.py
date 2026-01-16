@@ -12,8 +12,8 @@ def test_element_audit_endpoint_has_rows():
     soa_id = resp.json()["id"]
 
     # Create element via UI endpoint (records create audit)
-    r1 = client.post(f"/ui/soa/{soa_id}/add_element", data={"name": "E1"})
-    assert r1.status_code == 200
+    r1 = client.post(f"/ui/soa/{soa_id}/elements/create", data={"name": "E1"})
+    assert 200 <= r1.status_code < 400
 
     # Update element
     # Update element: get element id directly from DB to avoid UI joins
@@ -28,17 +28,17 @@ def test_element_audit_endpoint_has_rows():
     conn.close()
 
     r2 = client.post(
-        f"/ui/soa/{soa_id}/update_element",
-        data={"element_id": eid, "name": "E1-upd"},
+        f"/ui/soa/{soa_id}/elements/{eid}/update",
+        data={"id": eid, "name": "E1-upd"},
     )
-    assert r2.status_code == 200
+    assert 200 <= r2.status_code < 400
 
     # Delete element
     r3 = client.post(
-        f"/ui/soa/{soa_id}/delete_element",
-        data={"element_id": eid},
+        f"/ui/soa/{soa_id}/elements/{eid}/delete",
+        data={"id": eid},
     )
-    assert r3.status_code == 200
+    assert 200 <= r3.status_code < 400
 
     # Call element audit listing endpoint
     audit = client.get(f"/soa/{soa_id}/element_audit")

@@ -120,7 +120,7 @@ def ui_list_visits(request: Request, soa_id: int):
     transition_rule_options = get_study_transition_rules(soa_id)
     timing_options = get_timing_id(soa_id)
 
-    logger.info(environmental_setting_options)
+    # logger.info(environmental_setting_options)
 
     return templates.TemplateResponse(
         request,
@@ -225,29 +225,6 @@ def add_visit(soa_id: int, payload: VisitCreate):
         )
 
     # Generate Code_{N} for environmentalSettings **only if value selected
-    """
-    environmentalSettings = _get_next_code_uid(cur, soa_id)
-    logger.info("environmentalSettings=%s", environmentalSettings)
-    env_code_value = (payload.environmentalSettings or "").strip() or None
-    env_package_slug = get_latest_sdtm_ct_href() or ""
-    env_codelist_table = (
-        f"/mdr/ct/packages/{env_package_slug}"
-        if env_package_slug
-        else "/mdr/ct/packages"
-    )
-
-    if environmentalSettings:
-        cur.execute(
-            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-            (
-                soa_id,
-                environmentalSettings,
-                env_codelist_table,
-                "C127262",
-                env_code_value,
-            ),
-        )
-    """
     env_code_value = (payload.environmentalSettings or "").strip()
     environmentalSettings = None
     if env_code_value:
@@ -271,29 +248,6 @@ def add_visit(soa_id: int, payload: VisitCreate):
         )
 
     # Generate Code_{N} for contactModes **only if value selected
-    """
-    contactModes = _get_next_code_uid(cur, soa_id)
-    logger.info("contactModes=%s", contactModes)
-    contact_mode_value = (payload.contactModes or "").strip() or None
-    contact_mode_slug = get_latest_sdtm_ct_href() or ""
-    contact_mode_codelist_table = (
-        f"/mdr/ct/packages/{contact_mode_slug}"
-        if contact_mode_slug
-        else "/mdr/ct/packages"
-    )
-
-    if contactModes:
-        cur.execute(
-            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-            (
-                soa_id,
-                contactModes,
-                contact_mode_codelist_table,
-                "C171445",
-                contact_mode_value,
-            ),
-        )
-    """
     contact_mode_value = (payload.contactModes or "").strip()
     contactModes = None
     if contact_mode_value:
