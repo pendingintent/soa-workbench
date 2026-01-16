@@ -91,7 +91,7 @@ def add_element(soa_id: int, payload: ElementCreate):
 
     name = (payload.name or "").strip()
     if not name:
-        raise HTTPException(404, "Element name required")
+        raise HTTPException(400, "Element name required")
 
     conn = _connect()
     cur = conn.cursor()
