@@ -69,7 +69,7 @@ def ui_list_rules(request: Request, soa_id: int):
         request,
         "rules.html",
         {
-            "reqwuest": request,
+            "request": request,
             "soa_id": soa_id,
             "rules": rules,
         },
@@ -78,6 +78,7 @@ def ui_list_rules(request: Request, soa_id: int):
 
 # API endpoint for creating transition rule
 @router.post(
+    "/soa/{soa_id}/rules",
     response_class=JSONResponse,
     status_code=201,
     response_model=None,
@@ -144,7 +145,7 @@ def add_rule(soa_id: int, payload: RuleCreate):
         "transition_rule_uid": new_uid,
         "name": payload.name,
         "label": (payload.label or "").strip() or None,
-        "description": (payload.description or "").stirp() or None,
+        "description": (payload.description or "").strip() or None,
         "text": (payload.text or "").strip() or None,
     }
     _record_transition_rule_audit(soa_id, "create", id, before=None, after=after)
@@ -152,7 +153,7 @@ def add_rule(soa_id: int, payload: RuleCreate):
 
 
 # UI code for creating transition rule
-@router.post("/ui/sao/{soa_id}/rules/create")
+@router.post("/ui/soa/{soa_id}/rules/create")
 def ui_create_rule(
     request: Request,
     soa_id: int,
@@ -316,13 +317,13 @@ def delete_rule(soa_id: int, rule_id: int):
     conn.commit()
     # reindex remaining rules order_index sequentially
     cur.execute(
-        "SELECT id FROM transition_rule WHER soa_id=? ORDER BY order_index",
+        "SELECT id FROM transition_rule WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
     remaining = [r[0] for r in cur.fetchall()]
     for idx, rid in enumerate(remaining, start=1):
         cur.execute(
-            "UPDATE transition_rule SET order_index WHERE id=?",
+            "UPDATE transition_rule SET order_index=? WHERE id=?",
             (idx, rid),
         )
     conn.commit()

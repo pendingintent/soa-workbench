@@ -65,6 +65,7 @@ from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
 from .routers import visits as visits_router
 from .routers import audits as audits_router
+from .routers import rules as rules_router
 
 from .routers import timings as timings_router
 from .routers import schedule_timelines as schedule_timelines_router
@@ -186,6 +187,7 @@ app.include_router(timings_router.router)
 app.include_router(instances_router.router)
 app.include_router(audits_router.router)
 app.include_router(schedule_timelines_router.router)
+app.include_router(rules_router.router)
 
 
 def _record_visit_audit(
@@ -3891,7 +3893,7 @@ def ui_concept_detail(code: str, request: Request):
     )
 
 
-# UI endpoint for adding an element
+# UI endpoint for adding an element     <- Deprecated (movd to routers/elements.py)
 @app.post("/ui/soa/{soa_id}/add_element", response_class=HTMLResponse)
 def ui_add_element(
     request: Request,
@@ -4006,7 +4008,7 @@ def ui_add_element(
     '''
 
 
-# UI endpoint for associating a Transition Start Rule with an Element (element.testrl)
+# UI endpoint for associating a Transition Start Rule with an Element (element.testrl)  <- Deprecated (movd to routers/elements.py)
 @app.post(
     "/ui/soa/{soa_id}/set_element_transition_start_rule", response_class=HTMLResponse
 )
@@ -4087,7 +4089,7 @@ def ui_set_element_transition_start_rule(
     )
 
 
-# UI endpoint for associating a Transition Start Rule with an Element (element.teenrl)
+# UI endpoint for associating a Transition Start Rule with an Element (element.teenrl)  <- Deprecated (movd to routers/elements.py)
 @app.post(
     "/ui/soa/{soa_id}/set_element_transition_end_rule", response_class=HTMLResponse
 )
@@ -4167,7 +4169,7 @@ def ui_set_element_transition_end_rule(
     )
 
 
-# UI endpoint for updating an element
+# UI endpoint for updating an element       <- Deprecated (movd to routers/elements.py)
 @app.post("/ui/soa/{soa_id}/update_element", response_class=HTMLResponse)
 def ui_update_element(
     request: Request,
@@ -4284,7 +4286,7 @@ def ui_update_element(
     """
 
 
-# UI endpoint for deleting an element
+# UI endpoint for deleting an element       <- Deprecated (movd to routers/elements.py)
 @app.post("/ui/soa/{soa_id}/delete_element", response_class=HTMLResponse)
 def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)):
     """Form handler to delete an existing Element."""
