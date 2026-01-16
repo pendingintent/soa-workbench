@@ -283,3 +283,32 @@ def _record_instance_audit(
         conn.close()
     except Exception as e:
         logger.warning("Failed recording instance audit: %s", e)
+
+
+# Transition Rule Audit
+def _record_transition_rule_audit(
+    soa_id: int,
+    action: str,
+    transition_rule_id: Optional[int],
+    before: Optional[dict] = None,
+    after: Optional[dict] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO transition_rule_audit (soa_id, transition_rule_id, action, before_json, after_json, performed_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                transition_rule_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording transition rule audit: %s", e)

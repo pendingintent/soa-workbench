@@ -13,7 +13,7 @@ def _create_soa(name="ElementTest"):
 
 def test_add_element_populates_element_id_if_present():
     soa_id = _create_soa()
-    resp = client.post(f"/ui/soa/{soa_id}/add_element", data={"name": "Elem A"})
+    resp = client.post(f"/ui/soa/{soa_id}/elements/create", data={"name": "Elem A"})
     assert resp.status_code == 200, resp.text
     conn = _connect()
     cur = conn.cursor()

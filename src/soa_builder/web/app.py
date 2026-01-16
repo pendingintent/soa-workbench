@@ -65,6 +65,7 @@ from .routers import freezes as freezes_router
 from .routers import rollback as rollback_router
 from .routers import visits as visits_router
 from .routers import audits as audits_router
+from .routers import rules as rules_router
 
 from .routers import timings as timings_router
 from .routers import schedule_timelines as schedule_timelines_router
@@ -186,35 +187,7 @@ app.include_router(timings_router.router)
 app.include_router(instances_router.router)
 app.include_router(audits_router.router)
 app.include_router(schedule_timelines_router.router)
-
-
-# Create Audit record functions
-def _record_transition_rule_audit(
-    soa_id: int,
-    action: str,
-    transition_rule_id: Optional[int],
-    before: Optional[dict] = None,
-    after: Optional[dict] = None,
-):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO transition_rule_audit (soa_id, transition_rule_id, action, before_json, after_json, performed_at) "
-            "VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                transition_rule_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording transition rule audit: %s", e)
+app.include_router(rules_router.router)
 
 
 def _record_visit_audit(
@@ -3920,7 +3893,7 @@ def ui_concept_detail(code: str, request: Request):
     )
 
 
-# UI endpoint for adding an element
+# UI endpoint for adding an element     <- Deprecated (movd to routers/elements.py)
 @app.post("/ui/soa/{soa_id}/add_element", response_class=HTMLResponse)
 def ui_add_element(
     request: Request,
@@ -4035,7 +4008,7 @@ def ui_add_element(
     '''
 
 
-# UI endpoint for associating a Transition Start Rule with an Element (element.testrl)
+# UI endpoint for associating a Transition Start Rule with an Element (element.testrl)  <- Deprecated (movd to routers/elements.py)
 @app.post(
     "/ui/soa/{soa_id}/set_element_transition_start_rule", response_class=HTMLResponse
 )
@@ -4116,7 +4089,7 @@ def ui_set_element_transition_start_rule(
     )
 
 
-# UI endpoint for associating a Transition Start Rule with an Element (element.teenrl)
+# UI endpoint for associating a Transition Start Rule with an Element (element.teenrl)  <- Deprecated (movd to routers/elements.py)
 @app.post(
     "/ui/soa/{soa_id}/set_element_transition_end_rule", response_class=HTMLResponse
 )
@@ -4196,7 +4169,7 @@ def ui_set_element_transition_end_rule(
     )
 
 
-# UI endpoint for updating an element
+# UI endpoint for updating an element       <- Deprecated (movd to routers/elements.py)
 @app.post("/ui/soa/{soa_id}/update_element", response_class=HTMLResponse)
 def ui_update_element(
     request: Request,
@@ -4313,7 +4286,7 @@ def ui_update_element(
     """
 
 
-# UI endpoint for deleting an element
+# UI endpoint for deleting an element       <- Deprecated (movd to routers/elements.py)
 @app.post("/ui/soa/{soa_id}/delete_element", response_class=HTMLResponse)
 def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)):
     """Form handler to delete an existing Element."""
@@ -4677,253 +4650,6 @@ def _next_transition_rule_uid(soa_id: int) -> str:
         pass
     conn.close()
     return f"TransitionRule_{max_n + 1}"
-
-
-# UI endpoint for adding a new Transition Rule
-@app.post("/ui/soa/{soa_id}/add_transition_rule", response_class=HTMLResponse)
-def ui_add_transition_rule(
-    request: Request,
-    soa_id: int,
-    name: str = Form(...),
-    label: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    text: str = Form(...),
-):
-    """Form handler to add a Transition Rule."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    name = (name or "").strip()
-    if not name:
-        raise HTTPException(400, "Name required")
-    text = (text or "").strip()
-    if not text:
-        raise HTTPException(400, "Text required")
-    conn = _connect()
-    cur = conn.cursor()
-    # Determine next order index
-    cur.execute(
-        "SELECT COALESCE(MAX(order_index), 0) FROM transition_rule WHERE soa_id=?",
-        (soa_id,),
-    )
-    next_ord = (cur.fetchone() or [0])[0] + 1
-    now = datetime.now(timezone.utc).isoformat()
-    # Generate TransitionRule_<n> monotonically increasing for this SOA
-    transition_rule_identifier = _next_transition_rule_uid(soa_id)
-    cur.execute(
-        """INSERT INTO transition_rule (soa_id,transition_rule_uid,name,label,description,text,order_index,created_at) VALUES (?,?,?,?,?,?,?,?)""",
-        (
-            soa_id,
-            transition_rule_identifier,
-            name,
-            (label or "").strip() or None,
-            (description or "").strip() or None,
-            text,
-            next_ord,
-            now,
-        ),
-    )
-    eid = cur.lastrowid
-    conn.commit()
-    conn.close()
-    _record_transition_rule_audit(
-        soa_id,
-        "create",
-        eid,
-        before=None,
-        after={
-            "id": eid,
-            "transition_rule_uid": transition_rule_identifier,
-            "name": name,
-            "label": (label or "").strip() or None,
-            "description": (description or "").strip() or None,
-            "text": text,
-            "order_index": next_ord,
-        },
-    )
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-
-
-# UI endpoint for updating a Transition Rule
-@app.post("/ui/soa/{soa_id}/update_transition_rule", response_class=HTMLResponse)
-def ui_transition_rule_update(
-    request: Request,
-    soa_id: int,
-    transition_rule_uid: str = Form(...),
-    name: Optional[str] = Form(None),
-    label: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    text: Optional[str] = Form(None),
-):
-    """Form handler to update an existing Transition Rule."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    # Verify exists and get id
-    cur.execute(
-        "SELECT id,transition_rule_uid,name,label,description,text,order_index,created_at FROM transition_rule WHERE soa_id=? AND transition_rule_uid=?",
-        (soa_id, transition_rule_uid),
-    )
-    b = cur.fetchone()
-    if not b:
-        conn.close()
-        raise HTTPException(404, "Transition Rule not found")
-    before = {
-        "id": b[0],
-        "transition_rule_uid": b[1],
-        "name": b[2],
-        "label": b[3],
-        "description": b[4],
-        "text": b[5],
-        "order_index": b[6],
-        "created_at": b[7],
-    }
-    sets = []
-    vals: list[Any] = []
-    if name is not None:
-        sets.append("name=?")
-        vals.append((name or "").strip() or None)
-    if label is not None:
-        sets.append("label=?")
-        vals.append((label or "").strip() or None)
-    if description is not None:
-        sets.append("description=?")
-        vals.append((description or "").strip() or None)
-    if text is not None:
-        sets.append("text=?")
-        vals.append((text or "").strip() or None)
-    if sets:
-        vals.append(before["id"])
-        cur.execute(f"UPDATE transition_rule SET {', '.join(sets)} WHERE id=?", vals)
-        conn.commit()
-    # Fetch after
-    cur.execute(
-        "SELECT id,name,label,description,text,order_index,created_at FROM transition_rule WHERE id=?",
-        (before["id"],),
-    )
-    a = cur.fetchone()
-    conn.close()
-    after = {
-        "id": a[0],
-        "name": a[1],
-        "label": a[2],
-        "description": a[3],
-        "text": a[4],
-        "order_index": a[5],
-        "created_at": a[6],
-    }
-    mutable_fields = ["name", "label", "description", "text"]
-    updated_fields = [
-        f for f in mutable_fields if before and before.get(f) != after.get(f)
-    ]
-    _record_transition_rule_audit(
-        soa_id,
-        "update",
-        before["id"],
-        before=before,
-        after={**after, "updated_fields": updated_fields},
-    )
-    # HTMX inline update: return refreshed list markup when requested
-    if request.headers.get("HX-Request") == "true":
-        conn_tr = _connect()
-        cur_tr = conn_tr.cursor()
-        cur_tr.execute(
-            "SELECT transition_rule_uid,name,label,description,text,order_index,created_at FROM transition_rule WHERE soa_id=? ORDER BY order_index",
-            (soa_id,),
-        )
-        transition_rules = [
-            dict(
-                transition_rule_uid=r[0],
-                name=r[1],
-                label=r[2],
-                description=r[3],
-                text=r[4],
-                order_index=r[5],
-                created_at=r[6],
-            )
-            for r in cur_tr.fetchall()
-        ]
-        conn_tr.close()
-        html = templates.get_template("transition_rules_list.html").render(
-            transition_rules=transition_rules, soa_id=soa_id
-        )
-        return HTMLResponse(html)
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-
-
-# UI endpoint for deleting a Transition Rule
-@app.post("/ui/soa/{soa_id}/delete_transition_rule")
-def ui_delete_transition_rule(
-    request: Request, soa_id: int, transition_rule_uid: str = Form(...)
-):
-    """Form handler to delete a transition rule"""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    # Capture before for audit
-    cur.execute(
-        "SELECT id,transition_rule_uid,name,label,description,text,order_index,created_at FROM transition_rule WHERE soa_id=? AND transition_rule_uid=?",
-        (soa_id, transition_rule_uid),
-    )
-    b = cur.fetchone()
-    before = None
-    if b:
-        before = {
-            "id": b[0],
-            "transition_rule_uid": b[1],
-            "name": b[2],
-            "label": b[3],
-            "description": b[4],
-            "text": b[5],
-            "order_index": b[6],
-            "created_at": b[7],
-        }
-    cur.execute(
-        "DELETE FROM transition_rule WHERE transition_rule_uid=? AND soa_id=?",
-        (transition_rule_uid, soa_id),
-    )
-    conn.commit()
-    conn.close()
-    _record_transition_rule_audit(
-        soa_id,
-        "delete",
-        before["id"] if before else None,
-        before=before,
-        after=None,
-    )
-    # HTMX inline update: return refreshed list markup when requested
-    if request.headers.get("HX-Request") == "true":
-        conn_tr = _connect()
-        cur_tr = conn_tr.cursor()
-        cur_tr.execute(
-            "SELECT transition_rule_uid,name,label,description,text,order_index,created_at FROM transition_rule WHERE soa_id=? ORDER BY order_index",
-            (soa_id,),
-        )
-        transition_rules = [
-            dict(
-                transition_rule_uid=r[0],
-                name=r[1],
-                label=r[2],
-                description=r[3],
-                text=r[4],
-                order_index=r[5],
-                created_at=r[6],
-            )
-            for r in cur_tr.fetchall()
-        ]
-        conn_tr.close()
-        html = templates.get_template("transition_rules_list.html").render(
-            transition_rules=transition_rules, soa_id=soa_id
-        )
-        return HTMLResponse(html)
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
 
 
 # UI endpoint for setting a BC to an Activity

@@ -167,6 +167,20 @@ class ArmUpdate(BaseModel):
     data_origin_type: Optional[str] = None
 
 
+class RuleCreate(BaseModel):
+    name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    text: Optional[str] = None
+
+
+class RuleUpdate(BaseModel):
+    name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    text: Optional[str] = None
+
+
 class SOACreate(BaseModel):
     name: str
     study_id: Optional[str] = None

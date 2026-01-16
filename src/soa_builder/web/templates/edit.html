@@ -114,59 +114,6 @@
         <button>Add Activity</button>
       </form>
     </details>
-    <details id="elements-section" open class="collapsible">
-      <summary>Elements ({{ elements|length }}) <span class="hint">(drag to reorder)</span></summary>
-      <ul id="elements-list" class="drag-list">
-        {% for el in elements %}
-        <li class="drag-item" draggable="false" data-id="{{ el.id }}" title="{{ el.description or '' }}">
-          <span class="ord">{{ el.order_index }}</span>. <strong>{% if el.label %}{{ el.label }}{% else %}{{ el.name }}{% endif %}</strong>
-          <span class="element-actions">
-            {% if transition_rules %}
-            <form method="post" action="/ui/soa/{{ soa_id }}/set_element_transition_start_rule" style="display:inline;margin-left:6px;">
-              <input type="hidden" name="element_id" value="{{ el.id }}" />
-              <select name="element_transition_start_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
-                <option value="" {% if not el.testrl %}selected{% endif %}>-- Select Transition START Rule --</option>
-                {% for tr in transition_rules %}
-                <option value="{{ tr.transition_rule_uid }}" {% if (el.testrl|string) == (tr.transition_rule_uid|string) %}selected{% endif %}>{{ tr.name }}</option>
-                {% endfor %}
-              </select>
-            </form>
-            <form method="post" action="/ui/soa/{{ soa_id }}/set_element_transition_end_rule" style="display:inline;margin-left:6px;">
-              <input type="hidden" name="element_id" value="{{ el.id }}" />
-              <select name="element_transition_end_rule_uid" style="font-size:0.65em;" onchange="this.form.submit()">
-                <option value="" {% if not el.teenrl %}selected{% endif %}>-- Select Transition END Rule --</option>
-                {% for tr in transition_rules %}
-                <option value="{{ tr.transition_rule_uid }}" {% if (el.teenrl|string) == (tr.transition_rule_uid|string) %}selected{% endif %}>{{ tr.name }}</option>
-                {% endfor %}
-              </select>
-            </form>
-            {% endif %}
-            <form method="post" action="/ui/soa/{{ soa_id }}/update_element" style="display:inline;font-size:0.6em;">
-              <input type="hidden" name="element_id" value="{{ el.id }}" />
-              <input name="name" value="{{ el.name }}" placeholder="Name" style="width:90px;" />
-              <input name="label" value="{{ el.label or '' }}" placeholder="Label" style="width:70px;" />
-              <input name="description" value="{{ el.description or '' }}" placeholder="Desc" style="width:120px;" />
-              <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </form>
-            <form method="post" action="/ui/soa/{{ soa_id }}/delete_element" style="display:inline;">
-              <input type="hidden" name="element_id" value="{{ el.id }}" />
-              <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-                  Delete
-              </button>
-            </form>
-          </span>
-        </li>
-        {% endfor %}
-      </ul>
-      <form method="post" action="/ui/soa/{{ soa_id }}/add_element" style="margin-top:6px;">
-        <input name="name" placeholder="Element Name" required />
-        <input name="label" placeholder="Label (optional)" />
-        <input name="description" placeholder="Description (optional)" />
-        
-        <button>Add Element</button>
-      </form>
-    </details>
-   
     <details id="study-cells-section" class="collapsible">
       <summary>Study Cells ({{ study_cells|length }})</summary>
       <form method="post" action="/ui/soa/{{ soa_id }}/add_study_cell" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;align-items:start;margin-top:6px;">
@@ -235,39 +182,6 @@
         </table>
       </div>
     </details>
-    <details id="transition-rules-section" class="collapsible">
-      <summary>Transition Rules ({{ transition_rules|length }})</summary>
-      <ul id="transition-rule-list" class="drag-list">
-        {% for rule in transition_rules %}
-        <li class="drag-item" draggable="false" data-id="{{ rule.transition_rule_uid }}" title="{{ rule.name or '' }}">
-          <span class="ord">{{ rule.order_index }}</span>. <strong>{% if rule.label %}{{ rule.label }}{% else %}{{ rule.name }}{% endif %}</strong>
-          <span class="transition-rule-actions">
-            <form method="post" action="/ui/soa/{{ soa_id }}/update_transition_rule" style="display:inline;margin-left:6px;font-size:0.6em;">
-              <input type="hidden" name="transition_rule_uid" value="{{ rule.transition_rule_uid }}" />
-              <input name="name" value="{{ rule.name }}" placeholder="Name" style="width:90px;" />
-              <input name="label" value="{{ rule.label or '' }}" placeholder="Label" style="width:70px;" />
-              <input name="description" value="{{ rule.description or '' }}" placeholder="Desc" style="width:120px;" />
-              <input name="text" value="{{ rule.text or '' }}" placeholder="Rule text" style="width:160px;" />
-              <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </form>
-            <form hx-post="/ui/soa/{{ soa_id }}/delete_transition_rule" hx-target="#transition-rule-list" hx-swap="outerHTML" hx-confirm="Delete transition rule '{{ rule.name }}'?" style="display:inline">
-              <input type="hidden" name="transition_rule_uid" value="{{ rule.transition_rule_uid }}" />
-              <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-                Delete
-              </button>
-            </form>
-          </span>
-        </li>
-        {% endfor %}
-      </ul>
-      <form method="post" action="/ui/soa/{{ soa_id }}/add_transition_rule" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
-        <input name="name" placeholder="Transition Rule Name" required style="flex:1;min-width:120px;" />
-        <input name="label" placeholder="Transition Rule Label" style="flex:1;min-width:110px;" />
-        <input name="description" placeholder="Transition Rule Description" style="flex:2;min-width:160px;" />
-        <input name="text" placeholder="Transition Rule text" required style="flex:2;min-width:160px;" />
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Transition Rule</button>
-      </form>
-    </details>
   </div>
   
 </div>
@@ -333,11 +247,7 @@
   .drag-item.dragging { opacity:0.5; }
   .drag-item.over { border-color:#1976d2; background:#e3f2fd; }
   .drag-item form { margin-left:0; }
-  .visit-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
   .activity-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
-  .epochs-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
-  .element-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
-  .arm-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
   .transition-rule-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
   .hint { font-weight:400; font-size:0.7em; color:#666; }
 </style>
@@ -352,16 +262,8 @@ function persistSection(sectionId){
   const saved = localStorage.getItem('soa_collapse_'+sectionId);
   if(saved === '0') el.open = false;
 }
-persistSection('visits-section');
 persistSection('activities-section');
-persistSection('epochs-section');
-persistSection('elements-section');
-persistSection('arms-section');
-persistSection('activity-audit-section');
-persistSection('arm-audit-section');
-persistSection('epoch-audit-section');
 persistSection('study-cells-section');
-persistSection('study-cell-audit-section');
 persistSection('transition-rules-section');
 
 // --- XLSX export link updates to include optional diff parameters ---
@@ -432,14 +334,9 @@ function enableDragList(listId, submitUrl, ordSelector='.ord', kind=null){
         }}).catch(err=>console.error(err));
   }
 }
-//enableDragList('epochs-list', '/ui/soa/{{ soa_id }}/reorder_epochs', '.ord', 'epoch');
+
 enableDragList('visits-list', '/ui/soa/{{ soa_id }}/reorder_visits', '.ord', 'visit');
 enableDragList('activities-list', '/ui/soa/{{ soa_id }}/reorder_activities', '.ord', 'activity');
-//enableDragList('elements-list', '/ui/soa/{{ soa_id }}/reorder_elements', '.ord', 'element');
-//enableDragList('arms-list', '/ui/soa/{{ soa_id }}/reorder_arms', '.ord', 'arm');
-// NOTE: kind === 'epoch' intentionally has no corresponding reorderMatrixEpochs call.
-// Epochs are a higher-level grouping that does not alter matrix axes (columns are visits, rows are activities).
-// We still record reorder audit events for epochs, but no DOM matrix reflow is required.
 
 function reorderMatrixVisits(newOrder){
   const table = document.querySelector('table.matrix'); if(!table) return;

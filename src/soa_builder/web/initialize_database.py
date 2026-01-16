@@ -252,7 +252,7 @@ def _init_db():
             name TEXT NOT NULL,
             label TEXT,
             description TEXT,
-            text TEXT NOT NULL,
+            text TEXT,
             order_index INTEGER,
             created_at TEXT,
             UNIQUE(soa_id, transition_rule_uid)

@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Transition Rules for SoA {{ soa_id }}</h2>
+
+<div style="margin-bottom:12px">
+    <form method="post" action="/ui/soa/{{ soa_id }}/rules/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;width:100%;">
+        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+            <label><strong>Name *</strong></label>
+            <input name="name" placeholder="Rule Name" required style="width:100%;box-sizing:border-box;"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+            <label><strong>Label</strong></label>
+            <input name="label" placeholder="Rule Label (optional)" style="width:100%;box-sizing:border-box;"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+            <label><strong>Description</strong></label>
+            <input name="description" placeholder="Rule Description (optional)" style="width:100%;box-sizing:border-box;"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+            <label><strong>Rule Text</strong></label>
+            <input name="text" placeholder="Rule Text (optional)" style="width:100%;box-sizing:border-box;"/>
+        </div>
+        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Transition Rule</button>
+    </form>
+</div>
+
+<table id="rules-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
+    <tr style="background:#eee;">
+        <th style="text-align:left;padding:4px;">UID</th>
+        <th style="text-align:left;padding:4px;">Name</th>
+        <th style="text-align:left;padding:4px;">Label</th>
+        <th style="text-align:left;padding:4px;">Description</th>
+        <th style="text-align:left;padding:4px;">Text</th>
+        <th style="text-align:left;padding:4px;">Save</th>
+        <th style="text-align:left;padding:4px;">Delete</th>
+    </tr>
+    {% for r in rules %}
+    <tr>
+        <form method="post" action="/ui/soa/{{ soa_id }}/rules/{{ r.id }}/update">
+            <td style="padding:4px;white-space:nowrap;"><strong>{{ r.transition_rule_uid }}</strong></td>
+            <td style="padding:4px;"><input name="name" value="{{ r.name }}" required style="width:100%;box-sizing:border-box;"/></td>
+            <td style="padding:4px;"><input name="label" value="{{ r.label or '' }}" placeholder="Label" style="width:100%;box-sizing:border-box;"/></td>
+            <td style="padding:4px;"><input name="description" value="{{ r.description or '' }}" placeholder="Description" style="width:100%;box-sizing:border-box;"/></td>
+            <td style="padding:4px;"><input name="text" value="{{ r.text or '' }}" placeholder="Rule Text" style="width:100%;box-sizing:border-box;"/></td>
+            <td style="padding:4px;">
+                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </td>
+        </form>
+        <td style="padding:4px;">
+        <form method="post" action="/ui/soa/{{ soa_id }}/rules/{{ r.id }}/delete">
+          <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+          Delete
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="7" style="padding:6px;color:#777;">No rules yet.</td>
+    </tr>
+</table>
+{% endfor %}
+{% endblock %}
