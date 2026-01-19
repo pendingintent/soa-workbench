@@ -63,7 +63,9 @@ def iso_duration_to_days(iso_duration: str) -> float:
     into a number of days (float).
 
     Uses approximations: 1Y=365d, 1M=30d.
-    Raises ValueError if the string is not a valid duration.
+    Returns:
+        float: Number of days represented by the duration.
+        None: If the input is empty or not a valid ISO-8601 duration string.
     """
     if not iso_duration:
         return None
