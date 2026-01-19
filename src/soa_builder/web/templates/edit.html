@@ -188,15 +188,66 @@
 <hr />
 <h3>Matrix</h3>
 <table class="matrix">
+  <tr class="matrix-scheduled-instance-row">
+    <th></th>
+    <th style="text-align:right;font-size:0.50em;">Timeline Name:-></th>
+    {% for inst in instances %}
+      <th style="text-align:center;font-size:0.50em;">
+        {% if inst.timeline_name %}{{ inst.timeline_name }}{% endif %}
+      </th>
+    {% endfor %}
+  </tr>
+  <tr class="matrix-encounter-row">
+    <th></th>
+    <th style="text-align:right;font-size:0.50em;">Encounter Name:-></th>
+    {% for inst in instances %}
+    <th style="text-align:center;font-size:0.50em;">
+      {% if inst.encounter_name %}{{ inst.encounter_name }}{% endif %}
+    </th>
+    {% endfor %}
+  </tr>
+  <tr class="matrix-epoch-row">
+    <th></th>
+    <th style="text-align:right;font-size:0.50em;">Epoch:-></th>
+    {% for inst in instances %}
+    <th style="text-align:center;font-size:0.50em;">
+      {% if inst.epoch_name %}{{ inst.epoch_name }}{% endif %}
+    </th>
+    {% endfor %}
+  </tr>
+  <tr class="matrix-timing-label-row">
+    <th></th>
+    <th style="text-align:right;font-size:0.50em;">Timing Label:-></th>
+    {% for inst in instances %}
+    <th style="text-align:center;font-size:0.50em;">
+      {% if inst.timing_label %}{{ inst.timing_label }}{% endif %}
+    </th>
+    {% endfor %}
+  </tr>
+  <tr class="matrix-study-day-row">
+    <th></th>
+    <th style="text-align:right;font-size:0.50em;">Study Day:-></th>
+    {% for inst in instances %}
+    <th style="text-align:center;font-size:0.50em;">
+      {% if inst.study_day %}{{ inst.study_day }}{% endif %}
+    </th>
+    {% endfor %}
+  </tr>
+  <tr class="matrix-visit-window-row">
+    <th></th>
+    <th style="text-align:right;font-size:0.50em;">Visit Window:-></th>
+    {% for inst in instances %}
+    <th style="text-align:center;font-size:0.50em;">
+        {% if inst.window_label %}{{ inst.window_label }}{% endif %}
+    </th>
+    {% endfor %}
+  </tr>
   <tr>
     <th>Activity</th>
     <th>Concepts</th>
     {% for inst in instances %}
     <th style="min-width: 70px; vertical-align: top;" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
-      <div style="font-size:0.65em;color:#555;line-height:1.1;text-align:left;">{% if inst.timeline_name %}{{ inst.timeline_name or '' }}{% endif %}</div>
-      <div>{{ inst.name }}</div>
-      <div style="font-size:0.65em;color:#555;line-height:1.1;text-align:left;">{% if inst.encounter_name %}{{ inst.encounter_name }}{% endif %}</div>
-      <div style="font-size:0.65em;color:#555;line-height:1.1;text-align:left;">{% if inst.epoch_name %}{{ inst.epoch_name }}{% endif %}</div>
+      <div style="color: #1976d2;" {%if inst.label %}title="Scheduled Activity Instance: {{ inst.label }}"{% endif %}>{{ inst.name }}</div>
     </th>
     {% endfor %}
   </tr>
