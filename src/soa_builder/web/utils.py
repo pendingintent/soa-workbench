@@ -45,7 +45,7 @@ _ISO_DURATION_RE = re.compile(
 )
 
 
-# Help function to convert ISO-8601 duration/period strings
+# Helper function to convert ISO-8601 duration/period strings
 # to days, using these common approximations for years and months
 """
     1 year = 365 days
