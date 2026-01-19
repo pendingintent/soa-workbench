@@ -20,7 +20,7 @@
         <div style="display: flex;flex-direction: column;gap:2px;">
             <label><strong>Default Condition ID</strong></label>
             <select name="default_condition_uid">
-                <option name="">-- Select Activity Instance --</option>
+                <option value="">-- Select Activity Instance --</option>
                 {% for name, instance_uid in (instance_options or {}).items() %}
                     <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
                 {% endfor %}
