@@ -193,7 +193,7 @@
     <th style="text-align:right;font-size:0.50em;">Timeline Name:-></th>
     {% for inst in instances %}
       <th style="text-align:center;font-size:0.50em;">
-        {% if inst.timeline_name %}{{ inst.timeline_name or '' }}{% endif %}
+        {% if inst.timeline_name %}{{ inst.timeline_name }}{% endif %}
       </th>
     {% endfor %}
   </tr>
