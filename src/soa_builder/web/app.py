@@ -3574,6 +3574,7 @@ def ui_edit(request: Request, soa_id: int):
                i.name,
                i.instance_uid,
                i.label,
+               i.member_of_timeline,
                (SELECT t.name
                   FROM schedule_timelines t
                  WHERE t.schedule_timeline_uid = i.member_of_timeline
@@ -3622,16 +3623,60 @@ def ui_edit(request: Request, soa_id: int):
             "name": r[1],
             "instance_uid": r[2],
             "label": r[3],
-            "timeline_name": r[4],
-            "encounter_name": r[5],
-            "epoch_name": r[6],
-            "window_label": r[7],
-            "timing_label": r[8],
-            "study_day": iso_duration_to_days(r[9]),
+            "member_of_timeline": r[4],
+            "timeline_name": r[5],
+            "encounter_name": r[6],
+            "epoch_name": r[7],
+            "window_label": r[8],
+            "timing_label": r[9],
+            "study_day": iso_duration_to_days(r[10]),
         }
         for r in cur_inst.fetchall()
     ]
     cur_inst.close()
+
+    # Load Schedule Timelines for timeline selector
+    conn_tl = _connect()
+    cur_tl = conn_tl.cursor()
+    cur_tl.execute(
+        """
+        SELECT schedule_timeline_uid,name,main_timeline
+        FROM schedule_timelines
+        WHERE soa_id=?
+        ORDER BY main_timeline DESC, name
+        """,
+        (soa_id,),
+    )
+    timelines = [
+        {
+            "schedule_timeline_uid": r[0],
+            "name": r[1],
+            "main_timeline": bool(r[2]),
+        }
+        for r in cur_tl.fetchall()
+    ]
+    conn_tl.close()
+
+    # Group instances by timeline
+    instances_by_timeline = {}
+    for inst in instances:
+        timeline_key = inst.get("member_of_timeline") or "unassigned"
+        if timeline_key not in instances_by_timeline:
+            instances_by_timeline[timeline_key] = []
+        instances_by_timeline[timeline_key].append(inst)
+
+    # Determine default timeline (main_timeline or first available)
+    default_timeline = None
+    for tl in timelines:
+        if tl["main_timeline"]:
+            default_timeline = tl["schedule_timeline_uid"]
+            break
+    if not default_timeline and timelines:
+        default_timeline = timelines[0]["schedule_timeline_uid"]
+
+    # If no default timeline found or no timelines exist, check if there are unassigned instances
+    if not default_timeline and "unassigned" in instances_by_timeline:
+        default_timeline = "unassigned"
 
     return templates.TemplateResponse(
         request,
@@ -3662,6 +3707,9 @@ def ui_edit(request: Request, soa_id: int):
             "study_cells": study_cells,
             "transition_rules": transition_rules,
             "timings": timings,
+            "timelines": timelines,
+            "instances_by_timeline": instances_by_timeline,
+            "default_timeline": default_timeline,
         },
     )
 
