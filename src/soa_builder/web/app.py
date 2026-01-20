@@ -2522,31 +2522,43 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
             )
     concepts_map = {}
     concepts_uids_map = {}
+    code_uid_map = {}  # Map (activity_id, code) -> uid
     for aid, code, title, cuid in cur.fetchall():
-        concepts_map.setdefault(aid, {})[code] = title
+        # Use title if available, otherwise use concept_uid as fallback, then code
+        display_title = title if title else (cuid if cuid else code)
+        concepts_map.setdefault(aid, {})[code] = display_title
         if cuid:
             concepts_uids_map.setdefault(aid, set()).add(cuid)
+            code_uid_map[(aid, code)] = cuid
     conn.close()
     visits, activities, _cells = _fetch_matrix(soa_id)
     activity_ids_in_order = [a["id"] for a in activities]
     # Build display strings using EffectiveTitle (override if present) and show code in parentheses
     concepts_strings = []
-    concept_uids_strings = []
+    concept_titles_strings = []  # For Concept UIDs column, show titles with UIDs
     for aid in activity_ids_in_order:
         cmap = concepts_map.get(aid, {})
         cuids = concepts_uids_map.get(aid, set())
         if not cmap:
             concepts_strings.append("")
-            concept_uids_strings.append("")
+            concept_titles_strings.append("")
             continue
         items = sorted(cmap.items(), key=lambda kv: kv[1].lower())
         concepts_strings.append(
             "; ".join([f"{title} ({code})" for code, title in items])
         )
-        concept_uids_strings.append(", ".join(sorted(list(cuids))) if cuids else "")
+        # For Concept UIDs column, show title with UID in parentheses
+        titles_with_uids = []
+        for code, title in items:
+            uid = code_uid_map.get((aid, code))
+            if uid:
+                titles_with_uids.append(f"{title} ({uid})")
+            else:
+                titles_with_uids.append(title)
+        concept_titles_strings.append("; ".join(titles_with_uids))
     if len(concepts_strings) == len(df):
         df.insert(1, "Concepts", concepts_strings)
-        df["Concept UIDs"] = concept_uids_strings
+        df["Concept UIDs"] = concept_titles_strings
     # Build concept mappings sheet data
     mapping_rows = []
     for a in activities:
@@ -3574,6 +3586,7 @@ def ui_edit(request: Request, soa_id: int):
                i.name,
                i.instance_uid,
                i.label,
+               i.member_of_timeline,
                (SELECT t.name
                   FROM schedule_timelines t
                  WHERE t.schedule_timeline_uid = i.member_of_timeline
@@ -3622,16 +3635,60 @@ def ui_edit(request: Request, soa_id: int):
             "name": r[1],
             "instance_uid": r[2],
             "label": r[3],
-            "timeline_name": r[4],
-            "encounter_name": r[5],
-            "epoch_name": r[6],
-            "window_label": r[7],
-            "timing_label": r[8],
-            "study_day": iso_duration_to_days(r[9]),
+            "member_of_timeline": r[4],
+            "timeline_name": r[5],
+            "encounter_name": r[6],
+            "epoch_name": r[7],
+            "window_label": r[8],
+            "timing_label": r[9],
+            "study_day": iso_duration_to_days(r[10]),
         }
         for r in cur_inst.fetchall()
     ]
     cur_inst.close()
+
+    # Load Schedule Timelines for timeline selector
+    conn_tl = _connect()
+    cur_tl = conn_tl.cursor()
+    cur_tl.execute(
+        """
+        SELECT schedule_timeline_uid,name,main_timeline
+        FROM schedule_timelines
+        WHERE soa_id=?
+        ORDER BY main_timeline DESC, name
+        """,
+        (soa_id,),
+    )
+    timelines = [
+        {
+            "schedule_timeline_uid": r[0],
+            "name": r[1],
+            "main_timeline": bool(r[2]),
+        }
+        for r in cur_tl.fetchall()
+    ]
+    conn_tl.close()
+
+    # Group instances by timeline
+    instances_by_timeline = {}
+    for inst in instances:
+        timeline_key = inst.get("member_of_timeline") or "unassigned"
+        if timeline_key not in instances_by_timeline:
+            instances_by_timeline[timeline_key] = []
+        instances_by_timeline[timeline_key].append(inst)
+
+    # Determine default timeline (main_timeline or first available)
+    default_timeline = None
+    for tl in timelines:
+        if tl["main_timeline"]:
+            default_timeline = tl["schedule_timeline_uid"]
+            break
+    if not default_timeline and timelines:
+        default_timeline = timelines[0]["schedule_timeline_uid"]
+
+    # If no default timeline found or no timelines exist, check if there are unassigned instances
+    if not default_timeline and "unassigned" in instances_by_timeline:
+        default_timeline = "unassigned"
 
     return templates.TemplateResponse(
         request,
@@ -3662,6 +3719,9 @@ def ui_edit(request: Request, soa_id: int):
             "study_cells": study_cells,
             "transition_rules": transition_rules,
             "timings": timings,
+            "timelines": timelines,
+            "instances_by_timeline": instances_by_timeline,
+            "default_timeline": default_timeline,
         },
     )
 

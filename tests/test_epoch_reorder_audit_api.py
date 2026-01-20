@@ -12,7 +12,22 @@ client = TestClient(app)
 
 
 def _db_path() -> str:
-    return os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
+    """Get database path for tests.
+
+    CRITICAL: This must only use the test database set by conftest.py.
+    If SOA_BUILDER_DB is not set, tests are misconfigured.
+    """
+    db_path = os.environ.get("SOA_BUILDER_DB")
+    if not db_path:
+        raise RuntimeError(
+            "SOA_BUILDER_DB environment variable not set - tests must use test database"
+        )
+    if "soa_builder_web.db" in db_path and "test" not in db_path:
+        raise RuntimeError(
+            f"DANGER: Test trying to use production database: {db_path}. "
+            "Expected test database (soa_builder_web_tests.db)"
+        )
+    return db_path
 
 
 def _fetch_epoch_audits(soa_id: int) -> List[dict]:
