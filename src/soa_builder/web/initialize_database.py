@@ -238,7 +238,7 @@ def _init_db():
             description TEXT,
             type TEXT,
             environmentalSettings TEXT,
-            conatctModes TEXT,
+            contactModes TEXT,
             transitionStartRule TEXT,
             transitionEndRule TEXT,
             scheduledAtId TEXT,
