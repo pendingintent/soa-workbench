@@ -2522,31 +2522,43 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
             )
     concepts_map = {}
     concepts_uids_map = {}
+    code_uid_map = {}  # Map (activity_id, code) -> uid
     for aid, code, title, cuid in cur.fetchall():
-        concepts_map.setdefault(aid, {})[code] = title
+        # Use title if available, otherwise use concept_uid as fallback, then code
+        display_title = title if title else (cuid if cuid else code)
+        concepts_map.setdefault(aid, {})[code] = display_title
         if cuid:
             concepts_uids_map.setdefault(aid, set()).add(cuid)
+            code_uid_map[(aid, code)] = cuid
     conn.close()
     visits, activities, _cells = _fetch_matrix(soa_id)
     activity_ids_in_order = [a["id"] for a in activities]
     # Build display strings using EffectiveTitle (override if present) and show code in parentheses
     concepts_strings = []
-    concept_uids_strings = []
+    concept_titles_strings = []  # For Concept UIDs column, show titles with UIDs
     for aid in activity_ids_in_order:
         cmap = concepts_map.get(aid, {})
         cuids = concepts_uids_map.get(aid, set())
         if not cmap:
             concepts_strings.append("")
-            concept_uids_strings.append("")
+            concept_titles_strings.append("")
             continue
         items = sorted(cmap.items(), key=lambda kv: kv[1].lower())
         concepts_strings.append(
             "; ".join([f"{title} ({code})" for code, title in items])
         )
-        concept_uids_strings.append(", ".join(sorted(list(cuids))) if cuids else "")
+        # For Concept UIDs column, show title with UID in parentheses
+        titles_with_uids = []
+        for code, title in items:
+            uid = code_uid_map.get((aid, code))
+            if uid:
+                titles_with_uids.append(f"{title} ({uid})")
+            else:
+                titles_with_uids.append(title)
+        concept_titles_strings.append("; ".join(titles_with_uids))
     if len(concepts_strings) == len(df):
         df.insert(1, "Concepts", concepts_strings)
-        df["Concept UIDs"] = concept_uids_strings
+        df["Concept UIDs"] = concept_titles_strings
     # Build concept mappings sheet data
     mapping_rows = []
     for a in activities:
