@@ -61,69 +61,45 @@ pytest
 rm -f soa_builder_web_tests.db soa_builder_web_tests.db-wal soa_builder_web_tests.db-shm
 ```
 
-> Full, updated endpoint reference (including Elements, freezes, audits, JSON CRUD and UI helpers) lives in `README_endpoints.md`. Consult that file for detailed request/response examples, curl snippets, and future enhancement notes.
+> **Full API Documentation**: See `README_endpoints.md` for complete endpoint reference with curl examples, request/response schemas, and usage patterns.
+>
+> **Endpoint Catalog**: See `docs/api_endpoints.csv` for sortable/filterable list of all 165+ endpoints.
 
-Endpoints:
-
-See **docs/api_endpoints.xlsx**
-
-## Experimental (not yet supported)
-After populating data, retrieve normalized artifacts:
+## USDM Export
+Export USDM-compliant JSON for integration with external systems:
 ```bash
+# Get normalized USDM JSON for a study
 curl http://localhost:8000/soa/1/normalized
+
+# Or use the USDM generator scripts directly
+python -m usdm.generate_activities --soa-id 1 --output-file activities.json
+python -m usdm.generate_encounters --soa-id 1 --output-file encounters.json
+python -m usdm.generate_study_epochs --soa-id 1 --output-file epochs.json
+# See src/usdm/ for all generator scripts
 ```
-### Source
-Input format: first column `Activity`, subsequent columns are visit/timepoint headers. Cells contain markers `X`, `Optional`, `If indicated`, or repeating patterns (`Every 2 cycles`, `q12w`).
 
-### Output Artifacts
-Running the script produces (in `--out-dir`):
-- `visits.csv` — One row per visit/timepoint with parsed window info, inferred category, repeat pattern.
-- `activities.csv` — Unique activities (one per original row).
-- `visit_activities.csv` — Junction table mapping activities to visits with status and flags.
-- `activity_categories.csv` — Heuristic classification of each activity (labs, imaging, dosing, admin, etc.).
-- `schedule_rules.csv` — Extracted repeating schedule logic from headers and cells (e.g., `q12w`, `Every 2 cycles`).
-- Optional: SQLite database (`--sqlite path`) containing all tables.
+## CLI Tools (Legacy)
+Command-line tools for CSV normalization and validation:
+```bash
+# Normalize wide CSV → relational tables
+soa-builder normalize --input files/SoA.csv --out-dir normalized/
 
-### visits.csv Columns
-- `visit_id`: Sequential numeric id.
-- `label`: Original header text.
-- `visit_name`: Header stripped of parenthetical codes.
-- `visit_code`: Code extracted from parentheses (e.g., `C1D1`, `EOT`).
-- `sequence_index`: Positional order.
-- `window_lower` / `window_upper`: Parsed day offsets if available.
-- `repeat_pattern`: Detected repeating pattern (e.g., `every 2 cycles`).
-- `category`: Heuristic classification (screening, baseline, treatment, follow_up, eot).
+# Expand repeating rules → calendar instances
+soa-builder expand --normalized-dir normalized/ --start-date 2025-01-01
 
-### activities.csv Columns
-- `activity_id`: Sequential id.
-- `activity_name`: Name from first column.
+# Validate imaging intervals
+soa-builder validate --normalized-dir normalized/
+```
+See `.github/copilot-instructions.md` for detailed CLI usage patterns.
 
-### visit_activities.csv Columns
-- `id`: Junction id.
-- `visit_id`: FK to visits.
-- `activity_id`: FK to activities.
-- `status`: Raw cell content.
-- `required_flag`: 1 if cell starts with `X`.
-- `conditional_flag`: 1 if cell contains `Optional` or `If indicated`.
+---
 
-### activity_categories.csv Columns
-- `activity_id`: FK to activities.
-- `category`: Assigned heuristic category label.
+## Architecture Notes
+- **Web UI**: HTMX loaded via CDN; no build step required
+- **Database**: SQLite with WAL mode (production) or DELETE mode (tests)
+- **Test Isolation**: Tests use `soa_builder_web_tests.db` (set via `SOA_BUILDER_DB` env var)
+- **Production Config**: Set `SOA_BUILDER_DB` environment variable for persistent DB path
+- **USDM Generators**: Python scripts in `src/usdm/` transform database state → USDM JSON artifacts
 
-### schedule_rules.csv Columns
-- `rule_id`: Unique rule id.
-- `pattern`: Normalized repeating pattern token (e.g., `q12w`).
-- `description`: Human readable description of pattern source.
-- `source_type`: `header` or `cell` origin.
-- `activity_id`: Populated if pattern came from a cell (else null).
-- `visit_id`: Populated if pattern came from a header.
-- `raw_text`: Original text fragment containing the pattern.
-
-
-
-# Notes:
-- HTMX is loaded via CDN; no build step required.
-- For production, configure a persistent DB path via SOA_BUILDER_DB env variable.
-
-Artifacts stored under `normalized/soa_{id}/`.
+For detailed architectural patterns, USDM entity relationships, and development workflows, see `.github/copilot-instructions.md`.
 
