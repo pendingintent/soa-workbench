@@ -187,19 +187,32 @@
 </div>
 <hr />
 <!-- Timeline Selector-->
+<style>
+  .timeline-selector {
+    margin-bottom: 12px;
+  }
+  .timeline-btn {
+    margin: 0 4px;
+    padding: 4px 10px;
+    border: 1px solid #1976d2;
+    border-radius: 3px;
+    cursor: pointer;
+    background: #fff;
+    color: #1976d2;
+  }
+  .timeline-btn.active {
+    background: #1976d2;
+    color: #fff;
+  }
+</style>
  {% if timelines and timelines|length > 0 %}
- <div class="timeline-selector" style="margin-bottom: 12px;">
+ <div class="timeline-selector">
   <strong>Select Timeline:</strong>
   {% for tl in timelines %}
     <button 
       class="timeline-btn {% if tl.schedule_timeline_uid == default_timeline %}active{% endif %}" 
       data-timeline="{{ tl.schedule_timeline_uid }}"
       onclick="switchTimeline('{{ tl.schedule_timeline_uid }}')"
-      {% if tl.schedule_timeline_uid == default_timeline %}
-      style="margin:0 4px;padding:4px 10px;border:1px solid #1976d2;background:#1976d2;color:#fff;border-radius:3px;cursor:pointer;"
-      {% else %}
-      style="margin:0 4px;padding:4px 10px;border:1px solid #1976d2;background:#fff;color:#1976d2;border-radius:3px;cursor:pointer;"
-      {% endif %}
     >
       {{ tl.name }}{% if tl.main_timeline %} (Main){% endif %}
     </button>
