@@ -1,0 +1,157 @@
+Method,Path,Type,Description,Response Type
+GET,/,UI,Index page - lists studies & create form,HTML
+POST,/soa,API,Create new SoA container,JSON
+GET,/soa/{soa_id},API,Get SoA summary (visits activities counts),JSON
+POST,/soa/{soa_id}/metadata,API,Update study metadata fields,JSON
+GET,/soa/{soa_id}/normalized,API,Get normalized SoA JSON,JSON
+GET,/soa/{soa_id}/matrix,API,Get raw matrix (visits activities cells),JSON
+POST,/soa/{soa_id}/matrix/import,API,Bulk import matrix data,JSON
+GET,/soa/{soa_id}/export/xlsx,API,Download Excel workbook,Binary (XLSX)
+GET,/soa/{soa_id}/export/pdf,API,Download PDF report,Binary (PDF)
+POST,/ui/soa/create,UI,Create SoA via form,HTML
+POST,/ui/soa/{soa_id}/update_meta,UI,Update study metadata via form,HTML
+GET,/ui/soa/{soa_id}/edit,UI,Edit SoA page,HTML
+GET,/soa/{soa_id}/visits,API,List visits for SoA,JSON
+GET,/ui/soa/{soa_id}/visits,UI,List visits page,HTML
+GET,/soa/visits/{visit_id},API,Get visit detail,JSON
+POST,/soa/{soa_id}/visits,API,Create visit,JSON
+PATCH,/soa/{soa_id}/visits/{visit_id},API,Update visit (partial),JSON
+DELETE,/soa/{soa_id}/visits/{visit_id},API,Delete visit and cells,JSON
+POST,/soa/{soa_id}/visits/reorder,API,Reorder visits,JSON
+POST,/ui/soa/{soa_id}/visits/create,UI,Create visit via form,HTML
+POST,/ui/soa/{soa_id}/visits/{visit_id}/update,UI,Update visit via form,HTML
+POST,/ui/soa/{soa_id}/visits/{visit_id}/delete,UI,Delete visit via form,HTML
+POST,/ui/soa/{soa_id}/add_visit,UI,Add visit via form (legacy),HTML
+POST,/ui/soa/{soa_id}/update_visit,UI,Update visit (legacy),HTML
+POST,/ui/soa/{soa_id}/delete_visit,UI,Delete visit (legacy),HTML
+POST,/ui/soa/{soa_id}/reorder_visits,UI,Reorder visits drag-drop,HTML
+POST,/ui/soa/{soa_id}/set_visit_epoch,UI,Set visit epoch via form,HTML
+POST,/ui/soa/{soa_id}/set_visit_transition_end_rule,UI,Set visit transition end rule,HTML
+POST,/visits/reorder,API,Reorder visits (router),JSON
+GET,/activities,API,List activities,JSON
+GET,/activities/{activity_id},API,Get activity detail,JSON
+POST,/activities,API,Create activity,JSON
+PATCH,/activities/{activity_id},API,Update activity (partial),JSON
+DELETE,/soa/{soa_id}/activities/{activity_id},API,Delete activity and concepts,JSON
+POST,/activities/bulk,API,Bulk add activities,JSON
+POST,/soa/{soa_id}/activities/{activity_id}/concepts,API,Set activity concepts,JSON
+POST,/activities/{activity_id}/concepts,API,Set activity concepts (router),JSON
+POST,/soa/{soa_id}/activities/reorder,API,Reorder activities,JSON
+POST,/activities/reorder,API,Reorder activities (router),JSON
+POST,/activities/add,UI,Add activity via form (router),HTML
+POST,/activities/{activity_id}/update,UI,Update activity via form (router),HTML
+POST,/ui/soa/{soa_id}/add_activity,UI,Add activity via form,HTML
+POST,/ui/soa/{soa_id}/delete_activity,UI,Delete activity via form,HTML
+POST,/ui/soa/{soa_id}/reorder_activities,UI,Reorder activities drag-drop,HTML
+GET,/soa/{soa_id}/epochs,API,List epochs,JSON
+GET,/ui/soa/{soa_id}/epochs,UI,List epochs page,HTML
+GET,/soa/{soa_id}/epochs/{epoch_id},API,Get epoch detail,JSON
+POST,/soa/{soa_id}/epochs,API,Create epoch,JSON
+POST,/soa/{soa_id}/epochs/{epoch_id}/metadata,API,Update epoch metadata,JSON
+PATCH,/soa/{soa_id}/epochs/{epoch_id},API,Update epoch (partial),JSON
+DELETE,/soa/{soa_id}/epochs/{epoch_id},API,Delete epoch,JSON
+POST,/soa/{soa_id}/epochs/reorder,API,Reorder epochs,JSON
+POST,/ui/soa/{soa_id}/epochs/create,UI,Create epoch via form,HTML
+POST,/ui/soa/{soa_id}/epochs/{epoch_id}/update,UI,Update epoch via form,HTML
+POST,/ui/soa/{soa_id}/epochs/{epoch_id}/delete,UI,Delete epoch via form,HTML
+POST,/ui/soa/{soa_id}/add_epoch,UI,Add epoch via form (legacy),HTML
+POST,/ui/soa/{soa_id}/update_epoch,UI,Update epoch (legacy),HTML
+POST,/ui/soa/{soa_id}/delete_epoch,UI,Delete epoch (legacy),HTML
+POST,/ui/soa/{soa_id}/reorder_epochs,UI,Reorder epochs drag-drop,HTML
+GET,/soa/{soa_id}/arms,API,List arms,JSON
+GET,/ui/soa/{soa_id}/arms,UI,List arms page,HTML
+POST,/soa/{soa_id}/arms,API,Create arm,JSON
+PATCH,/soa/{soa_id}/arms/{arm_id},API,Update arm (partial),JSON
+POST,/arms/reorder,API,Reorder arms,JSON
+POST,/ui/soa/{soa_id}/arms/create,UI,Create arm via form,HTML
+POST,/ui/soa/{soa_id}/arms/{arm_id}/update,UI,Update arm via form,HTML
+POST,/ui/soa/{soa_id}/arms/{arm_id}/delete,UI,Delete arm via form,HTML
+POST,/ui/soa/{soa_id}/add_arm,UI,Add arm via form (legacy),HTML
+POST,/ui/soa/{soa_id}/update_arm,UI,Update arm (legacy),HTML
+POST,/ui/soa/{soa_id}/delete_arm,UI,Delete arm (legacy),HTML
+POST,/ui/soa/{soa_id}/reorder_arms,UI,Reorder arms drag-drop,HTML
+GET,/soa/{soa_id}/elements,API,List elements,JSON
+GET,/ui/soa/{soa_id}/elements,UI,List elements page,HTML
+GET,/soa/{soa_id}/elements/{element_id},API,Get element detail,HTML
+POST,/elements,API,Create element,JSON
+PATCH,/soa/{soa_id}/elements/{element_id},API,Update element (partial),JSON
+PATCH,/elements/{element_id},API,Update element (router),JSON
+DELETE,/elements/{element_id},API,Delete element,JSON
+POST,/elements/reorder,API,Reorder elements,JSON
+GET,/soa/{soa_id}/element_audit,API,Get element audit log,JSON
+POST,/ui/soa/{soa_id}/elements/create,UI,Create element via form,HTML
+POST,/ui/soa/{soa_id}/elements/{element_id}/update,UI,Update element via form,HTML
+POST,/ui/soa/{soa_id}/elements/{element_id}/delete,UI,Delete element via form,HTML
+POST,/ui/soa/{soa_id}/add_element,UI,Add element (legacy),HTML
+POST,/ui/soa/{soa_id}/update_element,UI,Update element (legacy),HTML
+POST,/ui/soa/{soa_id}/delete_element,UI,Delete element (legacy),HTML
+GET,/soa/{soa_id}/instances,API,List instances,JSON
+GET,/ui/soa/{soa_id}/instances,UI,List instances page,HTML
+POST,/ui/soa/{soa_id}/instances/create,UI,Create instance via form,HTML
+POST,/ui/soa/{soa_id}/instances/{instance_id}/update,UI,Update instance via form,HTML
+POST,/ui/soa/{soa_id}/instances/{instance_id}/delete,UI,Delete instance via form,HTML
+GET,/ui/soa/{soa_id}/schedule_timelines,UI,List schedule timelines page,HTML
+POST,/ui/soa/{soa_id}/schedule_timelines/create,UI,Create schedule timeline via form,HTML
+POST,/ui/soa/{soa_id}/schedule_timelines/{schedule_timeline_id}/update,UI,Update schedule timeline via form,HTML
+POST,/ui/soa/{soa_id}/schedule_timelines/{schedule_timeline_id}/delete,UI,Delete schedule timeline via form,HTML
+GET,/soa/{soa_id}/timings,API,List timings,JSON
+GET,/ui/soa/{soa_id}/timings,UI,List timings page,HTML
+GET,/soa/{soa_id}/timing_audit,API,Get timing audit log,JSON
+POST,/ui/soa/{soa_id}/timings/create,UI,Create timing via form,HTML
+POST,/ui/soa/{soa_id}/timings/{timing_id}/update,UI,Update timing via form,HTML
+POST,/ui/soa/{soa_id}/timings/{timing_id}/delete,UI,Delete timing via form,HTML
+POST,/ui/soa/{soa_id}/set_timing,UI,Set timing (legacy),HTML
+GET,/soa/{soa_id}/rules,API,List transition rules,JSON
+GET,/ui/soa/{soa_id}/rules,UI,List rules page,HTML
+PATCH,/soa/{soa_id}/rules/{rule_id},API,Update rule (partial),JSON
+POST,/ui/soa/{soa_id}/rules/create,UI,Create rule via form,HTML
+POST,/ui/soa/{soa_id}/rules/{rule_id}/update,UI,Update rule via form,HTML
+POST,/ui/soa/{soa_id}/rules/{rule_id}/delete,UI,Delete rule via form,HTML
+POST,/soa/{soa_id}/cells,API,Create matrix cell,JSON
+POST,/soa/{soa_id}/cells_instance,API,Create matrix cell with instance,JSON
+POST,/ui/soa/{soa_id}/set_cell,UI,Set cell status,HTML
+POST,/ui/soa/{soa_id}/toggle_cell,UI,Toggle cell status,HTML
+POST,/ui/soa/{soa_id}/toggle_cell_instance,UI,Toggle cell instance status,HTML
+POST,/ui/soa/{soa_id}/add_study_cell,UI,Add study cell,HTML
+POST,/ui/soa/{soa_id}/update_study_cell,UI,Update study cell,HTML
+POST,/ui/soa/{soa_id}/delete_study_cell,UI,Delete study cell,HTML
+POST,/ui/soa/{soa_id}/freeze,UI,Create freeze snapshot,HTML
+GET,/soa/{soa_id}/freeze/{freeze_id},API,Get freeze detail,JSON
+GET,/ui/soa/{soa_id}/freeze/{freeze_id}/view,UI,View freeze modal,HTML
+GET,/ui/soa/{soa_id}/freeze/diff,UI,Compare freezes modal,HTML
+GET,/soa/{soa_id}/freeze/diff.json,API,Get freeze diff JSON,JSON
+GET,/soa/{soa_id}/rollback_audit,API,Get rollback audit log,JSON
+GET,/ui/soa/{soa_id}/rollback_audit,UI,View rollback audit modal,HTML
+GET,/soa/{soa_id}/rollback_audit/export/xlsx,API,Export rollback audit XLSX,Binary (XLSX)
+GET,/soa/{soa_id}/reorder_audit,API,Get reorder audit log,JSON
+GET,/ui/soa/{soa_id}/reorder_audit,UI,View reorder audit modal,HTML
+GET,/soa/{soa_id}/reorder_audit/export/csv,API,Export reorder audit CSV,Binary (CSV)
+GET,/soa/{soa_id}/reorder_audit/export/xlsx,API,Export reorder audit XLSX,Binary (XLSX)
+GET,/ui/soa/{soa_id}/audits,UI,View audits page,HTML
+GET,/concepts/status,API,Get concepts cache status,JSON
+GET,/ui/concepts,UI,List biomedical concepts,HTML
+GET,/ui/concepts/{code},UI,View concept detail,HTML
+POST,/ui/soa/{soa_id}/concepts_refresh,UI,Force refresh concepts cache,HTML
+GET,/ui/concept_categories,UI,List concept categories,HTML
+GET,/ui/concept_categories/view,UI,View concepts by category,HTML
+GET,/sdtm/specializations/status,API,Get SDTM specializations status,JSON
+GET,/ui/sdtm/specializations/status,UI,View SDTM status page,HTML
+POST,/ui/sdtm/specializations/refresh,UI,Refresh SDTM specializations,HTML
+GET,/ui/sdtm/specializations,UI,List SDTM specializations,HTML
+GET,/ui/sdtm/specializations/{idx},UI,View SDTM specialization detail,HTML
+POST,/admin/load_ddf_terminology,Admin,Load DDF terminology from file,JSON
+GET,/ddf/terminology,API,Get DDF terminology entries,JSON
+GET,/ui/ddf/terminology,UI,View DDF terminology page,HTML
+POST,/ui/ddf/terminology/upload,UI,Upload DDF terminology spreadsheet,HTML
+GET,/ddf/terminology/audit,API,Get DDF terminology audit,JSON
+GET,/ddf/terminology/audit/export.csv,API,Export DDF audit CSV,Binary (CSV)
+GET,/ddf/terminology/audit/export.json,API,Export DDF audit JSON,JSON
+GET,/ui/ddf/terminology/audit,UI,View DDF terminology audit page,HTML
+POST,/admin/load_protocol_terminology,Admin,Load protocol terminology from file,JSON
+GET,/protocol/terminology,API,Get protocol terminology entries,JSON
+GET,/ui/protocol/terminology,UI,View protocol terminology page,HTML
+POST,/ui/protocol/terminology/upload,UI,Upload protocol terminology spreadsheet,HTML
+GET,/protocol/terminology/audit,API,Get protocol terminology audit,JSON
+GET,/protocol/terminology/audit/export.csv,API,Export protocol audit CSV,Binary (CSV)
+GET,/protocol/terminology/audit/export.json,API,Export protocol audit JSON,JSON
+GET,/ui/protocol/terminology/audit,UI,View protocol terminology audit page,HTML
