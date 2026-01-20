@@ -139,6 +139,7 @@ _record_element_audit(soa_id, "update", element_id, before=old_state, after=new_
 8. **Router imports**: Import routers at top of `app.py`, mount with `app.include_router()`
 
 ## Reference Files
+- **API endpoints catalog**: `docs/api_endpoints.csv` (165 endpoints: method, path, type, description, response format)
 - **Full API docs**: `README_endpoints.md` (curl examples, response schemas)
 - **Main README**: Installation, server start, test setup
 - **Database schema**: Infer from `initialize_database.py` + migrations in `migrate_database.py`
