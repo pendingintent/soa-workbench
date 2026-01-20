@@ -76,6 +76,7 @@ def ui_list_instances(request: Request, soa_id: int):
     instance_options = get_scheduled_activity_instance(soa_id)
 
     return templates.TemplateResponse(
+        request,
         "instances.html",
         {
             "request": request,
