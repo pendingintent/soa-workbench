@@ -240,16 +240,16 @@
     <th style="text-align:right;font-size:0.50em;">Epoch:-></th>
     {% for inst in timeline_instances %}
     <th style="text-align:center;font-size:0.50em;">
-      {% if inst.epoch_name %}{{ inst.epoch_name }}{% endif %}
+      {% if inst.epoch_label %}{{ inst.epoch_label }}{% else %}{{ inst.epoch_name }}{% endif %}
     </th>
     {% endfor %}
   </tr>
   <tr class="matrix-encounter-row">
     <th></th>
-    <th style="text-align:right;font-size:0.50em;">Encounter Name:-></th>
+    <th style="text-align:right;font-size:0.50em;">Encounter:-></th>
     {% for inst in timeline_instances %}
     <th style="text-align:center;font-size:0.50em;">
-      {% if inst.encounter_name %}{{ inst.encounter_name }}{% endif %}
+      {% if inst.encounter_label %}{{ inst.encounter_label }}{% else %}{{ inst.encounter_name }}{% endif %}
     </th>
     {% endfor %}
   </tr>
@@ -264,10 +264,10 @@
   </tr>
   <tr class="matrix-timing-label-row">
     <th></th>
-    <th style="text-align:right;font-size:0.50em;">Timing Label:-></th>
+    <th style="text-align:right;font-size:0.50em;">Timing:-></th>
     {% for inst in timeline_instances %}
     <th style="text-align:center;font-size:0.50em;">
-      {% if inst.timing_label %}{{ inst.timing_label }}{% endif %}
+      {% if inst.timing_label %}{{ inst.timing_label }}{% else %}{{ inst.timing_name }}{% endif %}
     </th>
     {% endfor %}
   </tr>
@@ -286,7 +286,7 @@
     <th>Concepts</th>
     {% for inst in timeline_instances %}
     <th style="min-width: 70px; vertical-align: top;" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
-      <div style="color: #1976d2;" {%if inst.label %}title="Scheduled Activity Instance: {{ inst.label }}"{% endif %}>{{ inst.name }}</div>
+      <div style="color: #1976d2;" {%if inst.label %}title="Scheduled Activity Instance: {{ inst.label }}"{% endif %}>{% if inst.label %}{{ inst.label }}{% else %}{{ inst.name }}{% endif %}</div>
     </th>
     {% endfor %}
   </tr>

@@ -3116,9 +3116,6 @@ def delete_activity(soa_id: int, activity_id: int):
     return {"deleted_activity_id": activity_id}
 
 
-# API endpoint for deleting an Epoch    <- moved to routers/epochs.py
-
-
 @app.get("/", response_class=HTMLResponse)
 def ui_index(request: Request):
     """Render home page for the SoA Workbench."""
@@ -3278,38 +3275,6 @@ def ui_update_meta(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
-
-
-# Helper to fetch element audit rows with legacy-safe columns   -> Deprecated (Moved to audits.py, audits.html)
-"""
-def _fetch_element_audits(soa_id: int):
-    conn_ea = _connect()
-    cur_ea = conn_ea.cursor()
-    cur_ea.execute("PRAGMA table_info(element_audit)")
-    cols = [row[1] for row in cur_ea.fetchall()]
-    want = [
-        "id",
-        "element_id",
-        "action",
-        "before_json",
-        "after_json",
-        "performed_at",
-    ]
-    available = [c for c in want if c in cols]
-    element_audits = []
-    if available:
-        select_sql = f"SELECT {', '.join(available)} FROM element_audit WHERE soa_id=? ORDER BY id DESC"
-        cur_ea.execute(select_sql, (soa_id,))
-        for r in cur_ea.fetchall():
-            item = {}
-            for i, c in enumerate(available):
-                item[c] = r[i]
-            for k in want:
-                item.setdefault(k, None)
-            element_audits.append(item)
-    conn_ea.close()
-    return element_audits
-"""
 
 
 # UI endpoint for rendering SOA edit page
