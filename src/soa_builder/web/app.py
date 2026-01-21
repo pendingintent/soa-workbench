@@ -3547,51 +3547,16 @@ def ui_edit(request: Request, soa_id: int):
     cur_inst = conn_inst.cursor()
     cur_inst.execute(
         """
-        SELECT i.id,
-               i.name,
-               i.instance_uid,
-               i.label,
-               i.member_of_timeline,
-               (SELECT t.name
-                  FROM schedule_timelines t
-                 WHERE t.schedule_timeline_uid = i.member_of_timeline
-                   AND t.soa_id = i.soa_id) AS timeline_name,
-               (SELECT v.name
-                  FROM visit v
-                 WHERE v.encounter_uid = i.encounter_uid
-                   AND v.soa_id = i.soa_id) AS encounter_name,
-               (SELECT e.name
-                  FROM epoch e
-                 WHERE e.epoch_uid = i.epoch_uid
-                   AND e.soa_id = i.soa_id) AS epoch_name,
-               (SELECT tm.window_label
-                  FROM visit v
-                  JOIN timing tm
-                    ON tm.id = v.scheduledAtId
-                   AND tm.soa_id = v.soa_id
-                 WHERE v.encounter_uid = i.encounter_uid
-                   AND v.soa_id = i.soa_id
-                 LIMIT 1) AS window_label,
-                 (SELECT tm.label
-                  FROM visit v
-                  JOIN timing tm
-                    ON tm.id = v.scheduledAtId
-                   AND tm.soa_id = v.soa_id
-                 WHERE v.encounter_uid = i.encounter_uid
-                   AND v.soa_id = i.soa_id
-                 LIMIT 1) AS timing_label,
-                 (SELECT tm.value
-                  FROM visit v
-                  JOIN timing tm
-                    ON tm.id = v.scheduledAtId
-                   AND tm.soa_id = v.soa_id
-                 WHERE v.encounter_uid = i.encounter_uid
-                   AND v.soa_id = i.soa_id
-                 LIMIT 1) AS study_day
+        SELECT i.id,i.name,i.instance_uid,i.label,i.member_of_timeline,st.name AS timeline_name,st.label AS timeline_label,
+        v.name AS encounter_name,v.label AS encounter_label,e.name AS epoch_name,e.epoch_label as epoch_label,tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
         FROM instances i
-        WHERE soa_id=?
-        ORDER BY member_of_timeline, length(instance_uid), instance_uid
-        """,
+        LEFT JOIN schedule_timelines st ON st.schedule_timeline_uid = i.member_of_timeline AND st.soa_id = i.soa_id
+        LEFT JOIN visit v ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id
+        LEFT JOIN epoch e ON e.epoch_uid = i.epoch_uid AND e.soa_id = i.soa_id
+        LEFT JOIN timing tm ON tm.id = v.scheduledAtId AND tm.soa_id = v.soa_id
+        WHERE i.soa_id=?
+        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), LENGTH(i.instance_uid), i.instance_uid
+            """,
         (soa_id,),
     )
     instances = [
@@ -3602,11 +3567,15 @@ def ui_edit(request: Request, soa_id: int):
             "label": r[3],
             "member_of_timeline": r[4],
             "timeline_name": r[5],
-            "encounter_name": r[6],
-            "epoch_name": r[7],
-            "window_label": r[8],
-            "timing_label": r[9],
-            "study_day": iso_duration_to_days(r[10]),
+            "timeline_label": r[6],
+            "encounter_name": r[7],
+            "encounter_label": r[8],
+            "epoch_name": r[9],
+            "epoch_label": r[10],
+            "window_label": r[11],
+            "timing_label": r[12],
+            "timing_name": r[13],
+            "study_day": iso_duration_to_days(r[14]),
         }
         for r in cur_inst.fetchall()
     ]
