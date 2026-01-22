@@ -205,36 +205,35 @@
     color: #fff;
   }
 </style>
- {% if timelines and timelines|length > 0 %}
- <div class="timeline-selector">
-  <strong>Select Timeline:</strong>
-  {% for tl in timelines %}
-    <button 
-      class="timeline-btn {% if tl.schedule_timeline_uid == default_timeline %}active{% endif %}" 
-      data-timeline="{{ tl.schedule_timeline_uid }}"
-      onclick="switchTimeline('{{ tl.schedule_timeline_uid }}')"
-    >
-      {{ tl.name }}{% if tl.main_timeline %} (Main){% endif %}
-    </button>
-  {% endfor %}
- </div>
- {% endif %}
+{% if timelines and timelines|length > 0 %}
+<div class="timeline-selector">
+<strong>Select Timeline:</strong>
+{% for tl in timelines %}
+  <button 
+    class="timeline-btn {% if tl.schedule_timeline_uid == default_timeline %}active{% endif %}" 
+    data-timeline="{{ tl.schedule_timeline_uid }}"
+    onclick="switchTimeline('{{ tl.schedule_timeline_uid }}')"
+  >
+    {{ tl.name }}{% if tl.main_timeline %} (Main){% endif %}
+  </button>
+{% endfor %}
+</div>
+{% endif %}
 
- <!-- Matrix Container shown/hidden based on timeline selection -->
-
+<!-- Matrix Container shown/hidden based on timeline selection -->
 {% for timeline_uid, timeline_instances in instances_by_timeline.items() %}
 <div class="matrix-container" 
-     data-timeline="{{ timeline_uid }}"
-     {% if timeline_uid == default_timeline %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+    data-timeline="{{ timeline_uid }}"
+    {% if timeline_uid == default_timeline %}style="display: block;"{% else %}style="display: none;"{% endif %}>
   
   <h3>Matrix: {% if timeline_instances and timeline_instances[0].timeline_name %}{{ timeline_instances[0].timeline_name }}{% else %}{{ timeline_uid }}{% endif %}</h3>
   
   {% if timeline_instances|length == 0 %}
     <p style="color:#666;font-style:italic;">No scheduled activity instances for this timeline.</p>
   {% else %}
-
+<!-- display matrix -->
 <table class="matrix">
-
+  <!-- Epoch row -->
   <tr class="matrix-epoch-row">
     <th></th>
     <th style="text-align:right;font-size:0.50em;">Epoch:-></th>
@@ -244,6 +243,7 @@
     </th>
     {% endfor %}
   </tr>
+  <!-- Encounter row -->
   <tr class="matrix-encounter-row">
     <th></th>
     <th style="text-align:right;font-size:0.50em;">Encounter:-></th>
@@ -253,6 +253,7 @@
     </th>
     {% endfor %}
   </tr>
+  <!-- Study Day row -->
   <tr class="matrix-study-day-row">
     <th></th>
     <th style="text-align:right;font-size:0.50em;">Study Day:-></th>
@@ -262,6 +263,7 @@
     </th>
     {% endfor %}
   </tr>
+  <!-- Timing row -->
   <tr class="matrix-timing-label-row">
     <th></th>
     <th style="text-align:right;font-size:0.50em;">Timing:-></th>
@@ -271,7 +273,7 @@
     </th>
     {% endfor %}
   </tr>
-  
+  <!-- Visit Window row -->
   <tr class="matrix-visit-window-row">
     <th></th>
     <th style="text-align:right;font-size:0.50em;">Visit Window:-></th>
@@ -284,6 +286,7 @@
   <tr>
     <th>Activity</th>
     <th>Concepts</th>
+    <!-- List of all schedule activity instances as column headers -->
     {% for inst in timeline_instances %}
     <th style="min-width: 70px; vertical-align: top;" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
       <div style="color: #1976d2;" {%if inst.label %}title="Scheduled Activity Instance: {{ inst.label }}"{% endif %}>{% if inst.label %}{{ inst.label }}{% else %}{{ inst.name }}{% endif %}</div>
@@ -301,10 +304,14 @@
     {% for inst in timeline_instances %}
       {% set raw_status = cell_map.get((inst.id, a.id), '') %}
       {% set display = 'X' if raw_status == 'X' else '' %}
-      <td data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}" 
-      hx-post="/ui/soa/{{ soa_id }}/toggle_cell" 
-      hx-vals='{"instance_id": {{ inst.id }}, "activity_id": {{ a.id }} }' 
-      hx-swap="outerHTML" class="cell">{{ display }}
+      <td 
+        data-instance-id="{{ inst.id }}" 
+        data-visit-id="{{ inst.id }}" 
+        hx-post="/ui/soa/{{ soa_id }}/toggle_cell" 
+        hx-vals='{"instance_id": {{ inst.id }}, "activity_id": {{ a.id }} }' 
+        hx-swap="outerHTML" 
+        class="cell">
+        {{ display }}
       </td>
     {% endfor %}
   </tr>
@@ -313,6 +320,7 @@
 {% endif %}
 </div>
 {% endfor %}
+<!-- Export XLSX report for SoA -->
 <p><a href="/soa/{{ soa_id }}/normalized" target="_blank">Generate Normalized Summary (JSON)</a></p>
 <div class="export-buttons">
   <a
@@ -323,6 +331,7 @@
     title="Download Excel workbook"
   >⬇ XLSX</a>
 </div>
+<!-- CSS styles -->
 <style>
   .delete-btn { background:#c62828; color:#fff; border:none; padding:0 6px; cursor:pointer; }
   .delete-btn:hover { background:#b71c1c; }
