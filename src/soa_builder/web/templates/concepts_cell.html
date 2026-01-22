@@ -1,4 +1,5 @@
 {# Partial for concepts cell in matrix (add/remove only; concepts immutable) #}
+{% set concept_count = selected_list | length %}
 <td class="concepts-cell" id="concepts-cell-{{ activity_id }}" style="vertical-align:top;">
   {% if edit %}
     <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="margin:0;">
@@ -9,7 +10,7 @@
         {% for c in concepts %}
           <option value="{{ c.code }}" {% if c.code in selected_codes %}selected{% endif %}>{{ c.title }}</option>
         {% endfor %}
-      </select>
+      </select> 
       <div style="margin-top:4px;display:flex;gap:6px;">
         <button type="submit" class="small-btn" style="font-size:0.6em;">Save</button>
         <button type="button" class="refresh-btn" hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="font-size:0.6em;">Cancel</button>
@@ -32,36 +33,111 @@
       })();
     </script>
   {% else %}
-    <div style="max-width:320px;">
+  <div style="max-width:320px;">
+    
+    <!-- Clickable header -->
+    <div class="concepts-toggle"
+      onclick="toggleConcepts('{{ activity_id }}')">
+      <span class="concepts-label">Concepts</span>
+      {% if concept_count > 0 %}
+        <span class="concept-count-pill">{{ concept_count }}</span>
+      {% endif %}
+      <span class="concepts-arrow">▸</span>
+    </div>
+
+    <!-- Collapsible content -->
+    <div class="concepts-content" id="concepts-content-{{ activity_id }}" style="display:none;margin-top:4px;">
       {% if selected_list %}
-        <div style="display:block;">
         {% for ac in selected_list %}
           <div class="concept-line" style="display:flex;align-items:center;justify-content:space-between;background:#eef;color:#224;margin:2px 0;padding:2px 5px;border-radius:3px;font-size:0.6em;">
             <span class="concept-title" title="{{ ac.code }}" style="flex:1;">{{ ac.title }}</span>
-            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/remove" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="margin:0;">
+            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/remove"
+                  hx-target="#concepts-cell-{{ activity_id }}"
+                  hx-swap="outerHTML"
+                  style="margin:0;">
               <input type="hidden" name="concept_code" value="{{ ac.code }}" />
               <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
             </form>
           </div>
         {% endfor %}
-        </div>
       {% else %}
         <div class="no-concepts" style="color:#888;font-size:0.6em;">–</div>
       {% endif %}
-      <div style="margin-top:4px;display:flex;align-items:center;gap:4px;">
-        <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/add" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="display:flex;align-items:center;gap:4px;margin:0;">
-          <select name="concept_code" style="font-size:0.6em;max-width:160px;">
-            <option value="" disabled selected>Add concept...</option>
-            {% for c in concepts %}
-              {% if c.code not in selected_codes %}
-                <option value="{{ c.code }}">{{ c.title }}</option>
-              {% endif %}
-            {% endfor %}
-          </select>
-          <button type="submit" style="font-size:0.55em;">+</button>
-        </form>
-        <button type="button" class="edit-concepts-btn" hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell?edit=1" hx-target="#concepts-cell-{{ activity_id }}" hx-swap="outerHTML" style="background:#455a64;color:#fff;border:none;padding:2px 5px;cursor:pointer;font-size:0.55em;border-radius:3px;" title="Bulk select concepts">Bulk</button>
-      </div>
     </div>
-  {% endif %}
+
+    <!-- Add + Bulk controls stay visible -->
+    <div style="margin-top:4px;display:flex;align-items:center;gap:4px;">
+      <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/add"
+            hx-target="#concepts-cell-{{ activity_id }}"
+            hx-swap="outerHTML"
+            style="display:flex;align-items:center;gap:4px;margin:0;">
+        <select name="concept_code" style="font-size:0.6em;max-width:160px;">
+          <option value="" disabled selected>Add concept...</option>
+          {% for c in concepts %}
+            {% if c.code not in selected_codes %}
+              <option value="{{ c.code }}">{{ c.title }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+        <button type="submit" style="font-size:0.55em;">+</button>
+      </form>
+
+      <button type="button"
+              class="edit-concepts-btn"
+              hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell?edit=1"
+              hx-target="#concepts-cell-{{ activity_id }}"
+              hx-swap="outerHTML"
+              style="background:#455a64;color:#fff;border:none;padding:2px 5px;cursor:pointer;font-size:0.55em;border-radius:3px;"
+              title="Bulk select concepts">
+        Bulk
+      </button>
+    </div>
+
+  </div>
+{% endif %}
+
 </td>
+<style>
+.concepts-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.65em;
+  color: #1976d2;
+  user-select: none;
+}
+
+.concept-count-pill {
+  background: #1976d2;
+  color: white;
+  font-size: 0.75em;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  line-height: 1.4;
+  min-width: 18px;
+  text-align: center;
+}
+
+.concepts-arrow {
+  margin-left: auto;
+  font-size: 0.75em;
+}
+</style>
+
+<script>
+function toggleConcepts(activityId) {
+  const content = document.getElementById("concepts-content-" + activityId);
+  if (!content) return;
+
+  const header = content.previousElementSibling;
+  const arrow = header.querySelector(".concepts-arrow");
+
+  const open = content.style.display === "block";
+  content.style.display = open ? "none" : "block";
+
+  arrow.textContent = open ? "▸" : "▾";
+}
+</script>
