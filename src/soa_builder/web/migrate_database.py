@@ -979,3 +979,19 @@ def _migrate_matrix_cells_add_instance_id():
         conn.close()
     except Exception as e:
         logger.warning("matrix_cells instance_id migration failed: %s", e)
+
+
+def _migrate_activity_concept_add_href():
+    """Add href column to store value for API from which the codeSystem and codeSystemVersion USDM properties can be derived"""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_concept)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "href" not in cols:
+            cur.execute("ALTER TABLE activity_concept ADD COLUMN href TEXT")
+            conn.commit()
+            logger.info("Added href column to the activity_concept table")
+        conn.close()
+    except Exception as e:
+        logger.warning("activity_concept href migration failed: %s", e)

@@ -56,6 +56,7 @@ from .migrate_database import (
     _migrate_timing_add_member_of_timeline,
     _migrate_instances_add_member_of_timeline,
     _migrate_matrix_cells_add_instance_id,
+    _migrate_activity_concept_add_href,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -150,6 +151,7 @@ _init_db()
 
 
 # Database migration steps
+_migrate_activity_concept_add_href()
 _migrate_matrix_cells_add_instance_id()
 _migrate_instances_add_member_of_timeline()
 _migrate_timing_add_member_of_timeline()
