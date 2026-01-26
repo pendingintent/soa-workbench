@@ -1963,6 +1963,47 @@ def _matrix_arrays(soa_id: int):
     return instance_headers, rows
 
 
+def _fetch_enriched_instances(soa_id: int):
+    """Return enriched instance data with all header information for XLSX export."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT i.id,i.name,i.instance_uid,i.label,i.member_of_timeline,
+        v.name AS encounter_name,v.label AS encounter_label,
+        e.name AS epoch_name,e.epoch_label as epoch_label,
+        tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
+        FROM instances i
+        LEFT JOIN visit v ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id
+        LEFT JOIN epoch e ON e.epoch_uid = i.epoch_uid AND e.soa_id = i.soa_id
+        LEFT JOIN timing tm ON tm.id = v.scheduledAtId AND tm.soa_id = v.soa_id
+        WHERE i.soa_id=?
+        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), LENGTH(i.instance_uid), i.instance_uid
+        """,
+        (soa_id,),
+    )
+    instances = [
+        {
+            "id": r[0],
+            "name": r[1],
+            "instance_uid": r[2],
+            "label": r[3],
+            "member_of_timeline": r[4],
+            "encounter_name": r[5],
+            "encounter_label": r[6],
+            "epoch_name": r[7],
+            "epoch_label": r[8],
+            "window_label": r[9],
+            "timing_label": r[10],
+            "timing_name": r[11],
+            "study_day": r[12],
+        }
+        for r in cur.fetchall()
+    ]
+    conn.close()
+    return instances
+
+
 # API endpoint for creating new Study/SOA
 @app.post("/soa")
 def create_soa(payload: SOACreate):
@@ -2724,6 +2765,9 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
         except Exception as e:
             # Provide an error sheet to highlight issue rather than failing entire export
             concept_diff_df = pd.DataFrame([[str(e)]], columns=["ConceptDiffError"])
+    # Fetch enriched instances for header rows
+    enriched_instances = _fetch_enriched_instances(soa_id)
+
     with pd.ExcelWriter(bio, engine="openpyxl") as writer:
         study_df.to_excel(writer, index=False, sheet_name="Study")
         df.to_excel(writer, index=False, sheet_name="SoA")
@@ -2731,6 +2775,80 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
         audit_df.to_excel(writer, index=False, sheet_name="RollbackAudit")
         if concept_diff_df is not None:
             concept_diff_df.to_excel(writer, index=False, sheet_name="ConceptDiff")
+
+        # Add header rows to SoA sheet to match web UI
+        # workbook = writer.book
+        worksheet = writer.sheets["SoA"]
+
+        # Insert 6 rows at the top for header rows
+        worksheet.insert_rows(1, 6)
+
+        # Build header rows
+        # Row 1: Epoch (with merged cells for consecutive same values)
+        worksheet.cell(1, 1, "")
+        worksheet.cell(1, 2, "Epoch:")
+        col_idx = 3
+        epoch_groups = []  # Track (value, start_col, end_col) for merging
+        prev_epoch = None
+        start_col = 3
+        for i, inst in enumerate(enriched_instances):
+            epoch_val = inst.get("epoch_label") or inst.get("epoch_name") or ""
+            if prev_epoch is None:
+                prev_epoch = epoch_val
+                start_col = col_idx
+            elif prev_epoch != epoch_val:
+                epoch_groups.append((prev_epoch, start_col, col_idx - 1))
+                prev_epoch = epoch_val
+                start_col = col_idx
+            col_idx += 1
+        # Add last group
+        if prev_epoch is not None:
+            epoch_groups.append((prev_epoch, start_col, col_idx - 1))
+
+        # Write and merge epoch cells
+        for epoch_val, start, end in epoch_groups:
+            worksheet.cell(1, start, epoch_val)
+            if start != end:
+                worksheet.merge_cells(
+                    start_row=1, start_column=start, end_row=1, end_column=end
+                )
+
+        # Row 2: Encounter
+        worksheet.cell(2, 1, "")
+        worksheet.cell(2, 2, "Encounter:")
+        for i, inst in enumerate(enriched_instances):
+            encounter_val = (
+                inst.get("encounter_label") or inst.get("encounter_name") or ""
+            )
+            worksheet.cell(2, i + 3, encounter_val)
+
+        # Row 3: Instance (ScheduledActivityInstance)
+        worksheet.cell(3, 1, "")
+        worksheet.cell(3, 2, "Instance:")
+        for i, inst in enumerate(enriched_instances):
+            instance_val = inst.get("label") or inst.get("name") or ""
+            worksheet.cell(3, i + 3, instance_val)
+
+        # Row 4: Study Day
+        worksheet.cell(4, 1, "")
+        worksheet.cell(4, 2, "Study Day:")
+        for i, inst in enumerate(enriched_instances):
+            study_day_val = inst.get("study_day") or ""
+            worksheet.cell(4, i + 3, study_day_val)
+
+        # Row 5: Timing
+        worksheet.cell(5, 1, "")
+        worksheet.cell(5, 2, "Timing:")
+        for i, inst in enumerate(enriched_instances):
+            timing_val = inst.get("timing_label") or inst.get("timing_name") or ""
+            worksheet.cell(5, i + 3, timing_val)
+
+        # Row 6: Visit Window
+        worksheet.cell(6, 1, "")
+        worksheet.cell(6, 2, "Visit Window:")
+        for i, inst in enumerate(enriched_instances):
+            window_val = inst.get("window_label") or ""
+            worksheet.cell(6, i + 3, window_val)
     bio.seek(0)
     # Dynamic filename pattern: studyid_version.xlsx
     # Determine study_id and version context
