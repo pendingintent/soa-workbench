@@ -237,10 +237,25 @@
   <tr class="matrix-epoch-row">
     <th></th>
     <th style="text-align:right;font-size:0.50em;">Epoch:-></th>
+    {% set prev_epoch = namespace(value=None, count=0) %}
     {% for inst in timeline_instances %}
-    <th style="text-align:center;font-size:0.50em;">
-      {% if inst.epoch_label %}{{ inst.epoch_label }}{% else %}{{ inst.epoch_name }}{% endif %}
-    </th>
+      {% set current_epoch = inst.epoch_label if inst.epoch_label else inst.epoch_name %}
+      {% if prev_epoch.value == current_epoch %}
+        {# Same as previous, increment count but don't output #}
+        {% set prev_epoch.count = prev_epoch.count + 1 %}
+      {% else %}
+        {# Different epoch, output previous if exists #}
+        {% if prev_epoch.value is not none %}
+          <th style="text-align:center;font-size:0.50em;" colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}</th>
+        {% endif %}
+        {# Start tracking new epoch #}
+        {% set prev_epoch.value = current_epoch %}
+        {% set prev_epoch.count = 1 %}
+      {% endif %}
+      {# On last iteration, output the accumulated cell #}
+      {% if loop.last %}
+        <th style="text-align:center;font-size:0.50em;" colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}</th>
+      {% endif %}
     {% endfor %}
   </tr>
   <!-- Encounter row -->
@@ -250,6 +265,16 @@
     {% for inst in timeline_instances %}
     <th style="text-align:center;font-size:0.50em;">
       {% if inst.encounter_label %}{{ inst.encounter_label }}{% else %}{{ inst.encounter_name }}{% endif %}
+    </th>
+    {% endfor %}
+  </tr>
+  <!-- ScheduleActivityInstance row -->
+  <tr class="matrix-instance-row">
+    <th></th>
+    <th style="text-align:right;font-size:0.50em;">Instance:-></th>
+    {% for inst in timeline_instances %}
+    <th style="min-width: 70px; vertical-align: top; text-align:center;" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
+      <div style="color: #1976d2;" {%if inst.label %}title="Scheduled Activity Instance: {{ inst.label }}"{% endif %}>{% if inst.label %}{{ inst.label }}{% else %}{{ inst.name }}{% endif %}</div>
     </th>
     {% endfor %}
   </tr>
@@ -286,11 +311,9 @@
   <tr>
     <th>Activity</th>
     <th>Concepts</th>
-    <!-- List of all schedule activity instances as column headers -->
+    <!-- Empty headers for instance columns -->
     {% for inst in timeline_instances %}
-    <th style="min-width: 70px; vertical-align: top;" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
-      <div style="color: #1976d2;" {%if inst.label %}title="Scheduled Activity Instance: {{ inst.label }}"{% endif %}>{% if inst.label %}{{ inst.label }}{% else %}{{ inst.name }}{% endif %}</div>
-    </th>
+    <th style="min-width: 70px;"></th>
     {% endfor %}
   </tr>
   {% for a in activities %}
