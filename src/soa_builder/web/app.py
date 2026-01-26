@@ -2004,6 +2004,77 @@ def _fetch_enriched_instances(soa_id: int):
     return instances
 
 
+def _add_header_rows_to_worksheet(worksheet, enriched_instances):
+    """Add header rows to a worksheet with instance metadata."""
+    # Insert 6 rows at the top for header rows
+    worksheet.insert_rows(1, 6)
+
+    # Build header rows
+    # Row 1: Epoch (with merged cells for consecutive same values)
+    worksheet.cell(1, 1, "")
+    worksheet.cell(1, 2, "Epoch:")
+    col_idx = 3
+    epoch_groups = []  # Track (value, start_col, end_col) for merging
+    prev_epoch = None
+    start_col = 3
+    for i, inst in enumerate(enriched_instances):
+        epoch_val = inst.get("epoch_label") or inst.get("epoch_name") or ""
+        if prev_epoch is None:
+            prev_epoch = epoch_val
+            start_col = col_idx
+        elif prev_epoch != epoch_val:
+            epoch_groups.append((prev_epoch, start_col, col_idx - 1))
+            prev_epoch = epoch_val
+            start_col = col_idx
+        col_idx += 1
+    # Add last group
+    if prev_epoch is not None:
+        epoch_groups.append((prev_epoch, start_col, col_idx - 1))
+
+    # Write and merge epoch cells
+    for epoch_val, start, end in epoch_groups:
+        worksheet.cell(1, start, epoch_val)
+        if start != end:
+            worksheet.merge_cells(
+                start_row=1, start_column=start, end_row=1, end_column=end
+            )
+
+    # Row 2: Encounter
+    worksheet.cell(2, 1, "")
+    worksheet.cell(2, 2, "Encounter:")
+    for i, inst in enumerate(enriched_instances):
+        encounter_val = inst.get("encounter_label") or inst.get("encounter_name") or ""
+        worksheet.cell(2, i + 3, encounter_val)
+
+    # Row 3: Instance (ScheduledActivityInstance)
+    worksheet.cell(3, 1, "")
+    worksheet.cell(3, 2, "Instance:")
+    for i, inst in enumerate(enriched_instances):
+        instance_val = inst.get("label") or inst.get("name") or ""
+        worksheet.cell(3, i + 3, instance_val)
+
+    # Row 4: Study Day
+    worksheet.cell(4, 1, "")
+    worksheet.cell(4, 2, "Study Day:")
+    for i, inst in enumerate(enriched_instances):
+        study_day_val = inst.get("study_day") or ""
+        worksheet.cell(4, i + 3, study_day_val)
+
+    # Row 5: Timing
+    worksheet.cell(5, 1, "")
+    worksheet.cell(5, 2, "Timing:")
+    for i, inst in enumerate(enriched_instances):
+        timing_val = inst.get("timing_label") or inst.get("timing_name") or ""
+        worksheet.cell(5, i + 3, timing_val)
+
+    # Row 6: Visit Window
+    worksheet.cell(6, 1, "")
+    worksheet.cell(6, 2, "Visit Window:")
+    for i, inst in enumerate(enriched_instances):
+        window_val = inst.get("window_label") or ""
+        worksheet.cell(6, i + 3, window_val)
+
+
 # API endpoint for creating new Study/SOA
 @app.post("/soa")
 def create_soa(payload: SOACreate):
@@ -2768,87 +2839,105 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     # Fetch enriched instances for header rows
     enriched_instances = _fetch_enriched_instances(soa_id)
 
+    # Fetch timelines
+    conn_tl = _connect()
+    cur_tl = conn_tl.cursor()
+    cur_tl.execute(
+        """
+        SELECT schedule_timeline_uid,name,main_timeline
+        FROM schedule_timelines
+        WHERE soa_id=?
+        ORDER BY main_timeline DESC, name
+        """,
+        (soa_id,),
+    )
+    timelines = [
+        {
+            "schedule_timeline_uid": r[0],
+            "name": r[1],
+            "main_timeline": bool(r[2]),
+        }
+        for r in cur_tl.fetchall()
+    ]
+    conn_tl.close()
+
+    # Group enriched instances by timeline
+    instances_by_timeline = {}
+    for inst in enriched_instances:
+        timeline_key = inst.get("member_of_timeline") or "unassigned"
+        if timeline_key not in instances_by_timeline:
+            instances_by_timeline[timeline_key] = []
+        instances_by_timeline[timeline_key].append(inst)
+
     with pd.ExcelWriter(bio, engine="openpyxl") as writer:
         study_df.to_excel(writer, index=False, sheet_name="Study")
-        df.to_excel(writer, index=False, sheet_name="SoA")
         mapping_df.to_excel(writer, index=False, sheet_name="ConceptMappings")
         audit_df.to_excel(writer, index=False, sheet_name="RollbackAudit")
         if concept_diff_df is not None:
             concept_diff_df.to_excel(writer, index=False, sheet_name="ConceptDiff")
 
-        # Add header rows to SoA sheet to match web UI
-        # workbook = writer.book
-        worksheet = writer.sheets["SoA"]
+        # Create a worksheet for each timeline
+        if timelines:
+            for timeline in timelines:
+                timeline_uid = timeline["schedule_timeline_uid"]
+                timeline_name = timeline["name"]
+                timeline_instances = instances_by_timeline.get(timeline_uid, [])
 
-        # Insert 6 rows at the top for header rows
-        worksheet.insert_rows(1, 6)
+                if not timeline_instances:
+                    continue
 
-        # Build header rows
-        # Row 1: Epoch (with merged cells for consecutive same values)
-        worksheet.cell(1, 1, "")
-        worksheet.cell(1, 2, "Epoch:")
-        col_idx = 3
-        epoch_groups = []  # Track (value, start_col, end_col) for merging
-        prev_epoch = None
-        start_col = 3
-        for i, inst in enumerate(enriched_instances):
-            epoch_val = inst.get("epoch_label") or inst.get("epoch_name") or ""
-            if prev_epoch is None:
-                prev_epoch = epoch_val
-                start_col = col_idx
-            elif prev_epoch != epoch_val:
-                epoch_groups.append((prev_epoch, start_col, col_idx - 1))
-                prev_epoch = epoch_val
-                start_col = col_idx
-            col_idx += 1
-        # Add last group
-        if prev_epoch is not None:
-            epoch_groups.append((prev_epoch, start_col, col_idx - 1))
+                # Build matrix data for this timeline
+                cell_lookup = {
+                    (c["instance_id"], c["activity_id"]): c.get("status", "")
+                    for c in cells
+                    if c.get("instance_id") is not None
+                    and c.get("activity_id") is not None
+                }
 
-        # Write and merge epoch cells
-        for epoch_val, start, end in epoch_groups:
-            worksheet.cell(1, start, epoch_val)
-            if start != end:
-                worksheet.merge_cells(
-                    start_row=1, start_column=start, end_row=1, end_column=end
+                # Build instance headers for this timeline
+                instance_headers_tl = [inst["name"] for inst in timeline_instances]
+
+                # Build rows for this timeline
+                rows_tl = []
+                for a in activities:
+                    row = [a["name"]]
+                    for inst in timeline_instances:
+                        row.append(cell_lookup.get((inst["id"], a["id"]), ""))
+                    rows_tl.append(row)
+
+                # Create DataFrame for this timeline
+                df_tl = pd.DataFrame(
+                    rows_tl, columns=["Activity"] + instance_headers_tl
                 )
 
-        # Row 2: Encounter
-        worksheet.cell(2, 1, "")
-        worksheet.cell(2, 2, "Encounter:")
-        for i, inst in enumerate(enriched_instances):
-            encounter_val = (
-                inst.get("encounter_label") or inst.get("encounter_name") or ""
-            )
-            worksheet.cell(2, i + 3, encounter_val)
+                # Add concepts columns
+                if len(concepts_strings) == len(df_tl):
+                    df_tl.insert(1, "Concepts", concepts_strings)
+                    df_tl["Concept UIDs"] = concept_titles_strings
 
-        # Row 3: Instance (ScheduledActivityInstance)
-        worksheet.cell(3, 1, "")
-        worksheet.cell(3, 2, "Instance:")
-        for i, inst in enumerate(enriched_instances):
-            instance_val = inst.get("label") or inst.get("name") or ""
-            worksheet.cell(3, i + 3, instance_val)
+                # Sanitize sheet name (max 31 chars, no special chars)
+                sheet_name = f"SoA - {timeline_name}"[:31]
+                sheet_name = (
+                    sheet_name.replace("/", "-")
+                    .replace("\\", "-")
+                    .replace("*", "-")
+                    .replace("?", "-")
+                    .replace(":", "-")
+                    .replace("[", "-")
+                    .replace("]", "-")
+                )
 
-        # Row 4: Study Day
-        worksheet.cell(4, 1, "")
-        worksheet.cell(4, 2, "Study Day:")
-        for i, inst in enumerate(enriched_instances):
-            study_day_val = inst.get("study_day") or ""
-            worksheet.cell(4, i + 3, study_day_val)
+                # Write to Excel
+                df_tl.to_excel(writer, index=False, sheet_name=sheet_name)
 
-        # Row 5: Timing
-        worksheet.cell(5, 1, "")
-        worksheet.cell(5, 2, "Timing:")
-        for i, inst in enumerate(enriched_instances):
-            timing_val = inst.get("timing_label") or inst.get("timing_name") or ""
-            worksheet.cell(5, i + 3, timing_val)
-
-        # Row 6: Visit Window
-        worksheet.cell(6, 1, "")
-        worksheet.cell(6, 2, "Visit Window:")
-        for i, inst in enumerate(enriched_instances):
-            window_val = inst.get("window_label") or ""
-            worksheet.cell(6, i + 3, window_val)
+                # Add header rows
+                worksheet_tl = writer.sheets[sheet_name]
+                _add_header_rows_to_worksheet(worksheet_tl, timeline_instances)
+        else:
+            # No timelines, create single SoA sheet as before
+            df.to_excel(writer, index=False, sheet_name="SoA")
+            worksheet = writer.sheets["SoA"]
+            _add_header_rows_to_worksheet(worksheet, enriched_instances)
     bio.seek(0)
     # Dynamic filename pattern: studyid_version.xlsx
     # Determine study_id and version context
