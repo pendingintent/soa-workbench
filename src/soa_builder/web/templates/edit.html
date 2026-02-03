@@ -323,6 +323,7 @@
     {% set selected_list = concepts_list %}
     {% set selected_codes = concepts_list | map(attribute='code') | list %}
     {% set activity_id = a.id %}
+    {% set timeline_context = timeline_uid %}
     {% include 'concepts_cell.html' %}
     {% for inst in timeline_instances %}
       {% set raw_status = cell_map.get((inst.id, a.id), '') %}
