@@ -56,6 +56,7 @@ from .migrate_database import (
     _migrate_timing_add_member_of_timeline,
     _migrate_instances_add_member_of_timeline,
     _migrate_matrix_cells_add_instance_id,
+    _migrate_activity_concept_add_href,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -150,6 +151,7 @@ _init_db()
 
 
 # Database migration steps
+_migrate_activity_concept_add_href()
 _migrate_matrix_cells_add_instance_id()
 _migrate_instances_add_member_of_timeline()
 _migrate_timing_add_member_of_timeline()
@@ -1961,6 +1963,118 @@ def _matrix_arrays(soa_id: int):
     return instance_headers, rows
 
 
+def _fetch_enriched_instances(soa_id: int):
+    """Return enriched instance data with all header information for XLSX export."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT i.id,i.name,i.instance_uid,i.label,i.member_of_timeline,
+        v.name AS encounter_name,v.label AS encounter_label,
+        e.name AS epoch_name,e.epoch_label as epoch_label,
+        tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
+        FROM instances i
+        LEFT JOIN visit v ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id
+        LEFT JOIN epoch e ON e.epoch_uid = i.epoch_uid AND e.soa_id = i.soa_id
+        LEFT JOIN timing tm ON tm.id = v.scheduledAtId AND tm.soa_id = v.soa_id
+        WHERE i.soa_id=?
+        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), LENGTH(i.instance_uid), i.instance_uid
+        """,
+        (soa_id,),
+    )
+    instances = [
+        {
+            "id": r[0],
+            "name": r[1],
+            "instance_uid": r[2],
+            "label": r[3],
+            "member_of_timeline": r[4],
+            "encounter_name": r[5],
+            "encounter_label": r[6],
+            "epoch_name": r[7],
+            "epoch_label": r[8],
+            "window_label": r[9],
+            "timing_label": r[10],
+            "timing_name": r[11],
+            "study_day": r[12],
+        }
+        for r in cur.fetchall()
+    ]
+    conn.close()
+    return instances
+
+
+def _add_header_rows_to_worksheet(worksheet, enriched_instances):
+    """Add header rows to a worksheet with instance metadata."""
+    # Insert 6 rows at the top for header rows
+    worksheet.insert_rows(1, 6)
+
+    # Build header rows
+    # Row 1: Epoch (with merged cells for consecutive same values)
+    worksheet.cell(1, 1, "")
+    worksheet.cell(1, 2, "Epoch:")
+    col_idx = 3
+    epoch_groups = []  # Track (value, start_col, end_col) for merging
+    prev_epoch = None
+    start_col = 3
+    for i, inst in enumerate(enriched_instances):
+        epoch_val = inst.get("epoch_label") or inst.get("epoch_name") or ""
+        if prev_epoch is None:
+            prev_epoch = epoch_val
+            start_col = col_idx
+        elif prev_epoch != epoch_val:
+            epoch_groups.append((prev_epoch, start_col, col_idx - 1))
+            prev_epoch = epoch_val
+            start_col = col_idx
+        col_idx += 1
+    # Add last group
+    if prev_epoch is not None:
+        epoch_groups.append((prev_epoch, start_col, col_idx - 1))
+
+    # Write and merge epoch cells
+    for epoch_val, start, end in epoch_groups:
+        worksheet.cell(1, start, epoch_val)
+        if start != end:
+            worksheet.merge_cells(
+                start_row=1, start_column=start, end_row=1, end_column=end
+            )
+
+    # Row 2: Encounter
+    worksheet.cell(2, 1, "")
+    worksheet.cell(2, 2, "Encounter:")
+    for i, inst in enumerate(enriched_instances):
+        encounter_val = inst.get("encounter_label") or inst.get("encounter_name") or ""
+        worksheet.cell(2, i + 3, encounter_val)
+
+    # Row 3: Instance (ScheduledActivityInstance)
+    worksheet.cell(3, 1, "")
+    worksheet.cell(3, 2, "Instance:")
+    for i, inst in enumerate(enriched_instances):
+        instance_val = inst.get("label") or inst.get("name") or ""
+        worksheet.cell(3, i + 3, instance_val)
+
+    # Row 4: Study Day
+    worksheet.cell(4, 1, "")
+    worksheet.cell(4, 2, "Study Day:")
+    for i, inst in enumerate(enriched_instances):
+        study_day_val = inst.get("study_day") or ""
+        worksheet.cell(4, i + 3, study_day_val)
+
+    # Row 5: Timing
+    worksheet.cell(5, 1, "")
+    worksheet.cell(5, 2, "Timing:")
+    for i, inst in enumerate(enriched_instances):
+        timing_val = inst.get("timing_label") or inst.get("timing_name") or ""
+        worksheet.cell(5, i + 3, timing_val)
+
+    # Row 6: Visit Window
+    worksheet.cell(6, 1, "")
+    worksheet.cell(6, 2, "Visit Window:")
+    for i, inst in enumerate(enriched_instances):
+        window_val = inst.get("window_label") or ""
+        worksheet.cell(6, i + 3, window_val)
+
+
 # API endpoint for creating new Study/SOA
 @app.post("/soa")
 def create_soa(payload: SOACreate):
@@ -2722,13 +2836,108 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
         except Exception as e:
             # Provide an error sheet to highlight issue rather than failing entire export
             concept_diff_df = pd.DataFrame([[str(e)]], columns=["ConceptDiffError"])
+    # Fetch enriched instances for header rows
+    enriched_instances = _fetch_enriched_instances(soa_id)
+
+    # Fetch timelines
+    conn_tl = _connect()
+    cur_tl = conn_tl.cursor()
+    cur_tl.execute(
+        """
+        SELECT schedule_timeline_uid,name,main_timeline
+        FROM schedule_timelines
+        WHERE soa_id=?
+        ORDER BY main_timeline DESC, name
+        """,
+        (soa_id,),
+    )
+    timelines = [
+        {
+            "schedule_timeline_uid": r[0],
+            "name": r[1],
+            "main_timeline": bool(r[2]),
+        }
+        for r in cur_tl.fetchall()
+    ]
+    conn_tl.close()
+
+    # Group enriched instances by timeline
+    instances_by_timeline = {}
+    for inst in enriched_instances:
+        timeline_key = inst.get("member_of_timeline") or "unassigned"
+        if timeline_key not in instances_by_timeline:
+            instances_by_timeline[timeline_key] = []
+        instances_by_timeline[timeline_key].append(inst)
+
     with pd.ExcelWriter(bio, engine="openpyxl") as writer:
         study_df.to_excel(writer, index=False, sheet_name="Study")
-        df.to_excel(writer, index=False, sheet_name="SoA")
         mapping_df.to_excel(writer, index=False, sheet_name="ConceptMappings")
         audit_df.to_excel(writer, index=False, sheet_name="RollbackAudit")
         if concept_diff_df is not None:
             concept_diff_df.to_excel(writer, index=False, sheet_name="ConceptDiff")
+
+        # Create a worksheet for each timeline
+        if timelines:
+            for timeline in timelines:
+                timeline_uid = timeline["schedule_timeline_uid"]
+                timeline_name = timeline["name"]
+                timeline_instances = instances_by_timeline.get(timeline_uid, [])
+
+                if not timeline_instances:
+                    continue
+
+                # Build matrix data for this timeline
+                cell_lookup = {
+                    (c["instance_id"], c["activity_id"]): c.get("status", "")
+                    for c in cells
+                    if c.get("instance_id") is not None
+                    and c.get("activity_id") is not None
+                }
+
+                # Build instance headers for this timeline
+                instance_headers_tl = [inst["name"] for inst in timeline_instances]
+
+                # Build rows for this timeline
+                rows_tl = []
+                for a in activities:
+                    row = [a["name"]]
+                    for inst in timeline_instances:
+                        row.append(cell_lookup.get((inst["id"], a["id"]), ""))
+                    rows_tl.append(row)
+
+                # Create DataFrame for this timeline
+                df_tl = pd.DataFrame(
+                    rows_tl, columns=["Activity"] + instance_headers_tl
+                )
+
+                # Add concepts columns
+                if len(concepts_strings) == len(df_tl):
+                    df_tl.insert(1, "Concepts", concepts_strings)
+                    df_tl["Concept UIDs"] = concept_titles_strings
+
+                # Sanitize sheet name (max 31 chars, no special chars)
+                sheet_name = f"SoA - {timeline_name}"[:31]
+                sheet_name = (
+                    sheet_name.replace("/", "-")
+                    .replace("\\", "-")
+                    .replace("*", "-")
+                    .replace("?", "-")
+                    .replace(":", "-")
+                    .replace("[", "-")
+                    .replace("]", "-")
+                )
+
+                # Write to Excel
+                df_tl.to_excel(writer, index=False, sheet_name=sheet_name)
+
+                # Add header rows
+                worksheet_tl = writer.sheets[sheet_name]
+                _add_header_rows_to_worksheet(worksheet_tl, timeline_instances)
+        else:
+            # No timelines, create single SoA sheet as before
+            df.to_excel(writer, index=False, sheet_name="SoA")
+            worksheet = writer.sheets["SoA"]
+            _add_header_rows_to_worksheet(worksheet, enriched_instances)
     bio.seek(0)
     # Dynamic filename pattern: studyid_version.xlsx
     # Determine study_id and version context
@@ -3116,9 +3325,6 @@ def delete_activity(soa_id: int, activity_id: int):
     return {"deleted_activity_id": activity_id}
 
 
-# API endpoint for deleting an Epoch    <- moved to routers/epochs.py
-
-
 @app.get("/", response_class=HTMLResponse)
 def ui_index(request: Request):
     """Render home page for the SoA Workbench."""
@@ -3278,38 +3484,6 @@ def ui_update_meta(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
-
-
-# Helper to fetch element audit rows with legacy-safe columns   -> Deprecated (Moved to audits.py, audits.html)
-"""
-def _fetch_element_audits(soa_id: int):
-    conn_ea = _connect()
-    cur_ea = conn_ea.cursor()
-    cur_ea.execute("PRAGMA table_info(element_audit)")
-    cols = [row[1] for row in cur_ea.fetchall()]
-    want = [
-        "id",
-        "element_id",
-        "action",
-        "before_json",
-        "after_json",
-        "performed_at",
-    ]
-    available = [c for c in want if c in cols]
-    element_audits = []
-    if available:
-        select_sql = f"SELECT {', '.join(available)} FROM element_audit WHERE soa_id=? ORDER BY id DESC"
-        cur_ea.execute(select_sql, (soa_id,))
-        for r in cur_ea.fetchall():
-            item = {}
-            for i, c in enumerate(available):
-                item[c] = r[i]
-            for k in want:
-                item.setdefault(k, None)
-            element_audits.append(item)
-    conn_ea.close()
-    return element_audits
-"""
 
 
 # UI endpoint for rendering SOA edit page
@@ -3582,51 +3756,16 @@ def ui_edit(request: Request, soa_id: int):
     cur_inst = conn_inst.cursor()
     cur_inst.execute(
         """
-        SELECT i.id,
-               i.name,
-               i.instance_uid,
-               i.label,
-               i.member_of_timeline,
-               (SELECT t.name
-                  FROM schedule_timelines t
-                 WHERE t.schedule_timeline_uid = i.member_of_timeline
-                   AND t.soa_id = i.soa_id) AS timeline_name,
-               (SELECT v.name
-                  FROM visit v
-                 WHERE v.encounter_uid = i.encounter_uid
-                   AND v.soa_id = i.soa_id) AS encounter_name,
-               (SELECT e.name
-                  FROM epoch e
-                 WHERE e.epoch_uid = i.epoch_uid
-                   AND e.soa_id = i.soa_id) AS epoch_name,
-               (SELECT tm.window_label
-                  FROM visit v
-                  JOIN timing tm
-                    ON tm.id = v.scheduledAtId
-                   AND tm.soa_id = v.soa_id
-                 WHERE v.encounter_uid = i.encounter_uid
-                   AND v.soa_id = i.soa_id
-                 LIMIT 1) AS window_label,
-                 (SELECT tm.label
-                  FROM visit v
-                  JOIN timing tm
-                    ON tm.id = v.scheduledAtId
-                   AND tm.soa_id = v.soa_id
-                 WHERE v.encounter_uid = i.encounter_uid
-                   AND v.soa_id = i.soa_id
-                 LIMIT 1) AS timing_label,
-                 (SELECT tm.value
-                  FROM visit v
-                  JOIN timing tm
-                    ON tm.id = v.scheduledAtId
-                   AND tm.soa_id = v.soa_id
-                 WHERE v.encounter_uid = i.encounter_uid
-                   AND v.soa_id = i.soa_id
-                 LIMIT 1) AS study_day
+        SELECT i.id,i.name,i.instance_uid,i.label,i.member_of_timeline,st.name AS timeline_name,st.label AS timeline_label,
+        v.name AS encounter_name,v.label AS encounter_label,e.name AS epoch_name,e.epoch_label as epoch_label,tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
         FROM instances i
-        WHERE soa_id=?
-        ORDER BY member_of_timeline, length(instance_uid), instance_uid
-        """,
+        LEFT JOIN schedule_timelines st ON st.schedule_timeline_uid = i.member_of_timeline AND st.soa_id = i.soa_id
+        LEFT JOIN visit v ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id
+        LEFT JOIN epoch e ON e.epoch_uid = i.epoch_uid AND e.soa_id = i.soa_id
+        LEFT JOIN timing tm ON tm.id = v.scheduledAtId AND tm.soa_id = v.soa_id
+        WHERE i.soa_id=?
+        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), LENGTH(i.instance_uid), i.instance_uid
+            """,
         (soa_id,),
     )
     instances = [
@@ -3637,11 +3776,15 @@ def ui_edit(request: Request, soa_id: int):
             "label": r[3],
             "member_of_timeline": r[4],
             "timeline_name": r[5],
-            "encounter_name": r[6],
-            "epoch_name": r[7],
-            "window_label": r[8],
-            "timing_label": r[9],
-            "study_day": iso_duration_to_days(r[10]),
+            "timeline_label": r[6],
+            "encounter_name": r[7],
+            "encounter_label": r[8],
+            "epoch_name": r[9],
+            "epoch_label": r[10],
+            "window_label": r[11],
+            "timing_label": r[12],
+            "timing_name": r[13],
+            "study_day": iso_duration_to_days(r[14]),
         }
         for r in cur_inst.fetchall()
     ]

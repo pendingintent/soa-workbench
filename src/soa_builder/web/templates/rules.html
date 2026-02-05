@@ -2,6 +2,12 @@
 {% block content %}
 <h2>Transition Rules for SoA {{ soa_id }}</h2>
 
+<div style="margin-bottom:12px;">
+    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
+        ← Return to Edit Page
+    </a>
+</div>
+
 <div style="margin-bottom:12px">
     <form method="post" action="/ui/soa/{{ soa_id }}/rules/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;width:100%;">
         <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
@@ -26,7 +32,7 @@
 
 <table id="rules-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
     <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">UID</th>
+        <th style="text-align:left;padding:4px;">id</th>
         <th style="text-align:left;padding:4px;">Name</th>
         <th style="text-align:left;padding:4px;">Label</th>
         <th style="text-align:left;padding:4px;">Description</th>

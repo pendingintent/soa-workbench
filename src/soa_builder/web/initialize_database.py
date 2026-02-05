@@ -31,7 +31,8 @@ def _init_db():
             concept_title TEXT,
             concept_uid TEXT,    -- immutable BiomedicalConcept_N identifier unique within an SOA
             activity_uid TEXT,   -- joins to the activity table using this uid unique within an SOA
-            soa_id INT
+            soa_id INT,
+            href TEXT               -- stores the API address where the BC exists; codeSystem & codeSystemVersion
         )"""
     )
 

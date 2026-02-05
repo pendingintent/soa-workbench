@@ -2,6 +2,12 @@
 {% block content %}
 <h2>Epochs for SoA {{ soa_id }}</h2>
 
+<div style="margin-bottom:12px;">
+    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
+        ← Return to Edit Page
+    </a>
+</div>
+
 <div style="margin-bottom:12px">
     <form method="post" action="/ui/soa/{{ soa_id }}/epochs/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
         <div style="display:flex;flex-direction:column;gap:2px;">
@@ -31,7 +37,7 @@
 
 <table id="epochs-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
     <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">UID</th>
+        <th style="text-align:left;padding:4px;">id</th>
         <th style="text-align:left;padding:4px;">Order</th>
         <th style="text-align:left;padding:4px;">Name</th>
         <th style="text-align:left;padding:4px;">Label</th>
@@ -39,7 +45,14 @@
         <th style="text-align:left;padding:4px;">Type</th>
         <th style="text-align:left;padding:4px;">Save</th>
         <th style="text-align:left;padding:4px;">Delete</th>
-        <th style="text-align:left;padding:4px;">Reorder</th>
+        <th style="text-align:left;padding:4px;">
+            <button type="button"
+                    id="save-epoch-order-btn"
+                    data-soa-id="{{ soa_id }}"
+                    style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
+                Save Order
+            </button>
+        </th>
     </tr>
     {% for e in epochs %}
     <tr data-epoch-id="{{ e.id }}">
@@ -78,15 +91,6 @@
 
     {% endfor %}
 </table>
-
-<div style="margin-top:8px;">
-    <button type="button"
-            id="save-epoch-order-btn"
-            data-soa-id="{{ soa_id }}"
-            style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">
-        Save Epoch Order
-    </button>
-</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
