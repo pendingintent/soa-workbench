@@ -3,6 +3,12 @@
 
 <h2>Scheduled Activity Instances for SoA {{ soa_id }}</h2>
 
+<div style="margin-bottom:12px;">
+    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
+        ← Return to Edit Page
+    </a>
+</div>
+
 <div style="margin-bottom:2px;">
     <form method="post" action="/ui/soa/{{ soa_id }}/instances/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
         <div style="display: flex;flex-direction: column;gap: 2px;">
@@ -65,9 +71,10 @@
     </form>
 </div>
 
-<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
+<table id="instances-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
     <tr style="background:#eee;">
         <th style="text-align:left;padding:4px;">id</th>
+        <th style="text-align:left;padding:4px;">Order</th>
         <th style="text-align:left;padding:4px;">Name</th>
         <th style="text-align:left;padding:4px;">Label</th>
         <th style="text-align:left;padding:4px;">Description</th>
@@ -78,12 +85,21 @@
         <th style="text-align:left;padding:4px;">Encounter</th>
         <th style="text-align:left;padding:4px;">Member of Timeline</th>
         <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete Instance</th>
+        <th style="text-align:left;padding:4px;">Delete</th>
+        <th style="text-align:left;padding:4px;">
+            <button type="button"
+                    id="save-instance-order-btn"
+                    data-soa-id="{{ soa_id }}"
+                    style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
+                Save Order
+            </button>
+        </th>
     </tr>
     {% for i in instances or [] %}
-  <tr>
+  <tr data-instance-id="{{ i.id }}">
     <form method="post" action="/ui/soa/{{ soa_id }}/instances/{{ i.id }}/update">
       <td style="padding:4px;white-space:nowrap;"><strong>{{ i.instance_uid }}</strong></td>
+      <td style="padding:4px;white-space:nowrap;"><strong>{{ i.order_index }}</strong></td>
       <td style="padding:4px;"><input name="name" value="{{ i.name or '' }}" placeholder="Name" /></td>
       <td style="padding:4px;"><input name="label" value="{{ i.label or '' }}" placeholder="Label" /></td>
       <td style="padding:4px;"><input name="description" value="{{ i.description or '' }}" placeholder="Description" /></td>
@@ -127,13 +143,76 @@
     </form>
     <td style="padding:4px;">
       <form method="post" action="/ui/soa/{{ soa_id }}/instances/{{ i.id }}/delete">
-        <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">✕</button>
+        <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+        Delete
+        </button>
       </form>
+    </td>
+    <td style="padding:4px;white-space:nowrap;">
+      <button type="button" onclick="moveInstanceRow(this, -1)">↑</button>
+      <button type="button" onclick="moveInstanceRow(this, 1)">↓</button>
     </td>
   </tr>
     {% else %}
-    <tr><td colspan="12" style="padding:6px;color:#777;">No instances yet.</td></tr>
+    <tr><td colspan="14" style="padding:6px;color:#777;">No instances yet.</td></tr>
     {% endfor %}
 </table>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('save-instance-order-btn');
+    if (btn) {
+        btn.addEventListener('click', function () {
+            var soaId = btn.getAttribute('data-soa-id');
+            saveInstanceOrder(soaId);
+        });
+    }
+});
+
+function moveInstanceRow(button, dir) {
+    var row = button.closest ? button.closest('tr') : button.parentNode.parentNode;
+    if (!row) return;
+    var table = document.getElementById('instances-table');
+    if (!table) return;
+    var tbody = table.tBodies[0] || table;
+
+    if (dir < 0) {
+        var prev = row.previousElementSibling;
+        if (prev && prev.querySelector && prev.querySelector('td')) {
+            tbody.insertBefore(row, prev);
+        }
+    } else {
+        var next = row.nextElementSibling;
+        if (next) {
+            tbody.insertBefore(next, row);
+        }
+    }
+}
+
+function saveInstanceOrder(soaId) {
+    var rows = document.querySelectorAll('#instances-table tr[data-instance-id]');
+    var order = [];
+    for (var i = 0; i < rows.length; i++) {
+        var id = parseInt(rows[i].getAttribute('data-instance-id'), 10);
+        if (!isNaN(id)) {
+            order.push(id);
+        }
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/soa/' + soaId + '/instances/reorder');
+    xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                window.location.reload();
+            } else {
+                alert('Reorder failed: ' + xhr.responseText);
+            }
+        }
+    };
+    xhr.send(JSON.stringify({ order: order }));
+}
+</script>
 
 {% endblock %}
