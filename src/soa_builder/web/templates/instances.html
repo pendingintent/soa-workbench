@@ -199,19 +199,23 @@ function saveInstanceOrder(soaId) {
         }
     }
 
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', '/soa/' + soaId + '/instances/reorder');
-    xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                window.location.reload();
-            } else {
-                alert('Reorder failed: ' + xhr.responseText);
-            }
+    fetch('/soa/' + soaId + '/instances/reorder', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json;charset=UTF-8'
+        },
+        body: JSON.stringify({ order: order })
+    }).then(function (response) {
+        if (response.ok) {
+            window.location.reload();
+            return;
         }
-    };
-    xhr.send(JSON.stringify({ order: order }));
+        return response.text().then(function (text) {
+            alert('Reorder failed: ' + (text || ('HTTP ' + response.status)));
+        });
+    }).catch(function (error) {
+        alert('Reorder failed: ' + error.message);
+    });
 }
 </script>
 
