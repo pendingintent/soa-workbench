@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function moveInstanceRow(button, dir) {
-    var row = button.closest ? button.closest('tr') : button.parentNode.parentNode;
+    var row = button.closest('tr');
     if (!row) return;
     var table = document.getElementById('instances-table');
     if (!table) return;
