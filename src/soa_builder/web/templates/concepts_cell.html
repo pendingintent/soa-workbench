@@ -1,6 +1,6 @@
 {# Partial for concepts cell in matrix (add/remove only; concepts immutable) #}
 {% set concept_count = selected_list | length %}
-{% set cell_id_suffix = timeline_context ~ '-' ~ activity_id if timeline_context is defined else activity_id %}
+{% set cell_id_suffix = timeline_context ~ '-' ~ activity_id if timeline_context is defined else 'soa-' ~ soa_id ~ '-act-' ~ activity_id %}
 <td class="concepts-cell" id="concepts-cell-{{ cell_id_suffix }}" style="vertical-align:top;">
   {% if edit %}
     <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML" style="margin:0;">
