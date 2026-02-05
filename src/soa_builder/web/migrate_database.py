@@ -982,7 +982,7 @@ def _migrate_matrix_cells_add_instance_id():
 
 
 def _migrate_activity_concept_add_href():
-    """Add href column to store value for API from which the codeSystem and codeSystemVersion USDM properties can be derived"""
+    """Add href column to store the API URI from which codeSystem and codeSystemVersion USDM properties can be derived"""
     try:
         conn = _connect()
         cur = conn.cursor()
