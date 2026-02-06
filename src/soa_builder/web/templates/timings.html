@@ -58,25 +58,16 @@
       </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Relative To/From</strong></label>
-      <select name="relative_to_from_submission_value">
-        <option value="">(none)</option>
-        {% for sv in relative_to_from_options or [] %}
-          <option value="{{ sv }}">{{ sv }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Window Label</strong></label>
-      <input name="window_label" placeholder="Window (optional)" />
+      <label><strong>Window Lower</strong></label>
+      <input name="window_lower" placeholder="-N (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Window Upper</strong></label>
       <input name="window_upper" placeholder="+N (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Window Lower</strong></label>
-      <input name="window_lower" placeholder="-N (optional)" />
+      <label><strong>Window Label</strong></label>
+      <input name="window_label" placeholder="Window (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Member of Timeline</strong></label>
@@ -84,6 +75,15 @@
         <option value="">-- Select Timeline --</option>
         {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
           <option value="{{ schedule_timeline_uid }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label><strong>Relative To/From</strong></label>
+      <select name="relative_to_from_submission_value">
+        <option value="">(none)</option>
+        {% for sv in relative_to_from_options or [] %}
+          <option value="{{ sv }}">{{ sv }}</option>
         {% endfor %}
       </select>
     </div>
@@ -102,11 +102,11 @@
     <th style="text-align:left;padding:4px;">Value Label</th>
     <th style="text-align:left;padding:4px;">Type</th>
     <th style="text-align:left;padding:4px;">Rel To Instance</th>
-    <th style="text-align:left;padding:4px;">Rel To/From</th>
-    <th style="text-align:left;padding:4px;">Window Label</th>
-    <th style="text-align:left;padding:4px;">Window Upper</th>
     <th style="text-align:left;padding:4px;">Window Lower</th>
+    <th style="text-align:left;padding:4px;">Window Upper</th>
+    <th style="text-align:left;padding:4px;">Window Label</th>
     <th style="text-align:left;padding:4px;">Member of Timeline</th>
+    <th style="text-align:left;padding:4px;">Rel To/From</th>
     <th style="text-align:left;padding:4px;">Save</th>
     <th style="text-align:left;padding:4px;">Delete</th>
   </tr>
@@ -136,15 +136,6 @@
         </select>
       </td>
       <td style="padding: 4px;">
-        <select name="relative_to_from_submission_value">
-          <option value="">(none)</option>
-          {% for sv in relative_to_from_options or [] %}
-            <option value="{{ sv }}" {% if t.relative_to_from_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
-          {% endfor %}
-        </select>
-      </td>
-      
-      <td style="padding: 4px;">
         <select name="relative_to_schedule_instance">
           <option value="">-- Select Activity Instance --</option>
           {% for name, instance_uid in (instance_options or {}).items() %}
@@ -152,14 +143,22 @@
           {% endfor %}
         </select>
       </td>
-      <td style="padding: 4px;"><input name="window_label" value="{{ t.window_label or '' }}" placeholder="Window Label" /></td>
-      <td style="padding: 4px;"><input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="Upper (+N)" /></td>
       <td style="padding: 4px;"><input name="window_lower" value="{{ t.window_lower or '' }}" placeholder="Lower (-N)" /></td>
+      <td style="padding: 4px;"><input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="Upper (+N)" /></td>
+      <td style="padding: 4px;"><input name="window_label" value="{{ t.window_label or '' }}" placeholder="Window Label" /></td>
       <td style="padding: 4px;">
         <select name="member_of_timeline">
           <option value="">-- Select Timeline --</option>
           {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
             <option value="{{ schedule_timeline_uid }}" {% if (t.member_of_timeline or '') == schedule_timeline_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td style="padding: 4px;">
+        <select name="relative_to_from_submission_value">
+          <option value="">(none)</option>
+          {% for sv in relative_to_from_options or [] %}
+            <option value="{{ sv }}" {% if t.relative_to_from_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
           {% endfor %}
         </select>
       </td>
