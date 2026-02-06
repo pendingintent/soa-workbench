@@ -33,7 +33,7 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Value</strong></label>
-      <input name="value" placeholder="Value (optional)" />
+      <input name="value" placeholder="e.g. P7D (optional)" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P2W, PT8H, -P2D" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Value Label</strong></label>
@@ -59,11 +59,11 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Window Lower</strong></label>
-      <input name="window_lower" placeholder="-N (optional)" />
+      <input name="window_lower" placeholder="e.g. -P2D (optional)" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, -P2D, PT8H" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Window Upper</strong></label>
-      <input name="window_upper" placeholder="+N (optional)" />
+      <input name="window_upper" placeholder="e.g. P3D (optional)" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P3D, PT8H" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Window Label</strong></label>
@@ -125,7 +125,7 @@
           {% endfor %}
         </select>
       </td>
-      <td style="padding: 4px;"><input name="value" value="{{ t.value or '' }}" placeholder="Value" /></td>
+      <td style="padding: 4px;"><input name="value" value="{{ t.value or '' }}" placeholder="e.g. P7D" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P2W, PT8H, -P2D" /></td>
       <td style="padding: 4px;"><input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" /></td>
       <td style="padding:4px;">
         <select name="type_submission_value">
@@ -143,8 +143,8 @@
           {% endfor %}
         </select>
       </td>
-      <td style="padding: 4px;"><input name="window_lower" value="{{ t.window_lower or '' }}" placeholder="Lower (-N)" /></td>
-      <td style="padding: 4px;"><input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="Upper (+N)" /></td>
+      <td style="padding: 4px;"><input name="window_lower" value="{{ t.window_lower or '' }}" placeholder="e.g. -P2D" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, -P2D, PT8H" /></td>
+      <td style="padding: 4px;"><input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="e.g. P3D" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P3D, PT8H" /></td>
       <td style="padding: 4px;"><input name="window_label" value="{{ t.window_label or '' }}" placeholder="Window Label" /></td>
       <td style="padding: 4px;">
         <select name="member_of_timeline">
@@ -178,4 +178,32 @@
   <tr><td colspan="12" style="padding:6px;color:#777;">No timings yet.</td></tr>
   {% endfor %}
 </table>
+
+<script>
+// If any window field has a value, all three are required
+function enforceWindowGroup(form) {
+  var wl = form.querySelector('[name="window_lower"]');
+  var wu = form.querySelector('[name="window_upper"]');
+  var wlab = form.querySelector('[name="window_label"]');
+  if (!wl || !wu || !wlab) return;
+  var anyFilled = wl.value.trim() || wu.value.trim() || wlab.value.trim();
+  var msg = anyFilled ? 'All three window fields (Lower, Upper, Label) are required when any is provided.' : '';
+  [wl, wu, wlab].forEach(function(el) {
+    if (anyFilled && !el.value.trim()) {
+      el.setCustomValidity(msg);
+      el.required = true;
+    } else {
+      el.setCustomValidity('');
+      el.required = !!anyFilled;
+    }
+  });
+}
+document.querySelectorAll('form').forEach(function(form) {
+  ['window_lower', 'window_upper', 'window_label'].forEach(function(n) {
+    var el = form.querySelector('[name="' + n + '"]');
+    if (el) el.addEventListener('input', function() { enforceWindowGroup(form); });
+  });
+  enforceWindowGroup(form);
+});
+</script>
 {% endblock %}

@@ -336,3 +336,183 @@ def test_timing_member_of_timeline():
     assert resp.status_code == 201
     data = resp.json()
     assert data["member_of_timeline"] == timeline_uid
+
+
+def test_window_lower_rejects_non_iso8601():
+    """Test that window_lower rejects non-ISO 8601 values."""
+    r = client.post("/soa", json={"name": "Window Validate Lower"})
+    soa_id = r.json()["id"]
+
+    timing_data = {"name": "Bad Lower", "window_lower": "2 days"}
+    resp = client.post(f"/soa/{soa_id}/timings", json=timing_data)
+    assert resp.status_code == 422
+
+
+def test_window_upper_rejects_non_iso8601():
+    """Test that window_upper rejects non-ISO 8601 values."""
+    r = client.post("/soa", json={"name": "Window Validate Upper"})
+    soa_id = r.json()["id"]
+
+    timing_data = {"name": "Bad Upper", "window_upper": "+3"}
+    resp = client.post(f"/soa/{soa_id}/timings", json=timing_data)
+    assert resp.status_code == 422
+
+
+def test_window_accepts_valid_iso8601_durations():
+    """Test that various valid ISO 8601 durations are accepted."""
+    r = client.post("/soa", json={"name": "Window Valid ISO"})
+    soa_id = r.json()["id"]
+
+    valid_durations = [
+        ("P1D", "P1D"),
+        ("P2W", "P2W"),
+        ("PT8H", "PT8H"),
+        ("-P2D", "-P2D"),
+        ("P-2D", "P-2D"),
+        ("P1Y2M3D", "P1Y2M3D"),
+        ("PT1H30M", "PT1H30M"),
+    ]
+    for i, (lower, upper) in enumerate(valid_durations):
+        timing_data = {
+            "name": f"Valid Duration {i}",
+            "window_lower": lower,
+            "window_upper": upper,
+            "window_label": f"Window {i}",
+        }
+        resp = client.post(f"/soa/{soa_id}/timings", json=timing_data)
+        assert resp.status_code == 201, f"Failed for duration: {lower}/{upper}"
+        data = resp.json()
+        assert data["window_lower"] == lower
+        assert data["window_upper"] == upper
+
+
+def test_window_rejects_bare_p():
+    """Test that bare 'P' without any components is rejected."""
+    r = client.post("/soa", json={"name": "Window Bare P"})
+    soa_id = r.json()["id"]
+
+    timing_data = {"name": "Bare P", "window_lower": "P"}
+    resp = client.post(f"/soa/{soa_id}/timings", json=timing_data)
+    assert resp.status_code == 422
+
+
+def test_update_timing_rejects_invalid_window():
+    """Test that PATCH update also validates window fields."""
+    r = client.post("/soa", json={"name": "Update Window Validate"})
+    soa_id = r.json()["id"]
+
+    timing_resp = client.post(f"/soa/{soa_id}/timings", json={"name": "Good"})
+    timing_id = timing_resp.json()["id"]
+
+    resp = client.patch(
+        f"/soa/{soa_id}/timings/{timing_id}",
+        json={"name": "Good", "window_upper": "bad"},
+    )
+    assert resp.status_code == 422
+
+
+def test_ui_create_timing_rejects_invalid_window():
+    """Test that UI create form rejects non-ISO 8601 window values."""
+    r = client.post("/soa", json={"name": "UI Window Validate"})
+    soa_id = r.json()["id"]
+
+    form_data = {"name": "Bad Window", "window_lower": "not-iso"}
+    resp = client.post(
+        f"/ui/soa/{soa_id}/timings/create", data=form_data, follow_redirects=False
+    )
+    assert resp.status_code == 400
+
+
+def test_value_rejects_non_iso8601():
+    """Test that value rejects non-ISO 8601 values."""
+    r = client.post("/soa", json={"name": "Value Validate"})
+    soa_id = r.json()["id"]
+
+    timing_data = {"name": "Bad Value", "value": "5 days"}
+    resp = client.post(f"/soa/{soa_id}/timings", json=timing_data)
+    assert resp.status_code == 422
+
+
+def test_value_rejects_plain_number():
+    """Test that a plain number like '5' is rejected for value."""
+    r = client.post("/soa", json={"name": "Value Plain Number"})
+    soa_id = r.json()["id"]
+
+    timing_data = {"name": "Plain Num", "value": "5"}
+    resp = client.post(f"/soa/{soa_id}/timings", json=timing_data)
+    assert resp.status_code == 422
+
+
+def test_value_accepts_valid_iso8601_durations():
+    """Test that various valid ISO 8601 durations are accepted for value."""
+    r = client.post("/soa", json={"name": "Value Valid ISO"})
+    soa_id = r.json()["id"]
+
+    valid_values = ["P1D", "P2W", "PT8H", "-P2D", "P-2D", "P1Y2M3D", "PT1H30M"]
+    for i, val in enumerate(valid_values):
+        timing_data = {"name": f"Valid Value {i}", "value": val}
+        resp = client.post(f"/soa/{soa_id}/timings", json=timing_data)
+        assert resp.status_code == 201, f"Failed for value: {val}"
+        assert resp.json()["value"] == val
+
+
+def test_update_timing_rejects_invalid_value():
+    """Test that PATCH update also validates value field."""
+    r = client.post("/soa", json={"name": "Update Value Validate"})
+    soa_id = r.json()["id"]
+
+    timing_resp = client.post(
+        f"/soa/{soa_id}/timings", json={"name": "Good", "value": "P1D"}
+    )
+    timing_id = timing_resp.json()["id"]
+
+    resp = client.patch(
+        f"/soa/{soa_id}/timings/{timing_id}",
+        json={"name": "Good", "value": "not-a-duration"},
+    )
+    assert resp.status_code == 422
+
+
+def test_ui_create_timing_rejects_invalid_value():
+    """Test that UI create form rejects non-ISO 8601 value."""
+    r = client.post("/soa", json={"name": "UI Value Validate"})
+    soa_id = r.json()["id"]
+
+    form_data = {"name": "Bad Value", "value": "two weeks"}
+    resp = client.post(
+        f"/ui/soa/{soa_id}/timings/create", data=form_data, follow_redirects=False
+    )
+    assert resp.status_code == 400
+
+
+def test_window_all_or_none_accepts_all_three():
+    """Test that providing all three window fields is accepted."""
+    r = client.post("/soa", json={"name": "Window Complete"})
+    soa_id = r.json()["id"]
+
+    resp = client.post(
+        f"/soa/{soa_id}/timings",
+        json={
+            "name": "T1",
+            "window_lower": "-P1D",
+            "window_upper": "P2D",
+            "window_label": "Visit Window",
+        },
+    )
+    assert resp.status_code == 201
+
+
+def test_window_all_or_none_accepts_none():
+    """Test that providing no window fields is accepted."""
+    r = client.post("/soa", json={"name": "Window None"})
+    soa_id = r.json()["id"]
+
+    resp = client.post(
+        f"/soa/{soa_id}/timings",
+        json={"name": "No Window"},
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["window_lower"] is None
+    assert data["window_upper"] is None
+    assert data["window_label"] is None

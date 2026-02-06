@@ -1,6 +1,26 @@
+import re
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+# ISO 8601 duration pattern supporting both standard (-P2D) and USDM (P-2D) conventions
+_ISO8601_DURATION_RE = re.compile(
+    r"^-?P-?(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$"
+)
+
+
+def _validate_iso8601_duration(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return v
+    v = v.strip()
+    if not v:
+        return None
+    m = _ISO8601_DURATION_RE.match(v)
+    if not m or not any(m.group(i) is not None for i in range(1, 8)):
+        raise ValueError(
+            f"'{v}' is not a valid ISO 8601 duration (e.g. P1D, P2W, PT8H, -P2D)"
+        )
+    return v
 
 
 class InstanceUpdate(BaseModel):
@@ -42,6 +62,11 @@ class TimingCreate(BaseModel):
     window_lower: Optional[str] = None
     member_of_timeline: Optional[str] = None
 
+    @field_validator("value", "window_lower", "window_upper", mode="before")
+    @classmethod
+    def check_iso8601_duration(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_iso8601_duration(v)
+
 
 class TimingUpdate(BaseModel):
     name: str
@@ -57,6 +82,11 @@ class TimingUpdate(BaseModel):
     window_upper: Optional[str] = None
     window_lower: Optional[str] = None
     member_of_timeline: Optional[str] = None
+
+    @field_validator("value", "window_lower", "window_upper", mode="before")
+    @classmethod
+    def check_iso8601_duration(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_iso8601_duration(v)
 
 
 class ScheduleTimelineCreate(BaseModel):
