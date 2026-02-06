@@ -999,7 +999,11 @@
                 "description": "",
                 "previousId": null,
                 "nextId": "Activity_1",
-                "childIds": ["Activity_1","Activity_2","Activity_3"],
+                "childIds": [
+                  "Activity_1",
+                  "Activity_2",
+                  "Activity_3"
+                ],
                 "definedProcedures": [],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
@@ -1056,7 +1060,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1093,7 +1098,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1109,7 +1115,11 @@
                 "description": "",
                 "previousId": "Activity_3",
                 "nextId": "Activity_4",
-                "childIds": ["Activity_4","Activity_4b","Activity_7"],
+                "childIds": [
+                  "Activity_4",
+                  "Activity_4b",
+                  "Activity_7"
+                ],
                 "definedProcedures": [],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
@@ -1148,7 +1158,10 @@
                 "description": "",
                 "previousId": "Activity_4",
                 "nextId": "Activity_5",
-                "childIds": ["Activity_5","Activity_6"],
+                "childIds": [
+                  "Activity_5",
+                  "Activity_6"
+                ],
                 "definedProcedures": [],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
@@ -1170,7 +1183,8 @@
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [
-                  "BiomedicalConceptSurrogate_2"],
+                  "BiomedicalConceptSurrogate_2"
+                ],
                 "timelineId": null,
                 "notes": [],
                 "instanceType": "Activity"
@@ -1188,7 +1202,8 @@
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [
-                  "BiomedicalConceptSurrogate_3"],
+                  "BiomedicalConceptSurrogate_3"
+                ],
                 "timelineId": null,
                 "notes": [],
                 "instanceType": "Activity"
@@ -1203,7 +1218,7 @@
                 "nextId": "Activity_8",
                 "childIds": [],
                 "definedProcedures": [
-					{
+                  {
                     "id": "Procedure_5",
                     "extensionAttributes": [],
                     "name": "PR5",
@@ -1222,9 +1237,11 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [
-                  "BiomedicalConcept_34"],
+                  "BiomedicalConcept_34"
+                ],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
                 "timelineId": null,
@@ -1280,7 +1297,7 @@
                 "nextId": "Activity_11",
                 "childIds": [],
                 "definedProcedures": [
-					{
+                  {
                     "id": "Procedure_6",
                     "extensionAttributes": [],
                     "name": "PR6",
@@ -1299,7 +1316,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1319,7 +1337,9 @@
                 "definedProcedures": [],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
-                "bcSurrogateIds": ["BiomedicalConceptSurrogate_4"],
+                "bcSurrogateIds": [
+                  "BiomedicalConceptSurrogate_4"
+                ],
                 "timelineId": null,
                 "notes": [],
                 "instanceType": "Activity"
@@ -1334,7 +1354,7 @@
                 "nextId": "Activity_13",
                 "childIds": [],
                 "definedProcedures": [
-					{
+                  {
                     "id": "Procedure_7",
                     "extensionAttributes": [],
                     "name": "PR7",
@@ -1353,7 +1373,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1372,7 +1393,9 @@
                 "childIds": [],
                 "definedProcedures": [],
                 "biomedicalConceptIds": [],
-                "bcCategoryIds": ["BCCat_1"],
+                "bcCategoryIds": [
+                  "BCCat_1"
+                ],
                 "bcSurrogateIds": [],
                 "timelineId": "ScheduleTimeline_3",
                 "notes": [],
@@ -1388,7 +1411,7 @@
                 "nextId": "Activity_15",
                 "childIds": [],
                 "definedProcedures": [
-					{
+                  {
                     "id": "Procedure_8",
                     "extensionAttributes": [],
                     "name": "PR8",
@@ -1407,7 +1430,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1425,7 +1449,7 @@
                 "nextId": "Activity_16",
                 "childIds": [],
                 "definedProcedures": [
-					{
+                  {
                     "id": "Procedure_9",
                     "extensionAttributes": [],
                     "name": "PR9",
@@ -1444,7 +1468,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1483,7 +1508,9 @@
                 "definedProcedures": [],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
-                "bcSurrogateIds": ["BiomedicalConceptSurrogate_5"],
+                "bcSurrogateIds": [
+                  "BiomedicalConceptSurrogate_5"
+                ],
                 "timelineId": null,
                 "notes": [],
                 "instanceType": "Activity"
@@ -1575,7 +1602,9 @@
                 "childIds": [],
                 "definedProcedures": [],
                 "biomedicalConceptIds": [],
-                "bcCategoryIds": ["BCCat_3"],
+                "bcCategoryIds": [
+                  "BCCat_3"
+                ],
                 "bcSurrogateIds": [],
                 "timelineId": null,
                 "notes": [],
@@ -1592,7 +1621,9 @@
                 "childIds": [],
                 "definedProcedures": [],
                 "biomedicalConceptIds": [],
-                "bcCategoryIds": ["BCCat_4"],
+                "bcCategoryIds": [
+                  "BCCat_4"
+                ],
                 "bcSurrogateIds": [],
                 "timelineId": null,
                 "notes": [],
@@ -1608,7 +1639,7 @@
                 "nextId": "Activity_24",
                 "childIds": [],
                 "definedProcedures": [
-					{
+                  {
                     "id": "Procedure_10",
                     "extensionAttributes": [],
                     "name": "PR10",
@@ -1627,7 +1658,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1664,7 +1696,7 @@
                 "nextId": "Activity_26",
                 "childIds": [],
                 "definedProcedures": [
-					{
+                  {
                     "id": "Procedure_11",
                     "extensionAttributes": [],
                     "name": "PR11",
@@ -1684,7 +1716,7 @@
                     "notes": [],
                     "instanceType": "Procedure"
                   },
-					{
+                  {
                     "id": "Procedure_12",
                     "extensionAttributes": [],
                     "name": "PR12",
@@ -1703,7 +1735,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1721,7 +1754,7 @@
                 "nextId": "Activity_27",
                 "childIds": [],
                 "definedProcedures": [
-					{
+                  {
                     "id": "Procedure_13",
                     "extensionAttributes": [],
                     "name": "PR13",
@@ -1740,7 +1773,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1856,7 +1890,7 @@
                 "nextId": "Activity_32b",
                 "childIds": [],
                 "definedProcedures": [
-					{
+                  {
                     "id": "Procedure_14",
                     "extensionAttributes": [],
                     "name": "PR14",
@@ -1875,7 +1909,8 @@
                     "studyInterventionId": null,
                     "notes": [],
                     "instanceType": "Procedure"
-                  }],
+                  }
+                ],
                 "biomedicalConceptIds": [],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -2045,7 +2080,9 @@
                   "decode": "Data Generated Within Study",
                   "instanceType": "Code"
                 },
-                "populationIds": ["StudyCohort_1"],
+                "populationIds": [
+                  "StudyCohort_1"
+                ],
                 "notes": [],
                 "instanceType": "StudyArm"
               },
@@ -2989,23 +3026,23 @@
               },
               "plannedSex": [
                 {
-					"id": "Code_620_b",
-					"extensionAttributes": [],
-					"code": "C16576",
-					"codeSystem": "http://www.cdisc.org",
-					"codeSystemVersion": "2025-09-26",
-					"decode": "Female",
-					"instanceType": "Code"
-					},
-					{
-					"id": "Code_620_d",
-					"extensionAttributes": [],
-					"code": "C20197",
-					"codeSystem": "http://www.cdisc.org",
-					"codeSystemVersion": "2025-09-26",
-					"decode": "Male",
-					"instanceType": "Code"
-					}
+                  "id": "Code_620_b",
+                  "extensionAttributes": [],
+                  "code": "C16576",
+                  "codeSystem": "http://www.cdisc.org",
+                  "codeSystemVersion": "2025-09-26",
+                  "decode": "Female",
+                  "instanceType": "Code"
+                },
+                {
+                  "id": "Code_620_d",
+                  "extensionAttributes": [],
+                  "code": "C20197",
+                  "codeSystem": "http://www.cdisc.org",
+                  "codeSystemVersion": "2025-09-26",
+                  "decode": "Male",
+                  "instanceType": "Code"
+                }
               ],
               "criterionIds": [
                 "EligibilityCriterion_1",
@@ -3106,7 +3143,9 @@
                   "notes": [],
                   "instanceType": "StudyCohort",
                   "characteristics": [],
-                  "indicationIds": ["Indication_1"]
+                  "indicationIds": [
+                    "Indication_1"
+                  ]
                 },
                 {
                   "id": "StudyCohort_2",
@@ -3123,7 +3162,9 @@
                   "notes": [],
                   "instanceType": "StudyCohort",
                   "characteristics": [],
-                  "indicationIds": ["Indication_2"]
+                  "indicationIds": [
+                    "Indication_2"
+                  ]
                 }
               ]
             },
@@ -3974,13 +4015,15 @@
                     "defaultConditionId": "ScheduledActivityInstance_20",
                     "epochId": "StudyEpoch_3",
                     "instanceType": "ScheduledDecisionInstance",
-                    "conditionAssignments": [{
+                    "conditionAssignments": [
+                      {
                         "id": "ConditionAssignment_1",
                         "extensionAttributes": [],
                         "condition": "not willing to do online questionnaire",
                         "conditionTargetId": "ScheduledActivityInstance_21",
                         "instanceType": "ConditionAssignment"
-                        }]
+                      }
+                    ]
                   },
                   {
                     "id": "ScheduledActivityInstance_20",
@@ -5452,7 +5495,7 @@
             "label": null,
             "description": null,
             "text": "<p>CNS imaging (CT scan or MRI of brain) compatible with AD within past 1 year.</p>",
-			"dictionaryId": null,
+            "dictionaryId": null,
             "notes": [],
             "instanceType": "EligibilityCriterionItem"
           },
@@ -5738,7 +5781,7 @@
             "label": null,
             "description": null,
             "text": "<p>Treatment with the following medications within the specified washout periods prior to enrollment and during the\n  study:</p>",
-			"dictionaryId": null,
+            "dictionaryId": null,
             "notes": [],
             "instanceType": "EligibilityCriterionItem"
           }
@@ -5931,7 +5974,7 @@
             "extensionAttributes": [],
             "name": "NCI_27",
             "text": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The following measures will be performed in the course of the study. At Visits 3, 8, 10, and 12, ADAS-Cog, CIBIC+, and DAD will be administered. NPI-X will be administered at 2-week intervals either at clinic visits or via a telephone interview</p></div>",
-			"instanceType": "NarrativeContentItem"
+            "instanceType": "NarrativeContentItem"
           },
           {
             "id": "NarrativeContentItem_28",
@@ -5994,21 +6037,21 @@
             "extensionAttributes": [],
             "name": "NCI_36",
             "text": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><b>Patients experiencing Rash and/or Eosinophilia</b>\n<p>The administration of placebo and xanomeline TTS is associated with a rash and/or eosinophilia in some patients. The rash is characterized in the following ways:</p></div>",
-			"instanceType": "NarrativeContentItem"
+            "instanceType": "NarrativeContentItem"
           },
           {
             "id": "NarrativeContentItem_37",
             "extensionAttributes": [],
             "name": "NCI_37",
             "text": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Patient should lie</p></div>",
-			"instanceType": "NarrativeContentItem"
+            "instanceType": "NarrativeContentItem"
           },
           {
             "id": "NarrativeContentItem_38",
             "extensionAttributes": [],
             "name": "NCI_38",
             "text": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Cardiovascular status will be assessed during the trial</p></div>",
-			"instanceType": "NarrativeContentItem"
+            "instanceType": "NarrativeContentItem"
           },
           {
             "id": "NarrativeContentItem_39",
@@ -6057,13 +6100,14 @@
             "extensionAttributes": [],
             "name": "NCI_45",
             "text": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Patients who successfully complete the study...</p></div>",
-			"instanceType": "NarrativeContentItem"
+            "instanceType": "NarrativeContentItem"
           },
           {
             "id": "NarrativeContentItem_46",
             "extensionAttributes": [],
             "name": "NCI_46",
-            "text": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Because patients enrolled in this study will be outpatients</p></div>","instanceType": "NarrativeContentItem"
+            "text": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Because patients enrolled in this study will be outpatients</p></div>",
+            "instanceType": "NarrativeContentItem"
           },
           {
             "id": "NarrativeContentItem_47",
@@ -6427,7 +6471,8 @@
             "expandedText": "pharmacokinetics",
             "notes": [],
             "instanceType": "Abbreviation"
-          }],
+          }
+        ],
         "roles": [
           {
             "id": "StudyRole_1",
@@ -6444,7 +6489,9 @@
               "decode": "Sponsor",
               "instanceType": "Code"
             },
-            "appliesToIds": ["StudyVersion_1"],
+            "appliesToIds": [
+              "StudyVersion_1"
+            ],
             "assignedPersons": [],
             "organizationIds": [
               "Organization_1"
@@ -6458,7 +6505,7 @@
             },
             "notes": [],
             "instanceType": "StudyRole"
-          },		  
+          },
           {
             "id": "StudyRole_2",
             "extensionAttributes": [],
@@ -6474,24 +6521,31 @@
               "decode": "Investigator",
               "instanceType": "Code"
             },
-            "appliesToIds": ["InterventionalStudyDesign_1"],
-            "assignedPersons": [{
-				"id": "Pers_001",
-				"name": "INV01",
-				"label": null,
-				"description": null,
-				"personName": { 
-					"id": "PN_001",
-					"text": "Mr. X",
-					"familyName": "X",
-					"givenNames": ["Ab","Theo"],
-					"prefixes": [],
-					"suffixes": [],
-					"instanceType": "PersonName"					
-				},
-				"jobTitle": "Physician",
-				"instanceType": "AssignedPerson"
-			}],
+            "appliesToIds": [
+              "InterventionalStudyDesign_1"
+            ],
+            "assignedPersons": [
+              {
+                "id": "Pers_001",
+                "name": "INV01",
+                "label": null,
+                "description": null,
+                "personName": {
+                  "id": "PN_001",
+                  "text": "Mr. X",
+                  "familyName": "X",
+                  "givenNames": [
+                    "Ab",
+                    "Theo"
+                  ],
+                  "prefixes": [],
+                  "suffixes": [],
+                  "instanceType": "PersonName"
+                },
+                "jobTitle": "Physician",
+                "instanceType": "AssignedPerson"
+              }
+            ],
             "organizationIds": [],
             "masking": {
               "id": "Masking_2",
@@ -7204,20 +7258,20 @@
             "label": "Xanomeline",
             "description": null,
             "administrableDoseForm": {
-                  "id": "AliasCode_p01",
-                  "extensionAttributes": [],
-                  "standardCode": {
-                    "id": "Code_p01",
-                    "extensionAttributes": [],
-                    "code": "C42968",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2025-09-26",
-                    "decode": "PATCH",
-                    "instanceType": "Code"
-                  },
-                  "standardCodeAliases": [],
-                  "instanceType": "AliasCode"
-                },
+              "id": "AliasCode_p01",
+              "extensionAttributes": [],
+              "standardCode": {
+                "id": "Code_p01",
+                "extensionAttributes": [],
+                "code": "C42968",
+                "codeSystem": "http://www.cdisc.org",
+                "codeSystemVersion": "2025-09-26",
+                "decode": "PATCH",
+                "instanceType": "Code"
+              },
+              "standardCodeAliases": [],
+              "instanceType": "AliasCode"
+            },
             "sourcing": {
               "id": "Code_p02",
               "extensionAttributes": [],
@@ -7237,229 +7291,239 @@
               "instanceType": "Code"
             },
             "pharmacologicClass": null,
-			"properties": [{
+            "properties": [
+              {
                 "id": "AdmProdProp_1",
                 "extensionAttributes": [],
                 "name": "AdmProdProp1",
                 "type": {
-                    "id": "Code_p04",
-                    "extensionAttributes": [],
-                    "code": "C45997",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2025-09-26",
-                    "decode": "pH",
-                    "instanceType": "Code"
+                  "id": "Code_p04",
+                  "extensionAttributes": [],
+                  "code": "C45997",
+                  "codeSystem": "http://www.cdisc.org",
+                  "codeSystemVersion": "2025-09-26",
+                  "decode": "pH",
+                  "instanceType": "Code"
                 },
                 "text": "7.0",
-			    "quantity": null,
+                "quantity": null,
                 "instanceType": "AdministrableProductProperty"
-            }],
-			"ingredients": [{
-				"id": "Ingredient_1",
-				"role": {
-                    "id": "Code_rol03",
-                    "extensionAttributes": [],
-                    "code": " 100000072072",
-                    "codeSystem": "http://hl7/org/fhir",
-                    "codeSystemVersion": "5.0.0",
-                    "decode": "Active",
-                    "instanceType": "Code"
+              }
+            ],
+            "ingredients": [
+              {
+                "id": "Ingredient_1",
+                "role": {
+                  "id": "Code_rol03",
+                  "extensionAttributes": [],
+                  "code": " 100000072072",
+                  "codeSystem": "http://hl7/org/fhir",
+                  "codeSystemVersion": "5.0.0",
+                  "decode": "Active",
+                  "instanceType": "Code"
                 },
-				"substance": {
-					"id": "Subst_01",
+                "substance": {
+                  "id": "Subst_01",
+                  "extensionAttributes": [],
+                  "name": "SUBST01",
+                  "label": null,
+                  "description": null,
+                  "referenceSubstance": {
+                    "id": "Subst_02",
                     "extensionAttributes": [],
-				    "name": "SUBST01",
-					"label": null,
-					"description": null,
-					"referenceSubstance": {
-						"id": "Subst_02",
-						"extensionAttributes": [],
-						"name": "SUBST02",
-						"codes": [],
-						"referenceSubstance": null,
-						"strengths":[{
-							"id": "Str_01r",
-							"name": "STRENGTH01_Ref",
-							"numerator": {
-								"id": "Range_1_inRef",
-								"extensionAttributes": [],
-								"minValue": {
-								  "id": "Quantity_9_inRef",
-								  "extensionAttributes": [],
-								  "value": 50.0,
-								  "unit": {
-									"id": "AliasCode_251_inRef",
-									"extensionAttributes": [],
-									"standardCode": {
-									  "id": "Code_618_inRef",
-									  "extensionAttributes": [],
-									  "code": "C28253",
-									  "codeSystem": "http://www.cdisc.org",
-									  "codeSystemVersion": "2025-09-26",
-									  "decode": "Milligram",
-									  "instanceType": "Code"
-									},
-									"standardCodeAliases": [],
-									"instanceType": "AliasCode"
-								  },
-								  "instanceType": "Quantity"
-								},
-								"maxValue": {
-								  "id": "Quantity_10_inRef",
-								  "extensionAttributes": [],
-								  "value": 100.0,
-								  "unit": {
-									"id": "AliasCode_252_inRef",
-									"extensionAttributes": [],
-									"standardCode": {
-									  "id": "Code_619_inRef",
-									  "extensionAttributes": [],
-									  "code": "C28253",
-									  "codeSystem": "http://www.cdisc.org",
-									  "codeSystemVersion": "2025-09-26",
-									  "decode": "Milligram",
-									  "instanceType": "Code"
-									},
-									"standardCodeAliases": [],
-									"instanceType": "AliasCode"
-								  },
-								  "instanceType": "Quantity"
-								},
-								"isApproximate": false,
-								"instanceType": "Range"
-							  },
-							"denominator": {
-								"id": "Q_d3",
-								"extensionAttributes": [],
-								"value": 2.0,
-								"unit": {
-									"id": "AliasCode_243_d",
-									"extensionAttributes": [],
-										"standardCode": {
-											"id": "C_607d",
-											"extensionAttributes": [],
-											"code": "C28254",
-											"codeSystem": "http://www.cdisc.org",
-											"codeSystemVersion": "2025-09-26",
-											"decode": "Milliliter",
-											"instanceType": "Code"
-										},
-									"standardCodeAliases": [],
-									"instanceType": "AliasCode"
-								},
-								"instanceType": "Quantity"
-							},
-							"instanceType": "Strength"
-						}],
-						"instanceType": "Substance"
-					} ,
-					"codes": [],
-					"strengths":[{
-						"id": "Str_01",
-						"name": "STRENGTH01",
-						"label": null,
-						"description": null,
-						"numerator": {
-							"id": "Range_1_in",
-							"extensionAttributes": [],
-							"minValue": {
-							  "id": "Quantity_9_in",
-							  "extensionAttributes": [],
-							  "value": 50.0,
-							  "unit": {
-								"id": "AliasCode_251_in",
-								"extensionAttributes": [],
-								"standardCode": {
-								  "id": "Code_618_in",
-								  "extensionAttributes": [],
-								  "code": "C28253",
-								  "codeSystem": "http://www.cdisc.org",
-								  "codeSystemVersion": "2025-09-26",
-								  "decode": "Milligram",
-								  "instanceType": "Code"
-								},
-								"standardCodeAliases": [],
-								"instanceType": "AliasCode"
-							  },
-							  "instanceType": "Quantity"
-							},
-							"maxValue": {
-							  "id": "Quantity_10_in",
-							  "extensionAttributes": [],
-							  "value": 100.0,
-							  "unit": {
-								"id": "AliasCode_252_in",
-								"extensionAttributes": [],
-								"standardCode": {
-								  "id": "Code_619_in",
-								  "extensionAttributes": [],
-								  "code": "C28253",
-								  "codeSystem": "http://www.cdisc.org",
-								  "codeSystemVersion": "2025-09-26",
-								  "decode": "Milligram",
-								  "instanceType": "Code"
-								},
-								"standardCodeAliases": [],
-								"instanceType": "AliasCode"
-							  },
-							  "instanceType": "Quantity"
-							},
-							"isApproximate": false,
-							"instanceType": "Range"
-						  },
-						"denominator": {
-							"id": "Quantity_d3",
-							"extensionAttributes": [],
-							"value": 2.0,
-							"unit": {
-								"id": "AC_243_d",
-								"extensionAttributes": [],
-									"standardCode": {
-										"id": "Code_607d",
-										"extensionAttributes": [],
-										"code": "C28254",
-										"codeSystem": "http://www.cdisc.org",
-										"codeSystemVersion": "2025-09-26",
-										"decode": "Milliliter",
-										"instanceType": "Code"
-									},
-								"standardCodeAliases": [],
-								"instanceType": "AliasCode"
-							},
-							"instanceType": "Quantity"
-						},
-						"instanceType": "Strength"
-					}],
-					"instanceType": "Substance"
-				},
-				"instanceType": "Ingredient"
-			}],
+                    "name": "SUBST02",
+                    "codes": [],
+                    "referenceSubstance": null,
+                    "strengths": [
+                      {
+                        "id": "Str_01r",
+                        "name": "STRENGTH01_Ref",
+                        "numerator": {
+                          "id": "Range_1_inRef",
+                          "extensionAttributes": [],
+                          "minValue": {
+                            "id": "Quantity_9_inRef",
+                            "extensionAttributes": [],
+                            "value": 50.0,
+                            "unit": {
+                              "id": "AliasCode_251_inRef",
+                              "extensionAttributes": [],
+                              "standardCode": {
+                                "id": "Code_618_inRef",
+                                "extensionAttributes": [],
+                                "code": "C28253",
+                                "codeSystem": "http://www.cdisc.org",
+                                "codeSystemVersion": "2025-09-26",
+                                "decode": "Milligram",
+                                "instanceType": "Code"
+                              },
+                              "standardCodeAliases": [],
+                              "instanceType": "AliasCode"
+                            },
+                            "instanceType": "Quantity"
+                          },
+                          "maxValue": {
+                            "id": "Quantity_10_inRef",
+                            "extensionAttributes": [],
+                            "value": 100.0,
+                            "unit": {
+                              "id": "AliasCode_252_inRef",
+                              "extensionAttributes": [],
+                              "standardCode": {
+                                "id": "Code_619_inRef",
+                                "extensionAttributes": [],
+                                "code": "C28253",
+                                "codeSystem": "http://www.cdisc.org",
+                                "codeSystemVersion": "2025-09-26",
+                                "decode": "Milligram",
+                                "instanceType": "Code"
+                              },
+                              "standardCodeAliases": [],
+                              "instanceType": "AliasCode"
+                            },
+                            "instanceType": "Quantity"
+                          },
+                          "isApproximate": false,
+                          "instanceType": "Range"
+                        },
+                        "denominator": {
+                          "id": "Q_d3",
+                          "extensionAttributes": [],
+                          "value": 2.0,
+                          "unit": {
+                            "id": "AliasCode_243_d",
+                            "extensionAttributes": [],
+                            "standardCode": {
+                              "id": "C_607d",
+                              "extensionAttributes": [],
+                              "code": "C28254",
+                              "codeSystem": "http://www.cdisc.org",
+                              "codeSystemVersion": "2025-09-26",
+                              "decode": "Milliliter",
+                              "instanceType": "Code"
+                            },
+                            "standardCodeAliases": [],
+                            "instanceType": "AliasCode"
+                          },
+                          "instanceType": "Quantity"
+                        },
+                        "instanceType": "Strength"
+                      }
+                    ],
+                    "instanceType": "Substance"
+                  },
+                  "codes": [],
+                  "strengths": [
+                    {
+                      "id": "Str_01",
+                      "name": "STRENGTH01",
+                      "label": null,
+                      "description": null,
+                      "numerator": {
+                        "id": "Range_1_in",
+                        "extensionAttributes": [],
+                        "minValue": {
+                          "id": "Quantity_9_in",
+                          "extensionAttributes": [],
+                          "value": 50.0,
+                          "unit": {
+                            "id": "AliasCode_251_in",
+                            "extensionAttributes": [],
+                            "standardCode": {
+                              "id": "Code_618_in",
+                              "extensionAttributes": [],
+                              "code": "C28253",
+                              "codeSystem": "http://www.cdisc.org",
+                              "codeSystemVersion": "2025-09-26",
+                              "decode": "Milligram",
+                              "instanceType": "Code"
+                            },
+                            "standardCodeAliases": [],
+                            "instanceType": "AliasCode"
+                          },
+                          "instanceType": "Quantity"
+                        },
+                        "maxValue": {
+                          "id": "Quantity_10_in",
+                          "extensionAttributes": [],
+                          "value": 100.0,
+                          "unit": {
+                            "id": "AliasCode_252_in",
+                            "extensionAttributes": [],
+                            "standardCode": {
+                              "id": "Code_619_in",
+                              "extensionAttributes": [],
+                              "code": "C28253",
+                              "codeSystem": "http://www.cdisc.org",
+                              "codeSystemVersion": "2025-09-26",
+                              "decode": "Milligram",
+                              "instanceType": "Code"
+                            },
+                            "standardCodeAliases": [],
+                            "instanceType": "AliasCode"
+                          },
+                          "instanceType": "Quantity"
+                        },
+                        "isApproximate": false,
+                        "instanceType": "Range"
+                      },
+                      "denominator": {
+                        "id": "Quantity_d3",
+                        "extensionAttributes": [],
+                        "value": 2.0,
+                        "unit": {
+                          "id": "AC_243_d",
+                          "extensionAttributes": [],
+                          "standardCode": {
+                            "id": "Code_607d",
+                            "extensionAttributes": [],
+                            "code": "C28254",
+                            "codeSystem": "http://www.cdisc.org",
+                            "codeSystemVersion": "2025-09-26",
+                            "decode": "Milliliter",
+                            "instanceType": "Code"
+                          },
+                          "standardCodeAliases": [],
+                          "instanceType": "AliasCode"
+                        },
+                        "instanceType": "Quantity"
+                      },
+                      "instanceType": "Strength"
+                    }
+                  ],
+                  "instanceType": "Substance"
+                },
+                "instanceType": "Ingredient"
+              }
+            ],
             "notes": [],
             "instanceType": "AdministrableProduct"
-          }],
+          }
+        ],
         "medicalDevices": [],
         "productOrganizationRoles": [
-		{
-			 "id": "ProductRole_1",
-			 "name": "RoleName_1",
-			 "label": "Sponsor Manufacturer",
-			 "description": null,
-			 "code":
-				{
-					"id": "Code_pr001",
-					"extensionAttributes": [],
-					"code": "C25392",
-					"codeSystem": "http://www.cdisc.org",
-					"codeSystemVersion": "2025-09-26",
-					"decode": "Manufacturer",
-					"instanceType": "Code"
+          {
+            "id": "ProductRole_1",
+            "name": "RoleName_1",
+            "label": "Sponsor Manufacturer",
+            "description": null,
+            "code": {
+              "id": "Code_pr001",
+              "extensionAttributes": [],
+              "code": "C25392",
+              "codeSystem": "http://www.cdisc.org",
+              "codeSystemVersion": "2025-09-26",
+              "decode": "Manufacturer",
+              "instanceType": "Code"
             },
-			"organizationId": "Organization_1",
-			"appliesToIds": ["AdmProd_1"],
-			"instanceType": "ProductOrganizationRole"			 
-		   }],
+            "organizationId": "Organization_1",
+            "appliesToIds": [
+              "AdmProd_1"
+            ],
+            "instanceType": "ProductOrganizationRole"
+          }
+        ],
         "biomedicalConcepts": [
-          
           {
             "id": "BiomedicalConcept_20",
             "extensionAttributes": [],
@@ -17566,53 +17630,74 @@
             "instanceType": "BiomedicalConcept"
           }
         ],
-        "bcCategories": [{
+        "bcCategories": [
+          {
             "id": "BCCat_1",
-			"name": "VS_Cat1",
-            "extensionAttributes": [],			
-			"description": "Vital signs including SBP/DBP, Temp, Weight",
-			"label": "Vital Signs Category",
+            "name": "VS_Cat1",
+            "extensionAttributes": [],
+            "description": "Vital signs including SBP/DBP, Temp, Weight",
+            "label": "Vital Signs Category",
             "code": null,
-			"childIds": [],
-			"memberIds": ["BiomedicalConcept_2","BiomedicalConcept_3","BiomedicalConcept_4","BiomedicalConcept_5"],
+            "childIds": [],
+            "memberIds": [
+              "BiomedicalConcept_2",
+              "BiomedicalConcept_3",
+              "BiomedicalConcept_4",
+              "BiomedicalConcept_5"
+            ],
             "instanceType": "BiomedicalConceptCategory",
-			"notes": []
-          }, {
+            "notes": []
+          },
+          {
             "id": "BCCat_2",
-			"name": "VS_Cat2",
-            "extensionAttributes": [],			
-			"description": "Vital signs including SBP/DBP, HR",
-			"label": "Vital Signs Category",
+            "name": "VS_Cat2",
+            "extensionAttributes": [],
+            "description": "Vital signs including SBP/DBP, HR",
+            "label": "Vital Signs Category",
             "code": null,
-			"childIds": [],
-			"memberIds": ["BiomedicalConcept_2","BiomedicalConcept_3","BiomedicalConcept_16"],
+            "childIds": [],
+            "memberIds": [
+              "BiomedicalConcept_2",
+              "BiomedicalConcept_3",
+              "BiomedicalConcept_16"
+            ],
             "instanceType": "BiomedicalConceptCategory",
-			"notes": []
+            "notes": []
           },
-		  {
+          {
             "id": "BCCat_3",
-			"name": "Chem_Cat1",
-            "extensionAttributes": [],			
-			"description": "Biochemistry including ALAT, Alk.Phos, ASAT",
-			"label": "Biochemistry Category",
+            "name": "Chem_Cat1",
+            "extensionAttributes": [],
+            "description": "Biochemistry including ALAT, Alk.Phos, ASAT",
+            "label": "Biochemistry Category",
             "code": null,
-			"childIds": [],
-			"memberIds": ["BiomedicalConcept_7","BiomedicalConcept_9","BiomedicalConcept_10"],
+            "childIds": [],
+            "memberIds": [
+              "BiomedicalConcept_7",
+              "BiomedicalConcept_9",
+              "BiomedicalConcept_10"
+            ],
             "instanceType": "BiomedicalConceptCategory",
-			"notes": []
+            "notes": []
           },
-		  {
+          {
             "id": "BCCat_4",
-			"name": "Urin_Cat1",
-            "extensionAttributes": [],			
-			"description": "Urinalysis including Albumin, Creatinin, Potassium and Sodium",
-			"label": "Biochemistry Category",
+            "name": "Urin_Cat1",
+            "extensionAttributes": [],
+            "description": "Urinalysis including Albumin, Creatinin, Potassium and Sodium",
+            "label": "Biochemistry Category",
             "code": null,
-			"childIds": [],
-			"memberIds": ["BiomedicalConcept_8","BiomedicalConcept_11","BiomedicalConcept_12","BiomedicalConcept_13"],
+            "childIds": [],
+            "memberIds": [
+              "BiomedicalConcept_8",
+              "BiomedicalConcept_11",
+              "BiomedicalConcept_12",
+              "BiomedicalConcept_13"
+            ],
             "instanceType": "BiomedicalConceptCategory",
-			"notes": []
-          }],
+            "notes": []
+          }
+        ],
         "bcSurrogates": [
           {
             "id": "BiomedicalConceptSurrogate_1",
@@ -17624,7 +17709,7 @@
             "notes": [],
             "instanceType": "BiomedicalConceptSurrogate"
           },
-		  {
+          {
             "id": "BiomedicalConceptSurrogate_2",
             "extensionAttributes": [],
             "name": "Haschinki",
@@ -17634,7 +17719,7 @@
             "notes": [],
             "instanceType": "BiomedicalConceptSurrogate"
           },
-		  {
+          {
             "id": "BiomedicalConceptSurrogate_3",
             "extensionAttributes": [],
             "name": "MMSE",
@@ -17644,7 +17729,7 @@
             "notes": [],
             "instanceType": "BiomedicalConceptSurrogate"
           },
-		  {
+          {
             "id": "BiomedicalConceptSurrogate_4",
             "extensionAttributes": [],
             "name": "ApoE",
@@ -17654,7 +17739,7 @@
             "notes": [],
             "instanceType": "BiomedicalConceptSurrogate"
           },
-		  {
+          {
             "id": "BiomedicalConceptSurrogate_5",
             "extensionAttributes": [],
             "name": "TTS",
@@ -17664,8 +17749,6 @@
             "notes": [],
             "instanceType": "BiomedicalConceptSurrogate"
           }
-		  
-		  
         ],
         "dictionaries": [
           {
