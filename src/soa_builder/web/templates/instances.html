@@ -24,7 +24,7 @@
             <input name="description" placeholder="Description (Optional)" />
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Default Condition ID</strong></label>
+            <label><strong>Next Instance (default condition)</strong></label>
             <select name="default_condition_uid">
                 <option value="">-- Select Activity Instance --</option>
                 {% for name, instance_uid in (instance_options or {}).items() %}
@@ -78,7 +78,7 @@
         <th style="text-align:left;padding:4px;">Name</th>
         <th style="text-align:left;padding:4px;">Label</th>
         <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Default Condition</th>
+        <th style="text-align:left;padding:4px;">Next Instance (default condition)</th>
         <th style="text-align:left;padding:4px;">Epoch</th>
         <th style="text-align:left;padding:4px;">Timeline ID</th>
         <th style="text-align:left;padding:4px;">Timeline Exit ID</th>
