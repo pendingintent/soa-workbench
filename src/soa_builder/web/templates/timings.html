@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Timings for SoA {{ soa_id }}</h2>
+<h2 title="Timing definitions should be read as 'the <Timing.relativeFromScheduledInstance> node is <Timing.value> <Timing.type of before or after> the <Timing.relativeToScheduledInstance> node.'">Timings for SoA {{ soa_id }}</h2>
 
 <div style="margin-bottom:12px;">
     <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
@@ -23,11 +23,11 @@
       <input name="description" placeholder="Description (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Type</strong></label>
-      <select name="type_submission_value">
-        <option value="">(none)</option>
-        {% for sv in timing_type_options or [] %}
-          <option value="{{ sv }}">{{ sv }}</option>
+      <label><strong>Relative From Schedule Instance</strong></label>
+      <select name="relative_from_schedule_instance">
+        <option value="">-- Select Activity Instance --</option>
+        {% for name, instance_uid in (instance_options or {}).items() %}
+          <option value="{{ instance_uid }}">{{ name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -40,20 +40,11 @@
       <input name="value_label" placeholder="Value Label (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Relative To/From</strong></label>
-      <select name="relative_to_from_submission_value">
+      <label><strong>Type</strong></label>
+      <select name="type_submission_value">
         <option value="">(none)</option>
-        {% for sv in relative_to_from_options or [] %}
+        {% for sv in timing_type_options or [] %}
           <option value="{{ sv }}">{{ sv }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Relative From Schedule Instance</strong></label>
-      <select name="relative_from_schedule_instance">
-        <option value="">-- Select Activity Instance --</option>
-        {% for name, instance_uid in (instance_options or {}).items() %}
-          <option value="{{ instance_uid }}">{{ name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -63,6 +54,15 @@
         <option value="">-- Select Activity Instance --</option>
         {% for name, instance_uid in (instance_options or {}).items() %}
           <option value="{{ instance_uid }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label><strong>Relative To/From</strong></label>
+      <select name="relative_to_from_submission_value">
+        <option value="">(none)</option>
+        {% for sv in relative_to_from_options or [] %}
+          <option value="{{ sv }}">{{ sv }}</option>
         {% endfor %}
       </select>
     </div>
@@ -97,12 +97,12 @@
     <th style="text-align:left;padding:4px;">Name</th>
     <th style="text-align:left;padding:4px;">Label</th>
     <th style="text-align:left;padding:4px;">Description</th>
-    <th style="text-align:left;padding:4px;">Type</th>
+    <th style="text-align:left;padding:4px;">Rel From Instance</th>
     <th style="text-align:left;padding:4px;">Value</th>
     <th style="text-align:left;padding:4px;">Value Label</th>
-    <th style="text-align:left;padding:4px;">Rel To/From</th>
-    <th style="text-align:left;padding:4px;">Rel From Instance</th>
+    <th style="text-align:left;padding:4px;">Type</th>
     <th style="text-align:left;padding:4px;">Rel To Instance</th>
+    <th style="text-align:left;padding:4px;">Rel To/From</th>
     <th style="text-align:left;padding:4px;">Window Label</th>
     <th style="text-align:left;padding:4px;">Window Upper</th>
     <th style="text-align:left;padding:4px;">Window Lower</th>
@@ -117,24 +117,6 @@
       <td style="padding:4px;"><input name="name" value="{{ t.name }}" required /></td>
       <td style="padding:4px;"><input name="label" value="{{ t.label or '' }}" placeholder="Label" /></td>
       <td style="padding:4px;"><input name="description" value="{{ t.description or '' }}" placeholder="Description" /></td>
-      <td style="padding:4px;">
-        <select name="type_submission_value">
-          <option value="">(none)</option>
-          {% for sv in timing_type_options or [] %}
-            <option value="{{ sv }}" {% if t.type_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
-          {% endfor %}
-        </select>
-      </td>
-      <td style="padding: 4px;"><input name="value" value="{{ t.value or '' }}" placeholder="Value" /></td>
-      <td style="padding: 4px;"><input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" /></td>
-      <td style="padding: 4px;">
-        <select name="relative_to_from_submission_value">
-          <option value="">(none)</option>
-          {% for sv in relative_to_from_options or [] %}
-            <option value="{{ sv }}" {% if t.relative_to_from_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
-          {% endfor %}
-        </select>
-      </td>
       <td style="padding: 4px;">
         <select name="relative_from_schedule_instance">
           <option value="">-- Select Activity Instance --</option>
@@ -143,6 +125,25 @@
           {% endfor %}
         </select>
       </td>
+      <td style="padding: 4px;"><input name="value" value="{{ t.value or '' }}" placeholder="Value" /></td>
+      <td style="padding: 4px;"><input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" /></td>
+      <td style="padding:4px;">
+        <select name="type_submission_value">
+          <option value="">(none)</option>
+          {% for sv in timing_type_options or [] %}
+            <option value="{{ sv }}" {% if t.type_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td style="padding: 4px;">
+        <select name="relative_to_from_submission_value">
+          <option value="">(none)</option>
+          {% for sv in relative_to_from_options or [] %}
+            <option value="{{ sv }}" {% if t.relative_to_from_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      
       <td style="padding: 4px;">
         <select name="relative_to_schedule_instance">
           <option value="">-- Select Activity Instance --</option>
