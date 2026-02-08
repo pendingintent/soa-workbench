@@ -68,8 +68,6 @@ rm -f soa_builder_web_tests.db soa_builder_web_tests.db-wal soa_builder_web_test
 ## USDM Export
 Export USDM-compliant JSON for integration with external systems:
 ```bash
-# Get normalized USDM JSON for a study
-curl http://localhost:8000/soa/1/normalized
 
 # Or use the USDM generator scripts directly
 python -m usdm.generate_activities --soa-id 1 --output-file activities.json
@@ -77,20 +75,6 @@ python -m usdm.generate_encounters --soa-id 1 --output-file encounters.json
 python -m usdm.generate_study_epochs --soa-id 1 --output-file epochs.json
 # See src/usdm/ for all generator scripts
 ```
-
-## CLI Tools (Legacy)
-Command-line tools for CSV normalization and validation:
-```bash
-# Normalize wide CSV → relational tables
-soa-builder normalize --input files/SoA.csv --out-dir normalized/
-
-# Expand repeating rules → calendar instances
-soa-builder expand --normalized-dir normalized/ --start-date 2025-01-01
-
-# Validate imaging intervals
-soa-builder validate --normalized-dir normalized/
-```
-See `.github/copilot-instructions.md` for detailed CLI usage patterns.
 
 ---
 
