@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Timings for SoA {{ soa_id }}</h2>
+<h2 title="Timing definitions should be read as 'the <Timing.relativeFromScheduledInstance> node is <Timing.value> <Timing.type of before or after> the <Timing.relativeToScheduledInstance> node.'">Timings for SoA {{ soa_id }}</h2>
 
 <div style="margin-bottom:12px;">
     <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
@@ -23,37 +23,28 @@
       <input name="description" placeholder="Description (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Type</strong></label>
-      <select name="type_submission_value">
-        <option value="">(none)</option>
-        {% for sv in timing_type_options or [] %}
-          <option value="{{ sv }}">{{ sv }}</option>
+      <label><strong>Relative From Schedule Instance</strong></label>
+      <select name="relative_from_schedule_instance">
+        <option value="">-- Select Activity Instance --</option>
+        {% for name, instance_uid in (instance_options or {}).items() %}
+          <option value="{{ instance_uid }}">{{ name }}</option>
         {% endfor %}
       </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Value</strong></label>
-      <input name="value" placeholder="Value (optional)" />
+      <input name="value" placeholder="e.g. P7D (optional)" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P2W, PT8H, -P2D" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Value Label</strong></label>
       <input name="value_label" placeholder="Value Label (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Relative To/From</strong></label>
-      <select name="relative_to_from_submission_value">
+      <label><strong>Type</strong></label>
+      <select name="type_submission_value">
         <option value="">(none)</option>
-        {% for sv in relative_to_from_options or [] %}
+        {% for sv in timing_type_options or [] %}
           <option value="{{ sv }}">{{ sv }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Relative From Schedule Instance</strong></label>
-      <select name="relative_from_schedule_instance">
-        <option value="">-- Select Activity Instance --</option>
-        {% for name, instance_uid in (instance_options or {}).items() %}
-          <option value="{{ instance_uid }}">{{ name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -67,16 +58,16 @@
       </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Window Label</strong></label>
-      <input name="window_label" placeholder="Window (optional)" />
+      <label><strong>Window Lower</strong></label>
+      <input name="window_lower" placeholder="e.g. -P2D (optional)" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, -P2D, PT8H" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Window Upper</strong></label>
-      <input name="window_upper" placeholder="+N (optional)" />
+      <input name="window_upper" placeholder="e.g. P3D (optional)" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P3D, PT8H" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Window Lower</strong></label>
-      <input name="window_lower" placeholder="-N (optional)" />
+      <label><strong>Window Label</strong></label>
+      <input name="window_label" placeholder="Window (optional)" />
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
       <label><strong>Member of Timeline</strong></label>
@@ -84,6 +75,15 @@
         <option value="">-- Select Timeline --</option>
         {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
           <option value="{{ schedule_timeline_uid }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label><strong>Relative To/From</strong></label>
+      <select name="relative_to_from_submission_value">
+        <option value="">(none)</option>
+        {% for sv in relative_to_from_options or [] %}
+          <option value="{{ sv }}">{{ sv }}</option>
         {% endfor %}
       </select>
     </div>
@@ -97,16 +97,16 @@
     <th style="text-align:left;padding:4px;">Name</th>
     <th style="text-align:left;padding:4px;">Label</th>
     <th style="text-align:left;padding:4px;">Description</th>
-    <th style="text-align:left;padding:4px;">Type</th>
+    <th style="text-align:left;padding:4px;">Rel From Instance</th>
     <th style="text-align:left;padding:4px;">Value</th>
     <th style="text-align:left;padding:4px;">Value Label</th>
-    <th style="text-align:left;padding:4px;">Rel To/From</th>
-    <th style="text-align:left;padding:4px;">Rel From Instance</th>
+    <th style="text-align:left;padding:4px;">Type</th>
     <th style="text-align:left;padding:4px;">Rel To Instance</th>
-    <th style="text-align:left;padding:4px;">Window Label</th>
-    <th style="text-align:left;padding:4px;">Window Upper</th>
     <th style="text-align:left;padding:4px;">Window Lower</th>
+    <th style="text-align:left;padding:4px;">Window Upper</th>
+    <th style="text-align:left;padding:4px;">Window Label</th>
     <th style="text-align:left;padding:4px;">Member of Timeline</th>
+    <th style="text-align:left;padding:4px;">Rel To/From</th>
     <th style="text-align:left;padding:4px;">Save</th>
     <th style="text-align:left;padding:4px;">Delete</th>
   </tr>
@@ -117,29 +117,21 @@
       <td style="padding:4px;"><input name="name" value="{{ t.name }}" required /></td>
       <td style="padding:4px;"><input name="label" value="{{ t.label or '' }}" placeholder="Label" /></td>
       <td style="padding:4px;"><input name="description" value="{{ t.description or '' }}" placeholder="Description" /></td>
-      <td style="padding:4px;">
-        <select name="type_submission_value">
-          <option value="">(none)</option>
-          {% for sv in timing_type_options or [] %}
-            <option value="{{ sv }}" {% if t.type_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
-          {% endfor %}
-        </select>
-      </td>
-      <td style="padding: 4px;"><input name="value" value="{{ t.value or '' }}" placeholder="Value" /></td>
-      <td style="padding: 4px;"><input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" /></td>
-      <td style="padding: 4px;">
-        <select name="relative_to_from_submission_value">
-          <option value="">(none)</option>
-          {% for sv in relative_to_from_options or [] %}
-            <option value="{{ sv }}" {% if t.relative_to_from_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
-          {% endfor %}
-        </select>
-      </td>
       <td style="padding: 4px;">
         <select name="relative_from_schedule_instance">
           <option value="">-- Select Activity Instance --</option>
           {% for name, instance_uid in (instance_options or {}).items() %}
             <option value="{{ instance_uid }}" {% if t.relative_from_schedule_instance == instance_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td style="padding: 4px;"><input name="value" value="{{ t.value or '' }}" placeholder="e.g. P7D" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P2W, PT8H, -P2D" /></td>
+      <td style="padding: 4px;"><input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" /></td>
+      <td style="padding:4px;">
+        <select name="type_submission_value">
+          <option value="">(none)</option>
+          {% for sv in timing_type_options or [] %}
+            <option value="{{ sv }}" {% if t.type_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
           {% endfor %}
         </select>
       </td>
@@ -151,14 +143,22 @@
           {% endfor %}
         </select>
       </td>
+      <td style="padding: 4px;"><input name="window_lower" value="{{ t.window_lower or '' }}" placeholder="e.g. -P2D" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, -P2D, PT8H" /></td>
+      <td style="padding: 4px;"><input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="e.g. P3D" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P3D, PT8H" /></td>
       <td style="padding: 4px;"><input name="window_label" value="{{ t.window_label or '' }}" placeholder="Window Label" /></td>
-      <td style="padding: 4px;"><input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="Upper (+N)" /></td>
-      <td style="padding: 4px;"><input name="window_lower" value="{{ t.window_lower or '' }}" placeholder="Lower (-N)" /></td>
       <td style="padding: 4px;">
         <select name="member_of_timeline">
           <option value="">-- Select Timeline --</option>
           {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
             <option value="{{ schedule_timeline_uid }}" {% if (t.member_of_timeline or '') == schedule_timeline_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td style="padding: 4px;">
+        <select name="relative_to_from_submission_value">
+          <option value="">(none)</option>
+          {% for sv in relative_to_from_options or [] %}
+            <option value="{{ sv }}" {% if t.relative_to_from_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
           {% endfor %}
         </select>
       </td>
@@ -175,7 +175,35 @@
     </td>
   </tr>
   {% else %}
-  <tr><td colspan="12" style="padding:6px;color:#777;">No timings yet.</td></tr>
+  <tr><td colspan="16" style="padding:6px;color:#777;">No timings yet.</td></tr>
   {% endfor %}
 </table>
+
+<script>
+// If any window field has a value, all three are required
+function enforceWindowGroup(form) {
+  var wl = form.querySelector('[name="window_lower"]');
+  var wu = form.querySelector('[name="window_upper"]');
+  var wlab = form.querySelector('[name="window_label"]');
+  if (!wl || !wu || !wlab) return;
+  var anyFilled = wl.value.trim() || wu.value.trim() || wlab.value.trim();
+  var msg = anyFilled ? 'All three window fields (Lower, Upper, Label) are required when any is provided.' : '';
+  [wl, wu, wlab].forEach(function(el) {
+    if (anyFilled && !el.value.trim()) {
+      el.setCustomValidity(msg);
+      el.required = true;
+    } else {
+      el.setCustomValidity('');
+      el.required = !!anyFilled;
+    }
+  });
+}
+document.querySelectorAll('form').forEach(function(form) {
+  ['window_lower', 'window_upper', 'window_label'].forEach(function(n) {
+    var el = form.querySelector('[name="' + n + '"]');
+    if (el) el.addEventListener('input', function() { enforceWindowGroup(form); });
+  });
+  enforceWindowGroup(form);
+});
+</script>
 {% endblock %}

@@ -1,6 +1,50 @@
+import re
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
+
+# ISO 8601 duration pattern supporting both standard (-P2D) and USDM (P-2D) conventions
+_ISO8601_DURATION_RE = re.compile(
+    r"^-?P-?(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$"
+)
+
+
+def _validate_iso8601_duration(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return v
+    v = v.strip()
+    if not v:
+        return None
+    m = _ISO8601_DURATION_RE.match(v)
+    if not m or not any(m.group(i) is not None for i in range(1, 8)):
+        raise ValueError(
+            f"'{v}' is not a valid ISO 8601 duration (e.g. P1D, P2W, PT8H, -P2D)"
+        )
+    return v
+
+
+def _validate_window_all_or_none(
+    window_lower: Optional[str],
+    window_upper: Optional[str],
+    window_label: Optional[str],
+) -> None:
+    """Enforce that window_lower, window_upper, and window_label are all provided or all absent."""
+
+    def _present(v: Optional[str]) -> bool:
+        return v is not None and v.strip() != ""
+
+    provided = [_present(window_lower), _present(window_upper), _present(window_label)]
+    if any(provided) and not all(provided):
+        missing = []
+        if not _present(window_lower):
+            missing.append("window_lower")
+        if not _present(window_upper):
+            missing.append("window_upper")
+        if not _present(window_label):
+            missing.append("window_label")
+        raise ValueError(
+            f"Window fields are all-or-nothing: missing {', '.join(missing)}"
+        )
 
 
 class InstanceUpdate(BaseModel):
@@ -42,6 +86,18 @@ class TimingCreate(BaseModel):
     window_lower: Optional[str] = None
     member_of_timeline: Optional[str] = None
 
+    @field_validator("value", "window_lower", "window_upper", mode="before")
+    @classmethod
+    def check_iso8601_duration(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_iso8601_duration(v)
+
+    @model_validator(mode="after")
+    def check_window_all_or_none(self) -> "TimingCreate":
+        _validate_window_all_or_none(
+            self.window_lower, self.window_upper, self.window_label
+        )
+        return self
+
 
 class TimingUpdate(BaseModel):
     name: str
@@ -57,6 +113,18 @@ class TimingUpdate(BaseModel):
     window_upper: Optional[str] = None
     window_lower: Optional[str] = None
     member_of_timeline: Optional[str] = None
+
+    @field_validator("value", "window_lower", "window_upper", mode="before")
+    @classmethod
+    def check_iso8601_duration(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_iso8601_duration(v)
+
+    @model_validator(mode="after")
+    def check_window_all_or_none(self) -> "TimingUpdate":
+        _validate_window_all_or_none(
+            self.window_lower, self.window_upper, self.window_label
+        )
+        return self
 
 
 class ScheduleTimelineCreate(BaseModel):

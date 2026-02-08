@@ -52,14 +52,14 @@ def test_update_timing_mutable_fields_and_updated_fields():
         "label": "  Label X ",
         "description": "  Desc Y ",
         "type": "  relative ",
-        "value": "  5 ",
+        "value": "  P5D ",
         "value_label": "  days ",
         "relative_to_from": "  from ",
         "relative_from_schedule_instance": "  Arm A ",
         "relative_to_schedule_instance": "  Epoch 1 ",
         "window_label": "  Window ",
-        "window_upper": "  +2 ",
-        "window_lower": "  -1 ",
+        "window_upper": "  P2D ",
+        "window_lower": "  -P1D ",
     }
     r = client.patch(f"/soa/{soa_id}/timings/{tid}", json=payload)
     assert r.status_code == 200, r.text
@@ -70,14 +70,14 @@ def test_update_timing_mutable_fields_and_updated_fields():
     assert data["label"] == "Label X"
     assert data["description"] == "Desc Y"
     assert data["type"] == "relative"
-    assert data["value"] == "5"
+    assert data["value"] == "P5D"
     assert data["value_label"] == "days"
     assert data["relative_to_from"] == "from"
     assert data["relative_from_schedule_instance"] == "Arm A"
     assert data["relative_to_schedule_instance"] == "Epoch 1"
     assert data["window_label"] == "Window"
-    assert data["window_upper"] == "+2"
-    assert data["window_lower"] == "-1"
+    assert data["window_upper"] == "P2D"
+    assert data["window_lower"] == "-P1D"
 
     # updated_fields must include changed keys
     uf = set(data["updated_fields"])

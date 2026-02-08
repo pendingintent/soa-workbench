@@ -3,6 +3,8 @@ import json
 import os
 from typing import Optional
 
+from pydantic import ValidationError
+
 from fastapi import APIRouter, HTTPException, Request, Form
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -291,21 +293,25 @@ def ui_create_timing(
                 conn_c2.close()
         except Exception:
             rtf_code_uid = None
-    payload = TimingCreate(
-        name=name,
-        label=label,
-        description=description,
-        type=code_uid,
-        value=value,
-        value_label=value_label,
-        relative_to_from=rtf_code_uid,
-        relative_from_schedule_instance=relative_from_schedule_instance,
-        relative_to_schedule_instance=relative_to_schedule_instance,
-        window_label=window_label,
-        window_upper=window_upper,
-        window_lower=window_lower,
-        member_of_timeline=member_of_timeline,
-    )
+    try:
+        payload = TimingCreate(
+            name=name,
+            label=label,
+            description=description,
+            type=code_uid,
+            value=value,
+            value_label=value_label,
+            relative_to_from=rtf_code_uid,
+            relative_from_schedule_instance=relative_from_schedule_instance,
+            relative_to_schedule_instance=relative_to_schedule_instance,
+            window_label=window_label,
+            window_upper=window_upper,
+            window_lower=window_lower,
+            member_of_timeline=member_of_timeline,
+        )
+    except ValidationError as exc:
+        msgs = "; ".join(e["msg"] for e in exc.errors())
+        raise HTTPException(400, f"Validation error: {msgs}")
     create_timing(soa_id, payload)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/timings", status_code=303)
 
@@ -623,21 +629,25 @@ def ui_update_timing(
         # On any error, fall back to previous behavior (leave fields unchanged)
         mapped_type = None if type_submission_value not in ("",) else ""
         mapped_rtf = None if relative_to_from_submission_value not in ("",) else ""
-    payload = TimingUpdate(
-        name=name,
-        label=label,
-        description=description,
-        type=mapped_type,
-        value=value,
-        value_label=value_label,
-        relative_to_from=mapped_rtf,
-        relative_from_schedule_instance=relative_from_schedule_instance,
-        relative_to_schedule_instance=relative_to_schedule_instance,
-        window_label=window_label,
-        window_upper=window_upper,
-        window_lower=window_lower,
-        member_of_timeline=member_of_timeline,
-    )
+    try:
+        payload = TimingUpdate(
+            name=name,
+            label=label,
+            description=description,
+            type=mapped_type,
+            value=value,
+            value_label=value_label,
+            relative_to_from=mapped_rtf,
+            relative_from_schedule_instance=relative_from_schedule_instance,
+            relative_to_schedule_instance=relative_to_schedule_instance,
+            window_label=window_label,
+            window_upper=window_upper,
+            window_lower=window_lower,
+            member_of_timeline=member_of_timeline,
+        )
+    except ValidationError as exc:
+        msgs = "; ".join(e["msg"] for e in exc.errors())
+        raise HTTPException(400, f"Validation error: {msgs}")
     update_timing(soa_id, timing_id, payload)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/timings", status_code=303)
 
