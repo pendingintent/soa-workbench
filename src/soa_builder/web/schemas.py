@@ -5,7 +5,7 @@ from pydantic import BaseModel, field_validator, model_validator
 
 # ISO 8601 duration pattern supporting both standard (-P2D) and USDM (P-2D) conventions
 _ISO8601_DURATION_RE = re.compile(
-    r"^-?P-?(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$"
+    r"^-?P-?(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$"
 )
 
 
