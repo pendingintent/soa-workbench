@@ -516,3 +516,83 @@ def test_window_all_or_none_accepts_none():
     assert data["window_lower"] is None
     assert data["window_upper"] is None
     assert data["window_label"] is None
+
+
+def test_window_all_or_none_rejects_lower_only():
+    """Test that providing only window_lower is rejected."""
+    r = client.post("/soa", json={"name": "Window Lower Only"})
+    soa_id = r.json()["id"]
+
+    resp = client.post(
+        f"/soa/{soa_id}/timings",
+        json={"name": "T1", "window_lower": "-P1D"},
+    )
+    assert resp.status_code == 422
+
+
+def test_window_all_or_none_rejects_upper_only():
+    """Test that providing only window_upper is rejected."""
+    r = client.post("/soa", json={"name": "Window Upper Only"})
+    soa_id = r.json()["id"]
+
+    resp = client.post(
+        f"/soa/{soa_id}/timings",
+        json={"name": "T1", "window_upper": "P2D"},
+    )
+    assert resp.status_code == 422
+
+
+def test_window_all_or_none_rejects_label_only():
+    """Test that providing only window_label is rejected."""
+    r = client.post("/soa", json={"name": "Window Label Only"})
+    soa_id = r.json()["id"]
+
+    resp = client.post(
+        f"/soa/{soa_id}/timings",
+        json={"name": "T1", "window_label": "Visit Window"},
+    )
+    assert resp.status_code == 422
+
+
+def test_window_all_or_none_rejects_two_of_three():
+    """Test that providing two of three window fields is rejected."""
+    r = client.post("/soa", json={"name": "Window Two of Three"})
+    soa_id = r.json()["id"]
+
+    resp = client.post(
+        f"/soa/{soa_id}/timings",
+        json={"name": "T1", "window_lower": "-P1D", "window_upper": "P2D"},
+    )
+    assert resp.status_code == 422
+
+
+def test_window_all_or_none_update_rejects_partial():
+    """Test that PATCH update also enforces all-or-nothing window rule."""
+    r = client.post("/soa", json={"name": "Window Update Partial"})
+    soa_id = r.json()["id"]
+
+    timing_resp = client.post(f"/soa/{soa_id}/timings", json={"name": "T1"})
+    timing_id = timing_resp.json()["id"]
+
+    resp = client.patch(
+        f"/soa/{soa_id}/timings/{timing_id}",
+        json={"name": "T1", "window_lower": "-P1D"},
+    )
+    assert resp.status_code == 422
+
+
+def test_window_all_or_none_rejects_whitespace_only_label():
+    """Test that whitespace-only window_label counts as absent."""
+    r = client.post("/soa", json={"name": "Window Whitespace Label"})
+    soa_id = r.json()["id"]
+
+    resp = client.post(
+        f"/soa/{soa_id}/timings",
+        json={
+            "name": "T1",
+            "window_lower": "-P1D",
+            "window_upper": "P2D",
+            "window_label": "   ",
+        },
+    )
+    assert resp.status_code == 422
