@@ -121,6 +121,23 @@ def ui_list_visits(request: Request, soa_id: int):
     timing_options = get_timing_id(soa_id)
 
     # logger.info(environmental_setting_options)
+    # Study metadata
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    meta_row = cur.fetchone()
+    conn.close()
+    study_id, study_label, study_description, study_name, study_created_at = meta_row
+    study_meta = {
+        "study_id": study_id,
+        "study_label": study_label,
+        "study_description": study_description,
+        "study_name": study_name,
+        "study_created_at": study_created_at,
+    }
 
     return templates.TemplateResponse(
         request,
@@ -133,6 +150,7 @@ def ui_list_visits(request: Request, soa_id: int):
             "timing_options": timing_options,
             "environmental_setting_options": environmental_setting_options,
             "contact_mode_options": contact_mode_options,
+            **study_meta,
         },
     )
 

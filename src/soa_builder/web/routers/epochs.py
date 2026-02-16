@@ -122,6 +122,24 @@ def ui_list_epochs(request: Request, soa_id: int):
     # Epoch Type options (C99079) must come from CDISC API only
     epoch_type_options = load_epoch_type_map()
 
+    # Study metadata
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    meta_row = cur.fetchone()
+    conn.close()
+    study_id, study_label, study_description, study_name, study_created_at = meta_row
+    study_meta = {
+        "study_id": study_id,
+        "study_label": study_label,
+        "study_description": study_description,
+        "study_name": study_name,
+        "study_created_at": study_created_at,
+    }
+
     return templates.TemplateResponse(
         request,
         "epochs.html",
@@ -130,6 +148,7 @@ def ui_list_epochs(request: Request, soa_id: int):
             "soa_id": soa_id,
             "epochs": epochs,
             "epoch_type_options": epoch_type_options,
+            **study_meta,
         },
     )
 
