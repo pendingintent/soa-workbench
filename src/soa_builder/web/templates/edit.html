@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Editing SoA {{ soa_id }}</h2>
+<h2>Editing SoA for {% if study_label %}{{ study_label }}{% else %}{{ study_id }}{% endif %}</h2>
 <div class="study-meta" style="background:#f5f5f5;padding:8px 10px;border:1px solid #ddd;border-radius:4px;margin-bottom:12px;font-size:0.8em;">
   <strong>Study Metadata</strong>
   <form method="post" action="/ui/soa/{{ soa_id }}/update_meta" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px;margin-top:6px;align-items:start;">

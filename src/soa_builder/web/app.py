@@ -3325,6 +3325,7 @@ def delete_activity(soa_id: int, activity_id: int):
     return {"deleted_activity_id": activity_id}
 
 
+# API endpoint for displaying the index page
 @app.get("/", response_class=HTMLResponse)
 def ui_index(request: Request):
     """Render home page for the SoA Workbench."""
@@ -3351,6 +3352,16 @@ def ui_index(request: Request):
                 for r in rows
             ],
         },
+    )
+
+
+# API endpoint for displaying the help page
+@app.get("/ui/help", response_class=HTMLResponse)
+def ui_help(request: Request):
+    """Render the help page for the SOA Workbench."""
+    return templates.TemplateResponse(
+        request,
+        "help.html",
     )
 
 
