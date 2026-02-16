@@ -1978,7 +1978,7 @@ def _fetch_enriched_instances(soa_id: int):
         LEFT JOIN epoch e ON e.epoch_uid = i.epoch_uid AND e.soa_id = i.soa_id
         LEFT JOIN timing tm ON tm.id = v.scheduledAtId AND tm.soa_id = v.soa_id
         WHERE i.soa_id=?
-        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), LENGTH(i.instance_uid), i.instance_uid
+        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), i.order_index, i.id
         """,
         (soa_id,),
     )
@@ -3775,7 +3775,7 @@ def ui_edit(request: Request, soa_id: int):
         LEFT JOIN epoch e ON e.epoch_uid = i.epoch_uid AND e.soa_id = i.soa_id
         LEFT JOIN timing tm ON tm.id = v.scheduledAtId AND tm.soa_id = v.soa_id
         WHERE i.soa_id=?
-        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), LENGTH(i.instance_uid), i.instance_uid
+        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), i.order_index, i.id
             """,
         (soa_id,),
     )
