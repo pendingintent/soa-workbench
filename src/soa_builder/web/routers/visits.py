@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi import APIRouter, Body, HTTPException, Request, Form
 import os
 import logging
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
@@ -676,16 +676,25 @@ def ui_delete_visit(request: Request, soa_id: int, visit_id: int):
 
 
 # API endpoint to reorder a visit
-@router.post("/visits/reorder", response_class=JSONResponse)
-def reorder_visits_api(soa_id: int, order: List[int]):
+@router.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
+def reorder_visits_api(
+    soa_id: int,
+    order: List[int] = Body(..., embed=True),
+):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not order:
         raise HTTPException(400, "Order list required")
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM visit WHERE soa_id=? ORDER BY order_index", (soa_id,))
-    old_order = [r[0] for r in cur.fetchall()]
+    cur.execute(
+        "SELECT id,name FROM visit WHERE soa_id=? ORDER BY order_index", (soa_id,)
+    )
+    rows = cur.fetchall()
+    old_order = [r[0] for r in rows]
+    id_to_name = {r[0]: r[1] for r in rows}
+    old_order_names = [r[1] for r in rows]
+
     cur.execute("SELECT id FROM visit WHERE soa_id=?", (soa_id,))
     existing = {r[0] for r in cur.fetchall()}
     if set(order) - existing:
@@ -695,12 +704,15 @@ def reorder_visits_api(soa_id: int, order: List[int]):
         cur.execute("UPDATE visit SET order_index=? WHERE id=?", (idx, vid))
     conn.commit()
     conn.close()
+
+    new_order_names = [id_to_name.get(vid, str(vid)) for vid in order]
+
     _record_reorder_audit(soa_id, "visit", old_order, order)
     _record_visit_audit(
         soa_id,
         "reorder",
         visit_id=None,
-        before={"old_order": old_order},
-        after={"new_order": order},
+        before={"old_order": old_order_names},
+        after={"new_order": new_order_names},
     )
     return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})

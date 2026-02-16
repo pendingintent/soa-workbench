@@ -89,9 +89,10 @@
 
 
 
-<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
+<table id="encounters-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
     <tr style="background:#eee;">
         <th style="text-align:left;padding:4px;">id</th>
+        <th style="text-align:left;padding:4px;">Order</th>
         <th style="text-align:left;padding:4px;">Name</th>
         <th style="text-align:left;padding:4px;">Label</th>
         <th style="text-align:left;padding:4px;">Description</th>
@@ -103,11 +104,20 @@
         <th style="text-align:left;padding:4px;">Transition End Rule</th>
         <th style="text-align:left;padding:4px;">Save</th>
         <th style="text-align:left;padding:4px;">Delete</th>
+        <th style="text-align:left;padding:4px;">
+            <button type="button"
+                    id="save-encounter-order-btn"
+                    data-soa-id="{{ soa_id }}"
+                    style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
+                Save Order
+            </button>
+        </th>
     </tr>
     {% for e in encounters %}
-    <tr>
+    <tr data-visit-id="{{ e.id }}">
         <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/update">
             <td style="padding:4px;white-space:nowrap;"><strong>{{ e.encounter_uid }}</strong></td>
+            <td style="padding:4px;white-space:nowrap;"><strong>{{ e.order_index }}</strong></td>
             <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
             <td style="padding:4px;"><input name="label" value="{{ e.label or '' }}" placeholder="Label" /></td>
             <td style="padding:4px;"><input name="description" value="{{ e.description or '' }}" placeholder="Description" /></td>
@@ -186,9 +196,70 @@
                 </button>
             </form>
         </td>
+        <td style="padding:4px;white-space:nowrap;">
+            <button type="button" onclick="moveEncounterRow(this, -1)">↑</button>
+            <button type="button" onclick="moveEncounterRow(this, 1)">↓</button>
+        </td>
     </tr>
     {% else %}
-    <tr><td colspan="12" style="padding:6px;color:#777;">No encounters yet.</td></tr>
-    </table> 
+    <tr><td colspan="14" style="padding:6px;color:#777;">No encounters yet.</td></tr>
     {% endfor %}
+</table>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('save-encounter-order-btn');
+    if (btn) {
+        btn.addEventListener('click', function () {
+            var soaId = btn.getAttribute('data-soa-id');
+            saveEncounterOrder(soaId);
+        });
+    }
+});
+
+function moveEncounterRow(button, dir) {
+    var row = button.closest ? button.closest('tr') : button.parentNode.parentNode;
+    if (!row) return;
+    var table = document.getElementById('encounters-table');
+    if (!table) return;
+    var tbody = table.tBodies[0] || table;
+
+    if (dir < 0) {
+        var prev = row.previousElementSibling;
+        if (prev && prev.querySelector && prev.querySelector('td')) {
+            tbody.insertBefore(row, prev);
+        }
+    } else {
+        var next = row.nextElementSibling;
+        if (next) {
+            tbody.insertBefore(next, row);
+        }
+    }
+}
+
+function saveEncounterOrder(soaId) {
+    var rows = document.querySelectorAll('#encounters-table tr[data-visit-id]');
+    var order = [];
+    for (var i = 0; i < rows.length; i++) {
+        var id = parseInt(rows[i].getAttribute('data-visit-id'), 10);
+        if (!isNaN(id)) {
+            order.push(id);
+        }
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/soa/' + soaId + '/visits/reorder');
+    xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                window.location.reload();
+            } else {
+                alert('Reorder failed: ' + xhr.responseText);
+            }
+        }
+    };
+    xhr.send(JSON.stringify({ order: order }));
+}
+</script>
 {% endblock %}

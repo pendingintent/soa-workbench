@@ -136,9 +136,7 @@ def test_reorder_visits():
     v2_id = v2_resp.json()["id"]
 
     # Reorder them
-    resp = client.post(
-        "/visits/reorder", params={"soa_id": soa_id}, json=[v2_id, v1_id]
-    )
+    resp = client.post(f"/soa/{soa_id}/visits/reorder", json={"order": [v2_id, v1_id]})
     assert resp.status_code == 200
     data = resp.json()
     assert data["new_order"] == [v2_id, v1_id]
@@ -252,7 +250,7 @@ def test_reorder_empty_list():
     r = client.post("/soa", json={"name": "Empty Reorder Test"})
     soa_id = r.json()["id"]
 
-    resp = client.post("/visits/reorder", params={"soa_id": soa_id}, json=[])
+    resp = client.post(f"/soa/{soa_id}/visits/reorder", json={"order": []})
     assert resp.status_code == 400
 
 
@@ -266,9 +264,7 @@ def test_reorder_invalid_visit_id():
     v1_id = v1_resp.json()["id"]
 
     # Try to reorder with invalid ID
-    resp = client.post(
-        "/visits/reorder", params={"soa_id": soa_id}, json=[v1_id, 999999]
-    )
+    resp = client.post(f"/soa/{soa_id}/visits/reorder", json={"order": [v1_id, 999999]})
     assert resp.status_code == 400
 
 
