@@ -457,11 +457,6 @@ def reorder_study_cells_api(
     old_order = [r[0] for r in rows]  # for API response
     id_to_uid = {r[0]: r[1] for r in rows}
     old_order_uids = [r[1] for r in rows]  # for audit
-
-    cur.execute(
-        "SELECT id,study_cell_uid FROM study_cell WHERE soa_id=?",
-        (soa_id,),
-    )
     existing = {r[0] for r in rows}
     if set(order) - existing:
         conn.close()
