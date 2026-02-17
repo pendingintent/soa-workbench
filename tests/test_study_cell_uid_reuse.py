@@ -5,9 +5,9 @@ from soa_builder.web.app import app, _connect
 client = TestClient(app)
 
 
-def test_study_cell_uid_reuse_same_arm_epoch():
+def test_study_cell_uid_unique_per_row():
     # Create study
-    r = client.post("/soa", json={"name": "UID Reuse Study"})
+    r = client.post("/soa", json={"name": "UID Unique Study"})
     assert r.status_code == 200
     soa_id = r.json()["id"]
 
@@ -58,16 +58,16 @@ def test_study_cell_uid_reuse_same_arm_epoch():
 
     conn.close()
 
-    # Call UI endpoint to add study cells with multiple elements; reuse safeguard should apply
+    # Call UI endpoint to add study cells with multiple elements
     form = {
         "arm_uid": arm_uid,
         "epoch_uid": epoch_uid,
         "element_uids": [el_a, el_b],
     }
-    resp = client.post(f"/ui/soa/{soa_id}/add_study_cell", data=form)
+    resp = client.post(f"/ui/soa/{soa_id}/study_cells/create", data=form)
     assert resp.status_code in (200, 201)
 
-    # Verify rows share the same study_cell_uid
+    # Verify each row has a unique study_cell_uid
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -77,14 +77,14 @@ def test_study_cell_uid_reuse_same_arm_epoch():
     sc_rows = cur.fetchall()
     conn.close()
     assert len(sc_rows) >= 2
-    uids = {r[0] for r in sc_rows}
-    assert (
-        len(uids) == 1
-    ), "Expected all StudyCell rows to reuse the same study_cell_uid"
+    uids = [r[0] for r in sc_rows]
+    assert len(uids) == len(
+        set(uids)
+    ), "Each study_cell row must have a unique study_cell_uid"
 
     # Idempotence check: submitting the same element again should not create a duplicate row
     form_dup = {"arm_uid": arm_uid, "epoch_uid": epoch_uid, "element_uids": [el_b]}
-    resp_dup = client.post(f"/ui/soa/{soa_id}/add_study_cell", data=form_dup)
+    resp_dup = client.post(f"/ui/soa/{soa_id}/study_cells/create", data=form_dup)
     assert resp_dup.status_code in (200, 201)
     conn = _connect()
     cur = conn.cursor()

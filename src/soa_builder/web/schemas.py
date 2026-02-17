@@ -291,3 +291,15 @@ class MatrixImport(BaseModel):
     instances: List[MatrixInstance]
     activities: List[MatrixActivity]
     reset: bool = True
+
+
+class StudyCellCreate(BaseModel):
+    arm_uid: Optional[str] = None
+    epoch_uid: Optional[str] = None
+    element_uid: Optional[str] = None
+
+
+class StudyCellUpdate(BaseModel):
+    arm_uid: Optional[str] = None
+    epoch_uid: Optional[str] = None
+    element_uid: Optional[str] = None
