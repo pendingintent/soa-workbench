@@ -995,3 +995,19 @@ def _migrate_activity_concept_add_href():
         conn.close()
     except Exception as e:
         logger.warning("activity_concept href migration failed: %s", e)
+
+
+def _migrate_study_cell_add_order_index():
+    """Add order_index column to study_cell table to support reordering"""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(study_cell)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "order_index" not in cols:
+            cur.execute("ALTER TABLE study_cell ADD COLUMN order_index INTEGER")
+            conn.commit()
+            logger.info("Added order_index column to the study_cell table")
+        conn.close()
+    except Exception as e:
+        logger.warning("order_index migration failed: %s", e)
