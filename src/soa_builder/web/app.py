@@ -251,7 +251,8 @@ def _record_activity_audit(
         logger.warning("Failed recording activity audit: %s", e)
 
 
-# API functions for reordering Encounters/Visits
+# API functions for reordering Encounters/Visits    <- Deprecated; now included in routers/visits.py
+'''
 @app.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
 def reorder_visits_api(soa_id: int, order: List[int]):
     """JSON reorder endpoint for visits (parity with elements). Body is array of visit IDs in desired order."""
@@ -274,6 +275,7 @@ def reorder_visits_api(soa_id: int, order: List[int]):
     conn.close()
     _record_reorder_audit(soa_id, "visit", old_order, order)
     return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})
+'''
 
 
 # API functions for reordering Activities
