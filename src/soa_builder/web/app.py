@@ -3367,6 +3367,7 @@ def ui_help(request: Request):
     return templates.TemplateResponse(
         request,
         "help.html",
+        {"request": request},
     )
 
 
