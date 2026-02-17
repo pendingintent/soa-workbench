@@ -75,6 +75,24 @@ def ui_list_instances(request: Request, soa_id: int):
     schedule_timelines_options = get_schedule_timeline(soa_id)
     instance_options = get_scheduled_activity_instance(soa_id)
 
+    # Study metadata
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    meta_row = cur.fetchone()
+    conn.close()
+    study_id, study_label, study_description, study_name, study_created_at = meta_row
+    study_meta = {
+        "study_id": study_id,
+        "study_label": study_label,
+        "study_description": study_description,
+        "study_name": study_name,
+        "study_created_at": study_created_at,
+    }
+
     return templates.TemplateResponse(
         request,
         "instances.html",
@@ -86,6 +104,7 @@ def ui_list_instances(request: Request, soa_id: int):
             "epoch_options": epoch_options,
             "schedule_timelines_options": schedule_timelines_options,
             "instance_options": instance_options,
+            **study_meta,
         },
     )
 

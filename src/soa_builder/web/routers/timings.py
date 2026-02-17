@@ -114,6 +114,24 @@ def ui_list_timings(request: Request, soa_id: int):
     instance_options = get_scheduled_activity_instance(soa_id)
     schedule_timelines_options = get_schedule_timeline(soa_id)
 
+    # Study metadata
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    meta_row = cur.fetchone()
+    conn.close()
+    study_id, study_label, study_description, study_name, study_created_at = meta_row
+    study_meta = {
+        "study_id": study_id,
+        "study_label": study_label,
+        "study_description": study_description,
+        "study_name": study_name,
+        "study_created_at": study_created_at,
+    }
+
     return templates.TemplateResponse(
         request,
         "timings.html",
@@ -125,6 +143,7 @@ def ui_list_timings(request: Request, soa_id: int):
             "relative_to_from_options": sorted(list(sv_to_code_rtf.keys())),
             "instance_options": instance_options,
             "schedule_timelines_options": schedule_timelines_options,
+            **study_meta,
         },
     )
 

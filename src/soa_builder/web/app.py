@@ -57,6 +57,7 @@ from .migrate_database import (
     _migrate_instances_add_member_of_timeline,
     _migrate_matrix_cells_add_instance_id,
     _migrate_activity_concept_add_href,
+    _migrate_study_cell_add_order_index,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -70,6 +71,7 @@ from .routers import rules as rules_router
 
 from .routers import timings as timings_router
 from .routers import schedule_timelines as schedule_timelines_router
+from .routers import cells as cells_router
 from .routers import instances as instances_router
 
 
@@ -151,6 +153,7 @@ _init_db()
 
 
 # Database migration steps
+_migrate_study_cell_add_order_index()
 _migrate_activity_concept_add_href()
 _migrate_matrix_cells_add_instance_id()
 _migrate_instances_add_member_of_timeline()
@@ -191,6 +194,7 @@ app.include_router(instances_router.router)
 app.include_router(audits_router.router)
 app.include_router(schedule_timelines_router.router)
 app.include_router(rules_router.router)
+app.include_router(cells_router.router)
 
 
 def _record_visit_audit(
@@ -247,7 +251,8 @@ def _record_activity_audit(
         logger.warning("Failed recording activity audit: %s", e)
 
 
-# API functions for reordering Encounters/Visits
+# API functions for reordering Encounters/Visits    <- Deprecated; now included in routers/visits.py
+'''
 @app.post("/soa/{soa_id}/visits/reorder", response_class=JSONResponse)
 def reorder_visits_api(soa_id: int, order: List[int]):
     """JSON reorder endpoint for visits (parity with elements). Body is array of visit IDs in desired order."""
@@ -270,6 +275,7 @@ def reorder_visits_api(soa_id: int, order: List[int]):
     conn.close()
     _record_reorder_audit(soa_id, "visit", old_order, order)
     return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})
+'''
 
 
 # API functions for reordering Activities
@@ -1081,6 +1087,7 @@ def _fetch_matrix(soa_id: int):
     return instances, activities, cells
 
 
+# Deprecated: implemented in routers/cells.py
 def _list_study_cells(soa_id: int) -> list[dict]:
     """List study_cell rows, including element and arm names filtered by soa_id.
 
@@ -1978,7 +1985,7 @@ def _fetch_enriched_instances(soa_id: int):
         LEFT JOIN epoch e ON e.epoch_uid = i.epoch_uid AND e.soa_id = i.soa_id
         LEFT JOIN timing tm ON tm.id = v.scheduledAtId AND tm.soa_id = v.soa_id
         WHERE i.soa_id=?
-        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), LENGTH(i.instance_uid), i.instance_uid
+        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), i.order_index, i.id
         """,
         (soa_id,),
     )
@@ -3325,6 +3332,7 @@ def delete_activity(soa_id: int, activity_id: int):
     return {"deleted_activity_id": activity_id}
 
 
+# API endpoint for displaying the index page
 @app.get("/", response_class=HTMLResponse)
 def ui_index(request: Request):
     """Render home page for the SoA Workbench."""
@@ -3351,6 +3359,17 @@ def ui_index(request: Request):
                 for r in rows
             ],
         },
+    )
+
+
+# API endpoint for displaying the help page
+@app.get("/ui/help", response_class=HTMLResponse)
+def ui_help(request: Request):
+    """Render the help page for the SOA Workbench."""
+    return templates.TemplateResponse(
+        request,
+        "help.html",
+        {},
     )
 
 
@@ -3764,7 +3783,7 @@ def ui_edit(request: Request, soa_id: int):
         LEFT JOIN epoch e ON e.epoch_uid = i.epoch_uid AND e.soa_id = i.soa_id
         LEFT JOIN timing tm ON tm.id = v.scheduledAtId AND tm.soa_id = v.soa_id
         WHERE i.soa_id=?
-        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), LENGTH(i.instance_uid), i.instance_uid
+        ORDER BY COALESCE(i.member_of_timeline, 'zzz'), i.order_index, i.id
             """,
         (soa_id,),
     )
@@ -4601,252 +4620,6 @@ def ui_delete_element(request: Request, soa_id: int, element_id: int = Form(...)
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
     """
-
-
-# Function to compute next available StudyCell_{N}
-def _next_study_cell_uid(cur, soa_id: int) -> str:
-    """Compute next StudyCell_N unique within an SoA."""
-    cur.execute("SELECT study_cell_uid FROM study_cell WHERE soa_id=?", (soa_id,))
-    max_n = 0
-    for (uid,) in cur.fetchall():
-        if isinstance(uid, str) and uid.startswith("StudyCell_"):
-            try:
-                n = int(uid.split("_")[-1])
-                if n > max_n:
-                    max_n = n
-            except Exception:
-                pass
-    return f"StudyCell_{max_n + 1}"
-
-
-# UI endpoint for adding a new StudyCell
-@app.post("/ui/soa/{soa_id}/add_study_cell", response_class=HTMLResponse)
-def ui_add_study_cell(
-    request: Request,
-    soa_id: int,
-    arm_uid: str = Form(...),
-    epoch_uid: str = Form(...),
-    element_uids: List[str] = Form(...),
-):
-    """Add one or more Study Cell rows for Arm×Epoch×Elements.
-
-    Duplicate prevention enforced on (soa_id, arm_uid, epoch_uid, element_uid).
-    """
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    arm_uid = (arm_uid or "").strip()
-    epoch_uid = (epoch_uid or "").strip()
-    element_ids: list[str] = [
-        str(e).strip() for e in (element_uids or []) if str(e).strip()
-    ]
-    if not arm_uid or not epoch_uid or not element_ids:
-        return HTMLResponse(
-            f"<script>alert('Arm, Epoch and at least one Element are required');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
-            status_code=400,
-        )
-    conn = _connect()
-    cur = conn.cursor()
-    # basic existence checks (optional)
-    cur.execute("SELECT 1 FROM arm WHERE soa_id=? AND arm_uid=?", (soa_id, arm_uid))
-    if not cur.fetchone():
-        conn.close()
-        return HTMLResponse(
-            f"<script>alert('Arm not found');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
-            status_code=404,
-        )
-    cur.execute(
-        "SELECT 1 FROM epoch WHERE soa_id=? AND epoch_uid=?", (soa_id, epoch_uid)
-    )
-    if not cur.fetchone():
-        conn.close()
-        return HTMLResponse(
-            f"<script>alert('Epoch not found');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
-            status_code=404,
-        )
-    # Allocate a single StudyCell UID for this Arm×Epoch submission,
-    # but reuse an existing UID if one already exists for (soa_id, arm_uid, epoch_uid)
-    sc_uid_global = None
-    try:
-        cur.execute(
-            "SELECT study_cell_uid FROM study_cell WHERE soa_id=? AND arm_uid=? AND epoch_uid=? LIMIT 1",
-            (soa_id, arm_uid, epoch_uid),
-        )
-        row_existing = cur.fetchone()
-        if row_existing and row_existing[0]:
-            sc_uid_global = row_existing[0]
-    except Exception:
-        sc_uid_global = None
-    if not sc_uid_global:
-        sc_uid_global = _next_study_cell_uid(cur, soa_id)
-    inserted = 0
-    for el_uid in element_ids:
-        # ensure element exists if element_id column present
-        cur.execute("PRAGMA table_info(element)")
-        cols = {r[1] for r in cur.fetchall()}
-        if "element_id" in cols:
-            cur.execute(
-                "SELECT 1 FROM element WHERE soa_id=? AND element_id=?",
-                (soa_id, el_uid),
-            )
-            if not cur.fetchone():
-                # skip silently; or alert once (keeping UX simple)
-                continue
-        # duplicate prevention
-        cur.execute(
-            "SELECT id FROM study_cell WHERE soa_id=? AND arm_uid=? AND epoch_uid=? AND element_uid=?",
-            (soa_id, arm_uid, epoch_uid, el_uid),
-        )
-        if cur.fetchone():
-            continue
-        cur.execute(
-            "INSERT INTO study_cell (soa_id, study_cell_uid, arm_uid, epoch_uid, element_uid) VALUES (?,?,?,?,?)",
-            (soa_id, sc_uid_global, arm_uid, epoch_uid, el_uid),
-        )
-        sc_id = cur.lastrowid
-        # Inline audit write for reliability
-        cur.execute(
-            "INSERT INTO study_cell_audit (soa_id, study_cell_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                sc_id,
-                "create",
-                None,
-                json.dumps(
-                    {
-                        "study_cell_uid": sc_uid_global,
-                        "arm_uid": arm_uid,
-                        "epoch_uid": epoch_uid,
-                        "element_uid": el_uid,
-                    }
-                ),
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        inserted += 1
-    conn.commit()
-    conn.close()
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-
-
-# UI endpoint for updating a StudyCell
-@app.post("/ui/soa/{soa_id}/update_study_cell", response_class=HTMLResponse)
-def ui_update_study_cell(
-    request: Request,
-    soa_id: int,
-    study_cell_id: int = Form(...),
-    arm_uid: Optional[str] = Form(None),
-    epoch_uid: Optional[str] = Form(None),
-    element_uid: Optional[str] = Form(None),
-):
-    """Update a Study Cell's Arm/Epoch/Element values.
-
-    Duplicate prevention enforced; if update causes a duplicate, no change is applied.
-    """
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, arm_uid, epoch_uid, element_uid FROM study_cell WHERE id=? AND soa_id=?",
-        (study_cell_id, soa_id),
-    )
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Study Cell not found")
-    _, curr_arm, curr_epoch, curr_el = row
-    new_arm = (arm_uid or curr_arm or "").strip() or curr_arm
-    new_epoch = (epoch_uid or curr_epoch or "").strip() or curr_epoch
-    new_el = (element_uid or curr_el or "").strip() or curr_el
-    # duplicate check
-    cur.execute(
-        "SELECT id FROM study_cell WHERE soa_id=? AND arm_uid=? AND epoch_uid=? AND element_uid=? AND id<>?",
-        (soa_id, new_arm, new_epoch, new_el, study_cell_id),
-    )
-    if cur.fetchone():
-        conn.close()
-        return HTMLResponse(
-            f"<script>alert('Duplicate Study Cell exists');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
-            status_code=400,
-        )
-    before = {
-        "arm_uid": curr_arm,
-        "epoch_uid": curr_epoch,
-        "element_uid": curr_el,
-    }
-    cur.execute(
-        "UPDATE study_cell SET arm_uid=?, epoch_uid=?, element_uid=? WHERE id=? AND soa_id=?",
-        (new_arm, new_epoch, new_el, study_cell_id, soa_id),
-    )
-    # Inline audit write for reliability
-    cur.execute(
-        "INSERT INTO study_cell_audit (soa_id, study_cell_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-        (
-            soa_id,
-            study_cell_id,
-            "update",
-            json.dumps(before),
-            json.dumps(
-                {
-                    "arm_uid": new_arm,
-                    "epoch_uid": new_epoch,
-                    "element_uid": new_el,
-                }
-            ),
-            datetime.now(timezone.utc).isoformat(),
-        ),
-    )
-    conn.commit()
-    conn.close()
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-
-
-# UI endpoint for deleting a StudyCell
-@app.post("/ui/soa/{soa_id}/delete_study_cell", response_class=HTMLResponse)
-def ui_delete_study_cell(request: Request, soa_id: int, study_cell_id: int = Form(...)):
-    """Delete a Study Cell by id."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    # capture before state for audit
-    cur.execute(
-        "SELECT study_cell_uid, arm_uid, epoch_uid, element_uid FROM study_cell WHERE id=? AND soa_id=?",
-        (study_cell_id, soa_id),
-    )
-    row = cur.fetchone()
-    before = None
-    if row:
-        before = {
-            "study_cell_uid": row[0],
-            "arm_uid": row[1],
-            "epoch_uid": row[2],
-            "element_uid": row[3],
-        }
-    # Inline audit write for reliability
-    cur.execute(
-        "INSERT INTO study_cell_audit (soa_id, study_cell_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-        (
-            soa_id,
-            study_cell_id,
-            "delete",
-            json.dumps(before) if before else None,
-            None,
-            datetime.now(timezone.utc).isoformat(),
-        ),
-    )
-    cur.execute(
-        "DELETE FROM study_cell WHERE id=? AND soa_id=?", (study_cell_id, soa_id)
-    )
-    conn.commit()
-    conn.close()
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
 
 
 # Function to compute next available TransitionRule_{N}

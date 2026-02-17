@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2>Steps to Create an SoA Matrix</h2>
+
+<ol>
+    <li>
+        <h3>Create a Schedule Timeline (container)</h3>
+        <ul>
+            <li>Click <strong>Scheduled Timelines</strong> in the left sidebar</li>
+            <li>Create a Timeline (e.g., Main Timeline)</li>
+            <li>Optionally mark the Timeline as <strong>Main</strong></li>
+        </ul>
+    </li>
+    <li>
+        <h3>Create Encounters/Visits (Optional, but recommended)</h3>
+        <ul>
+            <li>Click <strong>Encounters</strong> in the left sidebar</li>
+            <li>Create visits (e.g., "Visit 1", "Visit 2", "Screening"</quote>)</li>
+            <li>These will appear as column headers in the Matrix</li>
+        </ul>
+    </li>
+    <li>
+        <h3>Create Scheduled Activity Instances (Matrix Columns)</h3>
+        <ul>
+            <li>Click <strong>Scheduled Activity Instances</strong> in the left sidebar</li>
+            <li>For each instance created:
+                <ul>
+                    <li>Set a <strong>name</strong> (e.g., "Week 1", "Day 1")</li>
+                    <li><strong>IMPORTANT:</strong> Set <strong>Member of Timeline</strong> to the timeline created in Step 1</li>
+                    <li>Optionally link to an encounter from Step 2</li>
+                    <li>Optionally link to an Epoch</li>
+                </ul>
+            </li>
+            <li>Each instance becomes a column in the Matrix</li>
+        </ul>
+    </li>
+    <li>
+        <h3>Return to the Edit Page</h3>
+        <ul>
+            <li>Go back to the <strong>Edit Page</strong></li>
+            <li>The Matrix will now be displayed with Activities as rows and Instances as columns</li>
+        </ul>
+    </li>
+    
+</ol>
+
+{% endblock %}
