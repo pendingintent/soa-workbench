@@ -105,12 +105,14 @@
         <th style="text-align:left;padding:4px;">Save</th>
         <th style="text-align:left;padding:4px;">Delete</th>
         <th style="text-align:left;padding:4px;">
+            {% if encounters|length > 1 %}
             <button type="button"
                     id="save-encounter-order-btn"
                     data-soa-id="{{ soa_id }}"
                     style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
                 Save Order
             </button>
+            {% endif %}
         </th>
     </tr>
     {% for e in encounters %}
