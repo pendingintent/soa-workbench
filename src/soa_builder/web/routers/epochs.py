@@ -625,7 +625,7 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
     return {**after, "updated_fields": updated_fields}
 
 
-# Deprecated (no longer needed)
+# API call to reorder epochs
 @router.post("/soa/{soa_id}/epochs/reorder", response_class=JSONResponse)
 def reorder_epochs_api(
     soa_id: int,
