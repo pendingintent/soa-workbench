@@ -60,13 +60,11 @@
     </tr>
     {% for sc in study_cells %}
     <tr data-study-cell-id="{{ sc.id }}">
-        <form method="post" action="/ui/soa/{{soa_id}}/study_cell/{{ sc.id }}/update">
-            <td style="padding:4px;">{{ sc.study_cell_uid }}</td>
-            <td style="padding:4px;">{{ sc.arm_name or sc.arm_uid }}</td>
-            <td style="padding:4px;">{{ sc.epoch_name or sc.epoch_uid }}</td>
-            <td style="padding:4px;">{{ sc.element_name or sc.element_uid }}</td>
-            <td style="padding:4px;">
-        </form>
+        <td style="padding:4px;">{{ sc.study_cell_uid }}</td>
+        <td style="padding:4px;">{{ sc.arm_name or sc.arm_uid }}</td>
+        <td style="padding:4px;">{{ sc.epoch_name or sc.epoch_uid }}</td>
+        <td style="padding:4px;">{{ sc.element_name or sc.element_uid }}</td>
+        <td style="padding:4px;">
             <form method="post" action="/ui/soa/{{ soa_id }}/study_cells/{{ sc.id }}/delete" style="display:inline;">
                 <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Delete</button>
             </form>
