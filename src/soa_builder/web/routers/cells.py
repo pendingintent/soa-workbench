@@ -3,7 +3,7 @@ import logging
 import os
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi import APIRouter, HTTPException, Request, Form, Body
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -19,11 +19,13 @@ templates = Jinja2Templates(
 )
 
 
+# Helper: Normalization
 def _nz(s: Optional[str]) -> Optional[str]:
     s = (s or "").strip()
     return s or None
 
 
+# Helper: calculate UID
 def _next_study_cell_uid(cur, soa_id: int) -> str:
     """Compute next StudyCell_N unique within an SoA.
 
@@ -64,9 +66,6 @@ def _next_study_cell_uid(cur, soa_id: int) -> str:
     return f"StudyCell_{max_n + 1}"
 
 
-# ---------- API endpoints ----------
-
-
 # API endpoint for listing study cells
 @router.get(
     "/soa/{soa_id}/study_cells", response_class=JSONResponse, response_model=None
@@ -79,12 +78,12 @@ def list_study_cells(soa_id: int):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT sc.id,sc.study_cell_uid,a.name,a.label,e.name,e.epoch_label,el.name,el.label
+        SELECT sc.id,sc.study_cell_uid,sc.order_index,a.name,a.label,e.name,e.epoch_label,el.name,el.label
         FROM study_cell sc
         INNER JOIN arm a ON sc.soa_id=a.soa_id AND sc.arm_uid=a.arm_uid
         INNER JOIN epoch e ON sc.soa_id=e.soa_id AND sc.epoch_uid=e.epoch_uid
         INNER JOIN element el ON sc.soa_id=el.soa_id AND sc.element_uid=el.element_id
-        WHERE sc.soa_id=? ORDER BY sc.study_cell_uid
+        WHERE sc.soa_id=? ORDER BY sc.order_index, sc.study_cell_uid
         """,
         (soa_id,),
     )
@@ -92,12 +91,13 @@ def list_study_cells(soa_id: int):
         {
             "study_cell_id": r[0],
             "study_cell_uid": r[1],
-            "arm_name": r[2],
-            "arm_label": r[3],
-            "epoch_name": r[4],
-            "epoch_label": r[5],
-            "element_name": r[6],
-            "element_label": r[7],
+            "order_index": r[2],
+            "arm_name": r[3],
+            "arm_label": r[4],
+            "epoch_name": r[5],
+            "epoch_label": r[6],
+            "element_name": r[7],
+            "element_label": r[8],
         }
         for r in cur.fetchall()
     ]
@@ -151,6 +151,13 @@ def add_study_cell(soa_id: int, payload: StudyCellCreate):
             conn.close()
             raise HTTPException(404, "Element not found")
 
+    # order_index
+    cur.execute(
+        "SELECT COALESCE(MAX(order_index), 0) FROM study_cell WHERE soa_id=?",
+        (soa_id,),
+    )
+    next_ord = (cur.fetchone() or [0])[0] + 1
+
     # Duplicate prevention
     cur.execute(
         "SELECT id FROM study_cell WHERE soa_id=? AND arm_uid=? AND epoch_uid=? AND element_uid=?",
@@ -164,8 +171,8 @@ def add_study_cell(soa_id: int, payload: StudyCellCreate):
 
     sc_uid = _next_study_cell_uid(cur, soa_id)
     cur.execute(
-        "INSERT INTO study_cell (soa_id, study_cell_uid, arm_uid, epoch_uid, element_uid) VALUES (?,?,?,?,?)",
-        (soa_id, sc_uid, arm_uid, epoch_uid, element_uid),
+        "INSERT INTO study_cell (soa_id, study_cell_uid, order_index, arm_uid, epoch_uid, element_uid) VALUES (?,?,?,?,?,?)",
+        (soa_id, sc_uid, next_ord, arm_uid, epoch_uid, element_uid),
     )
     sc_id = cur.lastrowid
     conn.commit()
@@ -174,6 +181,7 @@ def add_study_cell(soa_id: int, payload: StudyCellCreate):
     after = {
         "study_cell_id": sc_id,
         "study_cell_uid": sc_uid,
+        "order_index": next_ord,
         "arm_uid": arm_uid,
         "epoch_uid": epoch_uid,
         "element_uid": element_uid,
@@ -283,9 +291,6 @@ def delete_study_cell(soa_id: int, study_cell_id: int):
     return {"deleted": True, "id": study_cell_id}
 
 
-# ---------- UI endpoints ----------
-
-
 # UI code for listing study cells
 @router.get("/ui/soa/{soa_id}/study_cells", response_class=HTMLResponse)
 def ui_list_study_cells(request: Request, soa_id: int):
@@ -303,7 +308,7 @@ def ui_list_study_cells(request: Request, soa_id: int):
         "LEFT JOIN element e ON e.element_id = sc.element_uid AND e.soa_id = sc.soa_id "
         "LEFT JOIN arm a ON a.arm_uid = sc.arm_uid AND a.soa_id = sc.soa_id "
         "LEFT JOIN epoch ep ON ep.epoch_uid = sc.epoch_uid AND ep.soa_id = sc.soa_id "
-        "WHERE sc.soa_id=? ORDER BY sc.id",
+        "WHERE sc.soa_id=? ORDER BY sc.order_index, sc.id",
         (soa_id,),
     )
     study_cells = [
@@ -428,3 +433,54 @@ def ui_update_study_cell(
 def ui_delete_study_cell(request: Request, soa_id: int, study_cell_id: int):
     delete_study_cell(soa_id, study_cell_id)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/study_cells", status_code=303)
+
+
+# API endpoint for reorder
+@router.post("/soa/{soa_id}/study_cells/reorder", response_class=JSONResponse)
+def reorder_study_cells_api(
+    soa_id: int,
+    order: List[int] = Body(..., embed=True),
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    if not order:
+        raise HTTPException(400, "Order list required")
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,study_cell_uid FROM study_cell WHERE soa_id=? ORDER BY order_index",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    old_order = [r[0] for r in rows]  # for API response
+    id_to_uid = {r[0]: r[1] for r in rows}
+    old_order_uids = [r[1] for r in rows]  # for audit
+
+    cur.execute(
+        "SELECT id,study_cell_uid FROM study_cell WHERE soa_id=?",
+        (soa_id,),
+    )
+    existing = {r[0] for r in rows}
+    if set(order) - existing:
+        conn.close()
+        raise HTTPException(400, "order contains invalid study_cell id")
+
+    for idx, scid in enumerate(order, start=1):
+        cur.execute("UPDATE study_cell SET order_index=? WHERE id=?", (idx, scid))
+    conn.commit()
+    conn.close()
+
+    new_order_uids = [id_to_uid.get(scid, str(scid)) for scid in order]
+
+    _record_study_cell_audit(
+        soa_id,
+        "reorder",
+        study_cell_id=None,
+        before={
+            "old_order": old_order_uids,
+        },
+        after={"new_order": new_order_uids},
+    )
+    return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})
