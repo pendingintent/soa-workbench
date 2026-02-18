@@ -7,7 +7,8 @@ import time
 from typing import List
 
 from fastapi import APIRouter, HTTPException, Request, Form
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_activity_audit, _record_reorder_audit
 from ..db import _connect
@@ -22,7 +23,11 @@ _ACT_CONCEPT_CACHE = {"data": None, "fetched_at": 0}
 _ACT_CONCEPT_TTL = 60 * 60
 
 router = APIRouter(prefix="/soa/{soa_id}")
+ui_router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.activities")
+templates = Jinja2Templates(
+    directory=os.path.join(os.path.dirname(__file__), "..", "templates")
+)
 
 
 def fetch_biomedical_concepts(force: bool = False):
@@ -201,11 +206,10 @@ def ui_add_activity(
         raise HTTPException(404, "SOA not found")
     payload = ActivityCreate(name=name or "", label=label, description=description)
     add_activity(soa_id, payload)
+    redirect_url = f"/ui/soa/{int(soa_id)}/activities"
     if request.headers.get("HX-Request") == "true":
-        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
+        return HTMLResponse("", headers={"HX-Redirect": redirect_url})
+    return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
 
 
 @router.patch("/activities/{activity_id}", response_class=JSONResponse)
@@ -301,11 +305,10 @@ def ui_update_activity(
     payload = ActivityUpdate(name=name, label=label, description=description)
     # Reuse the JSON handler for business logic/audit
     update_activity(soa_id, activity_id, payload)
+    redirect_url = f"/ui/soa/{int(soa_id)}/activities"
     if request.headers.get("HX-Request") == "true":
-        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
+        return HTMLResponse("", headers={"HX-Redirect": redirect_url})
+    return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
 
 
 @router.post("/activities/reorder", response_class=JSONResponse)
@@ -502,3 +505,120 @@ def set_activity_concepts(soa_id: int, activity_id: int, concept_codes: List[str
     conn.commit()
     conn.close()
     return {"activity_id": activity_id, "concepts_set": inserted}
+
+
+# ---------------------------------------------------------------------------
+# UI routes (served via ui_router, no prefix)
+# ---------------------------------------------------------------------------
+
+
+def _reindex_activities(soa_id: int):
+    """Re-number order_index and activity_uid after a delete."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id FROM activity WHERE soa_id=? ORDER BY order_index", (soa_id,)
+    )
+    ids = [r[0] for r in cur.fetchall()]
+    for idx, _id in enumerate(ids, start=1):
+        cur.execute("UPDATE activity SET order_index=? WHERE id=?", (idx, _id))
+    cur.execute(
+        "UPDATE activity SET activity_uid = 'TMP_' || id WHERE soa_id=?", (soa_id,)
+    )
+    cur.execute(
+        "UPDATE activity SET activity_uid = 'Activity_' || order_index WHERE soa_id=?",
+        (soa_id,),
+    )
+    conn.commit()
+    conn.close()
+
+
+@ui_router.get("/ui/soa/{soa_id}/activities", response_class=HTMLResponse)
+def ui_list_activities(request: Request, soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,order_index,activity_uid,label,description FROM activity WHERE soa_id=? ORDER BY order_index",
+        (soa_id,),
+    )
+    activities = [
+        {
+            "id": r[0],
+            "name": r[1],
+            "order_index": r[2],
+            "activity_uid": r[3],
+            "label": r[4],
+            "description": r[5],
+        }
+        for r in cur.fetchall()
+    ]
+    conn.close()
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    meta_row = cur.fetchone()
+    conn.close()
+    study_id, study_label, study_description, study_name, study_created_at = meta_row
+
+    return templates.TemplateResponse(
+        request,
+        "activities.html",
+        {
+            "request": request,
+            "soa_id": soa_id,
+            "activities": activities,
+            "study_id": study_id,
+            "study_label": study_label,
+            "study_description": study_description,
+            "study_name": study_name,
+        },
+    )
+
+
+@ui_router.post("/ui/soa/{soa_id}/activities/create")
+def ui_create_activity(
+    request: Request,
+    soa_id: int,
+    name: str | None = Form(None),
+    label: str | None = Form(None),
+    description: str | None = Form(None),
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    payload = ActivityCreate(name=name or "", label=label, description=description)
+    add_activity(soa_id, payload)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/activities", status_code=303)
+
+
+@ui_router.post("/ui/soa/{soa_id}/activities/{activity_id}/delete")
+def ui_delete_activity_page(request: Request, soa_id: int, activity_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,order_index FROM activity WHERE id=? AND soa_id=?",
+        (activity_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Activity not found")
+    before = {"id": row[0], "name": row[1], "order_index": row[2]}
+    cur.execute(
+        "DELETE FROM matrix_cells WHERE soa_id=? AND activity_id=?",
+        (soa_id, activity_id),
+    )
+    cur.execute("DELETE FROM activity WHERE id=?", (activity_id,))
+    conn.commit()
+    conn.close()
+    _reindex_activities(soa_id)
+    _record_activity_audit(soa_id, "delete", activity_id, before=before, after=None)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/activities", status_code=303)
