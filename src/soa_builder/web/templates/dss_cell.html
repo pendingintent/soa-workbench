@@ -17,13 +17,13 @@
     <div id="dss-content-{{ activity_id }}" style="display:none;margin-top:4px;">
       {% for ac in dss_concepts %}
         <div style="display:flex;align-items:center;gap:4px;margin:2px 0;font-size:0.8em;">
-          <span style="background:#e3f2fd;padding:1px 4px;border-radius:3px;white-space:nowrap;min-width:70px;text-align:center;display:inline-block;">{{ ac.code }}</span>
+          <span title="{{ ac.title }}" style="background:#eef;color:#224;padding:1px 4px;border-radius:3px;white-space:nowrap;min-width:70px;text-align:center;display:inline-block;">{{ ac.code }}</span>
           <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss"
                 hx-target="#dss-cell-{{ activity_id }}"
                 hx-swap="outerHTML"
                 style="margin:0;display:flex;align-items:center;gap:4px;">
-            <select name="dss_selection" onchange="this.form.requestSubmit()"
-                    style="font-size:1.2em;max-width:160px;">
+            <select name="dss_selection"
+                    style="font-size:0.8em;max-width:160px;">
               <option value="">-- none --</option>
               {% for d in sdtm_specializations %}
                 {% set dss_id = d.href.rstrip('/').split('/')|last %}
@@ -33,6 +33,7 @@
                 </option>
               {% endfor %}
             </select>
+            <button type="submit" style="font-size:0.7em;">+</button>
           </form>
         </div>
       {% endfor %}
@@ -51,5 +52,23 @@ function toggleDss(activityId) {
   const open = content.style.display === "block";
   content.style.display = open ? "none" : "block";
   arrow.textContent = open ? "▸" : "▾";
+}
+if (!window._dssSettleListenerAdded) {
+  window._dssSettleListenerAdded = true;
+  document.addEventListener("htmx:afterSettle", function(evt) {
+    var target = evt.detail.target;
+    if (target && target.id && target.id.startsWith("dss-cell-")) {
+      var activityId = target.id.replace("dss-cell-", "");
+      var content = document.getElementById("dss-content-" + activityId);
+      if (content) {
+        content.style.display = "block";
+        var header = content.previousElementSibling;
+        if (header) {
+          var arrow = header.querySelector(".concepts-arrow");
+          if (arrow) arrow.textContent = "▾";
+        }
+      }
+    }
+  });
 }
 </script>
