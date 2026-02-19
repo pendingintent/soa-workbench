@@ -34,7 +34,7 @@
       })();
     </script>
   {% else %}
-  <div style="max-width:320px;">
+  <div style="max-width:200px;">
     
     <!-- Clickable header -->
     <div class="concepts-toggle"
@@ -51,7 +51,7 @@
       {% if selected_list %}
         {% for ac in selected_list %}
           <div class="concept-line" style="display:flex;align-items:center;justify-content:space-between;background:#eef;color:#224;margin:2px 0;padding:2px 5px;border-radius:3px;font-size:0.6em;">
-            <span class="concept-title" title="{{ ac.code }}" style="flex:1;">{{ ac.title }}</span>
+            <span class="concept-title" title="{{ ac.code }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ac.title }}</span>
             <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/remove"
                   hx-target="#concepts-cell-{{ cell_id_suffix }}"
                   hx-swap="outerHTML"
