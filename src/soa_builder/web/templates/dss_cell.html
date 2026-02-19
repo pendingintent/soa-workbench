@@ -2,28 +2,54 @@
 <td id="dss-cell-{{ activity_id }}" style="padding:4px;vertical-align:top;max-width:280px;">
   {% set dss_concepts = activity_concepts.get(activity_id, []) %}
   {% if dss_concepts %}
-    {% for ac in dss_concepts %}
-      <div style="display:flex;align-items:center;gap:4px;margin:2px 0;font-size:0.8em;">
-        <span style="background:#e3f2fd;padding:1px 4px;border-radius:3px;white-space:nowrap;min-width:70px;text-align:center;display:inline-block;">{{ ac.code }}</span>
-        <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss"
-              hx-target="#dss-cell-{{ activity_id }}"
-              hx-swap="outerHTML"
-              style="margin:0;display:flex;align-items:center;gap:4px;">
-          <select name="dss_selection" onchange="this.form.requestSubmit()"
-                  style="font-size:1.2em;max-width:160px;">
-            <option value="">-- none --</option>
-            {% for d in sdtm_specializations %}
-              {% set dss_id = d.href.rstrip('/').split('/')|last %}
-              <option value="{{ dss_id }}||{{ d.href }}"
-                {% if ac.dss_title == dss_id %}selected{% endif %}>
-                {{ d.title }}
-              </option>
-            {% endfor %}
-          </select>
-        </form>
-      </div>
-    {% endfor %}
+    {% set assigned_count = dss_concepts | selectattr('dss_title') | list | length %}
+
+    <!-- Clickable header -->
+    <div class="concepts-toggle" onclick="toggleDss('{{ activity_id }}')">
+      <span class="concepts-label">Specializations</span>
+      {% if assigned_count > 0 %}
+        <span class="concept-count-pill">{{ assigned_count }}</span>
+      {% endif %}
+      <span class="concepts-arrow">▸</span>
+    </div>
+
+    <!-- Collapsible content -->
+    <div id="dss-content-{{ activity_id }}" style="display:none;margin-top:4px;">
+      {% for ac in dss_concepts %}
+        <div style="display:flex;align-items:center;gap:4px;margin:2px 0;font-size:0.8em;">
+          <span style="background:#e3f2fd;padding:1px 4px;border-radius:3px;white-space:nowrap;min-width:70px;text-align:center;display:inline-block;">{{ ac.code }}</span>
+          <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss"
+                hx-target="#dss-cell-{{ activity_id }}"
+                hx-swap="outerHTML"
+                style="margin:0;display:flex;align-items:center;gap:4px;">
+            <select name="dss_selection" onchange="this.form.requestSubmit()"
+                    style="font-size:1.2em;max-width:160px;">
+              <option value="">-- none --</option>
+              {% for d in sdtm_specializations %}
+                {% set dss_id = d.href.rstrip('/').split('/')|last %}
+                <option value="{{ dss_id }}||{{ d.href }}"
+                  {% if ac.dss_title == dss_id %}selected{% endif %}>
+                  {{ d.title }}
+                </option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
   {% else %}
     <span style="color:#888;font-size:0.6em;">&ndash;</span>
   {% endif %}
 </td>
+
+<script>
+function toggleDss(activityId) {
+  const content = document.getElementById("dss-content-" + activityId);
+  if (!content) return;
+  const header = content.previousElementSibling;
+  const arrow = header.querySelector(".concepts-arrow");
+  const open = content.style.display === "block";
+  content.style.display = open ? "none" : "block";
+  arrow.textContent = open ? "▸" : "▾";
+}
+</script>
