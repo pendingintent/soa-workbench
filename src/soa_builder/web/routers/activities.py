@@ -17,6 +17,7 @@ from ..utils import (
     soa_exists,
     table_has_columns as _table_has_columns,
     get_next_concept_uid as _get_next_concept_uid,
+    get_cdisc_api_key as _get_cdisc_api_key,
 )
 
 _ACT_CONCEPT_CACHE = {"data": None, "fetched_at": 0}
@@ -841,3 +842,89 @@ def ui_get_dss_cell(request: Request, soa_id: int, activity_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     return _render_dss_cell(request, soa_id, activity_id)
+
+
+@ui_router.get(
+    "/ui/soa/{soa_id}/dss/detail",
+    response_class=HTMLResponse,
+)
+def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""):
+    """Detail page for a single DSS, fetched by href."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    import requests as _requests
+
+    api_key = _get_cdisc_api_key()
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    unified_key = subscription_key or api_key
+    headers: dict = {}
+    if unified_key:
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    status = None
+    error = None
+    pretty_json = None
+    raw_text_snippet = None
+    data = None
+    if href:
+        try:
+            resp = _requests.get(href, headers=headers, timeout=15)
+            status = resp.status_code
+            raw_text_snippet = resp.text[:500]
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                except ValueError:
+                    error = "200 OK but response was not valid JSON"
+                    data = None
+                if data is not None:
+                    try:
+                        pretty_json = json.dumps(data, indent=2, sort_keys=True)
+                    except Exception:
+                        pretty_json = json.dumps(data, indent=2)
+            else:
+                error = f"HTTP {resp.status_code} retrieving specialization"
+        except Exception as e:
+            error = f"Fetch error: {e}"[:300]
+    else:
+        error = "No href provided."
+
+    # Extract variables list and summary fields for structured display
+    variables = []
+    summary = {}
+    if data and isinstance(data, dict):
+        variables = data.get("variables", [])
+        for key in (
+            "datasetSpecializationId",
+            "domain",
+            "shortName",
+            "source",
+            "sdtmigStartVersion",
+            "sdtmigEndVersion",
+        ):
+            val = data.get(key)
+            if val is not None and val != "":
+                summary[key] = val
+
+    return templates.TemplateResponse(
+        request,
+        "sdtm_specialization_detail.html",
+        {
+            "index": 0,
+            "title": title or "(untitled)",
+            "href": href,
+            "status": status,
+            "error": error,
+            "pretty_json": pretty_json,
+            "raw_text_snippet": raw_text_snippet,
+            "missing_key": unified_key is None,
+            "total": 1,
+            "back_url": f"/ui/soa/{soa_id}/activities",
+            "summary": summary,
+            "variables": variables,
+        },
+    )

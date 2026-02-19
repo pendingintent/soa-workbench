@@ -18,23 +18,43 @@
       {% for ac in dss_concepts %}
         <div style="display:flex;align-items:center;gap:4px;margin:2px 0;font-size:0.8em;">
           <span title="{{ ac.title }}" style="background:#eef;color:#224;padding:1px 4px;border-radius:3px;white-space:nowrap;min-width:70px;text-align:center;display:inline-block;">{{ ac.code }}</span>
-          <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss"
-                hx-target="#dss-cell-{{ activity_id }}"
-                hx-swap="outerHTML"
-                style="margin:0;display:flex;align-items:center;gap:4px;">
-            <select name="dss_selection"
-                    style="font-size:0.8em;max-width:160px;">
-              <option value="">-- none --</option>
-              {% for d in sdtm_specializations %}
-                {% set dss_id = d.href.rstrip('/').split('/')|last %}
-                <option value="{{ dss_id }}||{{ d.href }}"
-                  {% if ac.dss_title == dss_id %}selected{% endif %}>
-                  {{ d.title }}
-                </option>
-              {% endfor %}
-            </select>
-            <button type="submit" style="font-size:0.7em;">+</button>
-          </form>
+          {% if ac.dss_title %}
+            {# Assigned — show DSS name as pill + clear/properties controls #}
+            {% set ns = namespace(dss_display=ac.dss_title) %}
+            {% for d in sdtm_specializations %}
+              {% if d.href.rstrip('/').split('/')|last == ac.dss_title %}
+                {% set ns.dss_display = d.title %}
+              {% endif %}
+            {% endfor %}
+            <span title="{{ ac.dss_title }}" style="background:#eef;color:#224;padding:2px 5px;border-radius:3px;min-width:160px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ns.dss_display }}</span>
+            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss"
+                  hx-target="#dss-cell-{{ activity_id }}"
+                  hx-swap="outerHTML"
+                  style="margin:0;display:inline;">
+              <input type="hidden" name="dss_selection" value="" />
+              <button type="submit" style="font-size:0.7em;" title="Clear DSS">&minus;</button>
+            </form>
+            <a href="/ui/soa/{{ soa_id }}/dss/detail?href={{ ac.dss_href|urlencode }}&title={{ ac.dss_title|urlencode }}"
+               style="font-size:0.7em;margin-left:4px;">properties</a>
+          {% else %}
+            {# Not assigned — show dropdown + button #}
+            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss"
+                  hx-target="#dss-cell-{{ activity_id }}"
+                  hx-swap="outerHTML"
+                  style="margin:0;display:flex;align-items:center;gap:4px;">
+              <select name="dss_selection"
+                      style="font-size:1em;max-width:160px;">
+                <option value="" disabled selected>Select DSS...</option>
+                {% for d in sdtm_specializations %}
+                  {% set dss_id = d.href.rstrip('/').split('/')|last %}
+                  <option value="{{ dss_id }}||{{ d.href }}">
+                    {{ d.title }}
+                  </option>
+                {% endfor %}
+              </select>
+              <button type="submit" style="font-size:0.7em;">+</button>
+            </form>
+          {% endif %}
         </div>
       {% endfor %}
     </div>
