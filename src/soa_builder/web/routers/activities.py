@@ -555,7 +555,32 @@ def ui_list_activities(request: Request, soa_id: int):
         }
         for r in cur.fetchall()
     ]
+
+    # Fetch activity concepts for all activities in this SOA
+    activity_concepts: dict = {}
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        cur.execute(
+            "SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE soa_id=?",
+            (soa_id,),
+        )
+    else:
+        activity_ids = [a["id"] for a in activities]
+        if activity_ids:
+            placeholders = ",".join("?" * len(activity_ids))
+            cur.execute(
+                f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE activity_id IN ({placeholders})",
+                activity_ids,
+            )
+        else:
+            cur.execute("SELECT 1 WHERE 0")  # no-op
+    for aid, code, title in cur.fetchall():
+        activity_concepts.setdefault(aid, []).append({"code": code, "title": title})
     conn.close()
+
+    # Fetch biomedical concepts list (lazy import to avoid circular dependency)
+    from ..app import fetch_biomedical_concepts as _app_fetch_concepts
+
+    concepts = _app_fetch_concepts()
 
     conn = _connect()
     cur = conn.cursor()
@@ -574,12 +599,28 @@ def ui_list_activities(request: Request, soa_id: int):
             "request": request,
             "soa_id": soa_id,
             "activities": activities,
+            "activity_concepts": activity_concepts,
+            "concepts": concepts,
             "study_id": study_id,
             "study_label": study_label,
             "study_description": study_description,
             "study_name": study_name,
         },
     )
+
+
+@ui_router.post("/ui/soa/{soa_id}/activities/concepts_refresh")
+def ui_refresh_concepts_activities(request: Request, soa_id: int):
+    """Refresh biomedical concepts cache, then redirect back to activities page."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    from ..app import fetch_biomedical_concepts as _app_fetch_concepts
+
+    _app_fetch_concepts(force=True)
+    redirect_url = f"/ui/soa/{int(soa_id)}/activities"
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": redirect_url})
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @ui_router.post("/ui/soa/{soa_id}/activities/create")
