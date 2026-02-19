@@ -180,6 +180,7 @@ def _init_db():
             arm_uid TEXT NOT NULL,
             epoch_uid TEXT NOT NULL,
             element_uid TEXT NOT NULL,
+            order_index INTEGER,
             UNIQUE(soa_id, study_cell_uid)
         )"""
     )
