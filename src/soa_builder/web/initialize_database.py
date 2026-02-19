@@ -179,7 +179,8 @@ def _init_db():
             study_cell_uid TEXT NOT NULL, --immutable StudyCell_N identifier unique within SOA
             arm_uid TEXT NOT NULL,
             epoch_uid TEXT NOT NULL,
-            element_uid TEXT NOT NULL
+            element_uid TEXT NOT NULL,
+            UNIQUE(soa_id, study_cell_uid)
         )"""
     )
 
