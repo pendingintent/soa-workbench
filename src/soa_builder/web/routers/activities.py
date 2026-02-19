@@ -909,6 +909,37 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
             val = data.get(key)
             if val is not None and val != "":
                 summary[key] = val
+        # Nested objects: check top-level and _links
+        links = data.get("_links", {})
+        pbc = data.get("parentBiomedicalConcept") or links.get(
+            "parentBiomedicalConcept"
+        )
+        if isinstance(pbc, dict):
+            parts = []
+            if pbc.get("shortName"):
+                parts.append(pbc["shortName"])
+            elif pbc.get("title"):
+                parts.append(pbc["title"])
+            if pbc.get("conceptId"):
+                parts.append(f"({pbc['conceptId']})")
+            if parts:
+                summary["parentBiomedicalConcept"] = " ".join(parts)
+        ppkg = data.get("parentPackage") or links.get("parentPackage")
+        if isinstance(ppkg, dict):
+            parts = []
+            if ppkg.get("name"):
+                parts.append(ppkg["name"])
+            elif ppkg.get("title"):
+                parts.append(ppkg["title"])
+            if ppkg.get("type"):
+                parts.append(f"[{ppkg['type']}]")
+            if parts:
+                summary["parentPackage"] = " ".join(parts)
+            ppkg_href = ppkg.get("href", "")
+            if ppkg_href and not ppkg_href.startswith("http"):
+                ppkg_href = f"https://api.library.cdisc.org{ppkg_href}"
+            if ppkg_href:
+                summary["parentPackageHref"] = ppkg_href
 
     return templates.TemplateResponse(
         request,

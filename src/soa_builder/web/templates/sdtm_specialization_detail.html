@@ -41,6 +41,12 @@
       <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Ordinal</th>
       <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Role</th>
       <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Data Type</th>
+      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Length</th>
+      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Relationship</th>
+      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Mandatory Variable</th>
+      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Mandatory Value</th>
+      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Origin Type</th>
+      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Origin Source</th>
       <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Assigned Value / Codelist</th>
     </tr>
   </thead>
@@ -52,6 +58,16 @@
       <td style="border:1px solid #ccc;padding:4px 8px;text-align:center;">{{ v.ordinal or '' }}</td>
       <td style="border:1px solid #ccc;padding:4px 8px;">{{ v.role or '' }}</td>
       <td style="border:1px solid #ccc;padding:4px 8px;">{{ v.dataType or '' }}</td>
+      <td style="border:1px solid #ccc;padding:4px 8px;text-align:center;">{{ v.length or '' }}</td>
+      <td style="border:1px solid #ccc;padding:4px 8px;">
+        {%- if v.relationship is defined and v.relationship -%}
+          {{ v.relationship.subject or '' }} {{ v.relationship.linkingPhrase or '' }} {{ v.relationship.predicateTerm or '' }} {{ v.relationship.object or '' }}
+        {%- endif -%}
+      </td>
+      <td style="border:1px solid #ccc;padding:4px 8px;text-align:center;">{{ v.mandatoryVariable if v.mandatoryVariable is defined else '' }}</td>
+      <td style="border:1px solid #ccc;padding:4px 8px;text-align:center;">{{ v.mandatoryValue if v.mandatoryValue is defined else '' }}</td>
+      <td style="border:1px solid #ccc;padding:4px 8px;">{{ v.originType or '' }}</td>
+      <td style="border:1px solid #ccc;padding:4px 8px;">{{ v.originSource or '' }}</td>
       <td style="border:1px solid #ccc;padding:4px 8px;">
         {%- if v.assignedTerm is defined and v.assignedTerm -%}
           {{ v.assignedTerm.value or v.assignedTerm.conceptId or '' }}
