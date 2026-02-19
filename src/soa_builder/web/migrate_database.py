@@ -997,6 +997,26 @@ def _migrate_activity_concept_add_href():
         logger.warning("activity_concept href migration failed: %s", e)
 
 
+def _migrate_activity_concept_add_dss():
+    """Add dss_title and dss_href columns to activity_concept for DSS assignment."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_concept)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "dss_title" not in cols:
+            cur.execute("ALTER TABLE activity_concept ADD COLUMN dss_title TEXT")
+            conn.commit()
+            logger.info("Added dss_title column to activity_concept table")
+        if "dss_href" not in cols:
+            cur.execute("ALTER TABLE activity_concept ADD COLUMN dss_href TEXT")
+            conn.commit()
+            logger.info("Added dss_href column to activity_concept table")
+        conn.close()
+    except Exception as e:
+        logger.warning("activity_concept dss migration failed: %s", e)
+
+
 def _migrate_study_cell_add_order_index():
     """Add order_index column to study_cell table to support reordering"""
     try:

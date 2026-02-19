@@ -68,7 +68,8 @@
         {% set selected_codes = concepts_list | map(attribute='code') | list %}
         {% set activity_id = a.id %}
         {% include 'concepts_cell.html' %}
-        <td></td>
+        {% set activity_id = a.id %}
+        {% include 'dss_cell.html' %}
         <td style="padding:4px;">
             <form method="post" action="/ui/soa/{{ soa_id }}/activities/{{ a.id }}/delete">
                 <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">

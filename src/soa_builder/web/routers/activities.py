@@ -558,29 +558,54 @@ def ui_list_activities(request: Request, soa_id: int):
 
     # Fetch activity concepts for all activities in this SOA
     activity_concepts: dict = {}
+    has_dss = _table_has_columns(cur, "activity_concept", ("dss_title",))
     if _table_has_columns(cur, "activity_concept", ("soa_id",)):
-        cur.execute(
-            "SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE soa_id=?",
-            (soa_id,),
-        )
+        if has_dss:
+            cur.execute(
+                "SELECT activity_id, concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE soa_id=?",
+                (soa_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE soa_id=?",
+                (soa_id,),
+            )
     else:
         activity_ids = [a["id"] for a in activities]
         if activity_ids:
             placeholders = ",".join("?" * len(activity_ids))
-            cur.execute(
-                f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE activity_id IN ({placeholders})",
-                activity_ids,
-            )
+            if has_dss:
+                cur.execute(
+                    f"SELECT activity_id, concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE activity_id IN ({placeholders})",
+                    activity_ids,
+                )
+            else:
+                cur.execute(
+                    f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE activity_id IN ({placeholders})",
+                    activity_ids,
+                )
         else:
             cur.execute("SELECT 1 WHERE 0")  # no-op
-    for aid, code, title in cur.fetchall():
-        activity_concepts.setdefault(aid, []).append({"code": code, "title": title})
+    for row in cur.fetchall():
+        aid, code, title = row[0], row[1], row[2]
+        dss_title = row[3] if has_dss and len(row) > 3 else None
+        dss_href = row[4] if has_dss and len(row) > 4 else None
+        activity_concepts.setdefault(aid, []).append(
+            {
+                "code": code,
+                "title": title,
+                "dss_title": dss_title or "",
+                "dss_href": dss_href or "",
+            }
+        )
     conn.close()
 
     # Fetch biomedical concepts list (lazy import to avoid circular dependency)
     from ..app import fetch_biomedical_concepts as _app_fetch_concepts
+    from ..app import fetch_sdtm_specializations as _app_fetch_dss
 
     concepts = _app_fetch_concepts()
+    sdtm_specializations = _app_fetch_dss()
 
     conn = _connect()
     cur = conn.cursor()
@@ -601,6 +626,7 @@ def ui_list_activities(request: Request, soa_id: int):
             "activities": activities,
             "activity_concepts": activity_concepts,
             "concepts": concepts,
+            "sdtm_specializations": sdtm_specializations,
             "study_id": study_id,
             "study_label": study_label,
             "study_description": study_description,
@@ -663,3 +689,155 @@ def ui_delete_activity_page(request: Request, soa_id: int, activity_id: int):
     _reindex_activities(soa_id)
     _record_activity_audit(soa_id, "delete", activity_id, before=before, after=None)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/activities", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# DSS assignment endpoints
+# ---------------------------------------------------------------------------
+
+
+def _render_dss_cell(request, soa_id, activity_id):
+    """Helper: render the dss_cell.html partial for a single activity."""
+    conn = _connect()
+    cur = conn.cursor()
+    has_dss = _table_has_columns(cur, "activity_concept", ("dss_title",))
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        if has_dss:
+            cur.execute(
+                "SELECT concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE activity_id=? AND soa_id=?",
+                (activity_id, soa_id),
+            )
+        else:
+            cur.execute(
+                "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=? AND soa_id=?",
+                (activity_id, soa_id),
+            )
+    else:
+        if has_dss:
+            cur.execute(
+                "SELECT concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE activity_id=?",
+                (activity_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+                (activity_id,),
+            )
+    concepts_list = []
+    for row in cur.fetchall():
+        code, title = row[0], row[1]
+        dss_title = row[2] if has_dss and len(row) > 2 else None
+        dss_href = row[3] if has_dss and len(row) > 3 else None
+        concepts_list.append(
+            {
+                "code": code,
+                "title": title,
+                "dss_title": dss_title or "",
+                "dss_href": dss_href or "",
+            }
+        )
+    conn.close()
+
+    from ..app import fetch_sdtm_specializations as _app_fetch_dss
+
+    sdtm_specializations = _app_fetch_dss()
+    activity_concepts = {activity_id: concepts_list}
+    html = templates.get_template("dss_cell.html").render(
+        request=request,
+        soa_id=soa_id,
+        activity_id=activity_id,
+        activity_concepts=activity_concepts,
+        sdtm_specializations=sdtm_specializations,
+    )
+    return HTMLResponse(html)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/activity/{activity_id}/concept/{concept_code}/dss",
+    response_class=HTMLResponse,
+)
+def ui_save_dss_assignment(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    concept_code: str,
+    dss_selection: str = Form(""),
+):
+    """Save a DSS assignment for a specific concept on an activity."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM activity WHERE id=? AND soa_id=?", (activity_id, soa_id))
+    if not cur.fetchone():
+        conn.close()
+        raise HTTPException(404, "Activity not found")
+
+    # Capture before state
+    old_title, old_href = None, None
+    if _table_has_columns(cur, "activity_concept", ("dss_title",)):
+        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+            cur.execute(
+                "SELECT dss_title, dss_href FROM activity_concept WHERE activity_id=? AND concept_code=? AND soa_id=?",
+                (activity_id, concept_code, soa_id),
+            )
+        else:
+            cur.execute(
+                "SELECT dss_title, dss_href FROM activity_concept WHERE activity_id=? AND concept_code=?",
+                (activity_id, concept_code),
+            )
+        before_row = cur.fetchone()
+        if before_row:
+            old_title, old_href = before_row[0], before_row[1]
+
+    # Parse selection value (datasetSpecializationId||href or empty)
+    new_title, new_href = None, None
+    selection = dss_selection.strip()
+    if selection and "||" in selection:
+        parts = selection.split("||", 1)
+        new_title, new_href = parts[0], parts[1]
+
+    # Update
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        cur.execute(
+            "UPDATE activity_concept SET dss_title=?, dss_href=? WHERE activity_id=? AND concept_code=? AND soa_id=?",
+            (new_title, new_href, activity_id, concept_code, soa_id),
+        )
+    else:
+        cur.execute(
+            "UPDATE activity_concept SET dss_title=?, dss_href=? WHERE activity_id=? AND concept_code=?",
+            (new_title, new_href, activity_id, concept_code),
+        )
+    conn.commit()
+    conn.close()
+
+    # Audit
+    _record_activity_audit(
+        soa_id,
+        "update_dss",
+        activity_id,
+        before={
+            "concept_code": concept_code,
+            "dss_title": old_title,
+            "dss_href": old_href,
+        },
+        after={
+            "concept_code": concept_code,
+            "dss_title": new_title,
+            "dss_href": new_href,
+        },
+    )
+
+    return _render_dss_cell(request, soa_id, activity_id)
+
+
+@ui_router.get(
+    "/ui/soa/{soa_id}/activity/{activity_id}/dss_cell",
+    response_class=HTMLResponse,
+)
+def ui_get_dss_cell(request: Request, soa_id: int, activity_id: int):
+    """Return the DSS cell partial for an activity."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    return _render_dss_cell(request, soa_id, activity_id)
