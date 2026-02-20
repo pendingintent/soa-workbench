@@ -865,12 +865,30 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
         headers["Authorization"] = f"Bearer {api_key}"
         headers["api-key"] = api_key
 
+    _ALLOWED_CDISC_PREFIX = "https://api.library.cdisc.org/"
+
     status = None
     error = None
     pretty_json = None
     raw_text_snippet = None
     data = None
     if href:
+        if not href.startswith(_ALLOWED_CDISC_PREFIX):
+            error = "Invalid href: only CDISC Library API URLs are permitted."
+            return templates.TemplateResponse(
+                "dss_detail.html",
+                {
+                    "request": request,
+                    "soa_id": soa_id,
+                    "href": href,
+                    "title": title,
+                    "status": status,
+                    "error": error,
+                    "pretty_json": pretty_json,
+                    "variables": [],
+                    "summary": {},
+                },
+            )
         try:
             resp = _requests.get(href, headers=headers, timeout=15)
             status = resp.status_code

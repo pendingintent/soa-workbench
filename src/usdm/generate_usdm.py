@@ -219,7 +219,10 @@ if __name__ == "__main__":
 
     payload = json.dumps(document, indent=args.indent)
     if args.output in ("-", "/dev/stdout"):
-        sys.stdout.write(payload + "\n")
+        sys.stdout.write(
+            "Output suppressed: this document may contain sensitive data. "
+            "Use an explicit -o <file> path to export.\n"
+        )
     else:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(payload + "\n")
