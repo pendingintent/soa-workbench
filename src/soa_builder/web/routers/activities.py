@@ -684,6 +684,10 @@ def ui_delete_activity_page(request: Request, soa_id: int, activity_id: int):
         "DELETE FROM matrix_cells WHERE soa_id=? AND activity_id=?",
         (soa_id, activity_id),
     )
+    cur.execute(
+        "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
+        (activity_id, soa_id),
+    )
     cur.execute("DELETE FROM activity WHERE id=?", (activity_id,))
     conn.commit()
     conn.close()
