@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Activities for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
+
+<div style="margin-bottom:12px;">
+    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
+        &larr; Return to Edit Page
+    </a>
+</div>
+
+<div style="margin:4px 0 12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <form hx-post="/ui/soa/{{ soa_id }}/activities/concepts_refresh" style="display:inline;">
+        <button type="submit" style="background:#455a64;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8em;">&#x21bb; Refresh Biomedical Concepts</button>
+    </form>
+    <small style="color:#555;">(forces remote re-fetch &amp; cache reset)</small>
+</div>
+
+<div style="margin-bottom:12px">
+    <form method="post" action="/ui/soa/{{ soa_id }}/activities/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Name *</strong></label>
+            <input name="name" placeholder="Activity Name" required />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Label</strong></label>
+            <input name="label" placeholder="Label (optional)" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Description</strong></label>
+            <input name="description" placeholder="Description (optional)" />
+        </div>
+        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Activity</button>
+    </form>
+</div>
+
+<table id="activities-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
+    <tr style="background:#eee;">
+        <th title="Unique Activity ID" style="text-align:left;padding:4px;">ID</th>
+        <th title="Activity Name" style="text-align:left;padding:4px;">Name</th>
+        <th title="Activity Label" style="text-align:left;padding:4px;">Label</th>
+        <th title="Activity Description" style="text-align:left;padding:4px;">Description</th>
+        <th title="Save Changes" style="text-align:left;padding:4px;">Save</th>
+        <th title="Biomedical Concepts" style="text-align:left;padding:4px;">Concepts</th>
+        <th title="Data Set Specializations" style="text-align:left;padding:4px;">DSS</th>
+        <th title="Delete Activity" style="text-align:left;padding:4px;">Delete</th>
+        <th title="Save Order" style="text-align:left;padding:4px;">
+            <button type="button"
+                    id="save-activity-order-btn"
+                    data-soa-id="{{ soa_id }}"
+                    style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
+                Save Order
+            </button>
+        </th>
+    </tr>
+    {% for a in activities %}
+    <tr data-activity-id="{{ a.id }}">
+        <form method="post" action="/ui/soa/{{ soa_id }}/activities/{{ a.id }}/update">
+            <td style="padding:4px;white-space:nowrap;"><strong>{{ a.activity_uid }}</strong></td>
+            <td style="padding:4px;"><input name="name" value="{{ a.name }}" required /></td>
+            <td style="padding:4px;"><input name="label" value="{{ a.label or '' }}" placeholder="Label" /></td>
+            <td style="padding:4px;"><input name="description" value="{{ a.description or '' }}" placeholder="Description" /></td>
+            <td style="padding:4px;">
+                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </td>
+        </form>
+        {% set concepts_list = activity_concepts.get(a.id, []) %}
+        {% set selected_list = concepts_list %}
+        {% set selected_codes = concepts_list | map(attribute='code') | list %}
+        {% set activity_id = a.id %}
+        {% include 'concepts_cell.html' %}
+        {% set activity_id = a.id %}
+        {% include 'dss_cell.html' %}
+        <td style="padding:4px;">
+            <form method="post" action="/ui/soa/{{ soa_id }}/activities/{{ a.id }}/delete">
+                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
+                Delete
+                </button>
+            </form>
+        </td>
+        <td style="padding:4px;white-space:nowrap;">
+            <button type="button" onclick="moveActivityRow(this, -1)">&uarr;</button>
+            <button type="button" onclick="moveActivityRow(this, 1)">&darr;</button>
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" style="padding:6px;color:#777;">No activities yet.</td></tr>
+    {% endfor %}
+</table>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('save-activity-order-btn');
+    if (btn) {
+        btn.addEventListener('click', function () {
+            var soaId = btn.getAttribute('data-soa-id');
+            saveActivityOrder(soaId);
+        });
+    }
+});
+
+function moveActivityRow(button, dir) {
+    var row = button.closest ? button.closest('tr') : button.parentNode.parentNode;
+    if (!row) return;
+    var table = document.getElementById('activities-table');
+    if (!table) return;
+    var tbody = table.tBodies[0] || table;
+
+    if (dir < 0) {
+        var prev = row.previousElementSibling;
+        if (prev && prev.querySelector && prev.querySelector('td')) {
+            tbody.insertBefore(row, prev);
+        }
+    } else {
+        var next = row.nextElementSibling;
+        if (next) {
+            tbody.insertBefore(next, row);
+        }
+    }
+}
+
+function saveActivityOrder(soaId) {
+    var rows = document.querySelectorAll('#activities-table tr[data-activity-id]');
+    var order = [];
+    for (var i = 0; i < rows.length; i++) {
+        var id = parseInt(rows[i].getAttribute('data-activity-id'), 10);
+        if (!isNaN(id)) {
+            order.push(id);
+        }
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/soa/' + soaId + '/activities/reorder');
+    xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                window.location.reload();
+            } else {
+                alert('Reorder failed: ' + xhr.responseText);
+            }
+        }
+    };
+    xhr.send(JSON.stringify({ order: order }));
+}
+</script>
+{% endblock %}

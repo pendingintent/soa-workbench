@@ -255,9 +255,8 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
         # Build optional environmentalSettings array
         env_settings: List[Dict[str, Any]] = []
         if e_code and e_codesystem:
-            code_system_version = e_codesystem[0][
-                e_codesystem[0].index("-") + 1 : len(e_codesystem[0])
-            ]
+            _seg = e_codesystem[0].rsplit("/", 1)[-1]
+            code_system_version = _seg[_seg.index("-") + 1 :] if "-" in _seg else _seg
             decode = get_submission_value_for_code(
                 soa_id,
                 "C127262",
@@ -278,9 +277,10 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
         # Build optional contactMode array
         contact_mode: List[Dict[str, Any]] = []
         if c_code and c_codesystem:
-            c_code_system_version = c_codesystem[0][
-                c_codesystem[0].index("-") + 1 : len(c_codesystem[0])
-            ]
+            _cseg = c_codesystem[0].rsplit("/", 1)[-1]
+            c_code_system_version = (
+                _cseg[_cseg.index("-") + 1 :] if "-" in _cseg else _cseg
+            )
             c_decode = get_submission_value_for_code(
                 soa_id,
                 "C171445",

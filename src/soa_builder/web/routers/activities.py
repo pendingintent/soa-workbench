@@ -7,7 +7,8 @@ import time
 from typing import List
 
 from fastapi import APIRouter, HTTPException, Request, Form
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_activity_audit, _record_reorder_audit
 from ..db import _connect
@@ -16,13 +17,18 @@ from ..utils import (
     soa_exists,
     table_has_columns as _table_has_columns,
     get_next_concept_uid as _get_next_concept_uid,
+    get_cdisc_api_key as _get_cdisc_api_key,
 )
 
 _ACT_CONCEPT_CACHE = {"data": None, "fetched_at": 0}
 _ACT_CONCEPT_TTL = 60 * 60
 
 router = APIRouter(prefix="/soa/{soa_id}")
+ui_router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.activities")
+templates = Jinja2Templates(
+    directory=os.path.join(os.path.dirname(__file__), "..", "templates")
+)
 
 
 def fetch_biomedical_concepts(force: bool = False):
@@ -201,11 +207,10 @@ def ui_add_activity(
         raise HTTPException(404, "SOA not found")
     payload = ActivityCreate(name=name or "", label=label, description=description)
     add_activity(soa_id, payload)
+    redirect_url = f"/ui/soa/{int(soa_id)}/activities"
     if request.headers.get("HX-Request") == "true":
-        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
+        return HTMLResponse("", headers={"HX-Redirect": redirect_url})
+    return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
 
 
 @router.patch("/activities/{activity_id}", response_class=JSONResponse)
@@ -301,11 +306,10 @@ def ui_update_activity(
     payload = ActivityUpdate(name=name, label=label, description=description)
     # Reuse the JSON handler for business logic/audit
     update_activity(soa_id, activity_id, payload)
+    redirect_url = f"/ui/soa/{int(soa_id)}/activities"
     if request.headers.get("HX-Request") == "true":
-        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
+        return HTMLResponse("", headers={"HX-Redirect": redirect_url})
+    return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
 
 
 @router.post("/activities/reorder", response_class=JSONResponse)
@@ -502,3 +506,478 @@ def set_activity_concepts(soa_id: int, activity_id: int, concept_codes: List[str
     conn.commit()
     conn.close()
     return {"activity_id": activity_id, "concepts_set": inserted}
+
+
+# ---------------------------------------------------------------------------
+# UI routes (served via ui_router, no prefix)
+# ---------------------------------------------------------------------------
+
+
+def _reindex_activities(soa_id: int):
+    """Re-number order_index and activity_uid after a delete."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id FROM activity WHERE soa_id=? ORDER BY order_index", (soa_id,)
+    )
+    ids = [r[0] for r in cur.fetchall()]
+    for idx, _id in enumerate(ids, start=1):
+        cur.execute("UPDATE activity SET order_index=? WHERE id=?", (idx, _id))
+    cur.execute(
+        "UPDATE activity SET activity_uid = 'TMP_' || id WHERE soa_id=?", (soa_id,)
+    )
+    cur.execute(
+        "UPDATE activity SET activity_uid = 'Activity_' || order_index WHERE soa_id=?",
+        (soa_id,),
+    )
+    conn.commit()
+    conn.close()
+
+
+@ui_router.get("/ui/soa/{soa_id}/activities", response_class=HTMLResponse)
+def ui_list_activities(request: Request, soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,order_index,activity_uid,label,description FROM activity WHERE soa_id=? ORDER BY order_index",
+        (soa_id,),
+    )
+    activities = [
+        {
+            "id": r[0],
+            "name": r[1],
+            "order_index": r[2],
+            "activity_uid": r[3],
+            "label": r[4],
+            "description": r[5],
+        }
+        for r in cur.fetchall()
+    ]
+
+    # Fetch activity concepts for all activities in this SOA
+    activity_concepts: dict = {}
+    has_dss = _table_has_columns(cur, "activity_concept", ("dss_title",))
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        if has_dss:
+            cur.execute(
+                "SELECT activity_id, concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE soa_id=?",
+                (soa_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE soa_id=?",
+                (soa_id,),
+            )
+    else:
+        activity_ids = [a["id"] for a in activities]
+        if activity_ids:
+            placeholders = ",".join("?" * len(activity_ids))
+            if has_dss:
+                cur.execute(
+                    f"SELECT activity_id, concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE activity_id IN ({placeholders})",
+                    activity_ids,
+                )
+            else:
+                cur.execute(
+                    f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE activity_id IN ({placeholders})",
+                    activity_ids,
+                )
+        else:
+            cur.execute("SELECT 1 WHERE 0")  # no-op
+    for row in cur.fetchall():
+        aid, code, title = row[0], row[1], row[2]
+        dss_title = row[3] if has_dss and len(row) > 3 else None
+        dss_href = row[4] if has_dss and len(row) > 4 else None
+        activity_concepts.setdefault(aid, []).append(
+            {
+                "code": code,
+                "title": title,
+                "dss_title": dss_title or "",
+                "dss_href": dss_href or "",
+            }
+        )
+    conn.close()
+
+    # Fetch biomedical concepts list (lazy import to avoid circular dependency)
+    from ..app import fetch_biomedical_concepts as _app_fetch_concepts
+    from ..app import fetch_sdtm_specializations as _app_fetch_dss
+
+    concepts = _app_fetch_concepts()
+    sdtm_specializations = _app_fetch_dss()
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    meta_row = cur.fetchone()
+    conn.close()
+    study_id, study_label, study_description, study_name, study_created_at = meta_row
+
+    return templates.TemplateResponse(
+        request,
+        "activities.html",
+        {
+            "request": request,
+            "soa_id": soa_id,
+            "activities": activities,
+            "activity_concepts": activity_concepts,
+            "concepts": concepts,
+            "sdtm_specializations": sdtm_specializations,
+            "study_id": study_id,
+            "study_label": study_label,
+            "study_description": study_description,
+            "study_name": study_name,
+        },
+    )
+
+
+@ui_router.post("/ui/soa/{soa_id}/activities/concepts_refresh")
+def ui_refresh_concepts_activities(request: Request, soa_id: int):
+    """Refresh biomedical concepts cache, then redirect back to activities page."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    from ..app import fetch_biomedical_concepts as _app_fetch_concepts
+
+    _app_fetch_concepts(force=True)
+    redirect_url = f"/ui/soa/{int(soa_id)}/activities"
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": redirect_url})
+    return RedirectResponse(url=redirect_url, status_code=303)
+
+
+@ui_router.post("/ui/soa/{soa_id}/activities/create")
+def ui_create_activity(
+    request: Request,
+    soa_id: int,
+    name: str | None = Form(None),
+    label: str | None = Form(None),
+    description: str | None = Form(None),
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    payload = ActivityCreate(name=name or "", label=label, description=description)
+    add_activity(soa_id, payload)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/activities", status_code=303)
+
+
+@ui_router.post("/ui/soa/{soa_id}/activities/{activity_id}/delete")
+def ui_delete_activity_page(request: Request, soa_id: int, activity_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,name,order_index FROM activity WHERE id=? AND soa_id=?",
+        (activity_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Activity not found")
+    before = {"id": row[0], "name": row[1], "order_index": row[2]}
+    cur.execute(
+        "DELETE FROM matrix_cells WHERE soa_id=? AND activity_id=?",
+        (soa_id, activity_id),
+    )
+    cur.execute(
+        "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
+        (activity_id, soa_id),
+    )
+    cur.execute("DELETE FROM activity WHERE id=?", (activity_id,))
+    conn.commit()
+    conn.close()
+    _reindex_activities(soa_id)
+    _record_activity_audit(soa_id, "delete", activity_id, before=before, after=None)
+    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/activities", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# DSS assignment endpoints
+# ---------------------------------------------------------------------------
+
+
+def _render_dss_cell(request, soa_id, activity_id):
+    """Helper: render the dss_cell.html partial for a single activity."""
+    conn = _connect()
+    cur = conn.cursor()
+    has_dss = _table_has_columns(cur, "activity_concept", ("dss_title",))
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        if has_dss:
+            cur.execute(
+                "SELECT concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE activity_id=? AND soa_id=?",
+                (activity_id, soa_id),
+            )
+        else:
+            cur.execute(
+                "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=? AND soa_id=?",
+                (activity_id, soa_id),
+            )
+    else:
+        if has_dss:
+            cur.execute(
+                "SELECT concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE activity_id=?",
+                (activity_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+                (activity_id,),
+            )
+    concepts_list = []
+    for row in cur.fetchall():
+        code, title = row[0], row[1]
+        dss_title = row[2] if has_dss and len(row) > 2 else None
+        dss_href = row[3] if has_dss and len(row) > 3 else None
+        concepts_list.append(
+            {
+                "code": code,
+                "title": title,
+                "dss_title": dss_title or "",
+                "dss_href": dss_href or "",
+            }
+        )
+    conn.close()
+
+    from ..app import fetch_sdtm_specializations as _app_fetch_dss
+
+    sdtm_specializations = _app_fetch_dss()
+    activity_concepts = {activity_id: concepts_list}
+    html = templates.get_template("dss_cell.html").render(
+        request=request,
+        soa_id=soa_id,
+        activity_id=activity_id,
+        activity_concepts=activity_concepts,
+        sdtm_specializations=sdtm_specializations,
+    )
+    return HTMLResponse(html)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/activity/{activity_id}/concept/{concept_code}/dss",
+    response_class=HTMLResponse,
+)
+def ui_save_dss_assignment(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    concept_code: str,
+    dss_selection: str = Form(""),
+):
+    """Save a DSS assignment for a specific concept on an activity."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM activity WHERE id=? AND soa_id=?", (activity_id, soa_id))
+    if not cur.fetchone():
+        conn.close()
+        raise HTTPException(404, "Activity not found")
+
+    # Capture before state
+    old_title, old_href = None, None
+    if _table_has_columns(cur, "activity_concept", ("dss_title",)):
+        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+            cur.execute(
+                "SELECT dss_title, dss_href FROM activity_concept WHERE activity_id=? AND concept_code=? AND soa_id=?",
+                (activity_id, concept_code, soa_id),
+            )
+        else:
+            cur.execute(
+                "SELECT dss_title, dss_href FROM activity_concept WHERE activity_id=? AND concept_code=?",
+                (activity_id, concept_code),
+            )
+        before_row = cur.fetchone()
+        if before_row:
+            old_title, old_href = before_row[0], before_row[1]
+
+    # Parse selection value (datasetSpecializationId||href or empty)
+    new_title, new_href = None, None
+    selection = dss_selection.strip()
+    if selection and "||" in selection:
+        parts = selection.split("||", 1)
+        new_title, new_href = parts[0], parts[1]
+
+    # Update
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        cur.execute(
+            "UPDATE activity_concept SET dss_title=?, dss_href=? WHERE activity_id=? AND concept_code=? AND soa_id=?",
+            (new_title, new_href, activity_id, concept_code, soa_id),
+        )
+    else:
+        cur.execute(
+            "UPDATE activity_concept SET dss_title=?, dss_href=? WHERE activity_id=? AND concept_code=?",
+            (new_title, new_href, activity_id, concept_code),
+        )
+    conn.commit()
+    conn.close()
+
+    # Audit
+    _record_activity_audit(
+        soa_id,
+        "update_dss",
+        activity_id,
+        before={
+            "concept_code": concept_code,
+            "dss_title": old_title,
+            "dss_href": old_href,
+        },
+        after={
+            "concept_code": concept_code,
+            "dss_title": new_title,
+            "dss_href": new_href,
+        },
+    )
+
+    return _render_dss_cell(request, soa_id, activity_id)
+
+
+@ui_router.get(
+    "/ui/soa/{soa_id}/activity/{activity_id}/dss_cell",
+    response_class=HTMLResponse,
+)
+def ui_get_dss_cell(request: Request, soa_id: int, activity_id: int):
+    """Return the DSS cell partial for an activity."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    return _render_dss_cell(request, soa_id, activity_id)
+
+
+@ui_router.get(
+    "/ui/soa/{soa_id}/dss/detail",
+    response_class=HTMLResponse,
+)
+def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""):
+    """Detail page for a single DSS, fetched by href."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    import requests as _requests
+
+    api_key = _get_cdisc_api_key()
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    unified_key = subscription_key or api_key
+    headers: dict = {}
+    if unified_key:
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    _ALLOWED_CDISC_PREFIX = "https://api.library.cdisc.org/"
+
+    status = None
+    error = None
+    pretty_json = None
+    raw_text_snippet = None
+    data = None
+    if href:
+        if not href.startswith(_ALLOWED_CDISC_PREFIX):
+            error = "Invalid href: only CDISC Library API URLs are permitted."
+            return templates.TemplateResponse(
+                "dss_detail.html",
+                {
+                    "request": request,
+                    "soa_id": soa_id,
+                    "href": href,
+                    "title": title,
+                    "status": status,
+                    "error": error,
+                    "pretty_json": pretty_json,
+                    "variables": [],
+                    "summary": {},
+                },
+            )
+        try:
+            resp = _requests.get(href, headers=headers, timeout=15)
+            status = resp.status_code
+            raw_text_snippet = resp.text[:500]
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                except ValueError:
+                    error = "200 OK but response was not valid JSON"
+                    data = None
+                if data is not None:
+                    try:
+                        pretty_json = json.dumps(data, indent=2, sort_keys=True)
+                    except Exception:
+                        pretty_json = json.dumps(data, indent=2)
+            else:
+                error = f"HTTP {resp.status_code} retrieving specialization"
+        except Exception as e:
+            error = f"Fetch error: {e}"[:300]
+    else:
+        error = "No href provided."
+
+    # Extract variables list and summary fields for structured display
+    variables = []
+    summary = {}
+    if data and isinstance(data, dict):
+        variables = data.get("variables", [])
+        for key in (
+            "datasetSpecializationId",
+            "domain",
+            "shortName",
+            "source",
+            "sdtmigStartVersion",
+            "sdtmigEndVersion",
+        ):
+            val = data.get(key)
+            if val is not None and val != "":
+                summary[key] = val
+        # Nested objects: check top-level and _links
+        links = data.get("_links", {})
+        pbc = data.get("parentBiomedicalConcept") or links.get(
+            "parentBiomedicalConcept"
+        )
+        if isinstance(pbc, dict):
+            parts = []
+            if pbc.get("shortName"):
+                parts.append(pbc["shortName"])
+            elif pbc.get("title"):
+                parts.append(pbc["title"])
+            if pbc.get("conceptId"):
+                parts.append(f"({pbc['conceptId']})")
+            if parts:
+                summary["parentBiomedicalConcept"] = " ".join(parts)
+        ppkg = data.get("parentPackage") or links.get("parentPackage")
+        if isinstance(ppkg, dict):
+            parts = []
+            if ppkg.get("name"):
+                parts.append(ppkg["name"])
+            elif ppkg.get("title"):
+                parts.append(ppkg["title"])
+            if ppkg.get("type"):
+                parts.append(f"[{ppkg['type']}]")
+            if parts:
+                summary["parentPackage"] = " ".join(parts)
+            ppkg_href = ppkg.get("href", "")
+            if ppkg_href and not ppkg_href.startswith("http"):
+                ppkg_href = f"https://api.library.cdisc.org{ppkg_href}"
+            if ppkg_href:
+                summary["parentPackageHref"] = ppkg_href
+
+    return templates.TemplateResponse(
+        request,
+        "sdtm_specialization_detail.html",
+        {
+            "index": 0,
+            "title": title or "(untitled)",
+            "href": href,
+            "status": status,
+            "error": error,
+            "pretty_json": pretty_json,
+            "raw_text_snippet": raw_text_snippet,
+            "missing_key": unified_key is None,
+            "total": 1,
+            "back_url": f"/ui/soa/{soa_id}/activities",
+            "summary": summary,
+            "variables": variables,
+        },
+    )

@@ -57,6 +57,7 @@ from .migrate_database import (
     _migrate_instances_add_member_of_timeline,
     _migrate_matrix_cells_add_instance_id,
     _migrate_activity_concept_add_href,
+    _migrate_activity_concept_add_dss,
     _migrate_study_cell_add_order_index,
 )
 from .routers import activities as activities_router
@@ -155,6 +156,7 @@ _init_db()
 # Database migration steps
 _migrate_study_cell_add_order_index()
 _migrate_activity_concept_add_href()
+_migrate_activity_concept_add_dss()
 _migrate_matrix_cells_add_instance_id()
 _migrate_instances_add_member_of_timeline()
 _migrate_timing_add_member_of_timeline()
@@ -186,6 +188,7 @@ app.include_router(arms_router.router)
 app.include_router(elements_router.router)
 app.include_router(visits_router.router)
 app.include_router(activities_router.router)
+app.include_router(activities_router.ui_router)
 app.include_router(epochs_router.router)
 app.include_router(freezes_router.router)
 app.include_router(rollback_router.router)

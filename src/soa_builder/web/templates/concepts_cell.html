@@ -5,16 +5,16 @@
   {% if edit %}
     <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML" style="margin:0;">
       <div style="margin-bottom:4px;">
-        <input type="text" class="concept-search-inline" placeholder="Filter concepts..." style="width:200px;padding:2px 4px;font-size:0.6em;" />
+        <input type="text" class="concept-search-inline" placeholder="Filter concepts..." style="width:200px;padding:2px 4px;font-size:0.8em;" />
       </div>
-      <select name="concept_codes" multiple size="6" class="concept-select-inline" style="min-width:200px;font-size:0.65em;">
+      <select name="concept_codes" multiple size="6" class="concept-select-inline" style="min-width:200px;font-size:0.8em;">
         {% for c in concepts %}
           <option value="{{ c.code }}" {% if c.code in selected_codes %}selected{% endif %}>{{ c.title }}</option>
         {% endfor %}
       </select> 
       <div style="margin-top:4px;display:flex;gap:6px;">
-        <button type="submit" class="small-btn" style="font-size:0.6em;">Save</button>
-        <button type="button" class="refresh-btn" hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML" style="font-size:0.6em;">Cancel</button>
+        <button type="submit" class="small-btn" style="font-size:0.8em;">Save</button>
+        <button type="button" class="refresh-btn" hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML" style="font-size:0.8em;">Cancel</button>
       </div>
     </form>
     <script>
@@ -34,7 +34,7 @@
       })();
     </script>
   {% else %}
-  <div style="max-width:320px;">
+  <div style="max-width:250px;">
     
     <!-- Clickable header -->
     <div class="concepts-toggle"
@@ -50,8 +50,8 @@
     <div class="concepts-content" id="concepts-content-{{ cell_id_suffix }}" style="display:none;margin-top:4px;">
       {% if selected_list %}
         {% for ac in selected_list %}
-          <div class="concept-line" style="display:flex;align-items:center;justify-content:space-between;background:#eef;color:#224;margin:2px 0;padding:2px 5px;border-radius:3px;font-size:0.6em;">
-            <span class="concept-title" title="{{ ac.code }}" style="flex:1;">{{ ac.title }}</span>
+          <div class="concept-line" style="display:flex;align-items:center;justify-content:space-between;background:#eef;color:#224;margin:2px 0;padding:2px 5px;border-radius:3px;font-size:0.8em;">
+            <span class="concept-title" title="{{ ac.code }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ac.title }}</span>
             <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/remove"
                   hx-target="#concepts-cell-{{ cell_id_suffix }}"
                   hx-swap="outerHTML"
@@ -62,7 +62,7 @@
           </div>
         {% endfor %}
       {% else %}
-        <div class="no-concepts" style="color:#888;font-size:0.6em;">–</div>
+        <div class="no-concepts" style="color:#888;font-size:0.8em;">–</div>
       {% endif %}
     </div>
 
@@ -72,7 +72,7 @@
             hx-target="#concepts-cell-{{ cell_id_suffix }}"
             hx-swap="outerHTML"
             style="display:flex;align-items:center;gap:4px;margin:0;">
-        <select name="concept_code" style="font-size:0.6em;max-width:160px;">
+        <select name="concept_code" style="font-size:0.8em;max-width:160px;">
           <option value="" disabled selected>Add concept...</option>
           {% for c in concepts %}
             {% if c.code not in selected_codes %}
@@ -80,7 +80,7 @@
             {% endif %}
           {% endfor %}
         </select>
-        <button type="submit" style="font-size:0.55em;">+</button>
+        <button type="submit" style="font-size:0.7em;">+</button>
       </form>
 
       <button type="button"
@@ -88,7 +88,7 @@
               hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell?edit=1"
               hx-target="#concepts-cell-{{ cell_id_suffix }}"
               hx-swap="outerHTML"
-              style="background:#455a64;color:#fff;border:none;padding:2px 5px;cursor:pointer;font-size:0.55em;border-radius:3px;"
+              style="background:#455a64;color:#fff;border:none;padding:2px 5px;cursor:pointer;font-size:0.7em;border-radius:3px;"
               title="Bulk select concepts">
         Bulk
       </button>
@@ -105,7 +105,7 @@
   gap: 6px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.65em;
+  font-size: 0.8em;
   color: #1976d2;
   user-select: none;
 }
@@ -123,7 +123,7 @@
 }
 
 .concepts-arrow {
-  margin-left: auto;
+  margin-left: 4px;
   font-size: 0.75em;
 }
 </style>
