@@ -74,6 +74,7 @@ from .routers import timings as timings_router
 from .routers import schedule_timelines as schedule_timelines_router
 from .routers import cells as cells_router
 from .routers import instances as instances_router
+from .routers import usdm_json as usdm_json_router
 
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
@@ -202,6 +203,7 @@ app.include_router(audits_router.router)
 app.include_router(schedule_timelines_router.router)
 app.include_router(rules_router.router)
 app.include_router(cells_router.router)
+app.include_router(usdm_json_router.router)
 
 
 def _record_visit_audit(
