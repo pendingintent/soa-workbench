@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Generate Trial Design Domains (SDTM)</h2>
+
+<div style="margin-bottom:12px;">
+    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
+        ← Return to Edit Page
+    </a>
+</div>
+
+<table style="border-collapse:collapse;width:100%;max-width:600px;">
+  <thead>
+    <tr style="background:#eceff1;">
+      <th style="padding:6px 10px;text-align:left;border:1px solid #ccc;">Domain</th>
+      <th style="padding:6px 10px;text-align:center;border:1px solid #ccc;">JSON</th>
+      <th style="padding:6px 10px;text-align:center;border:1px solid #ccc;">CSV</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for key, label, json_file, csv_file in domains %}
+    <tr>
+      <td style="padding:6px 10px;border:1px solid #ccc;">{{ label }}</td>
+      <td style="padding:6px 10px;text-align:center;border:1px solid #ccc;">
+        <a href="/soa/{{ soa_id }}/tdd/{{ key }}/json"
+           style="background:#1565c0;color:#fff;text-decoration:none;padding:3px 10px;border-radius:3px;font-size:0.85em;display:inline-block;">
+          Download JSON
+        </a>
+      </td>
+      <td style="padding:6px 10px;text-align:center;border:1px solid #ccc;">
+        <a href="/soa/{{ soa_id }}/tdd/{{ key }}/csv"
+           style="background:#2e7d32;color:#fff;text-decoration:none;padding:3px 10px;border-radius:3px;font-size:0.85em;display:inline-block;">
+          Download CSV
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
