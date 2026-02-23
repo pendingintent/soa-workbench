@@ -15,6 +15,7 @@ from ..utils import (
     get_epoch_uid,
     get_schedule_timeline,
     get_scheduled_activity_instance,
+    redirect_url_from_referer as _redirect_url,
 )
 
 router = APIRouter()
@@ -27,19 +28,6 @@ templates = Jinja2Templates(
 def _nz(s: Optional[str]) -> Optional[str]:
     s = (s or "").strip()
     return s or None
-
-
-def _redirect_url(request: Request, fallback: str) -> str:
-    """Return the Referer URL if it's a same-origin /ui/ path, else fallback."""
-    referer = request.headers.get("referer", "")
-    if referer:
-        from urllib.parse import urlparse
-
-        parsed = urlparse(referer)
-        base = urlparse(str(request.base_url))
-        if parsed.netloc == base.netloc and parsed.path.startswith("/ui/"):
-            return parsed.path
-    return fallback
 
 
 # API endpoint to list timeline instances for SOA

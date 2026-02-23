@@ -16,6 +16,7 @@ from ..utils import (
     get_encounter_id,
     get_epoch_uid,
     get_study_timing_type,
+    redirect_url_from_referer as _redirect_url,
 )
 from .instances import list_instances
 from .timings import list_timings
@@ -31,20 +32,6 @@ templates = Jinja2Templates(
 def _nz(s: Optional[str]) -> Optional[str]:
     s = (s or "").strip()
     return s or None
-
-
-def _redirect_url(request: Request, fallback: str) -> str:
-    """Return the Referer URL if it's a same-origin /ui/ path, else fallback."""
-    referer = request.headers.get("referer", "")
-    if referer:
-        from urllib.parse import urlparse, urlunparse
-
-        parsed = urlparse(referer)
-        base = urlparse(str(request.base_url))
-        if parsed.netloc == base.netloc and parsed.path.startswith("/ui/"):
-            # Preserve any query string and fragment from the original Referer
-            return urlunparse(("", "", parsed.path, "", parsed.query, parsed.fragment))
-    return fallback
 
 
 def _to_bool(v: Optional[str]) -> bool:
