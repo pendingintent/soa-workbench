@@ -96,6 +96,10 @@ from .utils import (
     load_epoch_type_map,
     table_has_columns as _table_has_columns,
     iso_duration_to_days,
+    get_encounter_id,
+    get_epoch_uid,
+    get_schedule_timeline,
+    get_scheduled_activity_instance,
 )
 
 # Audit functions
@@ -3855,6 +3859,12 @@ def ui_edit(request: Request, soa_id: int):
     if not default_timeline and "unassigned" in instances_by_timeline:
         default_timeline = "unassigned"
 
+    instances_crud = instances_router.list_instances(soa_id)
+    encounter_options = get_encounter_id(soa_id)
+    epoch_options = get_epoch_uid(soa_id)
+    schedule_timelines_options = get_schedule_timeline(soa_id)
+    instance_options = get_scheduled_activity_instance(soa_id)
+
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -3862,6 +3872,11 @@ def ui_edit(request: Request, soa_id: int):
             "soa_id": soa_id,
             "epochs": epochs,
             "instances": instances,
+            "instances_crud": instances_crud,
+            "encounter_options": encounter_options,
+            "epoch_options": epoch_options,
+            "schedule_timelines_options": schedule_timelines_options,
+            "instance_options": instance_options,
             "activities": activities_page,
             "elements": elements,
             "arms": arms_enriched,

@@ -9,7 +9,17 @@ from fastapi.templating import Jinja2Templates
 from ..audit import _record_schedule_timeline_audit
 from ..db import _connect
 from ..schemas import ScheduleTimelineUpdate, ScheduleTimelineCreate
-from ..utils import soa_exists, get_scheduled_activity_instance
+from ..utils import (
+    soa_exists,
+    get_scheduled_activity_instance,
+    get_schedule_timeline,
+    get_encounter_id,
+    get_epoch_uid,
+    get_study_timing_type,
+    redirect_url_from_referer as _redirect_url,
+)
+from .instances import list_instances
+from .timings import list_timings
 
 
 router = APIRouter()
@@ -116,6 +126,87 @@ def ui_list_schedule_timelines(request: Request, soa_id: int):
             "soa_id": soa_id,
             "schedule_timelines": schedule_timelines,
             "instance_options": instance_options,
+            **study_meta,
+        },
+    )
+
+
+# UI combined study timing page (schedule timelines + instances + timings)
+@router.get("/ui/soa/{soa_id}/study_timing", response_class=HTMLResponse)
+def ui_study_timing(request: Request, soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    # Schedule timelines data
+    schedule_timelines = list_schedule_timelines(soa_id)
+    instance_options = get_scheduled_activity_instance(soa_id)
+
+    # Instances data
+    instances = list_instances(soa_id)
+    encounter_options = get_encounter_id(soa_id)
+    epoch_options = get_epoch_uid(soa_id)
+    schedule_timelines_options = get_schedule_timeline(soa_id)
+
+    # Timings data (with code_uid -> submission_value decoding)
+    timings = list_timings(soa_id)
+    try:
+        sv_to_code = get_study_timing_type("C201264")
+    except Exception:
+        sv_to_code = {}
+    try:
+        sv_to_code_rtf = get_study_timing_type("C201265")
+    except Exception:
+        sv_to_code_rtf = {}
+    code_to_sv = {v: k for k, v in (sv_to_code or {}).items()}
+    code_to_sv_rtf = {v: k for k, v in (sv_to_code_rtf or {}).items()}
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT code_uid, code FROM code WHERE soa_id=?", (soa_id,))
+    code_uid_to_code = {r[0]: r[1] for r in cur.fetchall() if r[0]}
+    cur.execute(
+        "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    meta_row = cur.fetchone()
+    conn.close()
+    for t in timings:
+        sv = None
+        cu = t.get("type")
+        if cu and cu in code_uid_to_code:
+            sv = code_to_sv.get(str(code_uid_to_code.get(cu)))
+        t["type_submission_value"] = sv
+        rtf_sv = None
+        rtf_cu = t.get("relative_to_from")
+        if rtf_cu and rtf_cu in code_uid_to_code:
+            rtf_sv = code_to_sv_rtf.get(str(code_uid_to_code.get(rtf_cu)))
+        t["relative_to_from_submission_value"] = rtf_sv
+    timing_type_options = sorted(sv_to_code.keys()) if sv_to_code else []
+    relative_to_from_options = sorted(sv_to_code_rtf.keys()) if sv_to_code_rtf else []
+
+    study_id, study_label, study_description, study_name, study_created_at = meta_row
+    study_meta = {
+        "study_id": study_id,
+        "study_label": study_label,
+        "study_description": study_description,
+        "study_name": study_name,
+        "study_created_at": study_created_at,
+    }
+
+    return templates.TemplateResponse(
+        request,
+        "study_timing.html",
+        {
+            "request": request,
+            "soa_id": soa_id,
+            "schedule_timelines": schedule_timelines,
+            "instances": instances,
+            "timings": timings,
+            "instance_options": instance_options,
+            "encounter_options": encounter_options,
+            "epoch_options": epoch_options,
+            "schedule_timelines_options": schedule_timelines_options,
+            "timing_type_options": timing_type_options,
+            "relative_to_from_options": relative_to_from_options,
             **study_meta,
         },
     )
@@ -229,7 +320,8 @@ def ui_create_schedule_timeline(
     )
     create_schedule_timeline(soa_id, payload)
     return RedirectResponse(
-        url=f"/ui/soa/{int(soa_id)}/schedule_timelines", status_code=303
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/schedule_timelines"),
+        status_code=303,
     )
 
 
@@ -387,7 +479,8 @@ def ui_update_schedule_timeline(
     )
     update_schedule_timeline(soa_id, schedule_timeline_id, payload)
     return RedirectResponse(
-        url=f"/ui/soa/{int(soa_id)}/schedule_timelines", status_code=303
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/schedule_timelines"),
+        status_code=303,
     )
 
 
@@ -451,5 +544,6 @@ def ui_delete_schedule_timeline(
 ):
     delete_schedule_timeline(soa_id, schedule_timeline_id)
     return RedirectResponse(
-        url=f"/ui/soa/{int(soa_id)}/schedule_timelines", status_code=303
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/schedule_timelines"),
+        status_code=303,
     )

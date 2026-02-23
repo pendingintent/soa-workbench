@@ -18,6 +18,7 @@ from ..utils import (
     get_schedule_timeline,
     get_study_timing_type,
     get_next_code_uid as _get_next_code_uid,
+    redirect_url_from_referer as _redirect_url,
 )
 
 router = APIRouter()
@@ -332,7 +333,9 @@ def ui_create_timing(
         msgs = "; ".join(e["msg"] for e in exc.errors())
         raise HTTPException(400, f"Validation error: {msgs}")
     create_timing(soa_id, payload)
-    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/timings", status_code=303)
+    return RedirectResponse(
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/timings"), status_code=303
+    )
 
 
 @router.get("/soa/{soa_id}/timing_audit", response_class=JSONResponse)
@@ -668,7 +671,9 @@ def ui_update_timing(
         msgs = "; ".join(e["msg"] for e in exc.errors())
         raise HTTPException(400, f"Validation error: {msgs}")
     update_timing(soa_id, timing_id, payload)
-    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/timings", status_code=303)
+    return RedirectResponse(
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/timings"), status_code=303
+    )
 
 
 # API endpoint to delete a timing
@@ -719,4 +724,6 @@ def delete_timing(soa_id: int, timing_id: int):
 @router.post("/ui/soa/{soa_id}/timings/{timing_id}/delete")
 def ui_delete_timing(request: Request, soa_id: int, timing_id: int):
     delete_timing(soa_id, timing_id)
-    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/timings", status_code=303)
+    return RedirectResponse(
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/timings"), status_code=303
+    )

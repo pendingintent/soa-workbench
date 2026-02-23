@@ -3,6 +3,8 @@ import os
 import re
 import requests
 import time
+from urllib.parse import urlparse, urlunparse
+from fastapi import Request
 from .db import _connect
 
 _epoch_type_cache: dict[str, Any] = {
@@ -55,6 +57,17 @@ _ISO_DURATION_RE = re.compile(
     1 minute = 1/(24*60) day
     1 second = 1/(24*3600) day
 """
+
+
+def redirect_url_from_referer(request: Request, fallback: str) -> str:
+    """Return the Referer URL if it's a same-origin /ui/ path, else fallback."""
+    referer = request.headers.get("referer", "")
+    if referer:
+        parsed = urlparse(referer)
+        base = urlparse(str(request.base_url))
+        if parsed.netloc == base.netloc and parsed.path.startswith("/ui/"):
+            return urlunparse(("", "", parsed.path, "", parsed.query, parsed.fragment))
+    return fallback
 
 
 def iso_duration_to_days(iso_duration: str) -> float:

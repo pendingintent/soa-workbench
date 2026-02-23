@@ -15,6 +15,7 @@ from ..utils import (
     get_epoch_uid,
     get_schedule_timeline,
     get_scheduled_activity_instance,
+    redirect_url_from_referer as _redirect_url,
 )
 
 router = APIRouter()
@@ -216,7 +217,9 @@ def ui_create_instance(
         member_of_timeline=member_of_timeline,
     )
     create_instance(soa_id, payload)
-    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/instances", status_code=303)
+    return RedirectResponse(
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/instances"), status_code=303
+    )
 
 
 # API endpoint to update a timeline instance in an SOA
@@ -388,7 +391,9 @@ def ui_update_instance(
         member_of_timeline=member_of_timeline,
     )
     update_instance(soa_id, instance_id, payload)
-    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/instances", status_code=303)
+    return RedirectResponse(
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/instances"), status_code=303
+    )
 
 
 # API endpoint to delete a timeline instance
@@ -438,7 +443,9 @@ def delete_instance(soa_id: int, instance_id: int):
 @router.post("/ui/soa/{soa_id}/instances/{instance_id}/delete")
 def ui_del_instance(request: Request, soa_id: int, instance_id: int):
     delete_instance(soa_id, instance_id)
-    return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/instances", status_code=303)
+    return RedirectResponse(
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/instances"), status_code=303
+    )
 
 
 # API endpoint to reorder instances
