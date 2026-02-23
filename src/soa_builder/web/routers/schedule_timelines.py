@@ -37,12 +37,13 @@ def _redirect_url(request: Request, fallback: str) -> str:
     """Return the Referer URL if it's a same-origin /ui/ path, else fallback."""
     referer = request.headers.get("referer", "")
     if referer:
-        from urllib.parse import urlparse
+        from urllib.parse import urlparse, urlunparse
 
         parsed = urlparse(referer)
         base = urlparse(str(request.base_url))
         if parsed.netloc == base.netloc and parsed.path.startswith("/ui/"):
-            return parsed.path
+            # Preserve any query string and fragment from the original Referer
+            return urlunparse(("", "", parsed.path, "", parsed.query, parsed.fragment))
     return fallback
 
 
