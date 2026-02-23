@@ -83,7 +83,7 @@
 <div class="flex">
   <div>
 
-    {% with instances=instances_crud, study_name=soa_name, hide_return_link=true %}
+    {% with instances=instances_crud, study_name=study_name, hide_return_link=true %}
     <details id="edit-instances-section" open class="collapsible">
       <summary>Scheduled Activity Instances ({{ instances_crud|length }})</summary>
       {% include '_instances_section.html' %}
