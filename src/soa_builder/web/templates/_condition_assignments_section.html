@@ -1,0 +1,71 @@
+<h2>Conditions Assignments for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
+
+{% if not hide_return_link %}
+<div style="margin-bottom:12px;">
+    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
+        ← Return to Edit Page
+    </a>
+</div>
+{% endif %}
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('save-instance-order-btn');
+    if (btn) {
+        btn.addEventListener('click', function () {
+            var soaId = btn.getAttribute('data-soa-id');
+            saveInstanceOrder(soaId);
+        });
+    }
+});
+
+function moveInstanceRow(button, dir) {
+    var row = button.closest('tr');
+    if (!row) return;
+    var table = document.getElementById('instances-table');
+    if (!table) return;
+    var tbody = table.tBodies[0] || table;
+
+    if (dir < 0) {
+        var prev = row.previousElementSibling;
+        if (prev && prev.querySelector && prev.querySelector('td')) {
+            tbody.insertBefore(row, prev);
+        }
+    } else {
+        var next = row.nextElementSibling;
+        if (next) {
+            tbody.insertBefore(next, row);
+        }
+    }
+}
+
+function saveInstanceOrder(soaId) {
+    var rows = document.querySelectorAll('#instances-table tr[data-instance-id]');
+    var order = [];
+    for (var i = 0; i < rows.length; i++) {
+        var id = parseInt(rows[i].getAttribute('data-instance-id'), 10);
+        if (!isNaN(id)) {
+            order.push(id);
+        }
+    }
+
+    fetch('/soa/' + soaId + '/instances/reorder', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json;charset=UTF-8'
+        },
+        body: JSON.stringify({ order: order })
+    }).then(function (response) {
+        if (response.ok) {
+            window.location.reload();
+            return;
+        }
+        return response.text().then(function (text) {
+            alert('Reorder failed: ' + (text || ('HTTP ' + response.status)));
+        });
+    }).catch(function (error) {
+        alert('Reorder failed: ' + error.message);
+    });
+}
+</script>

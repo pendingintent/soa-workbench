@@ -136,6 +136,40 @@ def _init_db():
         )"""
     )
 
+    # decision_instances
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS decision_instances (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        soa_id INTEGER NOT NULL,
+        instance_uid TEXT NOT NULL,      -- ScheduledDecisionInstance_N
+        name TEXT NOT NULL,
+        label TEXT,
+        description TEXT,
+        default_condition_uid TEXT,      -- UID of default-path ScheduledInstance
+        epoch_uid TEXT,
+        member_of_timeline TEXT,         -- schedule_timeline_uid FK
+        order_index INTEGER,
+        UNIQUE(soa_id, instance_uid)
+        )"""
+    )
+
+    # condition_assignment
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS condition_assignment (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            condition_assignment_uid TEXT NOT NULL,
+            name TEXT NOT NULL,
+            label TEXT,
+            description TEXT,
+            condition TEXT NOT NULL,
+            decision_instance_uid TEXT NOT NULL,
+            condition_target_uid TEXT NOT NULL,
+            order_index INTEGER,
+            UNIQUE(soa_id, condition_assignment_uid)
+            )"""
+    )
+
     # protocol_terminology: this table is created dynamically when uploading a new Protocol Terminology
     # (app.py:5781-6119)
 

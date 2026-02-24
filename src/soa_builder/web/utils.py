@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import os
 import re
 import requests
@@ -99,6 +99,11 @@ def iso_duration_to_days(iso_duration: str) -> float:
     days += parts["seconds"] / (24.0 * 3600.0)
 
     return days
+
+
+def _nz(s: Optional[str]) -> Optional[str]:
+    s = (s or "").strip()
+    return s or None
 
 
 def get_cdisc_api_key():
@@ -452,8 +457,13 @@ def get_scheduled_activity_instance(soa_id: int) -> Dict[str, str]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT name,instance_uid FROM instances WHERE soa_id=? ORDER BY instance_uid",
-        (soa_id,),
+        """
+        SELECT name,instance_uid FROM instances WHERE soa_id=?
+        UNION
+        SELECT name,instance_uid FROM decision_instances WHERE soa_id=?
+        ORDER BY name
+        """,
+        (soa_id, soa_id),
     )
     rows = cur.fetchall()
     conn.close()

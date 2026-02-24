@@ -285,6 +285,82 @@ def _record_instance_audit(
         logger.warning("Failed recording instance audit: %s", e)
 
 
+def _record_decision_instance_audit(
+    soa_id: int,
+    action: str,
+    decision_instance_id: int | None,
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS decision_instance_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                decision_instance_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        cur.execute(
+            "INSERT INTO decision_instance_audit (soa_id, decision_instance_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                decision_instance_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording decision_instance audit: %s", e)
+
+
+def _record_condition_assignment_audit(
+    soa_id: int,
+    action: str,
+    condition_assignment_id: int | None,
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS condition_assignment_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                condition_assignment_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        cur.execute(
+            "INSERT INTO condition_assignment_audit (soa_id, condition_assignment_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                condition_assignment_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording condition_assignment audit: %s", e)
+
+
 # Transition Rule Audit
 def _record_transition_rule_audit(
     soa_id: int,

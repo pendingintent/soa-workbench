@@ -1,0 +1,173 @@
+<h2>Scheduled Decision Instances for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
+
+{% if not hide_return_link %}
+<div style="margin-bottom:12px;">
+    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
+        ← Return to Edit Page
+    </a>
+</div>
+{% endif %}
+
+<div style="margin-bottom:2px;">
+    <form method="post" action="/ui/soa/{{ soa_id }}/decision_instances/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Name *</strong></label>
+            <input name="name" placeholder="Decision Instance Name" required />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Label</strong></label>
+            <input name="label" placeholder="Label (optional)" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Description</strong></label>
+            <input name="description" placeholder="Description (optional)" />
+        </div>
+        <div style="display: flex;flex-direction: column;gap:2px;">
+            <label><strong>Default Condition (fallback target)</strong></label>
+            <select name="default_condition_uid">
+                <option value="">-- Select Scheduled Instance --</option>
+                {% for name, instance_uid in (instance_options or {}).items() %}
+                <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Epoch</strong></label>
+            <select name="epoch_uid">
+                <option value="">-- Select Epoch --</option>
+                {% for name, epoch_uid in (epoch_options or {}).items() %}
+                    <option value="{{ epoch_uid }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <label><strong>Member of Timeline</strong></label>
+            <select name="member_of_timeline">
+                <option value="">-- Select Timeline --</option>
+                {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
+                    <option value="{{ schedule_timeline_uid }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Decision Instance</button>
+    </form>
+</div>
+
+<table style="width:100%;font-size:0.85em;border-collapse:collapse;margin-top:12px;">
+    <tr style="background:#eee;">
+        <th style="text-align:left;padding:4px;">ID</th>
+        <th style="text-align:left;padding:4px;">Name</th>
+        <th style="text-align:left;padding:4px;">Label</th>
+        <th style="text-align:left;padding:4px;">Description</th>
+        <th style="text-align:left;padding:4px;">Default Condition</th>
+        <th style="text-align:left;padding:4px;">Epoch</th>
+        <th style="text-align:left;padding:4px;">Member of Timeline</th>
+        <th style="text-align:left;padding:4px;">Save</th>
+        <th style="text-align:left;padding:4px;">Delete</th>
+    </tr>
+    {% for di in decision_instances or [] %}
+    <tr data-decision-instance-id="{{ di.id }}">
+        <form method="post" action="/ui/soa/{{ soa_id }}/decision_instances/{{ di.id }}/update">
+            <td style="padding:4px;white-space:nowrap;"><strong>{{ di.instance_uid }}</strong></td>
+            <td style="padding:4px;"><input name="name" value="{{ di.name or '' }}" placeholder="Name" /></td>
+            <td style="padding:4px;"><input name="label" value="{{ di.label or '' }}" placeholder="Label" /></td>
+            <td style="padding:4px;"><input name="description" value="{{ di.description or '' }}" placeholder="Description" /></td>
+            <td style="padding:4px;">
+                <select name="default_condition_uid">
+                    <option value="">-- Select Scheduled Instance --</option>
+                    {% for name, instance_uid in (instance_options or {}).items() %}
+                    <option value="{{ instance_uid }}" {% if (di.default_condition_uid or '') == instance_uid %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="padding:4px;">
+                <select name="epoch_uid">
+                    <option value="">-- Select Epoch --</option>
+                    {% for name, epoch_uid in (epoch_options or {}).items() %}
+                    <option value="{{ epoch_uid }}" {% if di.epoch_uid == epoch_uid %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="padding: 4px;">
+                <select name="member_of_timeline">
+                    <option value="">-- Select Timeline --</option>
+                    {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
+                    <option value="{{ schedule_timeline_uid }}" {% if (di.member_of_timeline or '') == schedule_timeline_uid %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td style="padding:4px;">
+                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+            </td>
+        </form>
+        <td style="padding:4px;">
+            <form method="post" action="/ui/soa/{{ soa_id }}/decision_instances/{{ di.id }}/delete">
+                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" style="padding:6px;color:#777;">No Decision Instances yet.</td></tr>
+    {% endfor %}
+</table>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('save-instance-order-btn');
+    if (btn) {
+        btn.addEventListener('click', function () {
+            var soaId = btn.getAttribute('data-soa-id');
+            saveInstanceOrder(soaId);
+        });
+    }
+});
+
+function moveInstanceRow(button, dir) {
+    var row = button.closest('tr');
+    if (!row) return;
+    var table = document.getElementById('instances-table');
+    if (!table) return;
+    var tbody = table.tBodies[0] || table;
+
+    if (dir < 0) {
+        var prev = row.previousElementSibling;
+        if (prev && prev.querySelector && prev.querySelector('td')) {
+            tbody.insertBefore(row, prev);
+        }
+    } else {
+        var next = row.nextElementSibling;
+        if (next) {
+            tbody.insertBefore(next, row);
+        }
+    }
+}
+
+function saveInstanceOrder(soaId) {
+    var rows = document.querySelectorAll('#instances-table tr[data-instance-id]');
+    var order = [];
+    for (var i = 0; i < rows.length; i++) {
+        var id = parseInt(rows[i].getAttribute('data-instance-id'), 10);
+        if (!isNaN(id)) {
+            order.push(id);
+        }
+    }
+
+    fetch('/soa/' + soaId + '/instances/reorder', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json;charset=UTF-8'
+        },
+        body: JSON.stringify({ order: order })
+    }).then(function (response) {
+        if (response.ok) {
+            window.location.reload();
+            return;
+        }
+        return response.text().then(function (text) {
+            alert('Reorder failed: ' + (text || ('HTTP ' + response.status)));
+        });
+    }).catch(function (error) {
+        alert('Reorder failed: ' + error.message);
+    });
+}
+</script>

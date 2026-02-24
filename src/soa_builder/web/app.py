@@ -76,6 +76,8 @@ from .routers import cells as cells_router
 from .routers import instances as instances_router
 from .routers import usdm_json as usdm_json_router
 from .routers import tdd as tdd_router
+from .routers import decision_instances as decision_instances_router
+from .routers import condition_assignments as condition_assignments_router
 
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
@@ -189,6 +191,7 @@ _migrate_element_audit_columns()
 _backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 
+
 # Include routers
 app.include_router(arms_router.router)
 app.include_router(elements_router.router)
@@ -206,6 +209,8 @@ app.include_router(rules_router.router)
 app.include_router(cells_router.router)
 app.include_router(usdm_json_router.router)
 app.include_router(tdd_router.router)
+app.include_router(decision_instances_router.router)
+app.include_router(condition_assignments_router.router)
 
 
 def _record_visit_audit(

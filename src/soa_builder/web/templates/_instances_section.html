@@ -1,4 +1,4 @@
-<h2>Scheduled Activity Instances for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
+<h2>Scheduled Instances for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 {% if not hide_return_link %}
 <div style="margin-bottom:12px;">
@@ -8,7 +8,7 @@
 </div>
 {% endif %}
 
-<div style="margin-bottom:2px;">
+    <div style="margin-bottom:2px;">
     <form method="post" action="/ui/soa/{{ soa_id }}/instances/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
         <div style="display: flex;flex-direction: column;gap: 2px;">
             <label><strong>Name *</strong></label>
@@ -25,7 +25,7 @@
         <div style="display: flex;flex-direction: column;gap:2px;">
             <label><strong>Next Instance (default condition)</strong></label>
             <select name="default_condition_uid">
-                <option value="">-- Select Activity Instance --</option>
+                <option value="">-- Select Scheduled Instance --</option>
                 {% for name, instance_uid in (instance_options or {}).items() %}
                     <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
                 {% endfor %}
@@ -99,8 +99,8 @@
       <td style="padding:4px;"><input name="description" value="{{ i.description or '' }}" placeholder="Description" /></td>
       <td style="padding:4px;">
         <select name="default_condition_uid">
-            <option value="">-- Select Activity Instance --</option>
-            {% for name, instance_uid in (instance_options or {}).items() %}
+            <option value="">-- Select Scheduled Instance --</option>
+              {% for name, instance_uid in (instance_options or {}).items() %}
                 <option value="{{ instance_uid }}" {% if (i.default_condition_uid or '') == instance_uid %}selected{% endif %}>{{ name }}</option>
             {% endfor %}
         </select>
