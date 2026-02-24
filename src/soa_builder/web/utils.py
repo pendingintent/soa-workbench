@@ -445,6 +445,29 @@ def get_study_timing_type(codelist_code: str) -> Dict[str, str]:
     return {str(sub): str(code) for (sub, code) in rows}
 
 
+def get_conditions(soa_id: int) -> Dict[str, str]:
+    """
+    Return a dictionary of {name: condition_assignment_uid} from condition_assignment table
+
+    :param soa_id: soa identifier
+    :type soa_id: int
+    :return {name: condition_assignment_uid}
+    :rtype: Dict[str, str]
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name,condition_assignment_uid FROM condition_assignment WHERE soa_id=? ORDER BY name",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {
+        str(name): str(condition_assignment_uid)
+        for (name, condition_assignment_uid) in rows
+    }
+
+
 def get_scheduled_activity_instance(soa_id: int) -> Dict[str, str]:
     """
     Return Dictionary of {name: instance_uid} from instances table

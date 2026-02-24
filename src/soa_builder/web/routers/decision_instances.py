@@ -23,12 +23,6 @@ templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "..", "templates")
 )
 
-"""
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
-"""
-
 
 @router.get(
     "/soa/{soa_id}/decision_instances",

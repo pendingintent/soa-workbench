@@ -162,9 +162,9 @@ def _init_db():
             name TEXT NOT NULL,
             label TEXT,
             description TEXT,
-            condition TEXT NOT NULL,
-            decision_instance_uid TEXT NOT NULL,
-            condition_target_uid TEXT NOT NULL,
+            condition TEXT,
+            decision_instance_uid TEXT,
+            condition_target_uid TEXT,
             order_index INTEGER,
             UNIQUE(soa_id, condition_assignment_uid)
             )"""

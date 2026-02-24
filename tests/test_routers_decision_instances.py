@@ -131,7 +131,7 @@ def test_create_condition_assignment():
     )
     assert resp.status_code == 201
     data = resp.json()
-    assert data["condition_assignment_uid"] == "ConditionAssignment_1"
+    assert data["condition_assignment_uid"] == "Condition_1"
     assert data["decision_instance_uid"] == di_uid
     assert data["condition"] == "Eligibility met"
     assert data["condition_target_uid"] == "ScheduledActivityInstance_1"
@@ -163,8 +163,8 @@ def test_condition_assignment_uid_monotonic():
             "condition_target_uid": "ScheduledActivityInstance_2",
         },
     )
-    assert r1.json()["condition_assignment_uid"] == "ConditionAssignment_1"
-    assert r2.json()["condition_assignment_uid"] == "ConditionAssignment_2"
+    assert r1.json()["condition_assignment_uid"] == "Condition_1"
+    assert r2.json()["condition_assignment_uid"] == "Condition_2"
 
 
 def test_list_condition_assignments_by_decision_instance():
@@ -203,7 +203,7 @@ def test_list_condition_assignments_by_decision_instance():
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert len(data) == 1
+    assert len(data) == 2
     assert data[0]["condition"] == "A"
 
 
@@ -315,5 +315,5 @@ def test_usdm_decision_instance_condition_assignments():
     ca = di["conditionAssignments"][0]
     assert ca["condition"] == "not reached cycle 12"
     assert ca["conditionTargetId"] == "ScheduledActivityInstance_1"
-    assert ca["instanceType"] == "ConditionAssignment"
-    assert ca["id"] == "ConditionAssignment_1"
+    assert ca["instanceType"] == "Condition"
+    assert ca["id"] == "Condition_1"
