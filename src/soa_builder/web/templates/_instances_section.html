@@ -41,10 +41,6 @@
             </select>
         </div>
         <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Timeline ID</strong></label>
-            <input name="timeline_id" placeholder="Timeline ID (Optional)" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
             <label><strong>Timeline Exit ID</strong></label>
             <input name="timeline_exit_id" placeholder="Timeline Exit ID" />
         </div>
@@ -79,7 +75,6 @@
         <th style="text-align:left;padding:4px;">Description</th>
         <th style="text-align:left;padding:4px;">Next Instance (default condition)</th>
         <th style="text-align:left;padding:4px;">Epoch</th>
-        <th style="text-align:left;padding:4px;">Timeline ID</th>
         <th style="text-align:left;padding:4px;">Timeline Exit ID</th>
         <th style="text-align:left;padding:4px;">Encounter</th>
         <th style="text-align:left;padding:4px;">Member of Timeline</th>
@@ -118,7 +113,6 @@
             {% endfor %}
         </select>
     </td>
-      <td style="padding:4px;"><input name="timeline_id" value="{{ i.timeline_id or '' }}" placeholder="Timeline ID" /></td>
       <td style="padding:4px;"><input name="timeline_exit_id" value="{{ i.timeline_exit_id or '' }}" placeholder="Timeline Exit ID" /></td>
       <td style="padding:4px;">
         <select name="encounter_uid">
