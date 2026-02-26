@@ -6,7 +6,7 @@ import os
 import time
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Form
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -644,6 +644,41 @@ def ui_refresh_concepts_activities(request: Request, soa_id: int):
     from ..app import fetch_biomedical_concepts as _app_fetch_concepts
 
     _app_fetch_concepts(force=True)
+    redirect_url = f"/ui/soa/{int(soa_id)}/activities"
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": redirect_url})
+    return RedirectResponse(url=redirect_url, status_code=303)
+
+
+@ui_router.post("/ui/soa/{soa_id}/activities/dss_auto_assign")
+def ui_dss_auto_assign(
+    request: Request,
+    soa_id: int,
+    background_tasks: BackgroundTasks,
+):
+    """Queue background DSS auto-assignment for all concepts in the SOA."""
+    from ..app import _lookup_and_save_dss as _auto_dss
+
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    has_soa_col = _table_has_columns(cur, "activity_concept", ("soa_id",))
+    if has_soa_col:
+        cur.execute(
+            "SELECT activity_id, concept_code FROM activity_concept WHERE soa_id=?",
+            (soa_id,),
+        )
+    else:
+        cur.execute(
+            "SELECT ac.activity_id, ac.concept_code FROM activity_concept ac"
+            " JOIN activity a ON a.id=ac.activity_id WHERE a.soa_id=?",
+            (soa_id,),
+        )
+    rows = cur.fetchall()
+    conn.close()
+    for activity_id, concept_code in rows:
+        background_tasks.add_task(_auto_dss, soa_id, activity_id, concept_code)
     redirect_url = f"/ui/soa/{int(soa_id)}/activities"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
