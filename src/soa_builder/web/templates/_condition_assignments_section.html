@@ -72,7 +72,7 @@
                 <select name="decision_instance_uid">
                     <option value="">-- Select Decision Instance --</option>
                     {% for name, instance_uid in (instance_options or {}).items() %}
-                    <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
+                    <option value="{{ instance_uid }}" {% if instance_uid == c.decision_instance_uid %}selected{% endif %}>{{ name }}: [{{ instance_uid }}]</option>
                     {% endfor %}
                 </select>
             </td>
@@ -80,7 +80,7 @@
                 <select name="condition_target_uid">
                     <option value="">-- Select Target Instance --</option>
                     {% for name, instance_uid in (instance_options or {}).items() %}
-                    <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
+                    <option value="{{ instance_uid }}" {% if instance_uid == c.condition_target_uid %}selected{% endif %}>{{ name }}: [{{ instance_uid }}]</option>
                     {% endfor %}
                 </select>
             </td>
