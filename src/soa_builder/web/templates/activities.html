@@ -8,18 +8,21 @@
     </a>
 </div>
 
-<div style="margin:4px 0 12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<div style="margin:4px 0 12px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <form hx-post="/ui/soa/{{ soa_id }}/activities/concepts_refresh" style="display:inline;">
-        <button type="submit" style="background:#455a64;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8em;">&#x21bb; Refresh Biomedical Concepts</button>
+        <button type="submit" style="background:#455a64;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.9em;">&#x21bb; Refresh Biomedical Concepts</button>
     </form>
     <small style="color:#555;">(forces remote re-fetch &amp; cache reset)</small>
+</div>
+
+<div style="margin:4px 0 24px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <form hx-post="/ui/soa/{{ soa_id }}/activities/dss_auto_assign" style="display:inline;">
-        <button type="submit" style="background:#1565c0;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8em;">&#x21bb; Auto-assign DSS</button>
+        <button type="submit" style="background:#1565c0;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.9em;">&#x21bb; Auto-assign DSS</button>
     </form>
     <small style="color:#555;">(fetches DSS for all unmapped concepts)</small>
 </div>
 
-<div style="margin-bottom:12px">
+<div style="margin:4px 0 12px 12px">
     <form method="post" action="/ui/soa/{{ soa_id }}/activities/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
         <div style="display:flex;flex-direction:column;gap:2px;">
             <label><strong>Name *</strong></label>
