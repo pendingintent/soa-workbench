@@ -29,6 +29,7 @@ from usdm.generate_encounters import build_usdm_encounters
 from usdm.generate_schedule_timelines import build_usdm_schedule_timelines
 from usdm.generate_study_cells import build_usdm_study_cells
 from usdm.generate_study_epochs import build_usdm_epochs
+from usdm.generate_biomedical_concepts import build_usdm_biomedical_concepts
 
 
 def _nz(s: Optional[str]) -> Optional[str]:
@@ -170,6 +171,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "dateValues": [],
         "amendments": [],
         "businessTherapeuticAreas": [],
+        "biomedicalConcepts": build_usdm_biomedical_concepts(soa_id),
         "notes": [],
         "instanceType": "StudyVersion",
     }
