@@ -313,6 +313,17 @@ def _init_db():
         )"""
     )
 
+    # Alias Code table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS alias_code (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INT NOT NULL,
+            alias_code_uid TEXT NOT NULL,
+            standardCode TEXT,                      -- reference to code_uid value
+            UNIQUE(alias_code_uid, soa_id)
+        )"""
+    )
+
     # AUDIT TABLES FOR TRACKING ALL CHANGES TO ENTITIES
 
     # Element audit table capturing create/update/delete operations
