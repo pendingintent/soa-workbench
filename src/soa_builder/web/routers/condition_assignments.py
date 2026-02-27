@@ -202,7 +202,7 @@ def ui_create_condition_assignment(
     )
     create_condition_assignment(soa_id, payload)
     return RedirectResponse(
-        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/condition_assignment"),
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/condition_assignments"),
         status_code=303,
     )
 
