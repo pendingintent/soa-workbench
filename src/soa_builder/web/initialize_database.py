@@ -324,6 +324,21 @@ def _init_db():
         )"""
     )
 
+    # code_assignment table for storing code assignment values stored in code table
+    # this is for the renaming of the code table currently storing activities and
+    # associated biomedical concepts
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS code_association (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            code_uid TEXT NOT NULL,                 -- immutable Code_N identifier unique within an SOA
+            codelist_table TEXT,
+            codelist_code TEXT ,
+            code,
+            UNIQUE(code_uid, soa_id)
+        )"""
+    )
+
     # AUDIT TABLES FOR TRACKING ALL CHANGES TO ENTITIES
 
     # Element audit table capturing create/update/delete operations
