@@ -389,56 +389,6 @@ def _migrate_add_epoch_uid():
         logger.warning("epoch_uid migration failed: %s", e)
 
 
-# Migration: create code_junction table
-def _migrate_create_code_junction():
-    """Create code_junction linking table if absent.
-
-    Columns:
-        id INTEGER PRIMARY KEY AUTOINCREMENT
-        code_uid TEXT                -- opaque unique identifier for the code instance
-        codelist_table TEXT          -- source table name that provided the code
-        codelist_code TEXT           -- code value from source codelist
-        type_code TEXT               -- type/category for the code (e.g., TERM, SYNONYM)
-        data_origin_type_code TEXT   -- origin classification (e.g., DDF, PROTOCOL, IMPORT)
-        soa_id INTEGER               -- optional foreign key to study (not enforced)
-        linked_table TEXT            -- target table name being linked
-        linked_column TEXT           -- column name in target table referencing the code
-        linked_id TEXT               -- id/key in target table row (stored as TEXT for flexibility)
-
-    Indexes can be added later once query patterns emerge. Using TEXT for linked_id avoids
-    premature typing constraints (could be INT or UUID)."""
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        # Detect existing table
-        cur.execute("PRAGMA table_info(code_junction)")
-        existing_cols = [r[1] for r in cur.fetchall()]
-        if existing_cols:  # table already exists
-            conn.close()
-            return
-        cur.execute(
-            """
-                        CREATE TABLE code_junction (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            code_uid TEXT,
-                            codelist_table TEXT,
-                            codelist_code TEXT,
-                            type_code TEXT,
-                            data_origin_type_code TEXT,
-                            soa_id INTEGER,
-                            linked_table TEXT,
-                            linked_column TEXT,
-                            linked_id TEXT
-                        )
-                        """
-        )
-        conn.commit()
-        conn.close()
-        logger.info("Created code_junction table")
-    except Exception as e:  # pragma: no cover
-        logger.warning("code_junction migration failed: %s", e)
-
-
 # Migrations: add study metadata columns
 def _migrate_add_study_fields():
     """Ensure study metadata columns (study_id, study_label, study_description) exist on soa table.

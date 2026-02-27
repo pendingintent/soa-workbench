@@ -54,7 +54,6 @@ from .migrate_database import (
     _migrate_arm_add_type_fields,
     _migrate_element_audit_columns,
     _migrate_copy_cell_data,
-    _migrate_create_code_junction,
     _migrate_drop_arm_element_link,
     _migrate_element_id,
     _migrate_element_table,
@@ -186,7 +185,6 @@ _migrate_visit_add_label_desc()
 _migrate_add_epoch_seq()
 _migrate_add_epoch_label_desc()
 _migrate_add_epoch_uid()
-_migrate_create_code_junction()
 _migrate_add_study_fields()
 _drop_unused_override_table()
 _migrate_element_table()
