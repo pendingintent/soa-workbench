@@ -1012,6 +1012,10 @@ def _migrate_activity_concept_add_dss():
             cur.execute("ALTER TABLE activity_concept ADD COLUMN dss_href TEXT")
             conn.commit()
             logger.info("Added dss_href column to activity_concept table")
+        if "dss_domain" not in cols:
+            cur.execute("ALTER TABLE activity_concept ADD COLUMN dss_domain TEXT")
+            conn.commit()
+            logger.info("Added dss_domain column to activity_concept table")
         conn.close()
     except Exception as e:
         logger.warning("activity_concept dss migration failed: %s", e)
