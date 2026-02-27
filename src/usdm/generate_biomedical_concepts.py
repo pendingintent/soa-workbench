@@ -274,7 +274,9 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
         dss_href = r[3]
 
         bc_raw_data = _get_concept_by_code(concept_code)
-        bc = bc_raw_data  # same object, no second API call
+        if bc_raw_data is None:
+            bc_raw_data = {"code": concept_code, "raw": {}}
+        bc = bc_raw_data
 
         # Use stored dss_href when available; fall back to live lookup
         if dss_href:
@@ -282,6 +284,8 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
         else:
             dss_url = _get_dss_url_from_concept(concept_code)
             dss_raw_data = _get_dss_by_url(dss_url)
+        if dss_raw_data is None:
+            dss_raw_data = {"raw": {}}
         try:
             concept_ids = [
                 dec["conceptId"]
