@@ -303,3 +303,39 @@ class StudyCellUpdate(BaseModel):
     arm_uid: Optional[str] = None
     epoch_uid: Optional[str] = None
     element_uid: Optional[str] = None
+
+
+class DecisionInstanceCreate(BaseModel):
+    name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    default_condition_uid: Optional[str] = None
+    epoch_uid: Optional[str] = None
+    member_of_timeline: Optional[str] = None
+
+
+class DecisionInstanceUpdate(BaseModel):
+    name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    default_condition_uid: Optional[str] = None
+    epoch_uid: Optional[str] = None
+    member_of_timeline: Optional[str] = None
+
+
+class ConditionAssignmentCreate(BaseModel):
+    name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    condition: Optional[str] = None
+    decision_instance_uid: Optional[str] = None
+    condition_target_uid: Optional[str] = None
+
+
+class ConditionAssignmentUpdate(BaseModel):
+    name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    condition: Optional[str] = None
+    decision_instance_uid: Optional[str] = None
+    condition_target_uid: Optional[str] = None

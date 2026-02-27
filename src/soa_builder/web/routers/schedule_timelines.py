@@ -18,6 +18,8 @@ from ..utils import (
     get_study_timing_type,
     redirect_url_from_referer as _redirect_url,
 )
+from .condition_assignments import list_condition_assignments
+from .decision_instances import list_decision_instances
 from .instances import list_instances
 from .timings import list_timings
 
@@ -143,9 +145,11 @@ def ui_study_timing(request: Request, soa_id: int):
 
     # Instances data
     instances = list_instances(soa_id)
+    decision_instances = list_decision_instances(soa_id)
     encounter_options = get_encounter_id(soa_id)
     epoch_options = get_epoch_uid(soa_id)
     schedule_timelines_options = get_schedule_timeline(soa_id)
+    conditions = list_condition_assignments(soa_id)
 
     # Timings data (with code_uid -> submission_value decoding)
     timings = list_timings(soa_id)
@@ -200,6 +204,8 @@ def ui_study_timing(request: Request, soa_id: int):
             "soa_id": soa_id,
             "schedule_timelines": schedule_timelines,
             "instances": instances,
+            "conditions": conditions,
+            "decision_instances": decision_instances,
             "timings": timings,
             "instance_options": instance_options,
             "encounter_options": encounter_options,

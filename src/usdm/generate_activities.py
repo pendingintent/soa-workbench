@@ -14,26 +14,27 @@ except ImportError:
         sys.path.insert(0, str(src_dir))
     from soa_builder.web.app import _connect  # type: ignore
 
-
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
-
-
-def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT concept_uid from activity_concept where soa_id=? and activity_uid=?",
-        (
-            soa_id,
-            activity_uid,
-        ),
+try:
+    from soa_builder.web.utils import (
+        _get_biomedical_concept_ids as _get_biomedical_concept_ids,
     )
-    rows = cur.fetchall()
-    conn.close()
-    bc_uids = [r[0] for r in rows] or []
-    return bc_uids
+except ImportError:
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from soa_builder.web.utils import (
+        _get_biomedical_concept_ids as _get_biomedical_concept_ids,
+    )
+
+try:
+    from soa_builder.web.utils import _nz as _nz
+except ImportError:
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from soa_builder.web.utils import _nz
 
 
 def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
@@ -49,7 +50,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
       - nextId?: string | null
       - childIds: string[]
       - definedProcedures: Procedure-Output[]   (left empty here)
-      - biomedicalConceptIds: string[]         (left empty here)
+      - biomedicalConceptIds: string[]
       - bcCategoryIds: string[]                (left empty here)
       - bcSurrogateIds: string[]               (left empty here)
       - timelineId?: string | null             (left null here)

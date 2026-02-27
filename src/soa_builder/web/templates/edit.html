@@ -85,7 +85,7 @@
 
     {% with instances=instances_crud, study_name=study_name, hide_return_link=true %}
     <details id="edit-instances-section" open class="collapsible">
-      <summary>Scheduled Activity Instances ({{ instances_crud|length }})</summary>
+      <summary>Scheduled Instances ({{ instances_crud|length }})</summary>
       {% include '_instances_section.html' %}
     </details>
     {% endwith %}
@@ -284,8 +284,7 @@
 {% endif %}
 </div>
 {% endfor %}
-<!-- Export XLSX report for SoA -->
-<p><a href="/soa/{{ soa_id }}/normalized" target="_blank">Generate Normalized Summary (JSON)</a></p>
+<!-- Export Excel Matrix for SoA -->
 <div class="export-buttons">
   <a
     id="export-xlsx-link"
@@ -293,7 +292,7 @@
     data-base-href="/soa/{{ soa_id }}/export/xlsx"
     href="/soa/{{ soa_id }}/export/xlsx"
     title="Download Excel workbook"
-  >⬇ XLSX</a>
+  >⬇ Excel Matrix</a>
 </div>
 <!-- CSS styles -->
 <style>

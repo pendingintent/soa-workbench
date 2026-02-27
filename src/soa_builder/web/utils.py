@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import os
 import re
 import requests
@@ -47,16 +47,21 @@ _ISO_DURATION_RE = re.compile(
 )
 
 
-# Helper function to convert ISO-8601 duration/period strings
-# to days, using these common approximations for years and months
-"""
-    1 year = 365 days
-    1 month = 30 days
-    1 week = 7 days
-    1 hour = 1/24 day
-    1 minute = 1/(24*60) day
-    1 second = 1/(24*3600) day
-"""
+# USDM JSON generator helper
+def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT concept_uid from activity_concept where soa_id=? and activity_uid=?",
+        (
+            soa_id,
+            activity_uid,
+        ),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    bc_uids = [r[0] for r in rows] or []
+    return bc_uids
 
 
 def redirect_url_from_referer(request: Request, fallback: str) -> str:
@@ -68,6 +73,18 @@ def redirect_url_from_referer(request: Request, fallback: str) -> str:
         if parsed.netloc == base.netloc and parsed.path.startswith("/ui/"):
             return urlunparse(("", "", parsed.path, "", parsed.query, parsed.fragment))
     return fallback
+
+
+# Helper function to convert ISO-8601 duration/period strings
+# to days, using these common approximations for years and months
+"""
+    1 year = 365 days
+    1 month = 30 days
+    1 week = 7 days
+    1 hour = 1/24 day
+    1 minute = 1/(24*60) day
+    1 second = 1/(24*3600) day
+"""
 
 
 def iso_duration_to_days(iso_duration: str) -> float:
@@ -99,6 +116,11 @@ def iso_duration_to_days(iso_duration: str) -> float:
     days += parts["seconds"] / (24.0 * 3600.0)
 
     return days
+
+
+def _nz(s: Optional[str]) -> Optional[str]:
+    s = (s or "").strip()
+    return s or None
 
 
 def get_cdisc_api_key():
@@ -440,6 +462,29 @@ def get_study_timing_type(codelist_code: str) -> Dict[str, str]:
     return {str(sub): str(code) for (sub, code) in rows}
 
 
+def get_conditions(soa_id: int) -> Dict[str, str]:
+    """
+    Return a dictionary of {name: condition_assignment_uid} from condition_assignment table
+
+    :param soa_id: soa identifier
+    :type soa_id: int
+    :return {name: condition_assignment_uid}
+    :rtype: Dict[str, str]
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name,condition_assignment_uid FROM condition_assignment WHERE soa_id=? ORDER BY name",
+        (soa_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return {
+        str(name): str(condition_assignment_uid)
+        for (name, condition_assignment_uid) in rows
+    }
+
+
 def get_scheduled_activity_instance(soa_id: int) -> Dict[str, str]:
     """
     Return Dictionary of {name: instance_uid} from instances table
@@ -452,8 +497,13 @@ def get_scheduled_activity_instance(soa_id: int) -> Dict[str, str]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT name,instance_uid FROM instances WHERE soa_id=? ORDER BY instance_uid",
-        (soa_id,),
+        """
+        SELECT name,instance_uid FROM instances WHERE soa_id=?
+        UNION
+        SELECT name,instance_uid FROM decision_instances WHERE soa_id=?
+        ORDER BY name
+        """,
+        (soa_id, soa_id),
     )
     rows = cur.fetchall()
     conn.close()

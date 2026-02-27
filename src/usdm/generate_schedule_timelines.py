@@ -84,6 +84,27 @@ def _load_generate_study_instances():
     )
 
 
+def _load_generate_decision_instances():
+    """Return the decision instances builder from usdm.generate_scheduled_decision_instances."""
+    try:
+        import usdm.generate_scheduled_decision_instances as gsdi
+    except Exception:
+        import sys
+        from pathlib import Path
+
+        here = Path(__file__).resolve()
+        src_dir = here.parents[2] / "src"
+        if src_dir.exists() and str(src_dir) not in sys.path:
+            sys.path.insert(0, str(src_dir))
+        import usdm.generate_scheduled_decision_instances as gsdi
+    fn = getattr(gsdi, "build_usdm_decision_instances", None)
+    if callable(fn):
+        return fn
+    raise ImportError(
+        "usdm.generate_scheduled_decision_instances missing build_usdm_decision_instances"
+    )
+
+
 def _nz(s: Optional[str]) -> Optional[str]:
     s = (s or "").strip()
     return s or None
@@ -91,6 +112,7 @@ def _nz(s: Optional[str]) -> Optional[str]:
 
 generate_study_timings = _load_generate_study_timings()
 generate_study_instances = _load_generate_study_instances()
+generate_decision_instances = _load_generate_decision_instances()
 
 
 def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
@@ -219,7 +241,10 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
             "entryId": _nz(entryId),
             "exits": [],
             "timings": generate_study_timings(soa_id, schedule_timeline_uid),
-            "instances": generate_study_instances(soa_id, schedule_timeline_uid),
+            "instances": (
+                generate_study_instances(soa_id, schedule_timeline_uid)
+                + generate_decision_instances(soa_id, schedule_timeline_uid)
+            ),
             "plannedDuration": None,
             "instanceType": "ScheduleTimeline",
         }

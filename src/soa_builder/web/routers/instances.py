@@ -16,6 +16,7 @@ from ..utils import (
     get_schedule_timeline,
     get_scheduled_activity_instance,
     redirect_url_from_referer as _redirect_url,
+    _nz as _nz,
 )
 
 router = APIRouter()
@@ -23,11 +24,6 @@ logger = logging.getLogger("soa_builder.web.routers.instances")
 templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "..", "templates")
 )
-
-
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
 
 
 # API endpoint to list timeline instances for SOA

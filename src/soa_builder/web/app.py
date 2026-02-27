@@ -23,7 +23,16 @@ from typing import Any, List, Optional
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -74,6 +83,10 @@ from .routers import timings as timings_router
 from .routers import schedule_timelines as schedule_timelines_router
 from .routers import cells as cells_router
 from .routers import instances as instances_router
+from .routers import usdm_json as usdm_json_router
+from .routers import tdd as tdd_router
+from .routers import decision_instances as decision_instances_router
+from .routers import condition_assignments as condition_assignments_router
 
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
@@ -187,6 +200,7 @@ _migrate_element_audit_columns()
 _backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 
+
 # Include routers
 app.include_router(arms_router.router)
 app.include_router(elements_router.router)
@@ -202,6 +216,10 @@ app.include_router(audits_router.router)
 app.include_router(schedule_timelines_router.router)
 app.include_router(rules_router.router)
 app.include_router(cells_router.router)
+app.include_router(usdm_json_router.router)
+app.include_router(tdd_router.router)
+app.include_router(decision_instances_router.router)
+app.include_router(condition_assignments_router.router)
 
 
 def _record_visit_audit(
@@ -2326,12 +2344,80 @@ def _get_activity_concepts(activity_id: int):
     return rows
 
 
+def _lookup_and_save_dss(soa_id: int, activity_id: int, concept_code: str) -> None:
+    """Background task: auto-lookup DSS for a concept via CDISC API and persist."""
+    import os
+    import requests as _requests
+
+    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
+        "CDISC_SUBSCRIPTION_KEY"
+    )
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+    headers: dict = {"Accept": "application/json"}
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    try:
+        # Step 1: discover DSS href for this concept
+        list_url = (
+            "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations"
+            "/datasetspecializations?biomedicalconcept=" + concept_code
+        )
+        r1 = _requests.get(list_url, headers=headers, timeout=15)
+        if r1.status_code != 200:
+            return
+        data1 = r1.json()
+        sdtm_links = data1["_links"]["datasetSpecializations"]["sdtm"]
+        if not sdtm_links:
+            return
+        dss_href = sdtm_links[0]["href"]
+        if dss_href.startswith("/"):
+            dss_href = "https://api.library.cdisc.org/api/cosmos/v2" + dss_href
+
+        # Step 2: fetch DSS detail to get datasetSpecializationId
+        r2 = _requests.get(dss_href, headers=headers, timeout=15)
+        if r2.status_code != 200:
+            return
+        data2 = r2.json()
+        dss_id = data2.get("datasetSpecializationId")
+        dss_domain = data2.get("domain")
+        if not dss_id:
+            return
+
+        # Step 3: persist to activity_concept
+        conn = _connect()
+        cur = conn.cursor()
+        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+            cur.execute(
+                "UPDATE activity_concept SET dss_title=?, dss_href=?, dss_domain=?"
+                " WHERE activity_id=? AND concept_code=? AND soa_id=?",
+                (dss_id, dss_href, dss_domain, activity_id, concept_code, soa_id),
+            )
+        else:
+            cur.execute(
+                "UPDATE activity_concept SET dss_title=?, dss_href=?, dss_domain=?"
+                " WHERE activity_id=? AND concept_code=?",
+                (dss_id, dss_href, dss_domain, activity_id, concept_code),
+            )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass  # silent failure — DSS column remains unset; user can assign manually
+
+
 # API endpoint for adding a BC to an activity
 @app.post(
     "/ui/soa/{soa_id}/activity/{activity_id}/concepts/add", response_class=HTMLResponse
 )
 def ui_add_activity_concept(
-    request: Request, soa_id: int, activity_id: int, concept_code: str = Form(...)
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    background_tasks: BackgroundTasks,
+    concept_code: str = Form(...),
 ):
     """Add Biomedical Concept to an Activity."""
     if not activity_id:
@@ -2415,6 +2501,7 @@ def ui_add_activity_concept(
                     (activity_id, code, title),
                 )
         conn.commit()
+        background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
     conn.close()
     selected = _get_activity_concepts(activity_id)
     html = templates.get_template("concepts_cell.html").render(
@@ -4696,11 +4783,30 @@ def ui_set_activity_concepts(
     request: Request,
     soa_id: int,
     activity_id: int,
+    background_tasks: BackgroundTasks,
     concept_codes: List[str] = Form([]),
 ):
     """Form handler to set Biomedical Concepts related to an Activity."""
     payload = ConceptsUpdate(concept_codes=list(dict.fromkeys(concept_codes)))
     set_activity_concepts(soa_id, activity_id, payload)
+    # Queue background DSS lookup for any concept without a DSS assigned
+    conn = _connect()
+    cur = conn.cursor()
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        cur.execute(
+            "SELECT concept_code FROM activity_concept"
+            " WHERE activity_id=? AND soa_id=? AND (dss_title IS NULL OR dss_title='')",
+            (activity_id, soa_id),
+        )
+    else:
+        cur.execute(
+            "SELECT concept_code FROM activity_concept"
+            " WHERE activity_id=? AND (dss_title IS NULL OR dss_title='')",
+            (activity_id,),
+        )
+    for (code,) in cur.fetchall():
+        background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
+    conn.close()
     # HTMX inline update support
     if request.headers.get("HX-Request") == "true":
         concepts = fetch_biomedical_concepts()
