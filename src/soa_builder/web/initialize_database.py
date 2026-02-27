@@ -283,6 +283,36 @@ def _init_db():
         )"""
     )
 
+    # Biomedical Concepts and properties
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS biomedical_concept (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INT NOT NULL,
+            biomedical_concept_uid TEXT NOT NULL,
+            name TEXT NOT NULL,
+            label TEXT,
+            description TEXT,
+            code TEXT,                              -- reference to alias_code.alias_code_uid
+            UNIQUE(biomedical_concept_uid, soa_id)
+        )"""
+    )
+
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS biomedical_concept_property (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INT NOT NULL,
+            biomedical_concept_property_uid TEXT NOT NULL,
+            name TEXT NOT NULL,
+            label TEXT,
+            description TEXT,
+            isRequired INT,                         -- sqlite does not have bool data type
+            isEnabled INT,                          -- sqlite does not have bool data type
+            datatype TEXT,
+            code,                                   -- reference to alias_code.alias_code_uid
+            UNIQUE(biomedical_concept_property_uid, soa_id)
+        )"""
+    )
+
     # AUDIT TABLES FOR TRACKING ALL CHANGES TO ENTITIES
 
     # Element audit table capturing create/update/delete operations
