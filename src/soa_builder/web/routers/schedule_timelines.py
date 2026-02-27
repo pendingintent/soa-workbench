@@ -165,7 +165,7 @@ def ui_study_timing(request: Request, soa_id: int):
     code_to_sv_rtf = {v: k for k, v in (sv_to_code_rtf or {}).items()}
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT code_uid, code FROM code WHERE soa_id=?", (soa_id,))
+    cur.execute("SELECT code_uid, code FROM code_association WHERE soa_id=?", (soa_id,))
     code_uid_to_code = {r[0]: r[1] for r in cur.fetchall() if r[0]}
     cur.execute(
         "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",

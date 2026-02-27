@@ -25,7 +25,7 @@ def _get_timing_code_values(soa_id: int, code_uid: str) -> Tuple[str, str, str, 
     cur = conn.cursor()
     cur.execute(
         "SELECT DISTINCT c.codelist_table,d.code,d.cdisc_submission_value,d.dataset_date "
-        "FROM code c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
+        "FROM code_association c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
         "AND c.code = d.code WHERE c.soa_id=? AND c.code_uid=?",
         (
             soa_id,

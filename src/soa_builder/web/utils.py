@@ -391,7 +391,7 @@ def get_next_code_uid(cur: Any, soa_id: int) -> str:
     Assumes `cur` is a sqlite cursor within an open transaction.
     """
     cur.execute(
-        "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+        "SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'",
         (soa_id,),
     )
     existing = [x[0] for x in cur.fetchall() if x[0]]
@@ -715,7 +715,7 @@ def get_encounter_type_sv(soa_id: int, code_uid: str):
     cur.execute(
         """
         SELECT ddf.cdisc_submission_value FROM visit v
-        INNER JOIN code c ON v.type=c.code_uid AND v.soa_id=c.soa_id
+        INNER JOIN code_association c ON v.type=c.code_uid AND v.soa_id=c.soa_id
         INNER JOIN ddf_terminology ddf ON c.codelist_code=ddf.codelist_code AND c.code=ddf.code
         WHERE v.soa_id =? AND v.type=?
         """,
@@ -799,7 +799,7 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+        "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
         (soa_id, code_uid),
     )
     row = cur.fetchone()
@@ -906,7 +906,7 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+        "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
         (soa_id, code_uid),
     )
     row = cur.fetchone()

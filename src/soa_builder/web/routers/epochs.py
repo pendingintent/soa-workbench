@@ -102,11 +102,11 @@ def ui_list_epochs(request: Request, soa_id: int):
 
     epochs = list_epochs(soa_id)
 
-    # resolve epoch.type (code_uid) -> conceptId from code table
+    # resolve epoch.type (code_uid) -> conceptId from code_association table
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT code_uid, code FROM code WHERE soa_id=? AND codelist_code='C99079'",
+        "SELECT code_uid, code FROM code_association WHERE soa_id=? AND codelist_code='C99079'",
         (soa_id,),
     )
     type_rows = cur.fetchall()
@@ -215,7 +215,7 @@ def add_epoch(soa_id: int, payload: EpochCreate):
             else "/mdr/ct/packages"
         )
         cur.execute(
-            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
             (
                 soa_id,
                 epoch_type,
@@ -346,7 +346,7 @@ def update_epoch(soa_id: int, epoch_id: int, payload: EpochUpdate):
         if not type_uid:
             type_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     type_uid,
@@ -361,13 +361,13 @@ def update_epoch(soa_id: int, epoch_id: int, payload: EpochUpdate):
             )
         else:
             cur.execute(
-                "UPDATE code SET code=? WHERE soa_id=? AND code_uid=?",
+                "UPDATE code_association SET code=? WHERE soa_id=? AND code_uid=?",
                 (new_type, soa_id, type_uid),
             )
             if cur.rowcount == 0:
                 type_uid = _get_next_code_uid(cur, soa_id)
                 cur.execute(
-                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                     (
                         soa_id,
                         type_uid,

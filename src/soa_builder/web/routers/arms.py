@@ -69,13 +69,13 @@ def ui_list_arms(request: Request, soa_id: int):
     cur = conn.cursor()
     # Map arm.type (code_uid) -> conceptId for Arm type (C174222)
     cur.execute(
-        "SELECT code_uid,code FROM code WHERE soa_id=? AND codelist_code='C174222'",
+        "SELECT code_uid,code FROM code_association WHERE soa_id=? AND codelist_code='C174222'",
         (soa_id,),
     )
     type_rows = cur.fetchall()
     # Map arm.data_origin_type (code_uid) -> conceptId for Arm Data Origin Type (C188727)
     cur.execute(
-        "SELECT code_uid,code FROM code WHERE soa_id=? AND codelist_code='C188727'",
+        "SELECT code_uid,code FROM code_association WHERE soa_id=? AND codelist_code='C188727'",
         (soa_id,),
     )
     data_origin_rows = cur.fetchall()
@@ -181,7 +181,7 @@ def create_arm(soa_id: int, payload: ArmCreate):
         logger.info("arm type: %s", arm_type)
         arm_type_codelist_table = "db://protocol_terminology"
         cur.execute(
-            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
             (
                 soa_id,
                 arm_type,
@@ -198,7 +198,7 @@ def create_arm(soa_id: int, payload: ArmCreate):
         logger.info("arm dataOriginType: %s", arm_data_origin_type)
         arm_data_origin_type_codelist_table = "db://ddf_terminology"
         cur.execute(
-            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
             (
                 soa_id,
                 arm_data_origin_type,
@@ -319,7 +319,7 @@ def update_arm(soa_id: int, arm_id: int, payload: ArmUpdate):
             # Create new Code_{N} and attach to arm.type
             type_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     type_uid,
@@ -334,14 +334,14 @@ def update_arm(soa_id: int, arm_id: int, payload: ArmUpdate):
             )
         else:
             cur.execute(
-                "UPDATE code SET code=? WHERE soa_id=? AND code_uid=?",
+                "UPDATE code_association SET code=? WHERE soa_id=? AND code_uid=?",
                 (new_type, soa_id, type_uid),
             )
             if cur.rowcount == 0:
                 # Fallback if code row is missing
                 type_uid = _get_next_code_uid(cur, soa_id)
                 cur.execute(
-                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                     (
                         soa_id,
                         type_uid,
@@ -363,7 +363,7 @@ def update_arm(soa_id: int, arm_id: int, payload: ArmUpdate):
         if not data_origin_type_uid:
             data_origin_type_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     data_origin_type_uid,
@@ -378,13 +378,13 @@ def update_arm(soa_id: int, arm_id: int, payload: ArmUpdate):
             )
         else:
             cur.execute(
-                "UPDATE code SET code=? WHERE soa_id=? AND code_uid=?",
+                "UPDATE code_association SET code=? WHERE soa_id=? AND code_uid=?",
                 (new_data_origin_type, soa_id, data_origin_type_uid),
             )
             if cur.rowcount == 0:
                 data_origin_type_uid = _get_next_code_uid(cur, soa_id)
                 cur.execute(
-                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                     (
                         soa_id,
                         data_origin_type_uid,

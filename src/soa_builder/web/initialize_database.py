@@ -66,6 +66,7 @@ def _init_db():
 
     # code
     # create the code table to store unique Code_uid values associated with study objects
+    '''
     cur.execute(
         """CREATE TABLE IF NOT EXISTS code (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +78,7 @@ def _init_db():
             UNIQUE(soa_id, code_uid)
         )"""
     )
+    '''
 
     # ddf_terminology: this table is created dynamically when uploading a new DDF Terminology
     # spreadsheet (app.py:5179-5545)

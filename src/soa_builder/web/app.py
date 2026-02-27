@@ -3745,7 +3745,7 @@ def ui_edit(request: Request, soa_id: int):
     cur_map = conn_map.cursor()
     cur_map.execute(
         "SELECT c.code_uid, pt.cdisc_submission_value "
-        "FROM code c JOIN protocol_terminology pt ON pt.code = c.code "
+        "FROM code_association c JOIN protocol_terminology pt ON pt.code = c.code "
         "WHERE c.soa_id=? AND c.codelist_code='C174222'",
         (soa_id,),
     )
@@ -3770,7 +3770,7 @@ def ui_edit(request: Request, soa_id: int):
     cur_ddf_map = conn_ddf_map.cursor()
     cur_ddf_map.execute(
         "SELECT c.code_uid, dt.cdisc_submission_value "
-        "FROM code c JOIN ddf_terminology dt ON dt.code = c.code "
+        "FROM code_association c JOIN ddf_terminology dt ON dt.code = c.code "
         "WHERE c.soa_id=? AND c.codelist_code='C188727'",
         (soa_id,),
     )
@@ -3807,7 +3807,7 @@ def ui_edit(request: Request, soa_id: int):
     conn_em = _connect()
     cur_em = conn_em.cursor()
     cur_em.execute(
-        "SELECT e.id, c.code FROM epoch e LEFT JOIN code c ON c.code_uid = e.type AND c.soa_id = e.soa_id WHERE e.soa_id=?",
+        "SELECT e.id, c.code FROM epoch e LEFT JOIN code_association c ON c.code_uid = e.type AND c.soa_id = e.soa_id WHERE e.soa_id=?",
         (soa_id,),
     )
     for eid, code in cur_em.fetchall():
@@ -6812,7 +6812,7 @@ def ui_add_epoch(
             except Exception:
                 parent_href = None
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     code_uid,
@@ -6958,7 +6958,7 @@ def ui_update_epoch(
                 except Exception:
                     parent_href = None
                 cur_t.execute(
-                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                     (
                         soa_id,
                         code_uid,
@@ -7148,7 +7148,7 @@ async def ui_add_arm(
             # Create Code_N
             new_type_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     new_type_uid,
@@ -7187,7 +7187,7 @@ async def ui_add_arm(
             # Create Code_N (continue numbering)
             new_data_origin_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     new_data_origin_uid,
@@ -7273,14 +7273,14 @@ async def ui_update_arm(
     prior_data_origin_code_value: Optional[str] = None
     if current_code_uid:
         cur.execute(
-            "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+            "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
             (soa_id, current_code_uid),
         )
         rcv = cur.fetchone()
         prior_arm_type_code_value = rcv[0] if rcv else None
     if current_data_origin_uid:
         cur.execute(
-            "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+            "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
             (soa_id, current_data_origin_uid),
         )
         rdv = cur.fetchone()
@@ -7322,7 +7322,7 @@ async def ui_update_arm(
         if current_code_uid:
             # Update existing junction row for this code_uid
             cur.execute(
-                "UPDATE code SET code=?, codelist_code='C174222', codelist_table='protocol_terminology' WHERE soa_id=? AND code_uid=?",
+                "UPDATE code_association SET code=?, codelist_code='C174222', codelist_table='protocol_terminology' WHERE soa_id=? AND code_uid=?",
                 (resolved_code, soa_id, current_code_uid),
             )
             logger.info(
@@ -7336,7 +7336,7 @@ async def ui_update_arm(
             # Create new Code_N within this SoA
             new_code_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     new_code_uid,
@@ -7378,7 +7378,7 @@ async def ui_update_arm(
         # Maintain/Upsert immutable Code_N for DDF mapping
         if current_data_origin_uid:
             cur.execute(
-                "UPDATE code SET code=?, codelist_code='C188727', codelist_table='ddf_terminology' WHERE soa_id=? AND code_uid=?",
+                "UPDATE code_association SET code=?, codelist_code='C188727', codelist_table='ddf_terminology' WHERE soa_id=? AND code_uid=?",
                 (resolved_ddf_code, soa_id, current_data_origin_uid),
             )
             new_data_origin_uid = current_data_origin_uid
@@ -7393,7 +7393,7 @@ async def ui_update_arm(
             # Create new Code_N, ensuring unique across this SoA
             new_data_origin_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     new_data_origin_uid,
@@ -7435,19 +7435,19 @@ async def ui_update_arm(
         new_data_origin_uid,
     )
     conn.commit()
-    # Capture post-update code values
+    # Capture post-update code_association values
     post_arm_type_code_value: Optional[str] = None
     post_data_origin_code_value: Optional[str] = None
     if new_code_uid:
         cur.execute(
-            "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+            "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
             (soa_id, new_code_uid),
         )
         rav = cur.fetchone()
         post_arm_type_code_value = rav[0] if rav else None
     if new_data_origin_uid:
         cur.execute(
-            "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+            "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
             (soa_id, new_data_origin_uid),
         )
         rdv2 = cur.fetchone()

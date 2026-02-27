@@ -98,7 +98,7 @@ def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str
     cur = conn.cursor()
     cur.execute(
         "SELECT DISTINCT c.codelist_table, p.code,p.cdisc_submission_value,p.dataset_date "
-        "FROM code c INNER JOIN ddf_terminology p ON c.codelist_code = p.codelist_code "
+        "FROM code_association c INNER JOIN ddf_terminology p ON c.codelist_code = p.codelist_code "
         "AND c.code = p.code WHERE c.soa_id=? AND c.code_uid=?",
         (
             soa_id,
@@ -120,7 +120,7 @@ def _get_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str]:
     cur = conn.cursor()
     cur.execute(
         "SELECT DISTINCT c.codelist_table,c.code "
-        "FROM code c WHERE c.soa_id=? AND c.code_uid=?",
+        "FROM code_association c WHERE c.soa_id=? AND c.code_uid=?",
         (
             soa_id,
             code_uid,

@@ -16,7 +16,7 @@ def _ensure_soa_clean(soa_id: int) -> int:
     )
     # Clean related tables for isolation
     cur.execute("DELETE FROM timing WHERE soa_id=?", (soa_id,))
-    cur.execute("DELETE FROM code WHERE soa_id=?", (soa_id,))
+    cur.execute("DELETE FROM code_association WHERE soa_id=?", (soa_id,))
     conn.commit()
     # Seed minimal ddf_terminology if missing
     cur.execute(
@@ -63,7 +63,7 @@ def _code_rows(soa_id: int, codelist_code: str):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT code_uid, code FROM code WHERE soa_id=? AND codelist_code=? ORDER BY id",
+        "SELECT code_uid, code FROM code_association WHERE soa_id=? AND codelist_code=? ORDER BY id",
         (soa_id, codelist_code),
     )
     rows = cur.fetchall() or []

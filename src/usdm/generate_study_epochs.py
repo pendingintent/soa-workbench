@@ -93,14 +93,14 @@ def build_usdm_epochs(soa_id: int) -> List[Dict[str, Any]]:
     if "order_index" in cols:
         cur.execute(
             "SELECT e.id, e.epoch_uid, e.name, e.epoch_label, e.epoch_description, e.type, c.code "
-            "FROM epoch e INNER JOIN code c ON e.soa_id = c.soa_id AND e.type = c.code_uid "
+            "FROM epoch e INNER JOIN code_association c ON e.soa_id = c.soa_id AND e.type = c.code_uid "
             "WHERE e.soa_id=? ORDER BY e.order_index, e.id",
             (soa_id,),
         )
     else:
         cur.execute(
             "SELECT e.id, e.epoch_uid, e.name, e.epoch_label, e.epoch_description, e.type, c.code "
-            "FROM epoch e INNER JOIN code c ON e.soa_id = c.soa_id AND e.type = c.code_uid "
+            "FROM epoch e INNER JOIN code_association c ON e.soa_id = c.soa_id AND e.type = c.code_uid "
             "WHERE e.soa_id=? ORDER BY e.id",
             (soa_id,),
         )
