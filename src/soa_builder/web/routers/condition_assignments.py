@@ -281,8 +281,8 @@ def update_condition_assignment(
             _nz(new_condition),
             _nz(new_decision_instance_uid),
             _nz(new_condition_target_uid),
-            soa_id,
             condition_assignment_id,
+            soa_id,
         ),
     )
     conn.commit()
