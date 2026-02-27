@@ -64,22 +64,6 @@ def _init_db():
         )"""
     )
 
-    # code
-    # create the code table to store unique Code_uid values associated with study objects
-    '''
-    cur.execute(
-        """CREATE TABLE IF NOT EXISTS code (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            soa_id INTEGER NOT NULL,
-            code_uid TEXT, -- immutable Code_N identifier unique within an SOA
-            codelist_table TEXT,
-            codelist_code TEXT NOT NULL,
-            code TEXT NOT NULL,
-            UNIQUE(soa_id, code_uid)
-        )"""
-    )
-    '''
-
     # ddf_terminology: this table is created dynamically when uploading a new DDF Terminology
     # spreadsheet (app.py:5179-5545)
 
@@ -327,8 +311,7 @@ def _init_db():
     )
 
     # code_assignment table for storing code assignment values stored in code table
-    # this is for the renaming of the code table currently storing activities and
-    # associated biomedical concepts
+    # ISSUE #127: all refactor complete
     cur.execute(
         """CREATE TABLE IF NOT EXISTS code_association (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -337,6 +320,20 @@ def _init_db():
             codelist_table TEXT,
             codelist_code TEXT ,
             code,
+            UNIQUE(code_uid, soa_id)
+        )"""
+    )
+
+    # Code table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS code (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INT NOT NULL,
+            code_uid TEXT NOT NULL,
+            code TEXT,
+            code_system TEXT,
+            code_system_version TEXT,
+            decode TEXT,
             UNIQUE(code_uid, soa_id)
         )"""
     )
