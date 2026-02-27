@@ -209,12 +209,12 @@ def ui_create_condition_assignment(
 
 # API endpoint to update a condition
 @router.patch(
-    "/soa/{soa_id}/condition_assigments/{condition_id}",
+    "/soa/{soa_id}/condition_assignments/{condition_id}",
     response_class=JSONResponse,
     response_model=None,
 )
 def update_condition_assignment(
-    soa_id: int, condition_assignment_id: int, payload: ConditionAssignmentUpdate
+    soa_id: int, condition_id: int, payload: ConditionAssignmentUpdate
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -228,14 +228,12 @@ def update_condition_assignment(
         """,
         (
             soa_id,
-            condition_assignment_id,
+            condition_id,
         ),
     )
     row = cur.fetchone()
     if not row:
-        raise HTTPException(
-            404, f"Condition id={int(condition_assignment_id)} not found"
-        )
+        raise HTTPException(404, f"Condition id={int(condition_id)} not found")
 
     before = {
         "id": row[0],
@@ -281,7 +279,7 @@ def update_condition_assignment(
             _nz(new_condition),
             _nz(new_decision_instance_uid),
             _nz(new_condition_target_uid),
-            condition_assignment_id,
+            condition_id,
             soa_id,
         ),
     )
@@ -293,7 +291,7 @@ def update_condition_assignment(
         """,
         (
             soa_id,
-            condition_assignment_id,
+            condition_id,
         ),
     )
     r = cur.fetchone()
@@ -322,7 +320,7 @@ def update_condition_assignment(
     _record_condition_assignment_audit(
         soa_id,
         "update",
-        condition_assignment_id,
+        condition_id,
         before=before,
         after={**after, "updated_fields": update_fields},
     )
