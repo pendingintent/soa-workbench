@@ -305,7 +305,7 @@ def _init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             soa_id INT NOT NULL,
             alias_code_uid TEXT NOT NULL,
-            standardCode TEXT,                      -- reference to code_uid value
+            standard_code TEXT,                      -- reference to code_uid value
             UNIQUE(alias_code_uid, soa_id)
         )"""
     )
