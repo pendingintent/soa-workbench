@@ -67,6 +67,8 @@ from .migrate_database import (
     _migrate_activity_concept_add_href,
     _migrate_activity_concept_add_dss,
     _migrate_study_cell_add_order_index,
+    _migrate_biomedical_concept_audit,
+    _migrate_backfill_biomedical_concept_codes,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -197,6 +199,8 @@ _migrate_arm_add_type_fields()
 _migrate_element_audit_columns()
 _backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
+_migrate_biomedical_concept_audit()
+_migrate_backfill_biomedical_concept_codes()
 
 
 # Include routers
@@ -755,6 +759,9 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         "DELETE FROM activity_concept WHERE activity_id IN (SELECT id FROM activity WHERE soa_id=? )",
         (soa_id,),
     )
+    cur.execute("DELETE FROM biomedical_concept WHERE soa_id=?", (soa_id,))
+    cur.execute("DELETE FROM alias_code WHERE soa_id=?", (soa_id,))
+    cur.execute("DELETE FROM code WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM activity WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM visit WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM element WHERE soa_id=?", (soa_id,))
@@ -882,6 +889,10 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
                         "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
                         (new_aid, code, title),
                     )
+            _alias_uid = _upsert_alias_code(
+                cur, soa_id, _upsert_code(cur, soa_id, code)
+            )
+            _upsert_biomedical_concept(cur, soa_id, concept_uid, title, _alias_uid)
             inserted_concepts += 1
     conn.commit()
     conn.close()
@@ -1815,6 +1826,30 @@ async def lifespan(app: FastAPI):
         logger.info("Lifespan preload SDTM specializations count=%d", len(sdtm_specs))
     except Exception as e:
         logger.error("Lifespan SDTM specializations preload failed: %s", e)
+    try:
+        import threading
+
+        _conn = _connect()
+        _cur = _conn.cursor()
+        _cur.execute(
+            "SELECT code, soa_id FROM code"
+            " WHERE code_system IS NULL AND code IS NOT NULL"
+        )
+        _unenriched = _cur.fetchall()
+        _conn.close()
+        for _concept_code, _soa_id in _unenriched:
+            threading.Thread(
+                target=_enrich_code_bg,
+                args=(_concept_code, _soa_id),
+                daemon=True,
+            ).start()
+        if _unenriched:
+            logger.info(
+                "Lifespan scheduled enrichment for %d unenriched code rows",
+                len(_unenriched),
+            )
+    except Exception as e:
+        logger.error("Lifespan code enrichment startup failed: %s", e)
     yield
     # No shutdown actions required presently.
 
@@ -2250,6 +2285,27 @@ def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate
     # Clear existing mappings; include soa_id if column exists
     ac_has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
     ac_has_actuid = _table_has_columns(cur, "activity_concept", ("activity_uid",))
+    ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
+    # Capture existing pairs before delete for cascade cleanup
+    if ac_has_soa:
+        if ac_has_conceptuid:
+            cur.execute(
+                "SELECT concept_code, concept_uid FROM activity_concept"
+                " WHERE activity_id=? AND soa_id=?",
+                (activity_id, soa_id),
+            )
+        else:
+            cur.execute(
+                "SELECT concept_code, NULL FROM activity_concept"
+                " WHERE activity_id=? AND soa_id=?",
+                (activity_id, soa_id),
+            )
+    else:
+        cur.execute(
+            "SELECT concept_code, NULL FROM activity_concept WHERE activity_id=?",
+            (activity_id,),
+        )
+    old_pairs = cur.fetchall()
     if ac_has_soa:
         cur.execute(
             "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
@@ -2263,8 +2319,6 @@ def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate
     cur.execute("SELECT activity_uid FROM activity WHERE id=?", (activity_id,))
     r = cur.fetchone()
     activity_uid = r[0] if r else None
-    # Prepare concept_uid generation when column exists
-    ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
     inserted = 0
     for code in payload.concept_codes:
         ccode = code.strip()
@@ -2316,7 +2370,10 @@ def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate
                     "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
                     (activity_id, ccode, title),
                 )
+        _alias_uid = _upsert_alias_code(cur, soa_id, _upsert_code(cur, soa_id, ccode))
+        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, _alias_uid)
         inserted += 1
+    _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
     conn.commit()
     conn.close()
     return {"activity_id": activity_id, "concepts_set": inserted}
@@ -2404,6 +2461,326 @@ def _lookup_and_save_dss(soa_id: int, activity_id: int, concept_code: str) -> No
         conn.close()
     except Exception:
         pass  # silent failure — DSS column remains unset; user can assign manually
+
+
+def _upsert_code(cur, soa_id: int, concept_code: str):
+    """Get-or-create a code row for this conceptId within this SoA.
+
+    The synchronous insert records (soa_id, code_uid, code) immediately.
+    A background task (_enrich_code_bg) fills in code_system, code_system_version,
+    and decode from the CDISC API.
+
+    Always returns the code_uid (pre-existing or newly inserted), or None if no code.
+    """
+    if not concept_code:
+        return None
+    cur.execute(
+        "SELECT code_uid FROM code WHERE soa_id=? AND code=?", (soa_id, concept_code)
+    )
+    row = cur.fetchone()
+    if row:
+        return row[0]  # pre-existing — return uid, do not re-insert
+    cur.execute(
+        "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+        (soa_id,),
+    )
+    existing = [x[0] for x in cur.fetchall() if x[0]]
+    n = 1
+    if existing:
+        try:
+            n = max(int(x.split("_")[1]) for x in existing) + 1
+        except Exception:
+            n = len(existing) + 1
+    uid = f"Code_{n}"
+    cur.execute(
+        "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
+        (soa_id, uid, concept_code),
+    )
+    return uid
+
+
+def _upsert_alias_code(cur, soa_id: int, code_uid):
+    """Get-or-create an alias_code row pointing to the given code_uid.
+
+    Returns None if code_uid is None.
+    Returns the existing alias_code_uid if already present for (soa_id, standard_code).
+    Otherwise inserts and returns a new AliasCode_N uid.
+    """
+    if not code_uid:
+        return None
+    cur.execute(
+        "SELECT alias_code_uid FROM alias_code WHERE soa_id=? AND standard_code=?",
+        (soa_id, code_uid),
+    )
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    cur.execute(
+        "SELECT alias_code_uid FROM alias_code"
+        " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+        (soa_id,),
+    )
+    existing = [x[0] for x in cur.fetchall() if x[0]]
+    n = 1
+    if existing:
+        try:
+            n = max(int(x.split("_")[1]) for x in existing) + 1
+        except Exception:
+            n = len(existing) + 1
+    alias_uid = f"AliasCode_{n}"
+    cur.execute(
+        "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
+        (soa_id, alias_uid, code_uid),
+    )
+    return alias_uid
+
+
+def _enrich_code_bg(concept_code: str, soa_id: int) -> None:
+    """Background task: populate code_system, code_system_version, decode from CDISC API."""
+    import os
+    import requests as _requests
+
+    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
+        "CDISC_SUBSCRIPTION_KEY"
+    )
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+    headers: dict = {"Accept": "application/json"}
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+    try:
+        url = (
+            "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/"
+            + concept_code
+        )
+        resp = _requests.get(url, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            return
+        data = resp.json()
+        href = (data.get("_links") or {}).get("parentPackage") or {}
+        href = href.get("href", "") if isinstance(href, dict) else ""
+        try:
+            code_system_version = href.split("/")[4]
+        except Exception:
+            code_system_version = ""
+        decode = data.get("shortName")
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE code SET code_system=?, code_system_version=?, decode=?"
+            " WHERE code=? AND soa_id=?",
+            (href, code_system_version, decode, concept_code, soa_id),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def _resolve_code_chain(cur, soa_id: int, alias_uid):
+    """Return (code_uid, code_code, decode) for the given alias_code_uid in this SoA."""
+    if not alias_uid:
+        return None, None, None
+    cur.execute(
+        "SELECT standard_code FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
+        (alias_uid, soa_id),
+    )
+    ac_row = cur.fetchone()
+    if not ac_row:
+        return None, None, None
+    code_uid_val = ac_row[0]
+    cur.execute(
+        "SELECT code, decode FROM code WHERE code_uid=? AND soa_id=?",
+        (code_uid_val, soa_id),
+    )
+    c_row = cur.fetchone()
+    return code_uid_val, (c_row[0] if c_row else None), (c_row[1] if c_row else None)
+
+
+def _upsert_biomedical_concept(cur, soa_id: int, concept_uid, name: str, code: str):
+    """Upsert a biomedical_concept row within an existing transaction.
+
+    No-op when concept_uid is None (legacy schema) or already present.
+    INSERT OR IGNORE preserves populated label/description on re-assignment.
+    Records a create audit entry when a new row is inserted.
+    """
+    if not concept_uid:
+        return
+    cur.execute(
+        "INSERT OR IGNORE INTO biomedical_concept "
+        "(soa_id, biomedical_concept_uid, name, code) VALUES (?,?,?,?)",
+        (soa_id, concept_uid, name, code),
+    )
+    if cur.rowcount:
+        from .audit import _record_biomedical_concept_audit
+
+        bc_id = cur.lastrowid
+        code_uid_val, code_val, decode_val = _resolve_code_chain(cur, soa_id, code)
+        _record_biomedical_concept_audit(
+            soa_id,
+            "create",
+            bc_id,
+            before=None,
+            after={
+                "biomedical_concept_uid": concept_uid,
+                "code": code_val,
+                "alias_code_uid": code,
+                "code_uid": code_uid_val,
+                "decode": decode_val,
+            },
+            cur=cur,
+        )
+
+
+def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
+    """Background task: fetch label/description from CDISC API and persist."""
+    import os
+    import requests as _requests
+
+    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
+        "CDISC_SUBSCRIPTION_KEY"
+    )
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+    headers: dict = {"Accept": "application/json"}
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+    try:
+        url = (
+            "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/"
+            + concept_code
+        )
+        resp = _requests.get(url, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            return
+        data = resp.json()
+        label = data.get("shortName")
+        description = data.get("definition")
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT ac.alias_code_uid FROM alias_code ac "
+            "JOIN code c ON ac.standard_code = c.code_uid "
+            "WHERE c.soa_id=? AND c.code=?",
+            (soa_id, concept_code),
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return
+        cur.execute(
+            "UPDATE biomedical_concept SET label=?, description=? WHERE code=? AND soa_id=?",
+            (label, description, row[0], soa_id),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
+    """Delete biomedical_concept/code/alias_code rows no longer referenced in this SoA.
+
+    removed_pairs: iterable of (concept_code, concept_uid); concept_uid may be None.
+    Call AFTER the activity_concept rows have been deleted (and any new ones inserted),
+    so the orphan check reflects the final state of activity_concept.
+    """
+    from .audit import _record_biomedical_concept_audit
+
+    for concept_code, concept_uid in removed_pairs:
+        if concept_uid:
+            cur.execute(
+                "SELECT id, code FROM biomedical_concept"
+                " WHERE biomedical_concept_uid=? AND soa_id=?",
+                (concept_uid, soa_id),
+            )
+            bc_row = cur.fetchone()
+            if bc_row:
+                bc_id, alias_uid = bc_row
+                code_uid_val, code_val, decode_val = _resolve_code_chain(
+                    cur, soa_id, alias_uid
+                )
+                _record_biomedical_concept_audit(
+                    soa_id,
+                    "delete",
+                    bc_id,
+                    before={
+                        "biomedical_concept_uid": concept_uid,
+                        "code": code_val,
+                        "alias_code_uid": alias_uid,
+                        "code_uid": code_uid_val,
+                        "decode": decode_val,
+                    },
+                    after=None,
+                    cur=cur,
+                )
+            cur.execute(
+                "DELETE FROM biomedical_concept"
+                " WHERE biomedical_concept_uid=? AND soa_id=?",
+                (concept_uid, soa_id),
+            )
+        if not concept_code:
+            continue
+        cur.execute(
+            "SELECT 1 FROM activity_concept WHERE soa_id=? AND concept_code=? LIMIT 1",
+            (soa_id, concept_code),
+        )
+        if cur.fetchone():
+            continue  # still referenced by another activity in this SoA
+        cur.execute(
+            "SELECT code_uid FROM code WHERE soa_id=? AND code=?",
+            (soa_id, concept_code),
+        )
+        code_row = cur.fetchone()
+        if not code_row:
+            continue
+        code_uid_val = code_row[0]
+        cur.execute(
+            "SELECT alias_code_uid FROM alias_code WHERE soa_id=? AND standard_code=?",
+            (soa_id, code_uid_val),
+        )
+        alias_row = cur.fetchone()
+        if alias_row:
+            # Audit any remaining biomedical_concept rows referencing this alias (edge case)
+            cur.execute(
+                "SELECT id, biomedical_concept_uid FROM biomedical_concept"
+                " WHERE code=? AND soa_id=?",
+                (alias_row[0], soa_id),
+            )
+            for edge_bc_id, edge_bc_uid in cur.fetchall():
+                edge_code_uid, edge_code_val, edge_decode = _resolve_code_chain(
+                    cur, soa_id, alias_row[0]
+                )
+                _record_biomedical_concept_audit(
+                    soa_id,
+                    "delete",
+                    edge_bc_id,
+                    before={
+                        "biomedical_concept_uid": edge_bc_uid,
+                        "code": edge_code_val,
+                        "alias_code_uid": alias_row[0],
+                        "code_uid": edge_code_uid,
+                        "decode": edge_decode,
+                    },
+                    after=None,
+                    cur=cur,
+                )
+            cur.execute(
+                "DELETE FROM biomedical_concept WHERE code=? AND soa_id=?",
+                (alias_row[0], soa_id),
+            )
+            cur.execute(
+                "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
+                (alias_row[0], soa_id),
+            )
+        cur.execute(
+            "DELETE FROM code WHERE code_uid=? AND soa_id=?",
+            (code_uid_val, soa_id),
+        )
 
 
 # API endpoint for adding a BC to an activity
@@ -2498,8 +2875,12 @@ def ui_add_activity_concept(
                     "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
                     (activity_id, code, title),
                 )
+        _alias_uid = _upsert_alias_code(cur, soa_id, _upsert_code(cur, soa_id, code))
+        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, _alias_uid)
         conn.commit()
         background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
+        background_tasks.add_task(_enrich_biomedical_concept_bg, code, soa_id)
+        background_tasks.add_task(_enrich_code_bg, code, soa_id)
     conn.close()
     selected = _get_activity_concepts(activity_id)
     html = templates.get_template("concepts_cell.html").render(
@@ -2535,6 +2916,26 @@ def ui_remove_activity_concept(
     # Delete mapping; include soa_id if column exists
     cur.execute("PRAGMA table_info(activity_concept)")
     ac_cols = {r[1] for r in cur.fetchall()}
+    # Capture the concept_uid (if column exists) before deleting
+    if "concept_uid" in ac_cols and "soa_id" in ac_cols:
+        cur.execute(
+            "SELECT concept_code, concept_uid FROM activity_concept"
+            " WHERE activity_id=? AND concept_code=? AND soa_id=?",
+            (activity_id, code, soa_id),
+        )
+    elif "soa_id" in ac_cols:
+        cur.execute(
+            "SELECT concept_code, NULL FROM activity_concept"
+            " WHERE activity_id=? AND concept_code=? AND soa_id=?",
+            (activity_id, code, soa_id),
+        )
+    else:
+        cur.execute(
+            "SELECT concept_code, NULL FROM activity_concept"
+            " WHERE activity_id=? AND concept_code=?",
+            (activity_id, code),
+        )
+    old_pairs = cur.fetchall()
     if "soa_id" in ac_cols:
         cur.execute(
             "DELETE FROM activity_concept WHERE activity_id=? AND concept_code=? AND soa_id=?",
@@ -2545,6 +2946,8 @@ def ui_remove_activity_concept(
             "DELETE FROM activity_concept WHERE activity_id=? AND concept_code=?",
             (activity_id, code),
         )
+    if "soa_id" in ac_cols:
+        _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
     conn.commit()
     conn.close()
     concepts = fetch_biomedical_concepts()
@@ -4805,6 +5208,12 @@ def ui_set_activity_concepts(
     for (code,) in cur.fetchall():
         background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
     conn.close()
+    for code in payload.concept_codes:
+        if code.strip():
+            background_tasks.add_task(
+                _enrich_biomedical_concept_bg, code.strip(), soa_id
+            )
+            background_tasks.add_task(_enrich_code_bg, code.strip(), soa_id)
     # HTMX inline update support
     if request.headers.get("HX-Request") == "true":
         concepts = fetch_biomedical_concepts()

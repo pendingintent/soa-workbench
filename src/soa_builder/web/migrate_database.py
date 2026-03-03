@@ -985,3 +985,119 @@ def _migrate_study_cell_add_order_index():
         conn.close()
     except Exception as e:
         logger.warning("order_index migration failed: %s", e)
+
+
+def _migrate_biomedical_concept_audit():
+    """Create biomedical_concept_audit table for tracking create/delete operations."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS biomedical_concept_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                biomedical_concept_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_biomedical_concept_audit: %s", e)
+
+
+def _migrate_backfill_biomedical_concept_codes():
+    """One-time backfill: for biomedical_concept rows that have no matching alias_code entry,
+    create code + alias_code rows and update biomedical_concept.code to the alias_code_uid.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT bc.id, bc.soa_id, bc.biomedical_concept_uid, ac2.concept_code
+            FROM biomedical_concept bc
+            LEFT JOIN alias_code ac
+                   ON ac.alias_code_uid = bc.code AND ac.soa_id = bc.soa_id
+            LEFT JOIN activity_concept ac2
+                   ON ac2.concept_uid = bc.biomedical_concept_uid
+                  AND ac2.soa_id = bc.soa_id
+            WHERE ac.id IS NULL
+            """
+        )
+        rows = cur.fetchall()
+
+        for bc_id, soa_id, bc_uid, concept_code in rows:
+            if not concept_code:
+                continue  # no raw code available — nothing to create
+
+            # get-or-create code row
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code=?",
+                (soa_id, concept_code),
+            )
+            row = cur.fetchone()
+            if row:
+                code_uid = row[0]
+            else:
+                cur.execute(
+                    "SELECT code_uid FROM code"
+                    " WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                    (soa_id,),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = 1
+                if existing:
+                    try:
+                        n = max(int(x.split("_")[1]) for x in existing) + 1
+                    except Exception:
+                        n = len(existing) + 1
+                code_uid = f"Code_{n}"
+                cur.execute(
+                    "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
+                    (soa_id, code_uid, concept_code),
+                )
+
+            # get-or-create alias_code row
+            cur.execute(
+                "SELECT alias_code_uid FROM alias_code"
+                " WHERE soa_id=? AND standard_code=?",
+                (soa_id, code_uid),
+            )
+            row = cur.fetchone()
+            if row:
+                alias_uid = row[0]
+            else:
+                cur.execute(
+                    "SELECT alias_code_uid FROM alias_code"
+                    " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+                    (soa_id,),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = 1
+                if existing:
+                    try:
+                        n = max(int(x.split("_")[1]) for x in existing) + 1
+                    except Exception:
+                        n = len(existing) + 1
+                alias_uid = f"AliasCode_{n}"
+                cur.execute(
+                    "INSERT INTO alias_code"
+                    " (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
+                    (soa_id, alias_uid, code_uid),
+                )
+
+            # patch biomedical_concept.code
+            cur.execute(
+                "UPDATE biomedical_concept SET code=? WHERE id=?",
+                (alias_uid, bc_id),
+            )
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_backfill_biomedical_concept_codes: %s", e)

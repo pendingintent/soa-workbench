@@ -425,7 +425,12 @@ def add_activities_bulk(soa_id: int, payload: BulkActivities):
 
 
 @router.post("/activities/{activity_id}/concepts", response_class=JSONResponse)
-def set_activity_concepts(soa_id: int, activity_id: int, concept_codes: List[str]):
+def set_activity_concepts(
+    soa_id: int,
+    activity_id: int,
+    concept_codes: List[str],
+    background_tasks: BackgroundTasks,
+):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -437,6 +442,27 @@ def set_activity_concepts(soa_id: int, activity_id: int, concept_codes: List[str
     # Clear existing mappings; include soa_id if column exists
     ac_has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
     ac_has_actuid = _table_has_columns(cur, "activity_concept", ("activity_uid",))
+    ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
+    # Capture existing pairs before delete for cascade cleanup
+    if ac_has_soa:
+        if ac_has_conceptuid:
+            cur.execute(
+                "SELECT concept_code, concept_uid FROM activity_concept"
+                " WHERE activity_id=? AND soa_id=?",
+                (activity_id, soa_id),
+            )
+        else:
+            cur.execute(
+                "SELECT concept_code, NULL FROM activity_concept"
+                " WHERE activity_id=? AND soa_id=?",
+                (activity_id, soa_id),
+            )
+    else:
+        cur.execute(
+            "SELECT concept_code, NULL FROM activity_concept WHERE activity_id=?",
+            (activity_id,),
+        )
+    old_pairs = cur.fetchall()
     if ac_has_soa:
         cur.execute(
             "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
@@ -450,7 +476,15 @@ def set_activity_concepts(soa_id: int, activity_id: int, concept_codes: List[str
     cur.execute("SELECT activity_uid FROM activity WHERE id=?", (activity_id,))
     row = cur.fetchone()
     activity_uid = row[0] if row else None
-    ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
+    from ..app import (
+        _upsert_biomedical_concept,
+        _enrich_biomedical_concept_bg,
+        _upsert_code,
+        _upsert_alias_code,
+        _enrich_code_bg,
+        _cleanup_orphaned_concept_rows,
+    )
+
     inserted = 0
     for code in concept_codes:
         ccode = code.strip()
@@ -502,7 +536,12 @@ def set_activity_concepts(soa_id: int, activity_id: int, concept_codes: List[str
                     "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
                     (activity_id, ccode, title),
                 )
+        _alias_uid = _upsert_alias_code(cur, soa_id, _upsert_code(cur, soa_id, ccode))
+        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, _alias_uid)
+        background_tasks.add_task(_enrich_biomedical_concept_bg, ccode, soa_id)
+        background_tasks.add_task(_enrich_code_bg, ccode, soa_id)
         inserted += 1
+    _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
     conn.commit()
     conn.close()
     return {"activity_id": activity_id, "concepts_set": inserted}
@@ -715,6 +754,21 @@ def ui_delete_activity_page(request: Request, soa_id: int, activity_id: int):
         conn.close()
         raise HTTPException(404, "Activity not found")
     before = {"id": row[0], "name": row[1], "order_index": row[2]}
+    # Capture concept pairs before deleting for cascade cleanup
+    ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
+    if ac_has_conceptuid:
+        cur.execute(
+            "SELECT concept_code, concept_uid FROM activity_concept"
+            " WHERE activity_id=? AND soa_id=?",
+            (activity_id, soa_id),
+        )
+    else:
+        cur.execute(
+            "SELECT concept_code, NULL FROM activity_concept"
+            " WHERE activity_id=? AND soa_id=?",
+            (activity_id, soa_id),
+        )
+    old_pairs = cur.fetchall()
     cur.execute(
         "DELETE FROM matrix_cells WHERE soa_id=? AND activity_id=?",
         (soa_id, activity_id),
@@ -723,6 +777,9 @@ def ui_delete_activity_page(request: Request, soa_id: int, activity_id: int):
         "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
         (activity_id, soa_id),
     )
+    from ..app import _cleanup_orphaned_concept_rows
+
+    _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
     cur.execute("DELETE FROM activity WHERE id=?", (activity_id,))
     conn.commit()
     conn.close()

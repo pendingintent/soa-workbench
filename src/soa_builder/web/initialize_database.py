@@ -299,6 +299,19 @@ def _init_db():
         )"""
     )
 
+    # Biomedical Concept audit table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS biomedical_concept_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            biomedical_concept_id INTEGER,
+            action TEXT NOT NULL,       -- create|delete
+            before_json TEXT,
+            after_json TEXT,
+            performed_at TEXT NOT NULL
+        )"""
+    )
+
     # Alias Code table
     cur.execute(
         """CREATE TABLE IF NOT EXISTS alias_code (
