@@ -40,7 +40,7 @@ def test_get_next_code_uid_mixed_existing():
     )
     cur.execute(
         "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-        (soa_id, "Code_3", "ddf_terminology", "C188727", "Y"),
+        (soa_id, "Code_3", "http://www.cdisc.org", "C188727", "Y"),
     )
     # Malformed tail should be ignored in max() and trigger fallback only if parsing fails for all
     cur.execute(
@@ -71,7 +71,7 @@ def test_get_next_code_uid_all_invalid_tails():
     )
     cur.execute(
         "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-        (soa_id, "Code_B", "ddf_terminology", "C188727", "Y"),
+        (soa_id, "Code_B", "http://www.cdisc.org", "C188727", "Y"),
     )
     conn.commit()
     # Fallback should use len(existing)+1 -> 3

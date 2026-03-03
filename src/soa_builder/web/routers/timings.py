@@ -279,7 +279,7 @@ def ui_create_timing(
                     (
                         soa_id,
                         code_uid,
-                        "ddf_terminology",
+                        "http://www.cdisc.org",
                         "C201264",
                         str(code_val),
                     ),
@@ -304,7 +304,7 @@ def ui_create_timing(
                     (
                         soa_id,
                         rtf_code_uid,
-                        "ddf_terminology",
+                        "http://www.cdisc.org",
                         "C201265",
                         str(rtf_code_val),
                     ),
@@ -613,7 +613,7 @@ def ui_update_timing(
                         (
                             soa_id,
                             mapped_type,
-                            "ddf_terminology",
+                            "http://www.cdisc.org",
                             "C201264",
                             str(new_code_val),
                         ),
@@ -640,7 +640,7 @@ def ui_update_timing(
                         (
                             soa_id,
                             mapped_rtf,
-                            "ddf_terminology",
+                            "http://www.cdisc.org",
                             "C201265",
                             str(new_rtf_code_val),
                         ),

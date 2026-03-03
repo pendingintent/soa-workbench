@@ -236,7 +236,7 @@ def add_visit(soa_id: int, payload: VisitCreate):
             (
                 soa_id,
                 type,
-                "ddf_terminology",
+                "http://www.cdisc.org",
                 "C188728",
                 "C25716",
             ),
