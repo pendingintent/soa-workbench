@@ -1101,3 +1101,24 @@ def _migrate_backfill_biomedical_concept_codes():
         conn.close()
     except Exception as e:
         logger.warning("_migrate_backfill_biomedical_concept_codes: %s", e)
+
+
+def _migrate_biomedical_concept_property_add_uid():
+    """Add biomedical_concept_uid column to biomedical_concept_property table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(biomedical_concept_property)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "biomedical_concept_uid" not in cols:
+            cur.execute(
+                "ALTER TABLE biomedical_concept_property"
+                " ADD COLUMN biomedical_concept_uid TEXT"
+            )
+            conn.commit()
+            logger.info(
+                "Added biomedical_concept_uid column to biomedical_concept_property"
+            )
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_biomedical_concept_property_add_uid: %s", e)

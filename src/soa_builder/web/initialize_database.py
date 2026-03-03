@@ -287,6 +287,7 @@ def _init_db():
         """CREATE TABLE IF NOT EXISTS biomedical_concept_property (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             soa_id INT NOT NULL,
+            biomedical_concept_uid TEXT,                    -- reference to parent biomedical_concept
             biomedical_concept_property_uid TEXT NOT NULL,
             name TEXT NOT NULL,
             label TEXT,
