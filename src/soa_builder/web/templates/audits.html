@@ -5,6 +5,33 @@
 
 <div class="flex">
   <div>
+  <details id="biomedical-concept-audit-section" class="collapsible">
+    <summary>Biomedical Concept Audit (latest {{ bc_audits|length }})</summary>
+    {% if bc_audits %}
+    <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
+        <tr style="background:#eee;">
+          <th style="text-align:left;padding:4px;">ID</th>
+          <th style="text-align:left;padding:4px;">Visit</th>
+          <th style="text-align:left;padding:4px;">Action</th>
+          <th style="text-align:left;padding:4px;">Performed</th>
+          <th style="text-align:left;padding:4px;">Before</th>
+          <th style="text-align:left;padding:4px;">After</th>
+        </tr>
+        {% for bca in bc_audits %}
+        <tr>
+          <td style="padding:4px;">{{ bca.id }}</td>
+          <td style="padding:4px;">{{ bca.visit_id }}</td>
+          <td style="padding:4px;">{{ bca.action }}</td>
+          <td style="padding:4px;">{{ bca.performed_at }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ bca.before_json or '' }}</td>
+          <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ bca.after_json or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+        <div style="font-size:0.75em;color:#777;">No biomedical concept audit entries yet.</div>
+      {% endif %}
+  </details>
     <details id="visit-audit-section" class="collapsible">
       <summary>Visit Audit (latest {{ visit_audits|length }})</summary>
       {% if visit_audits %}
