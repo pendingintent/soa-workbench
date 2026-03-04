@@ -25,7 +25,7 @@ def _get_timing_code_values(soa_id: int, code_uid: str) -> Tuple[str, str, str, 
     cur = conn.cursor()
     cur.execute(
         "SELECT DISTINCT c.codelist_table,d.code,d.cdisc_submission_value,d.dataset_date "
-        "FROM code c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
+        "FROM code_association c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
         "AND c.code = d.code WHERE c.soa_id=? AND c.code_uid=?",
         (
             soa_id,
@@ -86,9 +86,9 @@ def build_usdm_timings(
     if member_of_timeline and member_of_timeline.strip():
         cur.execute(
             """
-            SELECT id,timing_uid,name,label,description,type,value,value_label,relative_to_from,
+            SELECT timing_uid,name,label,description,type,value,value_label,relative_to_from,
             relative_from_schedule_instance,relative_to_schedule_instance,window_label,window_upper,
-            window_lower,order_index FROM timing WHERE soa_id=? AND member_of_timeline=? order by length(timing_uid),
+            window_lower FROM timing WHERE soa_id=? AND member_of_timeline=? order by length(timing_uid),
             timing_uid
             """,
             (soa_id, member_of_timeline.strip()),
@@ -96,9 +96,9 @@ def build_usdm_timings(
     else:
         cur.execute(
             """
-            SELECT id,timing_uid,name,label,description,type,value,value_label,relative_to_from,
+            SELECT timing_uid,name,label,description,type,value,value_label,relative_to_from,
             relative_from_schedule_instance,relative_to_schedule_instance,window_label,window_upper,
-            window_lower,order_index FROM timing WHERE soa_id=? order by length(timing_uid), timing_uid
+            window_lower FROM timing WHERE soa_id=? order by length(timing_uid), timing_uid
             """,
             (soa_id,),
         )
@@ -108,7 +108,6 @@ def build_usdm_timings(
 
     for i, r in enumerate(rows):
         (
-            row_id,
             timing_uid,
             name,
             label,
@@ -122,7 +121,6 @@ def build_usdm_timings(
             window_label,
             window_upper,
             window_lower,
-            order_index,
         ) = (
             r[0],
             r[1],
@@ -137,8 +135,6 @@ def build_usdm_timings(
             r[10],
             r[11],
             r[12],
-            r[13],
-            r[14],
         )
         t_code, t_decode, t_codeSystem, t_codeSystemVersion = _get_timing_code_values(
             soa_id, type
@@ -157,7 +153,7 @@ def build_usdm_timings(
                 "id": type,
                 "extensionAttributes": [],
                 "code": t_code[0],
-                "codeSystem": "db://" + t_codeSystem[0],
+                "codeSystem": "http://www.cdisc.org",
                 "codeSystemVersion": t_codeSystemVersion[0],
                 "decode": t_decode[0],
                 "instanceType": "Code",

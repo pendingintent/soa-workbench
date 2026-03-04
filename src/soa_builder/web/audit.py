@@ -388,3 +388,47 @@ def _record_transition_rule_audit(
         conn.close()
     except Exception as e:
         logger.warning("Failed recording transition rule audit: %s", e)
+
+
+def _record_biomedical_concept_audit(
+    soa_id: int,
+    action: str,
+    biomedical_concept_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+    cur=None,
+):
+    try:
+        own_conn = cur is None
+        if own_conn:
+            conn = _connect()
+            cur = conn.cursor()
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS biomedical_concept_audit (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    soa_id INTEGER NOT NULL,
+                    biomedical_concept_id INTEGER,
+                    action TEXT NOT NULL,
+                    before_json TEXT,
+                    after_json TEXT,
+                    performed_at TEXT NOT NULL
+                )"""
+            )
+        cur.execute(
+            "INSERT INTO biomedical_concept_audit"
+            " (soa_id, biomedical_concept_id, action, before_json, after_json, performed_at)"
+            " VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                biomedical_concept_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        if own_conn:
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        logger.warning("Failed recording biomedical_concept audit: %s", e)

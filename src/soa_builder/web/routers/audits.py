@@ -194,6 +194,25 @@ def ui_list_audits(request: Request, soa_id: int):
     ]
     instance_cur.close()
 
+    # Get Biomedical Concept Audits
+    bc_cur = conn.cursor()
+    bc_cur.execute(
+        """SELECT id,biomedical_concept_id,action,before_json,after_json,performed_at FROM biomedical_concept_audit WHERE soa_id=? ORDER BY id DESC LIMIT 20""",
+        (soa_id,),
+    )
+    bc_audits = [
+        {
+            "id": r[0],
+            "biomedical_concept_id": r[1],
+            "action": r[2],
+            "before_json": r[3],
+            "after_json": r[4],
+            "performed_at": r[5],
+        }
+        for r in bc_cur.fetchall()
+    ]
+    bc_cur.close()
+
     return templates.TemplateResponse(
         request,
         "audits.html",
@@ -207,6 +226,7 @@ def ui_list_audits(request: Request, soa_id: int):
             "visit_audits": visit_audits,
             "timing_audits": timing_audits,
             "instance_audits": instance_audits,
+            "bc_audits": bc_audits,
             "soa_id": soa_id,
         },
     )

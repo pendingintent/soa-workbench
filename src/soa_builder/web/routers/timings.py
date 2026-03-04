@@ -94,7 +94,7 @@ def ui_list_timings(request: Request, soa_id: int):
     # Map timing.type (code_uid) -> code via code table, then to submissionValue
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT code_uid, code FROM code WHERE soa_id=?", (soa_id,))
+    cur.execute("SELECT code_uid, code FROM code_association WHERE soa_id=?", (soa_id,))
     code_uid_to_code = {r[0]: r[1] for r in cur.fetchall() if r[0]}
     conn.close()
     for t in timings:
@@ -275,11 +275,11 @@ def ui_create_timing(
                 cur_c = conn_c.cursor()
                 code_uid = _get_next_code_uid(cur_c, soa_id)
                 cur_c.execute(
-                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                     (
                         soa_id,
                         code_uid,
-                        "ddf_terminology",
+                        "http://www.cdisc.org",
                         "C201264",
                         str(code_val),
                     ),
@@ -300,11 +300,11 @@ def ui_create_timing(
                 cur_c2 = conn_c2.cursor()
                 rtf_code_uid = _get_next_code_uid(cur_c2, soa_id)
                 cur_c2.execute(
-                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                     (
                         soa_id,
                         rtf_code_uid,
-                        "ddf_terminology",
+                        "http://www.cdisc.org",
                         "C201265",
                         str(rtf_code_val),
                     ),
@@ -583,7 +583,7 @@ def ui_update_timing(
         existing_rtf_uid = row_chk[1] if row_chk else None
         # Map existing code_uids -> code values
         cur_chk.execute(
-            "SELECT code_uid, code FROM code WHERE soa_id=?",
+            "SELECT code_uid, code FROM code_association WHERE soa_id=?",
             (soa_id,),
         )
         code_rows = cur_chk.fetchall() or []
@@ -609,11 +609,11 @@ def ui_update_timing(
                     # Always create a fresh code_uid; do not reuse across timings
                     mapped_type = _get_next_code_uid(cur_chk, soa_id)
                     cur_chk.execute(
-                        "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                        "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                         (
                             soa_id,
                             mapped_type,
-                            "ddf_terminology",
+                            "http://www.cdisc.org",
                             "C201264",
                             str(new_code_val),
                         ),
@@ -636,11 +636,11 @@ def ui_update_timing(
                 else:
                     mapped_rtf = _get_next_code_uid(cur_chk, soa_id)
                     cur_chk.execute(
-                        "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                        "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                         (
                             soa_id,
                             mapped_rtf,
-                            "ddf_terminology",
+                            "http://www.cdisc.org",
                             "C201265",
                             str(new_rtf_code_val),
                         ),

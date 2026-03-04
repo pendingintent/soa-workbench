@@ -389,56 +389,6 @@ def _migrate_add_epoch_uid():
         logger.warning("epoch_uid migration failed: %s", e)
 
 
-# Migration: create code_junction table
-def _migrate_create_code_junction():
-    """Create code_junction linking table if absent.
-
-    Columns:
-        id INTEGER PRIMARY KEY AUTOINCREMENT
-        code_uid TEXT                -- opaque unique identifier for the code instance
-        codelist_table TEXT          -- source table name that provided the code
-        codelist_code TEXT           -- code value from source codelist
-        type_code TEXT               -- type/category for the code (e.g., TERM, SYNONYM)
-        data_origin_type_code TEXT   -- origin classification (e.g., DDF, PROTOCOL, IMPORT)
-        soa_id INTEGER               -- optional foreign key to study (not enforced)
-        linked_table TEXT            -- target table name being linked
-        linked_column TEXT           -- column name in target table referencing the code
-        linked_id TEXT               -- id/key in target table row (stored as TEXT for flexibility)
-
-    Indexes can be added later once query patterns emerge. Using TEXT for linked_id avoids
-    premature typing constraints (could be INT or UUID)."""
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        # Detect existing table
-        cur.execute("PRAGMA table_info(code_junction)")
-        existing_cols = [r[1] for r in cur.fetchall()]
-        if existing_cols:  # table already exists
-            conn.close()
-            return
-        cur.execute(
-            """
-                        CREATE TABLE code_junction (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            code_uid TEXT,
-                            codelist_table TEXT,
-                            codelist_code TEXT,
-                            type_code TEXT,
-                            data_origin_type_code TEXT,
-                            soa_id INTEGER,
-                            linked_table TEXT,
-                            linked_column TEXT,
-                            linked_id TEXT
-                        )
-                        """
-        )
-        conn.commit()
-        conn.close()
-        logger.info("Created code_junction table")
-    except Exception as e:  # pragma: no cover
-        logger.warning("code_junction migration failed: %s", e)
-
-
 # Migrations: add study metadata columns
 def _migrate_add_study_fields():
     """Ensure study metadata columns (study_id, study_label, study_description) exist on soa table.
@@ -1035,3 +985,140 @@ def _migrate_study_cell_add_order_index():
         conn.close()
     except Exception as e:
         logger.warning("order_index migration failed: %s", e)
+
+
+def _migrate_biomedical_concept_audit():
+    """Create biomedical_concept_audit table for tracking create/delete operations."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS biomedical_concept_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                biomedical_concept_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_biomedical_concept_audit: %s", e)
+
+
+def _migrate_backfill_biomedical_concept_codes():
+    """One-time backfill: for biomedical_concept rows that have no matching alias_code entry,
+    create code + alias_code rows and update biomedical_concept.code to the alias_code_uid.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            SELECT bc.id, bc.soa_id, bc.biomedical_concept_uid, ac2.concept_code
+            FROM biomedical_concept bc
+            LEFT JOIN alias_code ac
+                   ON ac.alias_code_uid = bc.code AND ac.soa_id = bc.soa_id
+            LEFT JOIN activity_concept ac2
+                   ON ac2.concept_uid = bc.biomedical_concept_uid
+                  AND ac2.soa_id = bc.soa_id
+            WHERE ac.id IS NULL
+            """
+        )
+        rows = cur.fetchall()
+
+        for bc_id, soa_id, bc_uid, concept_code in rows:
+            if not concept_code:
+                continue  # no raw code available — nothing to create
+
+            # get-or-create code row
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code=?",
+                (soa_id, concept_code),
+            )
+            row = cur.fetchone()
+            if row:
+                code_uid = row[0]
+            else:
+                cur.execute(
+                    "SELECT code_uid FROM code"
+                    " WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                    (soa_id,),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = 1
+                if existing:
+                    try:
+                        n = max(int(x.split("_")[1]) for x in existing) + 1
+                    except Exception:
+                        n = len(existing) + 1
+                code_uid = f"Code_{n}"
+                cur.execute(
+                    "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
+                    (soa_id, code_uid, concept_code),
+                )
+
+            # get-or-create alias_code row
+            cur.execute(
+                "SELECT alias_code_uid FROM alias_code"
+                " WHERE soa_id=? AND standard_code=?",
+                (soa_id, code_uid),
+            )
+            row = cur.fetchone()
+            if row:
+                alias_uid = row[0]
+            else:
+                cur.execute(
+                    "SELECT alias_code_uid FROM alias_code"
+                    " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+                    (soa_id,),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = 1
+                if existing:
+                    try:
+                        n = max(int(x.split("_")[1]) for x in existing) + 1
+                    except Exception:
+                        n = len(existing) + 1
+                alias_uid = f"AliasCode_{n}"
+                cur.execute(
+                    "INSERT INTO alias_code"
+                    " (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
+                    (soa_id, alias_uid, code_uid),
+                )
+
+            # patch biomedical_concept.code
+            cur.execute(
+                "UPDATE biomedical_concept SET code=? WHERE id=?",
+                (alias_uid, bc_id),
+            )
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_backfill_biomedical_concept_codes: %s", e)
+
+
+def _migrate_biomedical_concept_property_add_uid():
+    """Add biomedical_concept_uid column to biomedical_concept_property table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(biomedical_concept_property)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "biomedical_concept_uid" not in cols:
+            cur.execute(
+                "ALTER TABLE biomedical_concept_property"
+                " ADD COLUMN biomedical_concept_uid TEXT"
+            )
+            conn.commit()
+            logger.info(
+                "Added biomedical_concept_uid column to biomedical_concept_property"
+            )
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_biomedical_concept_property_add_uid: %s", e)

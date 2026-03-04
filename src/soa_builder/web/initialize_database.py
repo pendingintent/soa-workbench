@@ -64,20 +64,6 @@ def _init_db():
         )"""
     )
 
-    # code
-    # create the code table to store unique Code_uid values associated with study objects
-    cur.execute(
-        """CREATE TABLE IF NOT EXISTS code (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            soa_id INTEGER NOT NULL,
-            code_uid TEXT, -- immutable Code_N identifier unique within an SOA
-            codelist_table TEXT,
-            codelist_code TEXT NOT NULL,
-            code TEXT NOT NULL,
-            UNIQUE(soa_id, code_uid)
-        )"""
-    )
-
     # ddf_terminology: this table is created dynamically when uploading a new DDF Terminology
     # spreadsheet (app.py:5179-5545)
 
@@ -280,6 +266,89 @@ def _init_db():
             transitionEndRule TEXT,
             scheduledAtId TEXT,
             UNIQUE(soa_id,encounter_uid)
+        )"""
+    )
+
+    # Biomedical Concepts and properties
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS biomedical_concept (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INT NOT NULL,
+            biomedical_concept_uid TEXT NOT NULL,
+            name TEXT NOT NULL,
+            label TEXT,
+            description TEXT,
+            code TEXT,                              -- reference to alias_code.alias_code_uid
+            UNIQUE(biomedical_concept_uid, soa_id)
+        )"""
+    )
+
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS biomedical_concept_property (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INT NOT NULL,
+            biomedical_concept_uid TEXT,                    -- reference to parent biomedical_concept
+            biomedical_concept_property_uid TEXT NOT NULL,
+            name TEXT NOT NULL,
+            label TEXT,
+            description TEXT,
+            isRequired INT,                         -- sqlite does not have bool data type
+            isEnabled INT,                          -- sqlite does not have bool data type
+            datatype TEXT,
+            code,                                   -- reference to alias_code.alias_code_uid
+            UNIQUE(biomedical_concept_property_uid, soa_id)
+        )"""
+    )
+
+    # Biomedical Concept audit table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS biomedical_concept_audit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            biomedical_concept_id INTEGER,
+            action TEXT NOT NULL,       -- create|delete
+            before_json TEXT,
+            after_json TEXT,
+            performed_at TEXT NOT NULL
+        )"""
+    )
+
+    # Alias Code table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS alias_code (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INT NOT NULL,
+            alias_code_uid TEXT NOT NULL,
+            standard_code TEXT,                      -- reference to code_uid value
+            UNIQUE(alias_code_uid, soa_id)
+        )"""
+    )
+
+    # code_assignment table for storing code assignment values stored in code table
+    # ISSUE #127: all refactor complete
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS code_association (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INTEGER NOT NULL,
+            code_uid TEXT NOT NULL,                 -- immutable Code_N identifier unique within an SOA
+            codelist_table TEXT,
+            codelist_code TEXT ,
+            code,
+            UNIQUE(code_uid, soa_id)
+        )"""
+    )
+
+    # Code table
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS code (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INT NOT NULL,
+            code_uid TEXT NOT NULL,
+            code TEXT,
+            code_system TEXT,
+            code_system_version TEXT,
+            decode TEXT,
+            UNIQUE(code_uid, soa_id)
         )"""
     )
 

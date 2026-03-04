@@ -7,21 +7,41 @@ from dotenv import load_dotenv
 # Load environment variables from .env early
 load_dotenv()
 
-# Prefer explicit env var; otherwise, auto-select test DB under pytest
-_env_db = os.environ.get("SOA_BUILDER_DB")
-_running_pytest = "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules
-if _env_db:
-    DB_PATH = _env_db
-else:
-    DB_PATH = "soa_builder_web_tests.db" if _running_pytest else "soa_builder_web.db"
+_PRODUCTION_DB = "soa_builder_web.db"
+
+
+def _resolve_db_path() -> str:
+    """Resolve the database path at call time (not import time).
+
+    Priority: SOA_BUILDER_DB env var > pytest detection > production default.
+    Evaluated fresh on every call so import order does not affect test isolation.
+    """
+    env_db = os.environ.get("SOA_BUILDER_DB")
+    if env_db:
+        return env_db
+    is_pytest = "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules
+    return "soa_builder_web_tests.db" if is_pytest else _PRODUCTION_DB
+
+
+# Module-level snapshot kept for backward-compat (used only for logging in app.py).
+# All actual connections go through _connect() which re-evaluates dynamically.
+DB_PATH = _resolve_db_path()
 
 
 def _connect():
-    conn = sqlite3.connect(DB_PATH, timeout=5.0, check_same_thread=False)
+    db_path = _resolve_db_path()
+    # Hard guard: tests must never connect to the production database
+    if db_path == _PRODUCTION_DB and (
+        "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules
+    ):
+        raise RuntimeError(
+            f"Tests must not connect to the production database '{_PRODUCTION_DB}'. "
+            "Set SOA_BUILDER_DB to a test-specific path."
+        )
+    conn = sqlite3.connect(db_path, timeout=5.0, check_same_thread=False)
     try:
-        # Improve concurrency and reduce lock errors; favor simpler mode under pytest
-        _is_pytest = "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules
-        if _is_pytest:
+        is_pytest = "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules
+        if is_pytest:
             conn.execute("PRAGMA journal_mode=DELETE")
             conn.execute("PRAGMA synchronous=OFF")
         else:

@@ -36,7 +36,7 @@ def _load_code_value_map(soa_id: int) -> dict[str, str]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT code_uid, code FROM code WHERE soa_id=?",
+        "SELECT code_uid, code FROM code_association WHERE soa_id=?",
         (soa_id,),
     )
     rows = cur.fetchall()
@@ -232,11 +232,11 @@ def add_visit(soa_id: int, payload: VisitCreate):
 
     if type:
         cur.execute(
-            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
             (
                 soa_id,
                 type,
-                "ddf_terminology",
+                "http://www.cdisc.org",
                 "C188728",
                 "C25716",
             ),
@@ -255,7 +255,7 @@ def add_visit(soa_id: int, payload: VisitCreate):
             else "/mdr/ct/packages"
         )
         cur.execute(
-            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
             (
                 soa_id,
                 environmentalSettings,
@@ -278,7 +278,7 @@ def add_visit(soa_id: int, payload: VisitCreate):
             else "/mdr/ct/packages"
         )
         cur.execute(
-            "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+            "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
             (
                 soa_id,
                 contactModes,
@@ -463,7 +463,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         if not env_code_uid:
             env_code_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     env_code_uid,
@@ -478,13 +478,13 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
             )
         else:
             cur.execute(
-                "UPDATE code SET code=? WHERE soa_id=? AND code_uid=?",
+                "UPDATE code_association SET code=? WHERE soa_id=? AND code_uid=?",
                 (new_environmental_value, soa_id, env_code_uid),
             )
             if cur.rowcount == 0:
                 env_code_uid = _get_next_code_uid(cur, soa_id)
                 cur.execute(
-                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                     (
                         soa_id,
                         env_code_uid,
@@ -504,7 +504,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
         if not contact_mode_code_uid:
             contact_mode_code_uid = _get_next_code_uid(cur, soa_id)
             cur.execute(
-                "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                 (
                     soa_id,
                     contact_mode_code_uid,
@@ -519,13 +519,13 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
             )
         else:
             cur.execute(
-                "UPDATE code SET code=? WHERE soa_id=? AND code_uid=?",
+                "UPDATE code_association SET code=? WHERE soa_id=? AND code_uid=?",
                 (new_contact_mode, soa_id, contact_mode_code_uid),
             )
             if cur.rowcount == 0:
                 contact_mode_code_uid = _get_next_code_uid(cur, soa_id)
                 cur.execute(
-                    "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+                    "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
                     (
                         soa_id,
                         contact_mode_code_uid,

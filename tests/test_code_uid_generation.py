@@ -35,16 +35,16 @@ def test_get_next_code_uid_mixed_existing():
     conn.commit()
     # Insert mixed existing code_uids
     cur.execute(
-        "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+        "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
         (soa_id, "Code_1", "protocol_terminology", "C174222", "X"),
     )
     cur.execute(
-        "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-        (soa_id, "Code_3", "ddf_terminology", "C188727", "Y"),
+        "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+        (soa_id, "Code_3", "http://www.cdisc.org", "C188727", "Y"),
     )
     # Malformed tail should be ignored in max() and trigger fallback only if parsing fails for all
     cur.execute(
-        "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+        "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
         (soa_id, "Code_X", "protocol_terminology", "C174222", "Z"),
     )
     conn.commit()
@@ -66,12 +66,12 @@ def test_get_next_code_uid_all_invalid_tails():
     conn.commit()
     # Insert only invalid tails that cannot be parsed as integers
     cur.execute(
-        "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+        "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
         (soa_id, "Code_A", "protocol_terminology", "C174222", "X"),
     )
     cur.execute(
-        "INSERT INTO code (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-        (soa_id, "Code_B", "ddf_terminology", "C188727", "Y"),
+        "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
+        (soa_id, "Code_B", "http://www.cdisc.org", "C188727", "Y"),
     )
     conn.commit()
     # Fallback should use len(existing)+1 -> 3
