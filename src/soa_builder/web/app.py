@@ -762,6 +762,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     cur.execute("DELETE FROM biomedical_concept WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM alias_code WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM code WHERE soa_id=?", (soa_id,))
+    cur.execute("DELETE FROM code_association WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM activity WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM visit WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM element WHERE soa_id=?", (soa_id,))
