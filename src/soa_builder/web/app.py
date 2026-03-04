@@ -1826,6 +1826,7 @@ async def lifespan(app: FastAPI):
         logger.error("Lifespan SDTM specializations preload failed: %s", e)
     try:
         import threading
+        from concurrent.futures import ThreadPoolExecutor
 
         _conn = _connect()
         _cur = _conn.cursor()
@@ -1835,17 +1836,18 @@ async def lifespan(app: FastAPI):
         )
         _unenriched = _cur.fetchall()
         _conn.close()
-        for _concept_code, _soa_id in _unenriched:
-            threading.Thread(
-                target=_enrich_code_bg,
-                args=(_concept_code, _soa_id),
-                daemon=True,
-            ).start()
         if _unenriched:
             logger.info(
-                "Lifespan scheduled enrichment for %d unenriched code rows",
+                "Lifespan scheduling enrichment for %d unenriched code rows",
                 len(_unenriched),
             )
+
+            def _run_enrichment_pool(_rows=_unenriched):
+                with ThreadPoolExecutor(max_workers=4) as _pool:
+                    for _concept_code, _soa_id in _rows:
+                        _pool.submit(_enrich_code_bg, _concept_code, _soa_id)
+
+            threading.Thread(target=_run_enrichment_pool, daemon=True).start()
     except Exception as e:
         logger.error("Lifespan code enrichment startup failed: %s", e)
     yield
