@@ -890,10 +890,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
                         "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
                         (new_aid, code, title),
                     )
-            _alias_uid = _upsert_alias_code(
-                cur, soa_id, _upsert_code(cur, soa_id, code)
-            )
-            _upsert_biomedical_concept(cur, soa_id, concept_uid, title, _alias_uid)
+            _upsert_biomedical_concept(cur, soa_id, concept_uid, title, code)
             inserted_concepts += 1
     conn.commit()
     conn.close()
@@ -2371,8 +2368,7 @@ def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate
                     "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
                     (activity_id, ccode, title),
                 )
-        _alias_uid = _upsert_alias_code(cur, soa_id, _upsert_code(cur, soa_id, ccode))
-        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, _alias_uid)
+        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, ccode)
         inserted += 1
     _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
     conn.commit()
@@ -2469,8 +2465,9 @@ def _populate_bc_properties_bg(
 ) -> None:
     """Background task: populate biomedical_concept_property from DSS variables.
 
-    Fires on every concept assignment. UIDs are immutable — existing rows are
-    skipped (never updated or recreated). All writes committed in one transaction.
+    Prefers activity_concept.dss_href (set by manual or auto DSS assignment) over
+    fresh step-1 discovery, so the exact selected DSS drives property population.
+    UIDs are immutable — existing rows are skipped. All writes in one transaction.
     """
     import os
     import requests as _requests
@@ -2487,21 +2484,41 @@ def _populate_bc_properties_bg(
         headers["api-key"] = api_key
 
     try:
-        # Step 1: discover DSS href for this concept (same as _lookup_and_save_dss)
-        list_url = (
-            "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations"
-            "/datasetspecializations?biomedicalconcept=" + concept_code
+        # Read existing dss_href and bc_uid from DB before any API call
+        _conn = _connect()
+        _cur = _conn.cursor()
+        _cur.execute(
+            "SELECT concept_uid, dss_href FROM activity_concept"
+            " WHERE activity_id=? AND concept_code=? AND soa_id=?",
+            (activity_id, concept_code, soa_id),
         )
-        r1 = _requests.get(list_url, headers=headers, timeout=15)
-        if r1.status_code != 200:
+        _ac = _cur.fetchone()
+        _conn.close()
+        bc_uid = _ac[0] if _ac else None
+        dss_href = (_ac[1] if _ac else None) or None
+        if not bc_uid:
             return
-        data1 = r1.json()
-        sdtm_links = data1["_links"]["datasetSpecializations"]["sdtm"]
-        if not sdtm_links:
-            return
-        dss_href = sdtm_links[0]["href"]
-        if dss_href.startswith("/"):
-            dss_href = "https://api.library.cdisc.org/api/cosmos/v2" + dss_href
+
+        if dss_href:
+            # Use the already-known href — skip step-1
+            if dss_href.startswith("/"):
+                dss_href = "https://api.library.cdisc.org/api/cosmos/v2" + dss_href
+        else:
+            # Step 1: discover DSS href for this concept
+            list_url = (
+                "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations"
+                "/datasetspecializations?biomedicalconcept=" + concept_code
+            )
+            r1 = _requests.get(list_url, headers=headers, timeout=15)
+            if r1.status_code != 200:
+                return
+            data1 = r1.json()
+            sdtm_links = data1["_links"]["datasetSpecializations"]["sdtm"]
+            if not sdtm_links:
+                return
+            dss_href = sdtm_links[0]["href"]
+            if dss_href.startswith("/"):
+                dss_href = "https://api.library.cdisc.org/api/cosmos/v2" + dss_href
 
         # Step 2: fetch DSS detail
         r2 = _requests.get(dss_href, headers=headers, timeout=15)
@@ -2524,17 +2541,6 @@ def _populate_bc_properties_bg(
         conn = _connect()
         cur = conn.cursor()
 
-        cur.execute(
-            "SELECT concept_uid FROM activity_concept"
-            " WHERE activity_id=? AND concept_code=? AND soa_id=?",
-            (activity_id, concept_code, soa_id),
-        )
-        ac_row = cur.fetchone()
-        bc_uid = ac_row[0] if ac_row else None
-        if not bc_uid:
-            conn.close()
-            return
-
         for var in variables:
             var_concept_id = var.get("dataElementConceptId")
             if not var_concept_id:
@@ -2543,25 +2549,53 @@ def _populate_bc_properties_bg(
             var_required = var.get("mandatoryVariable")
             var_datatype = var.get("dataType")
 
-            # get-or-create code row; populate system fields
-            code_uid = _upsert_code(cur, soa_id, var_concept_id)
-            if code_uid:
-                cur.execute(
-                    "UPDATE code SET code_system=?, code_system_version=?, decode=?"
-                    " WHERE code_uid=? AND soa_id=?",
-                    (pkg_href, code_system_version, var_name, code_uid, soa_id),
-                )
-
-            # get-or-create alias_code row
-            alias_uid = _upsert_alias_code(cur, soa_id, code_uid)
-
-            # skip if already mapped — UIDs are immutable
+            # skip if this named property already exists for this BC — UIDs are immutable
             cur.execute(
-                "SELECT id FROM biomedical_concept_property WHERE soa_id=? AND code=?",
-                (soa_id, alias_uid),
+                "SELECT id FROM biomedical_concept_property"
+                " WHERE soa_id=? AND biomedical_concept_uid=? AND name=?",
+                (soa_id, bc_uid, var_name),
             )
             if cur.fetchone():
                 continue
+
+            # always create a new code row for this property (never reuse)
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                (soa_id,),
+            )
+            existing_codes = [x[0] for x in cur.fetchall() if x[0]]
+            code_n = max((int(x.split("_")[1]) for x in existing_codes), default=0) + 1
+            code_uid = f"Code_{code_n}"
+            cur.execute(
+                "INSERT INTO code"
+                " (soa_id, code_uid, code, code_system, code_system_version, decode)"
+                " VALUES (?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    code_uid,
+                    var_concept_id,
+                    pkg_href,
+                    code_system_version,
+                    var_name,
+                ),
+            )
+
+            # always create a new alias_code row for this property (never reuse)
+            cur.execute(
+                "SELECT alias_code_uid FROM alias_code"
+                " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+                (soa_id,),
+            )
+            existing_aliases = [x[0] for x in cur.fetchall() if x[0]]
+            alias_n = (
+                max((int(x.split("_")[1]) for x in existing_aliases), default=0) + 1
+            )
+            alias_uid = f"AliasCode_{alias_n}"
+            cur.execute(
+                "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code)"
+                " VALUES (?,?,?)",
+                (soa_id, alias_uid, code_uid),
+            )
 
             # generate monotonic BiomedicalConceptProperty_N uid
             cur.execute(
@@ -2571,12 +2605,7 @@ def _populate_bc_properties_bg(
                 (soa_id,),
             )
             existing_uids = [r[0] for r in cur.fetchall() if r[0]]
-            n = 1
-            if existing_uids:
-                try:
-                    n = max(int(u.split("_")[1]) for u in existing_uids) + 1
-                except Exception:
-                    n = len(existing_uids) + 1
+            n = max((int(u.split("_")[1]) for u in existing_uids), default=0) + 1
             bcp_uid = f"BiomedicalConceptProperty_{n}"
 
             cur.execute(
@@ -2738,39 +2767,76 @@ def _resolve_code_chain(cur, soa_id: int, alias_uid):
     return code_uid_val, (c_row[0] if c_row else None), (c_row[1] if c_row else None)
 
 
-def _upsert_biomedical_concept(cur, soa_id: int, concept_uid, name: str, code: str):
+def _upsert_biomedical_concept(
+    cur, soa_id: int, concept_uid, name: str, concept_code: str
+):
     """Upsert a biomedical_concept row within an existing transaction.
 
     No-op when concept_uid is None (legacy schema) or already present.
-    INSERT OR IGNORE preserves populated label/description on re-assignment.
+    Always creates new code + alias_code rows (never reuses existing ones).
     Records a create audit entry when a new row is inserted.
     """
     if not concept_uid:
         return
+    # no-op if already present
     cur.execute(
-        "INSERT OR IGNORE INTO biomedical_concept "
-        "(soa_id, biomedical_concept_uid, name, code) VALUES (?,?,?,?)",
-        (soa_id, concept_uid, name, code),
+        "SELECT id FROM biomedical_concept WHERE soa_id=? AND biomedical_concept_uid=?",
+        (soa_id, concept_uid),
     )
-    if cur.rowcount:
-        from .audit import _record_biomedical_concept_audit
+    if cur.fetchone():
+        return
 
-        bc_id = cur.lastrowid
-        code_uid_val, code_val, decode_val = _resolve_code_chain(cur, soa_id, code)
-        _record_biomedical_concept_audit(
-            soa_id,
-            "create",
-            bc_id,
-            before=None,
-            after={
-                "biomedical_concept_uid": concept_uid,
-                "code": code_val,
-                "alias_code_uid": code,
-                "code_uid": code_uid_val,
-                "decode": decode_val,
-            },
-            cur=cur,
+    # always create a new code row for this BC (never reuse)
+    alias_uid = None
+    if concept_code:
+        cur.execute(
+            "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+            (soa_id,),
         )
+        existing_codes = [x[0] for x in cur.fetchall() if x[0]]
+        code_n = max((int(x.split("_")[1]) for x in existing_codes), default=0) + 1
+        code_uid = f"Code_{code_n}"
+        cur.execute(
+            "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
+            (soa_id, code_uid, concept_code),
+        )
+        # always create a new alias_code row for this BC (never reuse)
+        cur.execute(
+            "SELECT alias_code_uid FROM alias_code"
+            " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+            (soa_id,),
+        )
+        existing_aliases = [x[0] for x in cur.fetchall() if x[0]]
+        alias_n = max((int(x.split("_")[1]) for x in existing_aliases), default=0) + 1
+        alias_uid = f"AliasCode_{alias_n}"
+        cur.execute(
+            "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
+            (soa_id, alias_uid, code_uid),
+        )
+
+    cur.execute(
+        "INSERT INTO biomedical_concept"
+        " (soa_id, biomedical_concept_uid, name, code) VALUES (?,?,?,?)",
+        (soa_id, concept_uid, name, alias_uid),
+    )
+    from .audit import _record_biomedical_concept_audit
+
+    bc_id = cur.lastrowid
+    code_uid_val, code_val, decode_val = _resolve_code_chain(cur, soa_id, alias_uid)
+    _record_biomedical_concept_audit(
+        soa_id,
+        "create",
+        bc_id,
+        before=None,
+        after={
+            "biomedical_concept_uid": concept_uid,
+            "code": code_val,
+            "alias_code_uid": alias_uid,
+            "code_uid": code_uid_val,
+            "decode": decode_val,
+        },
+        cur=cur,
+    )
 
 
 def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
@@ -3058,8 +3124,7 @@ def ui_add_activity_concept(
                     "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
                     (activity_id, code, title),
                 )
-        _alias_uid = _upsert_alias_code(cur, soa_id, _upsert_code(cur, soa_id, code))
-        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, _alias_uid)
+        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, code)
         conn.commit()
         background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
         background_tasks.add_task(_enrich_biomedical_concept_bg, code, soa_id)

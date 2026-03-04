@@ -116,61 +116,43 @@ for soa_id, bc_uid, concept_code, activity_id in rows:
         var_required = var.get("mandatoryVariable")
         var_datatype = var.get("dataType")
 
-        # get-or-create code row
+        # skip if this named property already exists for this BC — UIDs are immutable
         cur.execute(
-            "SELECT code_uid FROM code WHERE soa_id=? AND code=?",
-            (soa_id, var_concept_id),
-        )
-        row = cur.fetchone()
-        if row:
-            code_uid = row[0]
-        else:
-            cur.execute(
-                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-                (soa_id,),
-            )
-            existing = [x[0] for x in cur.fetchall() if x[0]]
-            n = max((int(x.split("_")[1]) for x in existing), default=0) + 1
-            code_uid = f"Code_{n}"
-            cur.execute(
-                "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
-                (soa_id, code_uid, var_concept_id),
-            )
-        cur.execute(
-            "UPDATE code SET code_system=?, code_system_version=?, decode=?"
-            " WHERE code_uid=? AND soa_id=?",
-            (pkg_href, code_system_version, var_name, code_uid, soa_id),
-        )
-
-        # get-or-create alias_code row
-        cur.execute(
-            "SELECT alias_code_uid FROM alias_code WHERE soa_id=? AND standard_code=?",
-            (soa_id, code_uid),
-        )
-        row = cur.fetchone()
-        if row:
-            alias_uid = row[0]
-        else:
-            cur.execute(
-                "SELECT alias_code_uid FROM alias_code"
-                " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
-                (soa_id,),
-            )
-            existing = [x[0] for x in cur.fetchall() if x[0]]
-            n = max((int(x.split("_")[1]) for x in existing), default=0) + 1
-            alias_uid = f"AliasCode_{n}"
-            cur.execute(
-                "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
-                (soa_id, alias_uid, code_uid),
-            )
-
-        # skip if already mapped — UIDs are immutable
-        cur.execute(
-            "SELECT id FROM biomedical_concept_property WHERE soa_id=? AND code=?",
-            (soa_id, alias_uid),
+            "SELECT id FROM biomedical_concept_property"
+            " WHERE soa_id=? AND biomedical_concept_uid=? AND name=?",
+            (soa_id, bc_uid, var_name),
         )
         if cur.fetchone():
             continue
+
+        # always create a new code row for this property (never reuse)
+        cur.execute(
+            "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+            (soa_id,),
+        )
+        existing = [x[0] for x in cur.fetchall() if x[0]]
+        code_n = max((int(x.split("_")[1]) for x in existing), default=0) + 1
+        code_uid = f"Code_{code_n}"
+        cur.execute(
+            "INSERT INTO code"
+            " (soa_id, code_uid, code, code_system, code_system_version, decode)"
+            " VALUES (?,?,?,?,?,?)",
+            (soa_id, code_uid, var_concept_id, pkg_href, code_system_version, var_name),
+        )
+
+        # always create a new alias_code row for this property (never reuse)
+        cur.execute(
+            "SELECT alias_code_uid FROM alias_code"
+            " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+            (soa_id,),
+        )
+        existing = [x[0] for x in cur.fetchall() if x[0]]
+        alias_n = max((int(x.split("_")[1]) for x in existing), default=0) + 1
+        alias_uid = f"AliasCode_{alias_n}"
+        cur.execute(
+            "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
+            (soa_id, alias_uid, code_uid),
+        )
 
         # generate monotonic BiomedicalConceptProperty_N uid
         cur.execute(

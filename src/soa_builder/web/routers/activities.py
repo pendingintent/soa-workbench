@@ -479,8 +479,6 @@ def set_activity_concepts(
     from ..app import (
         _upsert_biomedical_concept,
         _enrich_biomedical_concept_bg,
-        _upsert_code,
-        _upsert_alias_code,
         _enrich_code_bg,
         _cleanup_orphaned_concept_rows,
         _populate_bc_properties_bg,
@@ -537,8 +535,7 @@ def set_activity_concepts(
                     "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
                     (activity_id, ccode, title),
                 )
-        _alias_uid = _upsert_alias_code(cur, soa_id, _upsert_code(cur, soa_id, ccode))
-        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, _alias_uid)
+        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, ccode)
         background_tasks.add_task(_enrich_biomedical_concept_bg, ccode, soa_id)
         background_tasks.add_task(_enrich_code_bg, ccode, soa_id)
         background_tasks.add_task(
@@ -701,6 +698,7 @@ def ui_dss_auto_assign(
 ):
     """Queue background DSS auto-assignment for all concepts in the SOA."""
     from ..app import _lookup_and_save_dss as _auto_dss
+    from ..app import _populate_bc_properties_bg
 
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -722,6 +720,9 @@ def ui_dss_auto_assign(
     conn.close()
     for activity_id, concept_code in rows:
         background_tasks.add_task(_auto_dss, soa_id, activity_id, concept_code)
+        background_tasks.add_task(
+            _populate_bc_properties_bg, soa_id, activity_id, concept_code
+        )
     redirect_url = f"/ui/soa/{int(soa_id)}/activities"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
@@ -862,6 +863,7 @@ def ui_save_dss_assignment(
     soa_id: int,
     activity_id: int,
     concept_code: str,
+    background_tasks: BackgroundTasks,
     dss_selection: str = Form(""),
 ):
     """Save a DSS assignment for a specific concept on an activity."""
@@ -910,8 +912,73 @@ def ui_save_dss_assignment(
             "UPDATE activity_concept SET dss_title=?, dss_href=? WHERE activity_id=? AND concept_code=?",
             (new_title, new_href, activity_id, concept_code),
         )
+    # When DSS is cleared, cascade-delete property/alias_code/code rows for this BC
+    if not new_href:
+        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+            cur.execute(
+                "SELECT concept_uid FROM activity_concept"
+                " WHERE activity_id=? AND concept_code=? AND soa_id=?",
+                (activity_id, concept_code, soa_id),
+            )
+        else:
+            cur.execute(
+                "SELECT concept_uid FROM activity_concept"
+                " WHERE activity_id=? AND concept_code=?",
+                (activity_id, concept_code),
+            )
+        uid_row = cur.fetchone()
+        bc_uid = uid_row[0] if uid_row else None
+        if bc_uid:
+            cur.execute(
+                "SELECT code FROM biomedical_concept_property"
+                " WHERE biomedical_concept_uid=? AND soa_id=?",
+                (bc_uid, soa_id),
+            )
+            prop_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
+            cur.execute(
+                "DELETE FROM biomedical_concept_property"
+                " WHERE biomedical_concept_uid=? AND soa_id=?",
+                (bc_uid, soa_id),
+            )
+            for prop_alias in prop_alias_uids:
+                cur.execute(
+                    "SELECT 1 FROM biomedical_concept_property"
+                    " WHERE soa_id=? AND code=? LIMIT 1",
+                    (soa_id, prop_alias),
+                )
+                if cur.fetchone():
+                    continue
+                cur.execute(
+                    "SELECT 1 FROM biomedical_concept WHERE soa_id=? AND code=? LIMIT 1",
+                    (soa_id, prop_alias),
+                )
+                if cur.fetchone():
+                    continue
+                cur.execute(
+                    "SELECT standard_code FROM alias_code"
+                    " WHERE alias_code_uid=? AND soa_id=?",
+                    (prop_alias, soa_id),
+                )
+                prop_ac_row = cur.fetchone()
+                cur.execute(
+                    "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
+                    (prop_alias, soa_id),
+                )
+                if prop_ac_row:
+                    cur.execute(
+                        "DELETE FROM code WHERE code_uid=? AND soa_id=?",
+                        (prop_ac_row[0], soa_id),
+                    )
+
     conn.commit()
     conn.close()
+
+    if new_href:
+        from ..app import _populate_bc_properties_bg
+
+        background_tasks.add_task(
+            _populate_bc_properties_bg, soa_id, activity_id, concept_code
+        )
 
     # Audit
     _record_activity_audit(
