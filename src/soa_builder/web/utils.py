@@ -371,7 +371,7 @@ def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
     Assumes `cur` is a sqlite cursor within an open transaction.
     """
     cur.execute(
-        "SELECT alias_code_uid from alias_code WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%",
+        "SELECT alias_code_uid from alias_code WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
         (soa_id,),
     )
     existing = [x[0] for x in cur.fetchall() if x[0]]
