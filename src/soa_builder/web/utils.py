@@ -391,8 +391,10 @@ def get_next_code_uid(cur: Any, soa_id: int) -> str:
     Assumes `cur` is a sqlite cursor within an open transaction.
     """
     cur.execute(
-        "SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-        (soa_id,),
+        "SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'"
+        " UNION"
+        " SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+        (soa_id, soa_id),
     )
     existing = [x[0] for x in cur.fetchall() if x[0]]
     n = 1

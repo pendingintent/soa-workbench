@@ -2539,98 +2539,117 @@ def _populate_bc_properties_bg(
         except Exception:
             code_system_version = ""
 
-        # Step 3: persist — single transaction
+        # Step 3: persist — single write-locked transaction
         conn = _connect()
+        conn.isolation_level = None  # manual transaction management
         cur = conn.cursor()
+        try:
+            cur.execute("BEGIN IMMEDIATE")  # acquire write lock before UID reads
 
-        for var in variables:
-            var_concept_id = var.get("dataElementConceptId")
-            if not var_concept_id:
-                continue
-            var_name = var.get("name")
-            var_required = var.get("mandatoryVariable")
-            var_datatype = var.get("dataType")
+            for var in variables:
+                var_concept_id = var.get("dataElementConceptId")
+                if not var_concept_id:
+                    continue
+                var_name = var.get("name")
+                var_required = var.get("mandatoryVariable")
+                var_datatype = var.get("dataType")
 
-            # skip if this named property already exists for this BC — UIDs are immutable
-            cur.execute(
-                "SELECT id FROM biomedical_concept_property"
-                " WHERE soa_id=? AND biomedical_concept_uid=? AND name=?",
-                (soa_id, bc_uid, var_name),
-            )
-            if cur.fetchone():
-                continue
+                # skip if this named property already exists for this BC — UIDs are immutable
+                cur.execute(
+                    "SELECT id FROM biomedical_concept_property"
+                    " WHERE soa_id=? AND biomedical_concept_uid=? AND name=?",
+                    (soa_id, bc_uid, var_name),
+                )
+                if cur.fetchone():
+                    continue
 
-            # always create a new code row for this property (never reuse)
-            cur.execute(
-                "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-                (soa_id,),
-            )
-            existing_codes = [x[0] for x in cur.fetchall() if x[0]]
-            code_n = max((int(x.split("_")[1]) for x in existing_codes), default=0) + 1
-            code_uid = f"Code_{code_n}"
-            cur.execute(
-                "INSERT INTO code"
-                " (soa_id, code_uid, code, code_system, code_system_version, decode)"
-                " VALUES (?,?,?,?,?,?)",
-                (
-                    soa_id,
-                    code_uid,
-                    var_concept_id,
-                    pkg_href,
-                    code_system_version,
-                    var_name,
-                ),
-            )
+                # always create a new code row for this property (never reuse)
+                cur.execute(
+                    "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'"
+                    " UNION"
+                    " SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                    (soa_id, soa_id),
+                )
+                existing_codes = [x[0] for x in cur.fetchall() if x[0]]
+                code_n = (
+                    max((int(x.split("_")[1]) for x in existing_codes), default=0) + 1
+                )
+                code_uid = f"Code_{code_n}"
+                cur.execute(
+                    "INSERT INTO code"
+                    " (soa_id, code_uid, code, code_system, code_system_version, decode)"
+                    " VALUES (?,?,?,?,?,?)",
+                    (
+                        soa_id,
+                        code_uid,
+                        var_concept_id,
+                        pkg_href,
+                        code_system_version,
+                        var_name,
+                    ),
+                )
 
-            # always create a new alias_code row for this property (never reuse)
-            cur.execute(
-                "SELECT alias_code_uid FROM alias_code"
-                " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
-                (soa_id,),
-            )
-            existing_aliases = [x[0] for x in cur.fetchall() if x[0]]
-            alias_n = (
-                max((int(x.split("_")[1]) for x in existing_aliases), default=0) + 1
-            )
-            alias_uid = f"AliasCode_{alias_n}"
-            cur.execute(
-                "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code)"
-                " VALUES (?,?,?)",
-                (soa_id, alias_uid, code_uid),
-            )
+                # always create a new alias_code row for this property (never reuse)
+                cur.execute(
+                    "SELECT alias_code_uid FROM alias_code"
+                    " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+                    (soa_id,),
+                )
+                existing_aliases = [x[0] for x in cur.fetchall() if x[0]]
+                alias_n = (
+                    max((int(x.split("_")[1]) for x in existing_aliases), default=0) + 1
+                )
+                alias_uid = f"AliasCode_{alias_n}"
+                cur.execute(
+                    "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code)"
+                    " VALUES (?,?,?)",
+                    (soa_id, alias_uid, code_uid),
+                )
 
-            # generate monotonic BiomedicalConceptProperty_N uid
-            cur.execute(
-                "SELECT biomedical_concept_property_uid FROM biomedical_concept_property"
-                " WHERE soa_id=? AND biomedical_concept_property_uid"
-                " LIKE 'BiomedicalConceptProperty_%'",
-                (soa_id,),
-            )
-            existing_uids = [r[0] for r in cur.fetchall() if r[0]]
-            n = max((int(u.split("_")[1]) for u in existing_uids), default=0) + 1
-            bcp_uid = f"BiomedicalConceptProperty_{n}"
+                # generate monotonic BiomedicalConceptProperty_N uid
+                cur.execute(
+                    "SELECT biomedical_concept_property_uid FROM biomedical_concept_property"
+                    " WHERE soa_id=? AND biomedical_concept_property_uid"
+                    " LIKE 'BiomedicalConceptProperty_%'",
+                    (soa_id,),
+                )
+                existing_uids = [r[0] for r in cur.fetchall() if r[0]]
+                n = max((int(u.split("_")[1]) for u in existing_uids), default=0) + 1
+                bcp_uid = f"BiomedicalConceptProperty_{n}"
 
-            cur.execute(
-                "INSERT INTO biomedical_concept_property"
-                " (soa_id, biomedical_concept_uid, biomedical_concept_property_uid,"
-                " name, label, isRequired, datatype, code)"
-                " VALUES (?,?,?,?,?,?,?,?)",
-                (
-                    soa_id,
-                    bc_uid,
-                    bcp_uid,
-                    var_name,
-                    var_name,
-                    var_required,
-                    var_datatype,
-                    alias_uid,
-                ),
-            )
+                cur.execute(
+                    "INSERT INTO biomedical_concept_property"
+                    " (soa_id, biomedical_concept_uid, biomedical_concept_property_uid,"
+                    " name, label, isRequired, datatype, code)"
+                    " VALUES (?,?,?,?,?,?,?,?)",
+                    (
+                        soa_id,
+                        bc_uid,
+                        bcp_uid,
+                        var_name,
+                        var_name,
+                        var_required,
+                        var_datatype,
+                        alias_uid,
+                    ),
+                )
 
-        conn.commit()
-        conn.close()
+            cur.execute("COMMIT")
+        except Exception as _exc:
+            try:
+                cur.execute("ROLLBACK")
+            except Exception:
+                pass
+            logger.warning(
+                "_populate_bc_properties_bg: soa_id=%s concept=%s failed: %s",
+                soa_id,
+                concept_code,
+                _exc,
+            )
+        finally:
+            conn.close()
     except Exception:
-        pass  # silent failure
+        pass  # steps 1/2 network errors already printed above
 
 
 def _upsert_code(cur, soa_id: int, concept_code: str):
@@ -2651,8 +2670,10 @@ def _upsert_code(cur, soa_id: int, concept_code: str):
     if row:
         return row[0]  # pre-existing — return uid, do not re-insert
     cur.execute(
-        "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-        (soa_id,),
+        "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'"
+        " UNION"
+        " SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+        (soa_id, soa_id),
     )
     existing = [x[0] for x in cur.fetchall() if x[0]]
     n = 1
@@ -2792,8 +2813,10 @@ def _upsert_biomedical_concept(
     alias_uid = None
     if concept_code:
         cur.execute(
-            "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-            (soa_id,),
+            "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'"
+            " UNION"
+            " SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+            (soa_id, soa_id),
         )
         existing_codes = [x[0] for x in cur.fetchall() if x[0]]
         code_n = max((int(x.split("_")[1]) for x in existing_codes), default=0) + 1
