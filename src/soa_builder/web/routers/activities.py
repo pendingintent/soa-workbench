@@ -483,6 +483,7 @@ def set_activity_concepts(
         _upsert_alias_code,
         _enrich_code_bg,
         _cleanup_orphaned_concept_rows,
+        _populate_bc_properties_bg,
     )
 
     inserted = 0
@@ -540,6 +541,9 @@ def set_activity_concepts(
         _upsert_biomedical_concept(cur, soa_id, concept_uid, title, _alias_uid)
         background_tasks.add_task(_enrich_biomedical_concept_bg, ccode, soa_id)
         background_tasks.add_task(_enrich_code_bg, ccode, soa_id)
+        background_tasks.add_task(
+            _populate_bc_properties_bg, soa_id, activity_id, ccode
+        )
         inserted += 1
     _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
     conn.commit()
