@@ -1,113 +1,13 @@
 #!/usr/bin/env python3
-# Prefer absolute import; fallback to adding src/ to sys.path when run directly
-from typing import Optional, List, Dict, Any, Callable, Set
+from typing import List, Dict, Any
 import logging
-
-try:
-    from soa_builder.web.app import _connect  # reuse existing DB connector
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    here = Path(__file__).resolve()
-    src_dir = here.parents[2] / "src"
-    if src_dir.exists() and str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
-    from soa_builder.web.app import _connect  # type: ignore
-
-
-def _timing_uids_for_timeline(soa_id: int, schedule_timeline_uid: str) -> Set[str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT t.timing_uid FROM schedule_timelines s INNER JOIN timing t
-        ON s.schedule_timeline_uid = t.member_of_timeline AND s.soa_id = t.soa_id 
-        WHERE s.soa_id=? AND s.schedule_timeline_uid=? ORDER BY t.timing_uid
-        """,
-        (
-            soa_id,
-            schedule_timeline_uid,
-        ),
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return {r[0] for r in rows if r and r[0]}
-
-
-def _load_generate_study_timings():
-    """Return the timing builder from usdm.generate_study_timings (tries several names)."""
-    try:
-        import usdm.generate_study_timings as gst
-    except Exception:
-        import sys
-        from pathlib import Path
-
-        here = Path(__file__).resolve()
-        src_dir = here.parents[2] / "src"
-        if src_dir.exists() and str(src_dir) not in sys.path:
-            sys.path.insert(0, str(src_dir))
-        import usdm.generate_study_timings as gst
-    for name in (
-        "build_usdm_study_timings",
-        "build_usdm_timings",
-        "generate_study_timings",
-    ):
-        fn = getattr(gst, name, None)
-        if callable(fn):
-            return fn
-    raise ImportError("usdm.generate_study_timings missing expected builder function")
-
-
-def _load_generate_study_instances():
-    """Return the instances builder from usdm.generate_scheduled_activity_instances."""
-    try:
-        import usdm.generate_scheduled_activity_instances as gsai
-    except Exception:
-        import sys
-        from pathlib import Path
-
-        here = Path(__file__).resolve()
-        src_dir = here.parents[2] / "src"
-        if src_dir.exists() and str(src_dir) not in sys.path:
-            sys.path.insert(0, str(src_dir))
-        import usdm.generate_scheduled_activity_instances as gsai
-    for name in (
-        "build_usdm_instances",
-        "generate_scheduled_activity_instances",
-    ):
-        fn = getattr(gsai, name, None)
-        if callable(fn):
-            return fn
-    raise ImportError(
-        "usdm.generate_scheduled_activity_instances missing expected builder function"
-    )
-
-
-def _load_generate_decision_instances():
-    """Return the decision instances builder from usdm.generate_scheduled_decision_instances."""
-    try:
-        import usdm.generate_scheduled_decision_instances as gsdi
-    except Exception:
-        import sys
-        from pathlib import Path
-
-        here = Path(__file__).resolve()
-        src_dir = here.parents[2] / "src"
-        if src_dir.exists() and str(src_dir) not in sys.path:
-            sys.path.insert(0, str(src_dir))
-        import usdm.generate_scheduled_decision_instances as gsdi
-    fn = getattr(gsdi, "build_usdm_decision_instances", None)
-    if callable(fn):
-        return fn
-    raise ImportError(
-        "usdm.generate_scheduled_decision_instances missing build_usdm_decision_instances"
-    )
-
-
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
+from soa_builder.web.db import _connect
+from soa_builder.web.utils import _nz
+from .usdm_utils import (
+    _load_generate_study_timings,
+    _load_generate_study_instances,
+    _load_generate_decision_instances,
+)
 
 
 generate_study_timings = _load_generate_study_timings()
@@ -218,7 +118,7 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
             mainTimeline,
             entryCondition,
             entryId,
-            exitId,
+            _,
         ) = (
             r[0],
             r[1],
@@ -255,7 +155,6 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
 if __name__ == "__main__":
     import argparse
     import json
-    import logging
     import sys
 
     logger = logging.getLogger("usdm.generate_schedule_timelines")

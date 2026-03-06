@@ -1,64 +1,9 @@
 #!/usr/bin/env python3
 # Prefer absolute import; fallback to adding src/ to sys.path when run directly
-from typing import Optional, List, Dict, Any, Tuple
-from urllib.parse import urlparse
-
-
-import os
-import requests
-
-try:
-    from soa_builder.web.app import _connect  # reuse existing DB connector
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    here = Path(__file__).resolve()
-    src_dir = here.parents[2] / "src"
-    if src_dir.exists() and str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
-    from soa_builder.web.app import _connect  # type: ignore
-
-
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
-
-
-def _get_epoch_code_values(soa_id: int, epoch_type: str, code: str) -> Tuple[
-    str,
-    str,
-    str,
-]:
-    logger = logging.getLogger("usdm.generate_epochs")
-    url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
-    headers: dict[str, str] = {"Accept": "application/json"}
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
-    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
-        "CDISC_SUBSCRIPTION_KEY"
-    )
-    unified_key = subscription_key or api_key
-    if unified_key:
-        headers["Ocp-Apim-Subscription-Key"] = unified_key
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-        headers["api-key"] = api_key
-
-    resp = requests.get(url, headers=headers, timeout=10)
-    if resp.status_code != 200:
-        logger.exception("No response from {} for code {}".format(url, epoch_type))
-    else:
-        content = resp.json()
-        parsed_url = urlparse(url)
-        code_system = parsed_url.scheme + "://" + parsed_url.netloc
-        code_system_version = parsed_url.path.split("/", 7)[5]
-
-        top_terms = content.get("terms")
-        for term in top_terms:
-            if term.get("conceptId") == code:
-                decode = term.get("submissionValue")
-
-    return code_system, code_system_version, decode
+from typing import List, Dict, Any
+from soa_builder.web.db import _connect
+from soa_builder.web.utils import _nz
+from .usdm_utils import _get_epoch_code_values
 
 
 def build_usdm_epochs(soa_id: int) -> List[Dict[str, Any]]:
@@ -113,7 +58,7 @@ def build_usdm_epochs(soa_id: int) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
 
     for i, r in enumerate(rows):
-        id, epoch_uid, name, label, description, epoch_type, code = (
+        _, epoch_uid, name, label, description, epoch_type, code = (
             r[0],
             r[1],
             r[2],

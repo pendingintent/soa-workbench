@@ -1,40 +1,8 @@
 #!/usr/bin/env python3
-# Prefer absolute import; fallback to adding src/ to sys.path when run directly
-from typing import Optional, List, Dict, Any
-
-try:
-    from soa_builder.web.app import _connect  # reuse existing DB connector
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    here = Path(__file__).resolve()
-    src_dir = here.parents[2] / "src"
-    if src_dir.exists() and str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
-    from soa_builder.web.app import _connect  # type: ignore
-
-try:
-    from soa_builder.web.utils import (
-        _get_biomedical_concept_ids as _get_biomedical_concept_ids,
-    )
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from soa_builder.web.utils import (
-        _get_biomedical_concept_ids as _get_biomedical_concept_ids,
-    )
-
-try:
-    from soa_builder.web.utils import _nz as _nz
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from soa_builder.web.utils import _nz
+from typing import List, Dict, Any
+from soa_builder.web.db import _connect
+from soa_builder.web.utils import _nz
+from .usdm_utils import _get_biomedical_concept_ids
 
 
 def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
@@ -83,7 +51,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
 
     out: List[Dict[str, Any]] = []
     for i, r in enumerate(rows):
-        id, activity_uid, name, label, description = r[0], r[1], r[2], r[3], r[4]
+        _, activity_uid, name, label, description = r[0], r[1], r[2], r[3], r[4]
         aid = activity_uid
         prev_id = id_by_index.get(i - 1)
         next_id = id_by_index.get(i + 1)

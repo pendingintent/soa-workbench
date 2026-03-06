@@ -1,46 +1,8 @@
 #!/usr/bin/env python3
 # Prefer absolute import; fallback to adding src/ to sys.path when run directly
-from typing import Optional, List, Dict, Any
-
-try:
-    from soa_builder.web.app import _connect  # reuse existing DB connector
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    here = Path(__file__).resolve()
-    src_dir = here.parents[2] / "src"
-    if src_dir.exists() and str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
-    from soa_builder.web.app import _connect  # type: ignore
-
-
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
-
-
-def _get_element_ids(soa_id: int, study_cell_uid: str) -> List[str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT element_uid from study_cell WHERE soa_id=? AND study_cell_uid=? ORDER BY element_uid",
-        (
-            soa_id,
-            study_cell_uid,
-        ),
-    )
-    rows = cur.fetchall()
-    conn.close()
-    # Deduplicate and preserve stable order
-    element_uids = [r[0] for r in rows] or []
-    seen = set()
-    ordered_unique: List[str] = []
-    for uid in element_uids:
-        if uid and uid not in seen:
-            seen.add(uid)
-            ordered_unique.append(uid)
-    return ordered_unique
+from typing import List, Dict, Any
+from soa_builder.web.db import _connect
+from .usdm_utils import _get_element_ids
 
 
 def build_usdm_study_cells(soa_id: int) -> List[Dict[str, Any]]:

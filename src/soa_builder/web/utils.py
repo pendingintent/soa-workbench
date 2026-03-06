@@ -48,20 +48,6 @@ _ISO_DURATION_RE = re.compile(
 
 
 # USDM JSON generator helper
-def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT concept_uid from activity_concept where soa_id=? and activity_uid=?",
-        (
-            soa_id,
-            activity_uid,
-        ),
-    )
-    rows = cur.fetchall()
-    conn.close()
-    bc_uids = [r[0] for r in rows] or []
-    return bc_uids
 
 
 def redirect_url_from_referer(request: Request, fallback: str) -> str:

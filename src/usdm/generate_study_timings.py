@@ -1,45 +1,9 @@
 #!/usr/bin/env python3
 # Prefer absolute import; fallback to adding src/ to sys.path when run directly
-from typing import Optional, List, Dict, Any, Tuple
-
-try:
-    from soa_builder.web.app import _connect  # reuse existing DB connector
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    here = Path(__file__).resolve()
-    src_dir = here.parents[2] / "src"
-    if src_dir.exists() and str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
-    from soa_builder.web.app import _connect  # type: ignore
-
-
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
-
-
-def _get_timing_code_values(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT DISTINCT c.codelist_table,d.code,d.cdisc_submission_value,d.dataset_date "
-        "FROM code_association c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
-        "AND c.code = d.code WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
-    )
-    rows = cur.fetchall()
-    conn.close()
-    code_system = [r[0] for r in rows]
-    code_code = [r[1] for r in rows]
-    code_decode = [r[2] for r in rows]
-    code_system_version = [r[3] for r in rows]
-
-    return code_code, code_decode, code_system, code_system_version
+from typing import Optional, List, Dict, Any
+from soa_builder.web.db import _connect
+from soa_builder.web.utils import _nz
+from .usdm_utils import _get_timing_code_values
 
 
 def build_usdm_timings(

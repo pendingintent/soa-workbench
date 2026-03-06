@@ -5,22 +5,10 @@ Full USDM document generator.
 Produces a Study-Output → StudyVersion-Output → InterventionalStudyDesign-Output
 hierarchy, populating sub-entities from the existing per-entity generators.
 """
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 import logging
-
-logger = logging.getLogger("usdm.generate_usdm")
-
-try:
-    from soa_builder.web.app import _connect
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    here = Path(__file__).resolve()
-    src_dir = here.parents[2] / "src"
-    if src_dir.exists() and str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
-    from soa_builder.web.app import _connect  # type: ignore
+from .usdm_utils import _get_soa_metadata
+from soa_builder.web.utils import _nz
 
 from usdm.generate_activities import build_usdm_activities
 from usdm.generate_arms import build_usdm_arms
@@ -31,29 +19,7 @@ from usdm.generate_study_cells import build_usdm_study_cells
 from usdm.generate_study_epochs import build_usdm_epochs
 from usdm.generate_biomedical_concepts import build_usdm_biomedical_concepts
 
-
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
-
-
-def _get_soa_metadata(soa_id: int) -> Dict[str, Optional[str]]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT name, study_id, study_label, study_description FROM soa WHERE id=?",
-        (soa_id,),
-    )
-    row = cur.fetchone()
-    conn.close()
-    if row is None:
-        raise ValueError(f"No SOA found with id={soa_id}")
-    return {
-        "name": row[0],
-        "study_id": row[1],
-        "study_label": row[2],
-        "study_description": row[3],
-    }
+logger = logging.getLogger("usdm.generate_usdm")
 
 
 def build_usdm(soa_id: int) -> Dict[str, Any]:
