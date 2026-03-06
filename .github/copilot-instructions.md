@@ -88,19 +88,7 @@ rm -f soa_builder_web_tests.db*
 ### Pre-commit Hooks
 ```bash
 pre-commit install
-pre-commit run --all-files  # runs black + pytest + flake8
-```
-
-### CLI Commands
-```bash
-# Normalize wide CSV → relational tables
-soa-builder normalize --input files/SoA.csv --out-dir normalized/
-
-# Expand repeating rules → calendar instances
-soa-builder expand --normalized-dir normalized/ --start-date 2025-01-01
-
-# Validate imaging intervals
-soa-builder validate --normalized-dir normalized/
+pre-commit run --all-files  # runs ruff + pytest
 ```
 
 ## Code Conventions

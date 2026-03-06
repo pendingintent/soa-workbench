@@ -2,38 +2,94 @@
 {% block content %}
 
 <h2>Steps to Create an SoA Matrix</h2>
+    
+
 
 <ol>
     <li>
-        <h3>Create a Schedule Timeline (container)</h3>
+        <h3>Create a new Schedule of Activties on the landing page.</h3>
         <ul>
-            <li>Click <strong>Scheduled Timelines</strong> in the left sidebar</li>
-            <li>Create a Timeline (e.g., Main Timeline)</li>
-            <li>Optionally mark the Timeline as <strong>Main</strong></li>
+            <li>Study Name</li>
+            <li>Study ID</li>
+            <li>Study Label</li>
+            <li>Study Description</li>
+            <li>Create Study</li>
         </ul>
     </li>
+
     <li>
-        <h3>Create Encounters/Visits (Optional, but recommended)</h3>
+        <h3>Create Schedule of Activities Matrix on Study Landing Page</h3>
         <ul>
-            <li>Click <strong>Encounters</strong> in the left sidebar</li>
-            <li>Create visits (e.g., "Visit 1", "Visit 2", "Screening"</quote>)</li>
-            <li>These will appear as column headers in the Matrix</li>
+            <li>
+                A basic Schedule of Activity Matrix can be created on the landing lage once a study is created.
+            </li>
+            <li>Add Scheduled Instances to create coluuns for the SOA Matrix</li>
+            <li>Add Activites to create rows for the SOA Matrix</li>
+            <li>Selecting a cell in the Matrix will add a 'X' indicating the Activity is assigned to the Scheduled Instance</li>
+            <li>Biomedical Concepts can now be assigned to an Activity</li>
         </ul>
+        <p><em>This only creates a rudimentary SOA Matrix. More detail can be added using the links in the navigation menu.</em></p> 
+        <p><em>Links are only available once a study SOA has been chosen.</em></p>
     </li>
     <li>
-        <h3>Create Scheduled Activity Instances (Matrix Columns)</h3>
+        <h3>Create Study Timing</h3>
         <ul>
-            <li>Click <strong>Scheduled Activity Instances</strong> in the left sidebar</li>
-            <li>For each instance created:
+            <li>Click <strong>Study Timing</strong> in the navigation menu</li>
+            <li>There are four configurations available
                 <ul>
-                    <li>Set a <strong>name</strong> (e.g., "Week 1", "Day 1")</li>
-                    <li><strong>IMPORTANT:</strong> Set <strong>Member of Timeline</strong> to the timeline created in Step 1</li>
-                    <li>Optionally link to an encounter from Step 2</li>
-                    <li>Optionally link to an Epoch</li>
+                    <li>Schedule Timelines</li>
+                    <li>Scheduled Activity Instances</li>
+                    <li>Scheduled Decision Instances</li>
+                    <li>Condition Assignments</li>
+                    <li>Timings</li>
                 </ul>
             </li>
-            <li>Each instance becomes a column in the Matrix</li>
         </ul>
+    </li>
+    <li>
+        <h3>Create Epochs</h3>
+        <ul>
+            <li>Click <strong>Epochs</strong> in the navigation menu</li>
+            
+        </ul>
+    </li>
+    <li>
+        <h3>Create Arms</h3>
+        <ul>
+            <li>Click <strong>Arms</strong> in the navigation menu</li>
+        </ul>
+    </li>
+    <li>
+        <h3>Create Elements</h3>
+        <ul>
+            <li>Click <strong>Elements</strong> in the navigation menu</li>
+        </ul>
+    </li>
+    <li>
+        <h3>Associate Study Epochs and Arms with Elements</h3>
+        <ul>
+            <li>Click <strong>Study Cells</strong></li>
+        </ul>
+    </li>
+    <li>
+        <h3>Create Encounters</h3>
+        <ul>
+            <li>Click <strong>Encounters</strong> in the left sidebar</li>
+        </ul>
+    </li>
+    <li>
+        <h3>Transition Rules for Encounters and Elements can also be defined</h3>
+        <ul>
+            <li>Click <strong>Transition Rules</strong> in the menu navigation menu</li>
+        </ul>
+    </li>
+    <li>
+        <h3>USDM JSON can also be generated</h3>
+        <ul>
+            <li>Click <strong>Generate USDM JSON</strong> in the menu navigation menu</li>
+        </ul>
+        <p><em>Partial JSON can be generated for the different USDM classes.</em></p>
+        <p><em>The full USDM JSON is not complete.  Not all classes required for USDM conformance can be generated with the attributes set in the SOA Workbench</em></p>
     </li>
     <li>
         <h3>Return to the Edit Page</h3>
