@@ -199,7 +199,7 @@ def test_bulk_create_elements():
     # Create multiple elements
     for i in range(5):
         client.post(
-            f"/ui/soa/{soa_id}/elements/create", data={"name": f"Element {i+1}"}
+            f"/ui/soa/{soa_id}/elements/create", data={"name": f"Element {i + 1}"}
         )
 
     # Verify all created

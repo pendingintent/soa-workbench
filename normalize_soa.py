@@ -31,6 +31,7 @@ Enhancements (future):
 - Support rule recurrence expansion into concrete scheduled instances.
 - Add endpoints linkage and CRF page mapping.
 """
+
 from __future__ import annotations
 
 import argparse

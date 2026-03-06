@@ -5,6 +5,7 @@ Full USDM document generator.
 Produces a Study-Output → StudyVersion-Output → InterventionalStudyDesign-Output
 hierarchy, populating sub-entities from the existing per-entity generators.
 """
+
 from typing import List, Dict, Any
 import logging
 from .usdm_utils import _get_soa_metadata

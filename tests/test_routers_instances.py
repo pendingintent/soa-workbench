@@ -208,7 +208,9 @@ def test_create_multiple_instances():
 
     # Create 3 instances
     for i in range(3):
-        resp = client.post(f"/soa/{soa_id}/instances", json={"name": f"Instance {i+1}"})
+        resp = client.post(
+            f"/soa/{soa_id}/instances", json={"name": f"Instance {i + 1}"}
+        )
         assert resp.status_code == 201
 
     # Verify all created

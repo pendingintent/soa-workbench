@@ -1008,7 +1008,7 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
         _env_setting_cache.update(options=[], fetched_at=now, last_error="missing slug")
         return []
 
-    url = f"https://library.cdisc.org/api/mdr/ct/packages/" f"{slug}/codelists/C127262"
+    url = f"https://library.cdisc.org/api/mdr/ct/packages/{slug}/codelists/C127262"
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     api_key = os.environ.get("CDISC_API_KEY") or subscription_key
@@ -1100,7 +1100,7 @@ def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
         )
         return []
 
-    url = f"https://library.cdisc.org/api/mdr/ct/packages/" f"{slug}/codelists/C171445"
+    url = f"https://library.cdisc.org/api/mdr/ct/packages/{slug}/codelists/C171445"
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     api_key = os.environ.get("CDISC_API_KEY") or subscription_key
