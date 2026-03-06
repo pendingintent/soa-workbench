@@ -1,49 +1,9 @@
 #!/usr/bin/env python3
 # Prefer absolute import; fallback to adding src/ to sys.path when run directly
 from typing import Optional, List, Dict, Any
-
-try:
-    from soa_builder.web.app import _connect  # reuse existing DB connector
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    here = Path(__file__).resolve()
-    src_dir = here.parents[2] / "src"
-    if src_dir.exists() and str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
-    from soa_builder.web.app import _connect  # type: ignore
-
-
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
-
-
-def _get_condition_assignments(
-    soa_id: int, decision_instance_uid: str
-) -> List[Dict[str, Any]]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT condition_assignment_uid, condition, condition_target_uid "
-        "FROM condition_assignment "
-        "WHERE soa_id=? AND decision_instance_uid=? "
-        "ORDER BY order_index, id",
-        (soa_id, decision_instance_uid),
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return [
-        {
-            "id": r[0],
-            "extensionAttributes": [],
-            "condition": r[1],
-            "conditionTargetId": r[2],
-            "instanceType": "Condition",
-        }
-        for r in rows
-    ]
+from soa_builder.web.db import _connect
+from soa_builder.web.utils import _nz
+from .usdm_utils import _get_condition_assignments
 
 
 def build_usdm_decision_instances(

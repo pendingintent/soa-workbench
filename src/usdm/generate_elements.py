@@ -1,75 +1,8 @@
 #!/usr/bin/env python3
-# Prefer absolute import; fallback to adding src/ to sys.path when run directly
-from typing import Optional, List, Dict, Any, Tuple
-
-try:
-    from soa_builder.web.app import _connect  # reuse existing DB connector
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    here = Path(__file__).resolve()
-    src_dir = here.parents[2] / "src"
-    if src_dir.exists() and str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
-    from soa_builder.web.app import _connect  # type: ignore
-
-
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
-
-
-def _get_transition_start_rule(
-    soa_id: int, transition_rule_uid: Optional[str]
-) -> Optional[Dict[str, Any]]:
-    if not transition_rule_uid:
-        return None
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT tr.name, tr.label, tr.description, tr.text FROM transition_rule tr WHERE soa_id=? AND transition_rule_uid=?",
-        (soa_id, transition_rule_uid),
-    )
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        return None
-    return {
-        "id": transition_rule_uid,
-        "extensionAttributes": [],
-        "name": row[0] or None,
-        "label": row[1] or None,
-        "description": row[2] or None,
-        "text": row[3] or None,
-        "instanceType": "TransitionRule",
-    }
-
-
-def _get_transition_end_rule(
-    soa_id: int, transition_rule_uid: Optional[str]
-) -> Optional[Dict[str, Any]]:
-    if not transition_rule_uid:
-        return None
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT tr.name, tr.label, tr.description, tr.text FROM transition_rule tr WHERE soa_id=? AND transition_rule_uid=?",
-        (soa_id, transition_rule_uid),
-    )
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        return None
-    return {
-        "id": transition_rule_uid,
-        "extensionAttributes": [],
-        "name": row[0] or None,
-        "label": row[1] or None,
-        "description": row[2] or None,
-        "text": row[3] or None,
-        "instanceType": "TransitionRule",
-    }
+from typing import List, Dict, Any
+from soa_builder.web.db import _connect
+from soa_builder.web.utils import _nz
+from .usdm_utils import _get_transition_end_rule, _get_transition_start_rule
 
 
 def build_usdm_elements(soa_id: int) -> List[Dict[str, Any]]:

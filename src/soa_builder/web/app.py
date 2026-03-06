@@ -1,11 +1,11 @@
-from __future__ import annotations
-
+#!/usr/bin/env python3
 """FastAPI web application for interactive Schedule of Activities creation.
 
 
 Data persisted in SQLite (file: soa_builder_web.db by default).
 """
 
+from __future__ import annotations
 import csv
 import io
 import json
@@ -79,7 +79,6 @@ from .routers import rollback as rollback_router
 from .routers import visits as visits_router
 from .routers import audits as audits_router
 from .routers import rules as rules_router
-
 from .routers import timings as timings_router
 from .routers import schedule_timelines as schedule_timelines_router
 from .routers import cells as cells_router
@@ -88,6 +87,7 @@ from .routers import usdm_json as usdm_json_router
 from .routers import tdd as tdd_router
 from .routers import decision_instances as decision_instances_router
 from .routers import condition_assignments as condition_assignments_router
+from .audit import _record_element_audit
 
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
@@ -103,6 +103,7 @@ from .schemas import (
 from .utils import (
     get_cdisc_api_key as _get_cdisc_api_key,
     get_concepts_override as _get_concepts_override,
+    get_next_alias_code_uid as _get_next_alias_code_uid,
     get_next_code_uid as _get_next_code_uid,
     get_next_concept_uid as _get_next_concept_uid,
     load_epoch_type_options,
@@ -115,9 +116,6 @@ from .utils import (
     get_schedule_timeline,
     get_scheduled_activity_instance,
 )
-
-# Audit functions
-from .audit import _record_element_audit
 
 
 def _configure_logging():
@@ -590,7 +588,9 @@ def _diff_freezes_limited(
         axis_type = (
             "instance"
             if cell.get("instance_id") is not None
-            else "visit" if cell.get("visit_id") is not None else None
+            else "visit"
+            if cell.get("visit_id") is not None
+            else None
         )
         axis_id = None
         if axis_type == "instance":
@@ -1843,7 +1843,9 @@ async def lifespan(app: FastAPI):
             )
 
             def _run_enrichment_pool(_rows=_unenriched):
-                with ThreadPoolExecutor(max_workers=4) as _pool:
+                with ThreadPoolExecutor(
+                    max_workers=1
+                ) as _pool:  # concurrency was reduced for rate-limiting
                     for _concept_code, _soa_id in _rows:
                         _pool.submit(_enrich_code_bg, _concept_code, _soa_id)
 
@@ -2462,18 +2464,33 @@ def _lookup_and_save_dss(soa_id: int, activity_id: int, concept_code: str) -> No
         pass  # silent failure — DSS column remains unset; user can assign manually
 
 
-def _populate_bc_properties_bg(
-    soa_id: int, activity_id: int, concept_code: str
-) -> None:
-    """Background task: populate biomedical_concept_property from DSS variables.
-
-    Prefers activity_concept.dss_href (set by manual or auto DSS assignment) over
-    fresh step-1 discovery, so the exact selected DSS drives property population.
-    UIDs are immutable — existing rows are skipped. All writes in one transaction.
+def _populate_bc_properties_bg(soa_id: int, activity_id: int, concept_code: str):
     """
-    import os
-    import requests as _requests
+    Background task: fetch DSS variables, parse them, insert BiomedicalConceptProperty rows.
+    Restructured to only hold database lock during quick writes, not during slow API calls.
+    """
+    # Step 1: Quick read - fetch activity concept data (NO WRITE LOCK YET)
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT ac.concept_uid, ac.dss_href
+        FROM activity_concept ac
+        WHERE ac.soa_id = ? AND ac.activity_id = ? AND ac.concept_code = ?
+        """,
+        (soa_id, activity_id, concept_code),
+    )
+    row = cur.fetchone()
+    conn.close()  # Close connection immediately after read
 
+    if not row:
+        return
+
+    concept_uid, dss_href = row
+    if not dss_href:
+        return
+
+    # Step 2: Slow API calls (NO DATABASE CONNECTION HELD)
     api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
         "CDISC_SUBSCRIPTION_KEY"
     )
@@ -2486,170 +2503,175 @@ def _populate_bc_properties_bg(
         headers["api-key"] = api_key
 
     try:
-        # Read existing dss_href and bc_uid from DB before any API call
-        _conn = _connect()
-        _cur = _conn.cursor()
-        _cur.execute(
-            "SELECT concept_uid, dss_href FROM activity_concept"
-            " WHERE activity_id=? AND concept_code=? AND soa_id=?",
-            (activity_id, concept_code, soa_id),
+        resp = requests.get(dss_href, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            return
+        dss_data = resp.json()
+    except (requests.RequestException, ValueError) as e:
+        logger.warning(f"API error fetching DSS for {concept_code}: {e}")
+        return
+
+    # Step 3: Parse response data (NO DATABASE CONNECTION)
+    variables = dss_data.get("variables", [])
+    if not variables:
+        return
+
+    # Extract parent package info for code system
+    try:
+        dss_code_system = dss_data["_links"]["parentPackage"]["href"]
+        dss_code_system_version = dss_code_system.split("/")[5]
+    except (KeyError, TypeError, IndexError):
+        dss_code_system = ""
+        dss_code_system_version = ""
+
+    # Prepare all insert data in memory (no DB connection held during API work)
+    properties_to_insert = []
+    for var in variables:
+        var_concept_id = var.get("dataElementConceptId", "")
+        name = var.get("name", "")
+        label = var.get("label", name)
+        is_required = var.get("mandatoryVariable", False)
+        datatype = var.get("dataType", "")
+
+        properties_to_insert.append(
+            {
+                "concept_uid": concept_uid,
+                "name": name,
+                "label": label,
+                "is_required": is_required,
+                "datatype": datatype,
+                "var_concept_id": var_concept_id,
+            }
         )
-        _ac = _cur.fetchone()
-        _conn.close()
-        bc_uid = _ac[0] if _ac else None
-        dss_href = (_ac[1] if _ac else None) or None
-        if not bc_uid:
-            return
 
-        if dss_href:
-            # Use the already-known href — skip step-1
-            if dss_href.startswith("/"):
-                dss_href = "https://api.library.cdisc.org/api/cosmos/v2" + dss_href
-        else:
-            # Step 1: discover DSS href for this concept
-            list_url = (
-                "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations"
-                "/datasetspecializations?biomedicalconcept=" + concept_code
+    # Step 4: NOW acquire write lock and do fast inserts
+    conn = _connect()
+    conn.isolation_level = None  # manual transaction management
+    cur = conn.cursor()
+    try:
+        cur.execute("BEGIN IMMEDIATE")
+
+        # Collect existing property alias_code UIDs BEFORE deleting (for cascade cleanup)
+        cur.execute(
+            "SELECT code FROM biomedical_concept_property"
+            " WHERE biomedical_concept_uid = ? AND soa_id = ?",
+            (concept_uid, soa_id),
+        )
+        orphaned_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
+
+        # Delete existing properties for this concept
+        cur.execute(
+            "DELETE FROM biomedical_concept_property"
+            " WHERE biomedical_concept_uid = ? AND soa_id = ?",
+            (concept_uid, soa_id),
+        )
+
+        # Cascade-delete orphaned alias_code + code rows
+        for alias_uid in orphaned_alias_uids:
+            # Check if this alias_code is still referenced by other properties or biomedical_concept
+            cur.execute(
+                "SELECT 1 FROM biomedical_concept_property WHERE soa_id=? AND code=? LIMIT 1",
+                (soa_id, alias_uid),
             )
-            r1 = _requests.get(list_url, headers=headers, timeout=15)
-            if r1.status_code != 200:
-                return
-            data1 = r1.json()
-            sdtm_links = data1["_links"]["datasetSpecializations"]["sdtm"]
-            if not sdtm_links:
-                return
-            dss_href = sdtm_links[0]["href"]
-            if dss_href.startswith("/"):
-                dss_href = "https://api.library.cdisc.org/api/cosmos/v2" + dss_href
+            if cur.fetchone():
+                continue  # Still in use
+            cur.execute(
+                "SELECT 1 FROM biomedical_concept WHERE soa_id=? AND code=? LIMIT 1",
+                (soa_id, alias_uid),
+            )
+            if cur.fetchone():
+                continue  # Still in use
 
-        # Step 2: fetch DSS detail
-        r2 = _requests.get(dss_href, headers=headers, timeout=15)
-        if r2.status_code != 200:
-            return
-        raw = r2.json()
+            # This alias_code is orphaned; fetch its standard_code before deleting
+            cur.execute(
+                "SELECT standard_code FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
+                (alias_uid, soa_id),
+            )
+            code_row = cur.fetchone()
 
-        variables = raw.get("variables") or []
-        if not variables:
-            return
+            # Delete the orphaned alias_code row
+            cur.execute(
+                "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
+                (alias_uid, soa_id),
+            )
 
-        pkg_href = (raw.get("_links") or {}).get("parentPackage") or {}
-        pkg_href = pkg_href.get("href", "") if isinstance(pkg_href, dict) else ""
+            # Cascade-delete the orphaned code row if it exists
+            if code_row:
+                code_uid = code_row[0]
+                cur.execute(
+                    "DELETE FROM code WHERE code_uid=? AND soa_id=?",
+                    (code_uid, soa_id),
+                )
+
+        # Insert all new properties, creating code + alias_code rows per property
+        for prop in properties_to_insert:
+            # code row: stores the CDISC dataElementConceptId
+            code_uid = _get_next_code_uid(cur, soa_id)
+            cur.execute(
+                "INSERT INTO code"
+                " (soa_id, code_uid, code, code_system, code_system_version, decode)"
+                " VALUES (?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    code_uid,
+                    prop["var_concept_id"],
+                    dss_code_system,
+                    dss_code_system_version,
+                    prop["name"],
+                ),
+            )
+
+            # alias_code row pointing at the code row
+            alias_uid = _get_next_alias_code_uid(cur, soa_id)
+            cur.execute(
+                "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code)"
+                " VALUES (?,?,?)",
+                (soa_id, alias_uid, code_uid),
+            )
+
+            # generate monotonic BiomedicalConceptProperty_N uid
+            cur.execute(
+                "SELECT MAX(CAST(SUBSTR(biomedical_concept_property_uid, 27) AS INTEGER))"
+                " FROM biomedical_concept_property"
+                " WHERE soa_id=?"
+                " AND biomedical_concept_property_uid LIKE 'BiomedicalConceptProperty_%'",
+                (soa_id,),
+            )
+            n = (cur.fetchone()[0] or 0) + 1
+            bcp_uid = f"BiomedicalConceptProperty_{n}"
+
+            cur.execute(
+                "INSERT INTO biomedical_concept_property"
+                " (soa_id, biomedical_concept_uid, biomedical_concept_property_uid,"
+                "  name, label, isRequired, datatype, code)"
+                " VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    prop["concept_uid"],
+                    bcp_uid,
+                    prop["name"],
+                    prop["label"],
+                    prop["is_required"],
+                    prop["datatype"],
+                    alias_uid,
+                ),
+            )
+
+        cur.execute("COMMIT")
+
+    except Exception as exc:
         try:
-            code_system_version = pkg_href.split("/")[5]
+            cur.execute("ROLLBACK")
         except Exception:
-            code_system_version = ""
-
-        # Step 3: persist — single write-locked transaction
-        conn = _connect()
-        conn.isolation_level = None  # manual transaction management
-        cur = conn.cursor()
-        try:
-            cur.execute("BEGIN IMMEDIATE")  # acquire write lock before UID reads
-
-            for var in variables:
-                var_concept_id = var.get("dataElementConceptId")
-                if not var_concept_id:
-                    continue
-                var_name = var.get("name")
-                var_required = var.get("mandatoryVariable")
-                var_datatype = var.get("dataType")
-
-                # skip if this named property already exists for this BC — UIDs are immutable
-                cur.execute(
-                    "SELECT id FROM biomedical_concept_property"
-                    " WHERE soa_id=? AND biomedical_concept_uid=? AND name=?",
-                    (soa_id, bc_uid, var_name),
-                )
-                if cur.fetchone():
-                    continue
-
-                # always create a new code row for this property (never reuse)
-                cur.execute(
-                    "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'"
-                    " UNION"
-                    " SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-                    (soa_id, soa_id),
-                )
-                existing_codes = [x[0] for x in cur.fetchall() if x[0]]
-                code_n = (
-                    max((int(x.split("_")[1]) for x in existing_codes), default=0) + 1
-                )
-                code_uid = f"Code_{code_n}"
-                cur.execute(
-                    "INSERT INTO code"
-                    " (soa_id, code_uid, code, code_system, code_system_version, decode)"
-                    " VALUES (?,?,?,?,?,?)",
-                    (
-                        soa_id,
-                        code_uid,
-                        var_concept_id,
-                        pkg_href,
-                        code_system_version,
-                        var_name,
-                    ),
-                )
-
-                # always create a new alias_code row for this property (never reuse)
-                cur.execute(
-                    "SELECT alias_code_uid FROM alias_code"
-                    " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
-                    (soa_id,),
-                )
-                existing_aliases = [x[0] for x in cur.fetchall() if x[0]]
-                alias_n = (
-                    max((int(x.split("_")[1]) for x in existing_aliases), default=0) + 1
-                )
-                alias_uid = f"AliasCode_{alias_n}"
-                cur.execute(
-                    "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code)"
-                    " VALUES (?,?,?)",
-                    (soa_id, alias_uid, code_uid),
-                )
-
-                # generate monotonic BiomedicalConceptProperty_N uid
-                cur.execute(
-                    "SELECT biomedical_concept_property_uid FROM biomedical_concept_property"
-                    " WHERE soa_id=? AND biomedical_concept_property_uid"
-                    " LIKE 'BiomedicalConceptProperty_%'",
-                    (soa_id,),
-                )
-                existing_uids = [r[0] for r in cur.fetchall() if r[0]]
-                n = max((int(u.split("_")[1]) for u in existing_uids), default=0) + 1
-                bcp_uid = f"BiomedicalConceptProperty_{n}"
-
-                cur.execute(
-                    "INSERT INTO biomedical_concept_property"
-                    " (soa_id, biomedical_concept_uid, biomedical_concept_property_uid,"
-                    " name, label, isRequired, datatype, code)"
-                    " VALUES (?,?,?,?,?,?,?,?)",
-                    (
-                        soa_id,
-                        bc_uid,
-                        bcp_uid,
-                        var_name,
-                        var_name,
-                        var_required,
-                        var_datatype,
-                        alias_uid,
-                    ),
-                )
-
-            cur.execute("COMMIT")
-        except Exception as _exc:
-            try:
-                cur.execute("ROLLBACK")
-            except Exception:
-                pass
-            logger.warning(
-                "_populate_bc_properties_bg: soa_id=%s concept=%s failed: %s",
-                soa_id,
-                concept_code,
-                _exc,
-            )
-        finally:
-            conn.close()
-    except Exception:
-        pass  # steps 1/2 network errors already printed above
+            pass
+        logger.warning(
+            "_populate_bc_properties_bg: soa_id=%s concept=%s failed: %s",
+            soa_id,
+            concept_code,
+            exc,
+        )
+    finally:
+        conn.close()
 
 
 def _upsert_code(cur, soa_id: int, concept_code: str):
@@ -2879,6 +2901,7 @@ def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
         headers["api-key"] = api_key
+    conn = None
     try:
         url = (
             "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/"
@@ -2893,23 +2916,22 @@ def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
         conn = _connect()
         cur = conn.cursor()
         cur.execute(
-            "SELECT ac.alias_code_uid FROM alias_code ac "
-            "JOIN code c ON ac.standard_code = c.code_uid "
-            "WHERE c.soa_id=? AND c.code=?",
-            (soa_id, concept_code),
-        )
-        row = cur.fetchone()
-        if not row:
-            conn.close()
-            return
-        cur.execute(
-            "UPDATE biomedical_concept SET label=?, description=? WHERE code=? AND soa_id=?",
-            (label, description, row[0], soa_id),
+            """
+            UPDATE biomedical_concept SET label=?, description=?
+            WHERE soa_id=?
+              AND biomedical_concept_uid IN (
+                  SELECT concept_uid FROM activity_concept
+                  WHERE soa_id=? AND concept_code=? AND concept_uid IS NOT NULL
+              )
+            """,
+            (label, description, soa_id, soa_id, concept_code),
         )
         conn.commit()
-        conn.close()
     except Exception:
         pass
+    finally:
+        if conn:
+            conn.close()
 
 
 def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
@@ -3908,7 +3930,7 @@ def export_pdf(soa_id: int):
         content_for_offsets.append(obj)
     final_body = "".join(content_for_offsets)
     xref_start = len(final_body.encode("utf-8"))
-    xref = ["xref\n", f"0 {len(objects)+1}\n", "0000000000 65535 f \n"]
+    xref = ["xref\n", f"0 {len(objects) + 1}\n", "0000000000 65535 f \n"]
     # True offsets: header length + cumulative lengths before each object
     cumulative = len(pdf_parts[0].encode("utf-8"))
     obj_offsets = []
@@ -3917,7 +3939,7 @@ def export_pdf(soa_id: int):
         cumulative += len(obj.encode("utf-8"))
     for off in obj_offsets:
         xref.append(f"{off:010d} 00000 n \n")
-    trailer = f"trailer << /Size {len(objects)+1} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF"
+    trailer = f"trailer << /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF"
     pdf_bytes = (final_body + "".join(xref) + trailer).encode("utf-8")
     filename = f"soa_{soa_id}_summary.pdf"
     return Response(
@@ -4366,9 +4388,9 @@ def ui_edit(request: Request, soa_id: int):
         if secs < 60:
             last_fetch_relative = f"{secs}s ago"
         elif secs < 3600:
-            last_fetch_relative = f"{secs//60}m ago"
+            last_fetch_relative = f"{secs // 60}m ago"
         else:
-            last_fetch_relative = f"{secs//3600}h ago"
+            last_fetch_relative = f"{secs // 3600}h ago"
     freeze_list = _list_freezes(soa_id)
     last_frozen_at = freeze_list[0]["created_at"] if freeze_list else None
     # Study metadata for edit form
@@ -4490,7 +4512,6 @@ def ui_edit(request: Request, soa_id: int):
             code_map[eid] = code
     conn_em.close()
     try:
-
         code_to_submission = load_epoch_type_map(force=False) or {}
     except Exception:
         code_to_submission = {}
@@ -7136,7 +7157,6 @@ def main():
 
 
 if __name__ == "__main__":
-
     main()
 
 

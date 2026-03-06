@@ -1,99 +1,19 @@
 #!/usr/bin/env python3
-# Prefer absolute import; fallback to adding src/ to sys.path when run directly
-from typing import Optional, List, Dict, Any, Tuple
-
-try:
-    from soa_builder.web.app import _connect  # reuse existing DB connector
-    from soa_builder.web.utils import get_encounter_environment_sv
-    from soa_builder.web.utils import get_submission_value_for_code
-except ImportError:
-    import sys
-    from pathlib import Path
-
-    here = Path(__file__).resolve()
-    src_dir = here.parents[2] / "src"
-    if src_dir.exists() and str(src_dir) not in sys.path:
-        sys.path.insert(0, str(src_dir))
-    from soa_builder.web.app import _connect  # type: ignore
-    from soa_builder.web.utils import get_encounter_environment_sv
-    from soa_builder.web.utils import get_submission_value_for_code
+from typing import List, Dict, Any, Tuple
+from soa_builder.web.utils import get_submission_value_for_code, _nz
+from soa_builder.web.db import _connect
+from .usdm_utils import (
+    _get_timing_name,
+    _get_transition_start_rule,
+    _get_transition_end_rule,
+    _get_code_tuple,
+)
 
 
-def _nz(s: Optional[str]) -> Optional[str]:
-    s = (s or "").strip()
-    return s or None
-
-
-def _get_timing_name(soa_id: int, timing_id: Optional[int]) -> str:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT timing_uid FROM timing WHERE id=? AND soa_id=?",
-        (
-            timing_id,
-            soa_id,
-        ),
-    )
-    row = cur.fetchone()
-    conn.close()
-    timing_uid = row[0] if (row and row[0] is not None) else None
-
-    return timing_uid
-
-
-def _get_transition_start_rule(
-    soa_id: int, transition_rule_uid: Optional[str]
-) -> Optional[Dict[str, Any]]:
-    if not transition_rule_uid:
-        return None
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT tr.name, tr.label, tr.description, tr.text FROM transition_rule tr WHERE soa_id=? AND transition_rule_uid=?",
-        (soa_id, transition_rule_uid),
-    )
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        return None
-    return {
-        "id": transition_rule_uid,
-        "extensionAttributes": [],
-        "name": row[0] or None,
-        "label": row[1] or None,
-        "description": row[2] or None,
-        "text": row[3] or None,
-        "instanceType": "TransitionRule",
-    }
-
-
-def _get_transition_end_rule(
-    soa_id: int, transition_rule_uid: Optional[str]
-) -> Optional[Dict[str, Any]]:
-    if not transition_rule_uid:
-        return None
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT tr.name, tr.label, tr.description, tr.text FROM transition_rule tr WHERE soa_id=? AND transition_rule_uid=?",
-        (soa_id, transition_rule_uid),
-    )
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        return None
-    return {
-        "id": transition_rule_uid,
-        "extensionAttributes": [],
-        "name": row[0] or None,
-        "label": row[1] or None,
-        "description": row[2] or None,
-        "text": row[3] or None,
-        "instanceType": "TransitionRule",
-    }
-
-
+# Override the definition in usdm_utils.py
+# Encounters are currently storing type codes in the ddf_terminology table
 def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
+    """Fetch type codes for ENCOUNTERS only.  These values are stored in the ddf_terminology table."""
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -113,25 +33,6 @@ def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str
     code_system_version = [r[3] for r in rows]
 
     return code_code, code_decode, code_system, code_system_version
-
-
-def _get_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT DISTINCT c.codelist_table,c.code "
-        "FROM code_association c WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
-    )
-    rows = cur.fetchall()
-    conn.close()
-    code_system = [r[0] for r in rows]
-    code = [r[1] for r in rows]
-
-    return code, code_system
 
 
 def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
@@ -192,7 +93,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
         (
             name,
             label,
-            order_index,
+            _,
             encounter_uid,
             description,
             type,
@@ -308,7 +209,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
                 "id": type,
                 "extensionAttributes": [],
                 "code": t_code[0],
-                "codeSystem": "db://" + t_codeSystem[0],
+                "codeSystem": t_codeSystem[0],
                 "codeSystemVersion": t_codeSystemVersion[0],
                 "decode": t_decode[0],
                 "instanceType": "Code",
@@ -323,6 +224,8 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             "notes": [],
             "instanceType": "Encounter",
         }
+        if timing_uid:
+            encounter["scheduledAt"] = timing_uid
         out.append(encounter)
     return out
 

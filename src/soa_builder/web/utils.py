@@ -48,20 +48,6 @@ _ISO_DURATION_RE = re.compile(
 
 
 # USDM JSON generator helper
-def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT concept_uid from activity_concept where soa_id=? and activity_uid=?",
-        (
-            soa_id,
-            activity_uid,
-        ),
-    )
-    rows = cur.fetchall()
-    conn.close()
-    bc_uids = [r[0] for r in rows] or []
-    return bc_uids
 
 
 def redirect_url_from_referer(request: Request, fallback: str) -> str:
@@ -1022,7 +1008,7 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
         _env_setting_cache.update(options=[], fetched_at=now, last_error="missing slug")
         return []
 
-    url = f"https://library.cdisc.org/api/mdr/ct/packages/" f"{slug}/codelists/C127262"
+    url = f"https://library.cdisc.org/api/mdr/ct/packages/{slug}/codelists/C127262"
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     api_key = os.environ.get("CDISC_API_KEY") or subscription_key
@@ -1114,7 +1100,7 @@ def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
         )
         return []
 
-    url = f"https://library.cdisc.org/api/mdr/ct/packages/" f"{slug}/codelists/C171445"
+    url = f"https://library.cdisc.org/api/mdr/ct/packages/{slug}/codelists/C171445"
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     api_key = os.environ.get("CDISC_API_KEY") or subscription_key
