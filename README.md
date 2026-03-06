@@ -1,13 +1,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-
-
 # SoA Workbench
 
-This workspace provides a Python package `soa_builder` with APIs to:
-
-1. Normalize a wide Schedule of Activities (SoA) matrix into relational tables.
-2. Expand repeating schedule rules into projected calendar instances.
+This workspace provides a Python package `soa_builder` with APIs to create a Schedule of Activites for Clinical Studies.
 
 
 ## Installation
@@ -15,8 +10,9 @@ Recommended: editable install for development.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -r requirements.txt
 pre-commit install
+pre-commit run --all-files
 ```
 
 ## Start web server
@@ -30,13 +26,15 @@ uvicorn soa_builder.web.app:app --reload --port 8000
 ```
 HTML UI:
 - Open http://localhost:8000/ in a browser.
-- Add visits and activities; click cells to toggle status (blank -> X -> blank). 'O' values are not surfaced in the UI; clearing removes the cell row.
-- Use "Generate Normalized Summary" link to produce artifacts.
- - Use export buttons (to be added) or hit endpoints directly for XLSX output.
- - Delete a visit or activity using the ✕ button next to its name (confirmation dialog). Deletion cascades to associated cells and automatically reorders remaining items.
- - View biomedical concepts via the "Concepts" navigation link (`GET /ui/concepts`): renders a table of concept codes, titles and API links (cached; force refresh per study using `POST /ui/soa/{id}/concepts_refresh`).
- 
-Biomedical Concepts API Access:
+- Create a new Schedule of Activities for a study or access an existing one.
+	- When a study is chosen, additional navigation links are available in the navigation menu that are unique to the Study context.
+	- More options and parameters for configuring the USDM classes are available through these navigation links.
+- Add Scheduled Activity instances (columns) and activities (rows) to create an SoA matrix on the edit page for a Study; click cells to toggle status (blank -> X -> blank). 'O' values are not surfaced in the UI; clearing removes the cell row.
+ - Use export buttons (to be added) for XLSX output of the Matrix.
+- View avialable biomedical concepts via the "Biomedical Concepts" navigation link to render a table of concept codes, titles and API links (cached; force refresh available).
+- View available data set specializations via the "SDTM Dataset Specializations" navigation link to render a table of specializations and API links to view associated concepts (cached; force refresh available). 
+
+CDISC Library API Access:
 - The concepts list and detail pages call the CDISC Library API.
 - Set one (or both) of: `CDISC_SUBSCRIPTION_KEY`, `CDISC_API_KEY`.
 - The server will send all of these headers when possible:
