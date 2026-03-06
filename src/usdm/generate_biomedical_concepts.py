@@ -2,7 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any
 
-from soa_builder.web.utils import _connect
+from soa_builder.web.db import _connect
 from .usdm_utils import (
     _get_biomedical_concept_synonyms as _get_biomedical_concept_synonyms,
     _get_biomedical_concept_properties as _get_biomedical_concept_properties,

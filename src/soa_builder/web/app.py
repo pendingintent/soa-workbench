@@ -1844,7 +1844,9 @@ async def lifespan(app: FastAPI):
             )
 
             def _run_enrichment_pool(_rows=_unenriched):
-                with ThreadPoolExecutor(max_workers=1) as _pool:
+                with ThreadPoolExecutor(
+                    max_workers=1
+                ) as _pool:  # concurrency was reduced for rate-limiting
                     for _concept_code, _soa_id in _rows:
                         _pool.submit(_enrich_code_bg, _concept_code, _soa_id)
 
@@ -2463,7 +2465,7 @@ def _lookup_and_save_dss(soa_id: int, activity_id: int, concept_code: str) -> No
         pass  # silent failure — DSS column remains unset; user can assign manually
 
 
-async def _populate_bc_properties_bg(soa_id: int, activity_id: int, concept_code: str):
+def _populate_bc_properties_bg(soa_id: int, activity_id: int, concept_code: str):
     """
     Background task: fetch DSS variables, parse them, insert BiomedicalConceptProperty rows.
     Restructured to only hold database lock during quick writes, not during slow API calls.
@@ -2507,7 +2509,7 @@ async def _populate_bc_properties_bg(soa_id: int, activity_id: int, concept_code
             return
         dss_data = resp.json()
     except (requests.RequestException, ValueError) as e:
-        print(f"API error fetching DSS for {concept_code}: {e}")
+        logger.warning(f"API error fetching DSS for {concept_code}: {e}")
         return
 
     # Step 3: Parse response data (NO DATABASE CONNECTION)
@@ -2550,12 +2552,57 @@ async def _populate_bc_properties_bg(soa_id: int, activity_id: int, concept_code
     try:
         cur.execute("BEGIN IMMEDIATE")
 
+        # Collect existing property alias_code UIDs BEFORE deleting (for cascade cleanup)
+        cur.execute(
+            "SELECT code FROM biomedical_concept_property"
+            " WHERE biomedical_concept_uid = ? AND soa_id = ?",
+            (concept_uid, soa_id),
+        )
+        orphaned_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
+
         # Delete existing properties for this concept
         cur.execute(
             "DELETE FROM biomedical_concept_property"
             " WHERE biomedical_concept_uid = ? AND soa_id = ?",
             (concept_uid, soa_id),
         )
+
+        # Cascade-delete orphaned alias_code + code rows
+        for alias_uid in orphaned_alias_uids:
+            # Check if this alias_code is still referenced by other properties or biomedical_concept
+            cur.execute(
+                "SELECT 1 FROM biomedical_concept_property WHERE soa_id=? AND code=? LIMIT 1",
+                (soa_id, alias_uid),
+            )
+            if cur.fetchone():
+                continue  # Still in use
+            cur.execute(
+                "SELECT 1 FROM biomedical_concept WHERE soa_id=? AND code=? LIMIT 1",
+                (soa_id, alias_uid),
+            )
+            if cur.fetchone():
+                continue  # Still in use
+
+            # This alias_code is orphaned; fetch its standard_code before deleting
+            cur.execute(
+                "SELECT standard_code FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
+                (alias_uid, soa_id),
+            )
+            code_row = cur.fetchone()
+
+            # Delete the orphaned alias_code row
+            cur.execute(
+                "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
+                (alias_uid, soa_id),
+            )
+
+            # Cascade-delete the orphaned code row if it exists
+            if code_row:
+                code_uid = code_row[0]
+                cur.execute(
+                    "DELETE FROM code WHERE code_uid=? AND soa_id=?",
+                    (code_uid, soa_id),
+                )
 
         # Insert all new properties, creating code + alias_code rows per property
         for prop in properties_to_insert:

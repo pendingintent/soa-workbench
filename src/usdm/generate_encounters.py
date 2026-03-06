@@ -224,6 +224,8 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             "notes": [],
             "instanceType": "Encounter",
         }
+        if timing_uid:
+            encounter["scheduledAt"] = timing_uid
         out.append(encounter)
     return out
 

@@ -185,7 +185,7 @@ def _get_biomedical_concept_synonyms(concept_code: str) -> List[str]:
 @functools.lru_cache(maxsize=256)
 def _get_biomedical_concept_properties(
     soa_id: int, biomedical_concept_uid: str
-) -> Optional[Dict[str, any]]:
+) -> List[Dict[str, Any]]:
     """Fetch biomedical concept properties from the database using the BiomedicalConcept_{}."""
 
     conn = _connect()
@@ -383,36 +383,58 @@ def _get_transition_start_rule(
     }
 
 
-def _get_timing_name(soa_id: int, timing_id: Optional[int]) -> str:
+def _get_timing_name(soa_id: int, timing_id: Optional[int]) -> Optional[str]:
+    """
+    Get timing UID for a given timing ID.
+
+    Args:
+        soa_id: The SOA ID
+        timing_id: The timing table ID (can be None)
+
+    Returns:
+        Timing UID string or None if not found or timing_id is None
+    """
+    if timing_id is None:
+        return None
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
         "SELECT timing_uid FROM timing WHERE id=? AND soa_id=?",
-        (
-            timing_id,
-            soa_id,
-        ),
+        (timing_id, soa_id),
     )
     row = cur.fetchone()
     conn.close()
-    timing_uid = row[0] if (row and row[0] is not None) else None
 
-    return timing_uid
+    return row[0] if (row and row[0] is not None) else None
 
 
-def _get_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str]:
+def _get_code_tuple(soa_id: int, code_uid: str) -> Tuple[List[str], List[str]]:
+    """
+    Get code and code system lists for a given code UID.
+
+    Args:
+        soa_id: The SOA ID
+        code_uid: The Code UID (e.g., 'Code_1')
+
+    Returns:
+        Tuple of ([codes], [code_systems]) - both are lists that may be empty
+
+    Note:
+        Returns lists because a single code_uid can map to multiple codes
+        via code_association table (e.g., same concept in multiple codelists).
+        Callers should handle list unpacking appropriately.
+    """
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT DISTINCT c.codelist_table,c.code "
+        "SELECT DISTINCT c.codelist_table, c.code "
         "FROM code_association c WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
+        (soa_id, code_uid),
     )
     rows = cur.fetchall()
     conn.close()
+
     code_system = [r[0] for r in rows]
     code = [r[1] for r in rows]
 
@@ -564,12 +586,28 @@ def _get_element_ids(soa_id: int, study_cell_uid: str) -> List[str]:
 
 # Helpers for Study Epochs
 @functools.lru_cache(maxsize=256)
-def _get_epoch_code_values(soa_id: int, epoch_type: str, code: str) -> Tuple[
-    str,
-    str,
-    str,
-]:
+def _get_epoch_code_values(
+    soa_id: int, epoch_type: str, code: str
+) -> Tuple[str, str, str]:
+    """
+    Fetch epoch code values from CDISC Library API.
+
+    Args:
+        soa_id: SOA ID (for logging/context)
+        epoch_type: Epoch type identifier
+        code: CDISC concept ID to look up (e.g., 'C99079')
+
+    Returns:
+        Tuple of (code_system, code_system_version, decode)
+        Returns empty strings if API fails or term not found
+    """
     logger = logging.getLogger("usdm.generate_epochs")
+
+    # Initialize safe defaults (prevents UnboundLocalError)
+    code_system = ""
+    code_system_version = ""
+    decode = ""
+
     url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
@@ -577,25 +615,55 @@ def _get_epoch_code_values(soa_id: int, epoch_type: str, code: str) -> Tuple[
         "CDISC_SUBSCRIPTION_KEY"
     )
     unified_key = subscription_key or api_key
+
     if unified_key:
         headers["Ocp-Apim-Subscription-Key"] = unified_key
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
         headers["api-key"] = api_key
 
-    resp = requests.get(url, headers=headers, timeout=10)
-    if resp.status_code != 200:
-        logger.exception("No response from {} for code {}".format(url, epoch_type))
-    else:
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            logger.warning(
+                "Failed to fetch epoch codes from %s (status %d) for code %s",
+                url,
+                resp.status_code,
+                code,
+            )
+            return code_system, code_system_version, decode
+
         content = resp.json()
         parsed_url = urlparse(url)
         code_system = parsed_url.scheme + "://" + parsed_url.netloc
         code_system_version = parsed_url.path.split("/", 7)[5]
 
-        top_terms = content.get("terms")
+        # Guard against missing 'terms' key
+        top_terms = content.get("terms") or []
         for term in top_terms:
             if term.get("conceptId") == code:
-                decode = term.get("submissionValue")
+                decode = term.get("submissionValue") or ""
+                break  # Found matching term, exit loop
+
+        if not decode:
+            logger.debug(
+                "No matching term found for conceptId=%s in %s",
+                code,
+                url,
+            )
+
+    except requests.RequestException as e:
+        logger.warning(
+            "Request error fetching epoch codes from %s: %s",
+            url,
+            e,
+        )
+    except (ValueError, KeyError) as e:
+        logger.warning(
+            "Error parsing epoch code response from %s: %s",
+            url,
+            e,
+        )
 
     return code_system, code_system_version, decode
 
