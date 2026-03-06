@@ -102,6 +102,6 @@ def test_study_cell_uid_unique_on_later_addition():
     )
     cnt = cur.fetchone()[0]
     conn.close()
-    assert (
-        cnt == 1
-    ), "Duplicate submission should not create a second row for the same element"
+    assert cnt == 1, (
+        "Duplicate submission should not create a second row for the same element"
+    )

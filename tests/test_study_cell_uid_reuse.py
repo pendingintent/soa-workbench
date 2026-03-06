@@ -78,9 +78,9 @@ def test_study_cell_uid_unique_per_row():
     conn.close()
     assert len(sc_rows) >= 2
     uids = [r[0] for r in sc_rows]
-    assert len(uids) == len(
-        set(uids)
-    ), "Each study_cell row must have a unique study_cell_uid"
+    assert len(uids) == len(set(uids)), (
+        "Each study_cell row must have a unique study_cell_uid"
+    )
 
     # Idempotence check: submitting the same element again should not create a duplicate row
     form_dup = {"arm_uid": arm_uid, "epoch_uid": epoch_uid, "element_uids": [el_b]}
@@ -94,6 +94,6 @@ def test_study_cell_uid_unique_per_row():
     )
     cnt = cur.fetchone()[0]
     conn.close()
-    assert (
-        cnt == 1
-    ), "Duplicate submission should not create a second row for the same element"
+    assert cnt == 1, (
+        "Duplicate submission should not create a second row for the same element"
+    )

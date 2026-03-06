@@ -4,6 +4,7 @@
 
 Data persisted in SQLite (file: soa_builder_web.db by default).
 """
+
 from __future__ import annotations
 import csv
 import io
@@ -587,7 +588,9 @@ def _diff_freezes_limited(
         axis_type = (
             "instance"
             if cell.get("instance_id") is not None
-            else "visit" if cell.get("visit_id") is not None else None
+            else "visit"
+            if cell.get("visit_id") is not None
+            else None
         )
         axis_id = None
         if axis_type == "instance":
@@ -3927,7 +3930,7 @@ def export_pdf(soa_id: int):
         content_for_offsets.append(obj)
     final_body = "".join(content_for_offsets)
     xref_start = len(final_body.encode("utf-8"))
-    xref = ["xref\n", f"0 {len(objects)+1}\n", "0000000000 65535 f \n"]
+    xref = ["xref\n", f"0 {len(objects) + 1}\n", "0000000000 65535 f \n"]
     # True offsets: header length + cumulative lengths before each object
     cumulative = len(pdf_parts[0].encode("utf-8"))
     obj_offsets = []
@@ -3936,7 +3939,7 @@ def export_pdf(soa_id: int):
         cumulative += len(obj.encode("utf-8"))
     for off in obj_offsets:
         xref.append(f"{off:010d} 00000 n \n")
-    trailer = f"trailer << /Size {len(objects)+1} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF"
+    trailer = f"trailer << /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF"
     pdf_bytes = (final_body + "".join(xref) + trailer).encode("utf-8")
     filename = f"soa_{soa_id}_summary.pdf"
     return Response(
@@ -4385,9 +4388,9 @@ def ui_edit(request: Request, soa_id: int):
         if secs < 60:
             last_fetch_relative = f"{secs}s ago"
         elif secs < 3600:
-            last_fetch_relative = f"{secs//60}m ago"
+            last_fetch_relative = f"{secs // 60}m ago"
         else:
-            last_fetch_relative = f"{secs//3600}h ago"
+            last_fetch_relative = f"{secs // 3600}h ago"
     freeze_list = _list_freezes(soa_id)
     last_frozen_at = freeze_list[0]["created_at"] if freeze_list else None
     # Study metadata for edit form
@@ -4509,7 +4512,6 @@ def ui_edit(request: Request, soa_id: int):
             code_map[eid] = code
     conn_em.close()
     try:
-
         code_to_submission = load_epoch_type_map(force=False) or {}
     except Exception:
         code_to_submission = {}
@@ -7155,7 +7157,6 @@ def main():
 
 
 if __name__ == "__main__":
-
     main()
 
 

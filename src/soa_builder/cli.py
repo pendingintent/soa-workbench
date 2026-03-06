@@ -266,7 +266,7 @@ def cmd_expand(
         with open(json_out, "w", encoding="utf-8") as f:
             json.dump([inst.__dict__ for inst in instances], f, indent=2)
     click.echo(
-        f"Instances written: CSV={csv_out}{' JSON='+json_out if json_out else ''}"
+        f"Instances written: CSV={csv_out}{' JSON=' + json_out if json_out else ''}"
     )
 
 

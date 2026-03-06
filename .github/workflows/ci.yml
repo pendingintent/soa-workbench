@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
+        python-version: [ "3.11", "3.12", "3.13", "3.14" ]
 
     steps:
       - name: Checkout
@@ -47,13 +47,8 @@ jobs:
       - name: Lint (ruff)
         run: |
           # Lint package code and tests
-          ruff check src/soa_builder tests
+          ruff check src/ tests
 
-      # Keep flake8 if you depend on its rules (syntax/errors must fail, style warnings are non-blocking)
-      - name: Lint (flake8)
-        run: |
-          flake8 src/soa_builder tests --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 src/soa_builder tests --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Run tests (pytest + coverage)
         run: |
