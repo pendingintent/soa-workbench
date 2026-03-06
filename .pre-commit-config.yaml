@@ -1,23 +1,30 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
 repos:
-  # Optional: standard formatting/lint hooks
   - repo: https://github.com/psf/black
-    rev: 24.8.0
+    rev: 24.3.0
     hooks:
       - id: black
+        language_version: python3
+        args: ['--line-length=88']
+        # Standardize to actual directory structure (underscore)
+        files: ^(src/soa_builder/|tests/)
 
-  # Local hooks for tests/lint
   - repo: local
     hooks:
       - id: pytest
         name: Run pytest
         entry: pytest
         language: system
-        types: [python]
         pass_filenames: false
+        always_run: true
+        # Standardize to actual directory structure (underscore)
+        files: ^(src/soa_builder/|tests/)
 
-      # optional: reuse same flake8 config as GitHub Actions
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
       - id: flake8
-        name: Run flake8
-        entry: flake8 src/soa_builder tests/
-        language: system
-        pass_filenames: false
+        args: ['--max-line-length=220', '--extend-ignore=E203,W503']
+        # Standardize to actual directory structure (underscore)
+        files: ^(src/soa_builder/|tests/)
