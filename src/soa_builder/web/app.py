@@ -1,11 +1,10 @@
-from __future__ import annotations
-
+#!/usr/bin/env python3
 """FastAPI web application for interactive Schedule of Activities creation.
 
 
 Data persisted in SQLite (file: soa_builder_web.db by default).
 """
-
+from __future__ import annotations
 import csv
 import io
 import json
@@ -79,7 +78,6 @@ from .routers import rollback as rollback_router
 from .routers import visits as visits_router
 from .routers import audits as audits_router
 from .routers import rules as rules_router
-
 from .routers import timings as timings_router
 from .routers import schedule_timelines as schedule_timelines_router
 from .routers import cells as cells_router
@@ -88,6 +86,7 @@ from .routers import usdm_json as usdm_json_router
 from .routers import tdd as tdd_router
 from .routers import decision_instances as decision_instances_router
 from .routers import condition_assignments as condition_assignments_router
+from .audit import _record_element_audit
 
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
@@ -116,9 +115,6 @@ from .utils import (
     get_schedule_timeline,
     get_scheduled_activity_instance,
 )
-
-# Audit functions
-from .audit import _record_element_audit
 
 
 def _configure_logging():
