@@ -54,15 +54,6 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
         f"{package_slug}/codelists/{codelist_code}"
     )
 
-    headers: dict[str, str] = {"Accept": "application/json"}
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
-    api_key = os.environ.get("CDISC_API_KEY") or subscription_key
-    if subscription_key:
-        headers["Ocp-Apim-Subscription-Key"] = subscription_key
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-        headers["api-key"] = api_key
-
     def _match_term(term: dict[str, Any]) -> str | None:
         term_id = next(
             (
@@ -98,7 +89,7 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
         return []
 
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=_build_api_headers(), timeout=10)
         if resp.status_code != 200:
             return None
         payload = resp.json() or {}
@@ -121,7 +112,7 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
         if href.startswith("/"):
             href = f"https://library.cdisc.org{href}"
         try:
-            term_resp = requests.get(href, headers=headers, timeout=10)
+            term_resp = requests.get(href, headers=_build_api_headers(), timeout=10)
             if term_resp.status_code != 200:
                 continue
             term_data = term_resp.json() or {}
@@ -609,21 +600,9 @@ def _get_epoch_code_values(
     decode = ""
 
     url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
-    headers: dict[str, str] = {"Accept": "application/json"}
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
-    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
-        "CDISC_SUBSCRIPTION_KEY"
-    )
-    unified_key = subscription_key or api_key
-
-    if unified_key:
-        headers["Ocp-Apim-Subscription-Key"] = unified_key
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-        headers["api-key"] = api_key
 
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=_build_api_headers(), timeout=10)
         if resp.status_code != 200:
             logger.warning(
                 "Failed to fetch epoch codes from %s (status %d) for code %s",
