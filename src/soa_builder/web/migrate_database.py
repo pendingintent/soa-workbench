@@ -1122,3 +1122,32 @@ def _migrate_biomedical_concept_property_add_uid():
         conn.close()
     except Exception as e:
         logger.warning("_migrate_biomedical_concept_property_add_uid: %s", e)
+
+
+def _migrate_add_soa_id_indexes():
+    """Add standalone soa_id indexes on high-traffic tables.
+
+    The existing UNIQUE constraints cover (soa_id, uid) lookups, but bare
+    WHERE soa_id=? list queries do full table scans without a leading index.
+    These indexes cover the ~259 soa_id filter sites in the codebase.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        indexes = [
+            ("idx_activity_soa", "activity", "soa_id"),
+            ("idx_visit_soa", "visit", "soa_id"),
+            ("idx_matrix_cells_soa", "matrix_cells", "soa_id"),
+            ("idx_activity_concept_soa", "activity_concept", "soa_id"),
+            ("idx_instances_soa", "instances", "soa_id"),
+            ("idx_timing_soa", "timing", "soa_id"),
+        ]
+        created = []
+        for idx_name, table, col in indexes:
+            cur.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table}({col})")
+            created.append(idx_name)
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_soa_id_indexes: ensured indexes %s", created)
+    except Exception as e:
+        logger.warning("_migrate_add_soa_id_indexes: %s", e)

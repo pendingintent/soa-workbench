@@ -69,6 +69,7 @@ from .migrate_database import (
     _migrate_study_cell_add_order_index,
     _migrate_biomedical_concept_audit,
     _migrate_backfill_biomedical_concept_codes,
+    _migrate_add_soa_id_indexes,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -199,6 +200,7 @@ _backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
+_migrate_add_soa_id_indexes()
 
 
 # Include routers
@@ -4037,7 +4039,7 @@ def import_matrix(soa_id: int, payload: MatrixImport):
             next_order += 1
         if has_activity_uid:
             cols.append("activity_uid")
-            vals.append(f"Activity_{soa_id}_{next_order}")
+            vals.append(activities_router._next_activity_uid(cur, soa_id))
         cur.execute(
             f"INSERT INTO activity ({','.join(cols)}) VALUES ({','.join(['?'] * len(vals))})",
             vals,
@@ -4076,17 +4078,6 @@ def _reindex(table: str, soa_id: int):
     ids = [r[0] for r in cur.fetchall()]
     for idx, _id in enumerate(ids, start=1):
         cur.execute(f"UPDATE {table} SET order_index=? WHERE id=?", (idx, _id))
-    # Maintain activity_uid after any activity reindex
-    if table == "activity":
-        # Two-phase UID refresh to satisfy UNIQUE(soa_id, activity_uid) without transient collisions
-        cur.execute(
-            "UPDATE activity SET activity_uid = 'TMP_' || id WHERE soa_id=?",
-            (soa_id,),
-        )
-        cur.execute(
-            "UPDATE activity SET activity_uid = 'Activity_' || order_index WHERE soa_id=?",
-            (soa_id,),
-        )
     conn.commit()
     conn.close()
 
@@ -4179,7 +4170,7 @@ def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
     order_index = cur.fetchone()[0] + 1
     cur.execute(
         "INSERT INTO activity (soa_id,name,order_index,activity_uid) VALUES (?,?,?,?)",
-        (soa_id, nm, order_index, f"Activity_{order_index}"),
+        (soa_id, nm, order_index, activities_router._next_activity_uid(cur, soa_id)),
     )
     aid = cur.lastrowid
     conn.commit()

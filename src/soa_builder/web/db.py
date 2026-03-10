@@ -48,6 +48,10 @@ def _connect():
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")
         conn.execute("PRAGMA busy_timeout=3000")
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+
+        logging.getLogger("soa_builder.db").warning(
+            "PRAGMA configuration failed on %s: %s", db_path, e
+        )
     return conn

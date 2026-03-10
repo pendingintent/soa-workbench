@@ -2,7 +2,6 @@
 from typing import List, Dict, Any
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import _nz
-from .usdm_utils import _get_biomedical_concept_ids
 
 
 def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
@@ -42,10 +41,18 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
             (soa_id,),
         )
     rows = cur.fetchall()
+
+    # Pre-fetch all concept mappings for this SOA in one query to avoid N+1
+    cur.execute(
+        "SELECT activity_uid, concept_uid FROM activity_concept WHERE soa_id=?",
+        (soa_id,),
+    )
+    bc_map: dict[str, list[str]] = {}
+    for act_uid, concept_uid in cur.fetchall():
+        bc_map.setdefault(act_uid, []).append(concept_uid)
     conn.close()
 
     # Build simple linear previous/next links by list order
-    # ids = [f"Activity_{r[0]}" for r in rows]
     uids = [r[1] for r in rows]
     id_by_index = {i: uid for i, uid in enumerate(uids)}
 
@@ -55,7 +62,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
         aid = activity_uid
         prev_id = id_by_index.get(i - 1)
         next_id = id_by_index.get(i + 1)
-        bcs = _get_biomedical_concept_ids(soa_id, aid)
+        bcs = bc_map.get(aid, [])
 
         activity = {
             "id": aid,

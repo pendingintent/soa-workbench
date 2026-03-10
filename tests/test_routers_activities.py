@@ -178,7 +178,9 @@ def test_reorder_activities():
     ]
 
     # Reorder
-    resp = client.post(f"/soa/{soa_id}/activities/reorder", json=[a3, a1, a2])
+    resp = client.post(
+        f"/soa/{soa_id}/activities/reorder", json={"order": [a3, a1, a2]}
+    )
     assert resp.status_code == 200
 
 
@@ -196,7 +198,7 @@ def test_reorder_activities_router():
     ]
 
     # Reorder via router
-    resp = client.post(f"/soa/{soa_id}/activities/reorder", json=[a2, a1])
+    resp = client.post(f"/soa/{soa_id}/activities/reorder", json={"order": [a2, a1]})
     assert resp.status_code == 200
 
 

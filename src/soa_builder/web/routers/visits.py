@@ -457,7 +457,6 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
             soa_id,
         ),
     )
-    conn.commit()
 
     if new_environmental_value is not None:
         if not env_code_uid:
@@ -498,8 +497,6 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
                     (env_code_uid, visit_id, soa_id),
                 )
 
-        conn.commit()
-
     if new_contact_mode is not None:
         if not contact_mode_code_uid:
             contact_mode_code_uid = _get_next_code_uid(cur, soa_id)
@@ -539,7 +536,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
                     (contact_mode_code_uid, visit_id, soa_id),
                 )
 
-        conn.commit()
+    conn.commit()
 
     cur.execute(
         """
@@ -643,6 +640,7 @@ def delete_visit(soa_id: int, visit_id: int):
     )
     row = cur.fetchone()
     if not row:
+        conn.close()
         raise HTTPException(404, f"Encounter id={int(visit_id)} not found")
 
     before = {

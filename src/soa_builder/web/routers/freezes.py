@@ -1,23 +1,18 @@
 import json
 import logging
 import os
-import sqlite3
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from ..db import _connect
 from ..utils import soa_exists
 
-DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.freezes")
-
-
-def _connect():
-    return sqlite3.connect(DB_PATH)
 
 
 # Removed local _soa_exists; using shared utils.soa_exists

@@ -2,12 +2,6 @@
 from typing import List, Dict, Any, Tuple
 from soa_builder.web.utils import get_submission_value_for_code, _nz
 from soa_builder.web.db import _connect
-from .usdm_utils import (
-    _get_timing_name,
-    _get_transition_start_rule,
-    _get_transition_end_rule,
-    _get_code_tuple,
-)
 
 
 # Override the definition in usdm_utils.py
@@ -81,6 +75,54 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
         (soa_id,),
     )
     rows = cur.fetchall()
+
+    # Pre-fetch code_association + ddf_terminology for type codes (keyed by code_uid)
+    cur.execute(
+        "SELECT DISTINCT c.code_uid, c.codelist_table, p.code, p.cdisc_submission_value, p.dataset_date "
+        "FROM code_association c INNER JOIN ddf_terminology p ON c.codelist_code = p.codelist_code "
+        "AND c.code = p.code WHERE c.soa_id=?",
+        (soa_id,),
+    )
+    type_code_map: dict = {}
+    for code_uid, codelist_table, code, decode, dataset_date in cur.fetchall():
+        type_code_map.setdefault(code_uid, ([], [], [], []))
+        type_code_map[code_uid][0].append(code)
+        type_code_map[code_uid][1].append(decode)
+        type_code_map[code_uid][2].append(codelist_table)
+        type_code_map[code_uid][3].append(dataset_date)
+
+    # Pre-fetch code_association for env/contact codes (keyed by code_uid)
+    cur.execute(
+        "SELECT DISTINCT code_uid, codelist_table, code FROM code_association WHERE soa_id=?",
+        (soa_id,),
+    )
+    code_tuple_map: dict = {}
+    for code_uid, codelist_table, code in cur.fetchall():
+        code_tuple_map.setdefault(code_uid, ([], []))
+        code_tuple_map[code_uid][0].append(code)
+        code_tuple_map[code_uid][1].append(codelist_table)
+
+    # Pre-fetch all transition rules for this SOA (keyed by transition_rule_uid)
+    cur.execute(
+        "SELECT transition_rule_uid, name, label, description, text FROM transition_rule WHERE soa_id=?",
+        (soa_id,),
+    )
+    transition_rule_map: dict = {}
+    for tr_uid, tr_name, tr_label, tr_desc, tr_text in cur.fetchall():
+        transition_rule_map[tr_uid] = {
+            "id": tr_uid,
+            "extensionAttributes": [],
+            "name": tr_name or None,
+            "label": tr_label or None,
+            "description": tr_desc or None,
+            "text": tr_text or None,
+            "instanceType": "TransitionRule",
+        }
+
+    # Pre-fetch all timing UIDs for this SOA (keyed by timing id)
+    cur.execute("SELECT id, timing_uid FROM timing WHERE soa_id=?", (soa_id,))
+    timing_id_map: dict = {row[0]: row[1] for row in cur.fetchall()}
+
     conn.close()
 
     uids = [r[3] for r in rows]
@@ -116,42 +158,33 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             r[10],
         )
         eid = encounter_uid
-        t_code, t_decode, t_codeSystem, t_codeSystemVersion = _get_type_code_tuple(
-            soa_id, type
-        )
+        _type_entry = type_code_map.get(type, ([], [], [], []))
+        t_code, t_decode, t_codeSystem, t_codeSystemVersion = _type_entry
 
         e_code: List[str] = []
         e_codesystem: List[str] = []
 
         if environmentalSettings:
-            e_code, e_codesystem = _get_code_tuple(soa_id, environmentalSettings)
+            e_code, e_codesystem = code_tuple_map.get(environmentalSettings, ([], []))
 
         c_code: List[str] = []
         c_codesystem: List[str] = []
 
         if contactModes:
-            c_code, c_codesystem = _get_code_tuple(soa_id, contactModes)
+            c_code, c_codesystem = code_tuple_map.get(contactModes, ([], []))
 
-        # print(e_code, e_codesystem)
         prev_id = id_by_index.get(i - 1)
         next_id = id_by_index.get(i + 1)
 
-        timing_uid = _get_timing_name(
-            soa_id,
-            (
-                int(scheduledAtId)
-                if (scheduledAtId is not None and str(scheduledAtId).isdigit())
-                else None
-            ),
+        _sched_id = (
+            int(scheduledAtId)
+            if (scheduledAtId is not None and str(scheduledAtId).isdigit())
+            else None
         )
+        timing_uid = timing_id_map.get(_sched_id) if _sched_id is not None else None
 
-        transition_start_rule_obj = _get_transition_start_rule(
-            soa_id, transition_start_rule_uid
-        )
-
-        transition_end_rule_obj = _get_transition_end_rule(
-            soa_id, transition_end_rule_uid
-        )
+        transition_start_rule_obj = transition_rule_map.get(transition_start_rule_uid)
+        transition_end_rule_obj = transition_rule_map.get(transition_end_rule_uid)
 
         # Build optional environmentalSettings array
         env_settings: List[Dict[str, Any]] = []
