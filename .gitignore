@@ -102,5 +102,7 @@ CLAUDE.md
 edit-column-collapse.html
 .claude
 api_test.py
+.scripts
+files/pilot_LZZT_narrative_2026MAR10.json
 
 # End of file
