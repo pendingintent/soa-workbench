@@ -284,6 +284,63 @@
 {% endif %}
 </div>
 {% endfor %}
+<!-- Footnote display: rendered XHTML below the matrix -->
+{% if footnotes %}
+<div class="footnotes-display" style="margin-top:10px;font-size:0.85em;border-top:1px solid #ddd;padding-top:6px;">
+  {% for fn in footnotes %}
+  <div style="margin-bottom:4px;">
+    <strong>{{ fn.name }}</strong>:
+    {{ fn.text | safe }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+<!-- Manage Footnotes -->
+<details id="footnotes-section" class="collapsible" style="margin-top:8px;">
+  <summary>Manage Footnotes</summary>
+  <div style="margin-top:8px;">
+    {% if footnotes %}
+    <table style="width:100%;border-collapse:collapse;font-size:0.85em;margin-bottom:8px;">
+      <thead><tr>
+        <th style="text-align:left;padding:2px 4px;">UID</th>
+        <th style="text-align:left;padding:2px 4px;">Name</th>
+        <th style="text-align:left;padding:2px 4px;">Label</th>
+        <th style="text-align:left;padding:2px 4px;">Description</th>
+        <th style="text-align:left;padding:2px 4px;">Text (XHTML)</th>
+        <th></th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for fn in footnotes %}
+      <tr>
+        <form method="post" action="/soa/{{ soa_id }}/footnotes/{{ fn.id }}/update">
+          <td style="padding:2px 4px;white-space:nowrap;"><strong>{{ fn.footnote_uid }}</strong></td>
+          <td style="padding:2px 4px;"><input name="name" value="{{ fn.name }}" required style="width:120px;" /></td>
+          <td style="padding:2px 4px;"><input name="label" value="{{ fn.label or '' }}" style="width:120px;" /></td>
+          <td style="padding:2px 4px;"><input name="description" value="{{ fn.description or '' }}" style="width:120px;" /></td>
+          <td style="padding:2px 4px;"><textarea name="text" rows="3" style="width:340px;font-family:monospace;font-size:0.9em;">{{ fn.text or '' }}</textarea></td>
+          <td style="padding:2px 4px;"><button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button></td>
+        </form>
+        <td style="padding:2px 4px;">
+          <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/delete"
+                onsubmit="return confirm('Delete this footnote?');">
+            <button class="delete-btn">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/create"
+          style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;margin-top:4px;">
+      <input name="name" placeholder="Name*" required style="width:120px;" />
+      <input name="label" placeholder="Label" style="width:120px;" />
+      <input name="label" placeholder="Description" style="width:120px;" />
+      <textarea name="text" placeholder="Text (XHTML)" rows="3" style="width:340px;font-family:monospace;font-size:0.9em;"></textarea>
+      <button class="small-btn" style="align-self:flex-end;">+ Add Footnote</button>
+    </form>
+  </div>
+</details>
 <!-- Export Excel Matrix for SoA -->
 <div class="export-buttons">
   <a

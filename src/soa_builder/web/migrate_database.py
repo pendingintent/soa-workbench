@@ -1151,3 +1151,51 @@ def _migrate_add_soa_id_indexes():
         logger.info("_migrate_add_soa_id_indexes: ensured indexes %s", created)
     except Exception as e:
         logger.warning("_migrate_add_soa_id_indexes: %s", e)
+
+
+def _migrate_add_footnote_table():
+    """Add the database table footnote"""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS footnote (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INT,
+                footnote_uid TEXT NOT NULL,
+                name TEXT NOT NULL, 
+                label TEXT,
+                description TEXT,
+                text TEXT,
+                dictionary_uid TEXT,
+                UNIQUE(soa_id, footnote_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_footnote_table created footnote table")
+    except Exception as e:
+        logger.warning("_migrate_add_footnote_table failed: %s", e)
+
+
+def _migrate_add_footnote_audit_table():
+    """Create footnote_audit table for tracking create/update/delete operations."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS footnote_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                footnote_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_footnote_audit_table created footnote_audit table")
+    except Exception as e:
+        logger.warning("_migrate_add_footnote_audit_table failed: %s", e)

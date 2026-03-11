@@ -70,6 +70,8 @@ from .migrate_database import (
     _migrate_biomedical_concept_audit,
     _migrate_backfill_biomedical_concept_codes,
     _migrate_add_soa_id_indexes,
+    _migrate_add_footnote_table,
+    _migrate_add_footnote_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -88,6 +90,7 @@ from .routers import usdm_json as usdm_json_router
 from .routers import tdd as tdd_router
 from .routers import decision_instances as decision_instances_router
 from .routers import condition_assignments as condition_assignments_router
+from .routers import footnotes as footnotes_router
 from .audit import _record_element_audit
 
 
@@ -201,6 +204,8 @@ _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
 _migrate_add_soa_id_indexes()
+_migrate_add_footnote_table()
+_migrate_add_footnote_audit_table()
 
 
 # Include routers
@@ -222,6 +227,8 @@ app.include_router(usdm_json_router.router)
 app.include_router(tdd_router.router)
 app.include_router(decision_instances_router.router)
 app.include_router(condition_assignments_router.router)
+app.include_router(footnotes_router.router)
+app.include_router(footnotes_router.ui_router)
 
 
 def _record_visit_audit(
@@ -4633,6 +4640,28 @@ def ui_edit(request: Request, soa_id: int):
     if not default_timeline and "unassigned" in instances_by_timeline:
         default_timeline = "unassigned"
 
+    # Load footnotes for display below matrix
+    conn_fn = _connect()
+    cur_fn = conn_fn.cursor()
+    cur_fn.execute(
+        "SELECT id,soa_id,footnote_uid,name,label,description,text,dictionary_uid FROM footnote WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    footnotes = [
+        dict(
+            id=r[0],
+            soa_id=r[1],
+            footnote_uid=r[2],
+            name=r[3],
+            label=r[4],
+            description=r[5],
+            text=r[6],
+            dictionary_uid=r[7],
+        )
+        for r in cur_fn.fetchall()
+    ]
+    conn_fn.close()
+
     instances_crud = instances_router.list_instances(soa_id)
     encounter_options = get_encounter_id(soa_id)
     epoch_options = get_epoch_uid(soa_id)
@@ -4676,6 +4705,7 @@ def ui_edit(request: Request, soa_id: int):
             "timelines": timelines,
             "instances_by_timeline": instances_by_timeline,
             "default_timeline": default_timeline,
+            "footnotes": footnotes,
         },
     )
 
