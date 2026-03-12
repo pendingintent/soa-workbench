@@ -258,7 +258,7 @@
   </tr>
   {% for a in activities %}
   <tr data-activity-id="{{ a.id }}">
-    <td>{{ a.name }}</td>
+    <td>{{ a.label }}</td>
     {% set concepts_list = activity_concepts.get(a.id, []) %}
     {% set selected_list = concepts_list %}
     {% set selected_codes = concepts_list | map(attribute='code') | list %}
@@ -267,15 +267,15 @@
     {% include 'concepts_cell.html' %}
     {% for inst in timeline_instances %}
       {% set raw_status = cell_map.get((inst.id, a.id), '') %}
-      {% set display = 'X' if raw_status == 'X' else '' %}
-      <td 
-        data-instance-id="{{ inst.id }}" 
-        data-visit-id="{{ inst.id }}" 
-        hx-post="/ui/soa/{{ soa_id }}/toggle_cell" 
-        hx-vals='{"instance_id": {{ inst.id }}, "activity_id": {{ a.id }} }' 
-        hx-swap="outerHTML" 
+      {% set sup_val = superscript_map.get((inst.id, a.id)) %}
+      <td
+        data-instance-id="{{ inst.id }}"
+        data-visit-id="{{ inst.id }}"
+        hx-post="/ui/soa/{{ soa_id }}/toggle_cell"
+        hx-vals='{"instance_id": {{ inst.id }}, "activity_id": {{ a.id }} }'
+        hx-swap="outerHTML"
         class="cell">
-        {{ display }}
+        {% if raw_status == 'X' %}X{% if sup_val %}<sup>{{ sup_val }}</sup>{% endif %}<span class="sup-edit" hx-get="/ui/soa/{{ soa_id }}/cell_superscript_edit/{{ inst.id }}/{{ a.id }}" hx-swap="outerHTML" hx-target="closest td" onclick="event.stopPropagation()" title="Edit superscript">&#9998;</span>{% endif %}
       </td>
     {% endfor %}
   </tr>
@@ -355,6 +355,9 @@
 <style>
   .delete-btn { background:#c62828; color:#fff; border:none; padding:0 6px; cursor:pointer; }
   .delete-btn:hover { background:#b71c1c; }
+  .sup-edit { font-size:0.65em; cursor:pointer; color:#bbb; margin-left:1px; vertical-align:super; }
+  .sup-edit:hover { color:#1976d2; }
+  .cell-editing { background:#fffde7 !important; }
   .export-buttons { margin-top:8px; }
   .export-buttons .btn { display:inline-block; margin-right:10px; background:#1976d2; color:#fff; padding:4px 10px; text-decoration:none; border-radius:3px; font-size:0.9em; }
   .export-buttons .btn:hover { background:#125aa0; }

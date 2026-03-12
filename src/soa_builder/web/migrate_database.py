@@ -1163,7 +1163,7 @@ def _migrate_add_footnote_table():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 soa_id INT,
                 footnote_uid TEXT NOT NULL,
-                name TEXT NOT NULL, 
+                name TEXT NOT NULL,
                 label TEXT,
                 description TEXT,
                 text TEXT,
@@ -1199,3 +1199,18 @@ def _migrate_add_footnote_audit_table():
         logger.info("_migrate_add_footnote_audit_table created footnote_audit table")
     except Exception as e:
         logger.warning("_migrate_add_footnote_audit_table failed: %s", e)
+
+
+def _migrate_matrix_cells_add_superscript():
+    """Add superscript TEXT column to matrix_cells if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(matrix_cells)")
+        if "superscript" not in {r[1] for r in cur.fetchall()}:
+            cur.execute("ALTER TABLE matrix_cells ADD COLUMN superscript TEXT")
+            conn.commit()
+            logger.info("Added superscript column to matrix_cells")
+        conn.close()
+    except Exception as e:
+        logger.warning("matrix_cells superscript migration failed: %s", e)

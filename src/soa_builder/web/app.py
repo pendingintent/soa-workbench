@@ -72,6 +72,7 @@ from .migrate_database import (
     _migrate_add_soa_id_indexes,
     _migrate_add_footnote_table,
     _migrate_add_footnote_audit_table,
+    _migrate_matrix_cells_add_superscript,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -206,6 +207,7 @@ _migrate_backfill_biomedical_concept_codes()
 _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
 _migrate_add_footnote_audit_table()
+_migrate_matrix_cells_add_superscript()
 
 
 # Include routers
@@ -1117,12 +1119,13 @@ def _fetch_matrix(soa_id: int):
         ]
     cur.execute(
         """
-        SELECT instance_id, activity_id, status FROM matrix_cells WHERE soa_id=? AND instance_id IS NOT NULL
+        SELECT instance_id, activity_id, status, superscript FROM matrix_cells WHERE soa_id=? AND instance_id IS NOT NULL
         """,
         (soa_id,),
     )
     cells = [
-        dict(instance_id=r[0], activity_id=r[1], status=r[2]) for r in cur.fetchall()
+        dict(instance_id=r[0], activity_id=r[1], status=r[2], superscript=r[3])
+        for r in cur.fetchall()
     ]
     conn.close()
     return instances, activities, cells
@@ -3362,6 +3365,32 @@ def set_cell_instance(soa_id: int, payload: dict):
     return {"cell_id": cid, "status": status}
 
 
+def _render_cell_td(
+    soa_id: int,
+    instance_id: int,
+    activity_id: int,
+    status: str,
+    superscript: str | None,
+) -> str:
+    """Build the <td> HTML for a matrix cell, including superscript and edit button."""
+    if status == "X":
+        sup_html = f"<sup>{superscript}</sup>" if superscript else ""
+        edit_btn = (
+            f'<span class="sup-edit"'
+            f' hx-get="/ui/soa/{soa_id}/cell_superscript_edit/{instance_id}/{activity_id}"'
+            f' hx-swap="outerHTML" hx-target="closest td"'
+            f' onclick="event.stopPropagation()" title="Edit superscript">\u270e</span>'
+        )
+        content = f"X{sup_html}{edit_btn}"
+    else:
+        content = ""
+    return (
+        f'<td hx-post="/ui/soa/{soa_id}/toggle_cell"'
+        f' hx-vals=\'{{"instance_id": {instance_id}, "activity_id": {activity_id}}}\''
+        f' hx-swap="outerHTML" class="cell">{content}</td>'
+    )
+
+
 @app.post("/ui/soa/{soa_id}/toggle_cell_instance", response_class=HTMLResponse)
 def ui_toggle_cell_instance(
     request: Request,
@@ -3379,16 +3408,11 @@ def ui_toggle_cell_instance(
         (soa_id, instance_id, activity_id),
     )
     row = cur.fetchone()
-    if row and row[0] == "X":
+    if row:
         cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
         conn.commit()
         conn.close()
-        current = ""
-    elif row:
-        cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
-        conn.commit()
-        conn.close()
-        current = ""
+        return HTMLResponse(_render_cell_td(soa_id, instance_id, activity_id, "", None))
     else:
         cur.execute(
             "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, status) VALUES (?,?,?,?)",
@@ -3396,9 +3420,9 @@ def ui_toggle_cell_instance(
         )
         conn.commit()
         conn.close()
-        current = "X"
-    cell_html = f'<td hx-post="/ui/soa/{soa_id}/toggle_cell_instance" hx-vals=\'{{"instance_id": {instance_id}, "activity_id": {activity_id}}}\' hx-swap="outerHTML" class="cell">{current}</td>'
-    return HTMLResponse(cell_html)
+        return HTMLResponse(
+            _render_cell_td(soa_id, instance_id, activity_id, "X", None)
+        )
 
 
 # API endpoint for exporting the Matrix as XLSX
@@ -4346,6 +4370,9 @@ def ui_edit(request: Request, soa_id: int):
     activities_page = activities
     # Build cell lookup
     cell_map = {(c["instance_id"], c["activity_id"]): c["status"] for c in cells}
+    superscript_map = {
+        (c["instance_id"], c["activity_id"]): c.get("superscript") for c in cells
+    }
     concepts = fetch_biomedical_concepts()
     activity_ids = [a["id"] for a in activities_page]
     activity_concepts = {}
@@ -4706,6 +4733,7 @@ def ui_edit(request: Request, soa_id: int):
             "instances_by_timeline": instances_by_timeline,
             "default_timeline": default_timeline,
             "footnotes": footnotes,
+            "superscript_map": superscript_map,
         },
     )
 
@@ -5646,7 +5674,9 @@ def ui_toggle_cell(
             cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
             conn.commit()
             conn.close()
-            current = ""
+            return HTMLResponse(
+                _render_cell_td(soa_id, int(instance_id), activity_id, "", None)
+            )
         else:
             cur.execute(
                 "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, status) VALUES (?,?,?,?)",
@@ -5654,12 +5684,9 @@ def ui_toggle_cell(
             )
             conn.commit()
             conn.close()
-            current = "X"
-        cell_html = (
-            f'<td hx-post="/ui/soa/{soa_id}/toggle_cell" '
-            f'hx-vals=\'{{"instance_id": {int(instance_id)}, "activity_id": {activity_id}}}\' '
-            f'hx-swap="outerHTML" class="cell">{current}</td>'
-        )
+            return HTMLResponse(
+                _render_cell_td(soa_id, int(instance_id), activity_id, "X", None)
+            )
     else:
         # Legacy visit-based toggle
         if visit_id is None:
@@ -5683,12 +5710,110 @@ def ui_toggle_cell(
             conn.commit()
             conn.close()
             current = "X"
+        # Legacy path: visit-based cells don't have superscript support
         cell_html = (
             f'<td hx-post="/ui/soa/{soa_id}/toggle_cell" '
             f'hx-vals=\'{{"visit_id": {int(visit_id)}, "activity_id": {activity_id}}}\' '
             f'hx-swap="outerHTML" class="cell">{current}</td>'
         )
     return HTMLResponse(cell_html)
+
+
+@app.get(
+    "/ui/soa/{soa_id}/cell_superscript_edit/{instance_id}/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_cell_superscript_edit(
+    request: Request,
+    soa_id: int,
+    instance_id: int,
+    activity_id: int,
+):
+    """Return edit-mode <td> for superscript inline editing."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT superscript FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (soa_id, instance_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Cell not found")
+    sup_val = row[0] or ""
+    html = (
+        f'<td class="cell cell-editing" style="background:#fffde7;min-width:70px;">'
+        f"X"
+        f'<form style="display:inline;"'
+        f' hx-post="/ui/soa/{soa_id}/cell_superscript/{instance_id}/{activity_id}"'
+        f' hx-swap="outerHTML" hx-target="closest td">'
+        f'<input name="superscript" value="{sup_val}" size="5"'
+        f' style="width:45px;font-size:0.8em;" autofocus />'
+        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
+        f"</form>"
+        f'<span hx-get="/ui/soa/{soa_id}/cell_superscript_view/{instance_id}/{activity_id}"'
+        f' hx-swap="outerHTML" hx-target="closest td"'
+        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
+        f"</td>"
+    )
+    return HTMLResponse(html)
+
+
+@app.post(
+    "/ui/soa/{soa_id}/cell_superscript/{instance_id}/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_cell_superscript_save(
+    request: Request,
+    soa_id: int,
+    instance_id: int,
+    activity_id: int,
+    superscript: Optional[str] = Form(None),
+):
+    """Save superscript value for a cell and return rendered <td>."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    # Normalise empty string to NULL
+    sup_val = superscript.strip() if superscript else None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE matrix_cells SET superscript=? WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (sup_val, soa_id, instance_id, activity_id),
+    )
+    conn.commit()
+    conn.close()
+    return HTMLResponse(_render_cell_td(soa_id, instance_id, activity_id, "X", sup_val))
+
+
+@app.get(
+    "/ui/soa/{soa_id}/cell_superscript_view/{instance_id}/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_cell_superscript_view(
+    request: Request,
+    soa_id: int,
+    instance_id: int,
+    activity_id: int,
+):
+    """Return rendered (view-mode) <td> — used for cancel."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT status, superscript FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (soa_id, instance_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    status = row[0] if row else ""
+    sup_val = row[1] if row else None
+    return HTMLResponse(
+        _render_cell_td(soa_id, instance_id, activity_id, status or "", sup_val)
+    )
 
 
 # UI endpoint for associating a Transition Start Rule with Visit/Encounter (visit.transitionStartRule)
