@@ -1214,3 +1214,73 @@ def _migrate_matrix_cells_add_superscript():
         conn.close()
     except Exception as e:
         logger.warning("matrix_cells superscript migration failed: %s", e)
+
+
+def _migrate_add_bc_surrogate_table():
+    """Create biomedical_concept_surrogate table if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS biomedical_concept_surrogate (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INT NOT NULL,
+                surrogate_uid TEXT NOT NULL,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT,
+                reference TEXT,
+                UNIQUE(surrogate_uid, soa_id)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_bc_surrogate_table: biomedical_concept_surrogate ready"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_bc_surrogate_table failed: %s", e)
+
+
+def _migrate_add_activity_surrogate_table():
+    """Create activity_surrogate junction table if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS activity_surrogate (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INT NOT NULL,
+                activity_uid TEXT NOT NULL,
+                surrogate_uid TEXT NOT NULL,
+                UNIQUE(soa_id, activity_uid, surrogate_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_activity_surrogate_table: activity_surrogate ready")
+    except Exception as e:
+        logger.warning("_migrate_add_activity_surrogate_table failed: %s", e)
+
+
+def _migrate_add_bc_surrogate_audit_table():
+    """Create biomedical_concept_surrogate_audit table if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS biomedical_concept_surrogate_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                surrogate_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_bc_surrogate_audit_table: audit table ready")
+    except Exception as e:
+        logger.warning("_migrate_add_bc_surrogate_audit_table failed: %s", e)

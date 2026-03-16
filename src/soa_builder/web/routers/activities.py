@@ -667,8 +667,46 @@ def ui_list_activities(request: Request, soa_id: int):
     concepts = _app_fetch_concepts()
     sdtm_specializations = _app_fetch_dss()
 
+    # Fetch surrogates for this SOA
     conn = _connect()
     cur = conn.cursor()
+    cur.execute(
+        "SELECT id, surrogate_uid, name, label, description, reference FROM biomedical_concept_surrogate WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    surrogates = [
+        {
+            "id": r[0],
+            "surrogate_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "description": r[4],
+            "reference": r[5],
+        }
+        for r in cur.fetchall()
+    ]
+
+    # Per-activity surrogate mappings: activity_id -> [surrogate dicts]
+    cur.execute(
+        "SELECT a.id, bcs.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN activity a ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "JOIN biomedical_concept_surrogate bcs ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=?",
+        (soa_id,),
+    )
+    activity_surrogates: dict = {}
+    for row in cur.fetchall():
+        activity_id, sur_id, sur_uid, sur_name, sur_label = row
+        activity_surrogates.setdefault(activity_id, []).append(
+            {
+                "id": sur_id,
+                "surrogate_uid": sur_uid,
+                "name": sur_name,
+                "label": sur_label,
+            }
+        )
+
     cur.execute(
         "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
         (soa_id,),
@@ -687,6 +725,8 @@ def ui_list_activities(request: Request, soa_id: int):
             "activity_concepts": activity_concepts,
             "concepts": concepts,
             "sdtm_specializations": sdtm_specializations,
+            "surrogates": surrogates,
+            "activity_surrogates": activity_surrogates,
             "study_id": study_id,
             "study_label": study_label,
             "study_description": study_description,

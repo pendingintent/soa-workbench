@@ -50,6 +50,15 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
     bc_map: dict[str, list[str]] = {}
     for act_uid, concept_uid in cur.fetchall():
         bc_map.setdefault(act_uid, []).append(concept_uid)
+
+    # Pre-fetch surrogate mappings
+    cur.execute(
+        "SELECT activity_uid, surrogate_uid FROM activity_surrogate WHERE soa_id=?",
+        (soa_id,),
+    )
+    surrogate_map: dict[str, list[str]] = {}
+    for act_uid, sur_uid in cur.fetchall():
+        surrogate_map.setdefault(act_uid, []).append(sur_uid)
     conn.close()
 
     # Build simple linear previous/next links by list order
@@ -76,7 +85,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
             "definedProcedures": [],
             "biomedicalConceptIds": bcs,
             "bcCategoryIds": [],
-            "bcSurrogateIds": [],
+            "bcSurrogateIds": surrogate_map.get(aid, []),
             "timelineId": None,
             "notes": [],
             "instanceType": "Activity",

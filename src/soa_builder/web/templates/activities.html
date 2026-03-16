@@ -73,6 +73,8 @@
         {% set concepts_list = activity_concepts.get(a.id, []) %}
         {% set selected_list = concepts_list %}
         {% set selected_codes = concepts_list | map(attribute='code') | list %}
+        {% set selected_surrogate_list = activity_surrogates.get(a.id, []) %}
+        {% set selected_surrogate_uids = selected_surrogate_list | map(attribute='surrogate_uid') | list %}
         {% set activity_id = a.id %}
         {% include 'concepts_cell.html' %}
         {% set activity_id = a.id %}
@@ -93,6 +95,70 @@
     <tr><td colspan="9" style="padding:6px;color:#777;">No activities yet.</td></tr>
     {% endfor %}
 </table>
+
+<hr style="margin:24px 0 12px;border-color:#e0e0e0;" />
+<h3 style="margin:0 0 8px;font-size:1em;color:#455a64;">Biomedical Concept Surrogates</h3>
+<p style="font-size:0.85em;color:#666;margin:0 0 10px;">
+  Add named placeholders for concepts not yet available in the CDISC Library.
+  Once a CDISC Biomedical Concept is assigned, remove the surrogate.
+</p>
+
+<div style="margin:0 0 12px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+  <form method="post" action="/ui/soa/{{ soa_id }}/bc-surrogates/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label style="font-size:0.85em;font-weight:600;">Name *</label>
+      <input name="name" placeholder="e.g. TumorLongestDiameter" required style="font-size:0.85em;" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label style="font-size:0.85em;font-weight:600;">Label</label>
+      <input name="label" placeholder="Display label (optional)" style="font-size:0.85em;" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label style="font-size:0.85em;font-weight:600;">Description</label>
+      <input name="description" placeholder="Description (optional)" style="font-size:0.85em;" />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label style="font-size:0.85em;font-weight:600;">Reference URL</label>
+      <input name="reference" placeholder="https://..." style="min-width:200px;font-size:0.85em;" />
+    </div>
+    <button style="background:#e65100;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.85em;">Add Surrogate</button>
+  </form>
+</div>
+
+{% if surrogates %}
+<table style="width:100%;font-size:0.85em;border-collapse:collapse;margin-bottom:16px;">
+  <tr style="background:#fff3e0;">
+    <th style="text-align:left;padding:4px;">UID</th>
+    <th style="text-align:left;padding:4px;">Name</th>
+    <th style="text-align:left;padding:4px;">Label</th>
+    <th style="text-align:left;padding:4px;">Description</th>
+    <th style="text-align:left;padding:4px;">Reference</th>
+    <th style="text-align:left;padding:4px;">Save</th>
+    <th style="text-align:left;padding:4px;">Delete</th>
+  </tr>
+  {% for s in surrogates %}
+  <tr>
+    <form method="post" action="/ui/soa/{{ soa_id }}/bc-surrogates/{{ s.id }}/update">
+      <td style="padding:4px;white-space:nowrap;"><strong>{{ s.surrogate_uid }}</strong></td>
+      <td style="padding:4px;"><input name="name" value="{{ s.name }}" required style="font-size:0.85em;" /></td>
+      <td style="padding:4px;"><input name="label" value="{{ s.label or '' }}" placeholder="Label" style="font-size:0.85em;" /></td>
+      <td style="padding:4px;"><input name="description" value="{{ s.description or '' }}" placeholder="Description" style="font-size:0.85em;" /></td>
+      <td style="padding:4px;"><input name="reference" value="{{ s.reference or '' }}" placeholder="https://..." style="min-width:160px;font-size:0.85em;" /></td>
+      <td style="padding:4px;">
+        <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">Save</button>
+      </td>
+    </form>
+    <td style="padding:4px;">
+      <form method="post" action="/ui/soa/{{ soa_id }}/bc-surrogates/{{ s.id }}/delete">
+        <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p style="font-size:0.85em;color:#888;">No surrogates defined yet.</p>
+{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

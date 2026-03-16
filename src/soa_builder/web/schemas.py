@@ -339,3 +339,17 @@ class ConditionAssignmentUpdate(BaseModel):
     condition: Optional[str] = None
     decision_instance_uid: Optional[str] = None
     condition_target_uid: Optional[str] = None
+
+
+class BCSurrogateCreate(BaseModel):
+    name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    reference: Optional[str] = None
+
+
+class BCSurrogateUpdate(BaseModel):
+    name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    reference: Optional[str] = None

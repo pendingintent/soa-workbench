@@ -262,6 +262,9 @@
     {% set concepts_list = activity_concepts.get(a.id, []) %}
     {% set selected_list = concepts_list %}
     {% set selected_codes = concepts_list | map(attribute='code') | list %}
+    {% set selected_surrogate_list = activity_surrogates.get(a.id, []) %}
+    {% set selected_surrogate_uids = selected_surrogate_list | map(attribute='surrogate_uid') | list %}
+    {% set readonly = True %}
     {% set activity_id = a.id %}
     {% set timeline_context = timeline_uid %}
     {% include 'concepts_cell.html' %}

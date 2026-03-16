@@ -73,6 +73,9 @@ from .migrate_database import (
     _migrate_add_footnote_table,
     _migrate_add_footnote_audit_table,
     _migrate_matrix_cells_add_superscript,
+    _migrate_add_bc_surrogate_table,
+    _migrate_add_activity_surrogate_table,
+    _migrate_add_bc_surrogate_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -92,6 +95,7 @@ from .routers import tdd as tdd_router
 from .routers import decision_instances as decision_instances_router
 from .routers import condition_assignments as condition_assignments_router
 from .routers import footnotes as footnotes_router
+from .routers import bc_surrogates as bc_surrogates_router
 from .audit import _record_element_audit
 
 
@@ -208,6 +212,9 @@ _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
 _migrate_add_footnote_audit_table()
 _migrate_matrix_cells_add_superscript()
+_migrate_add_bc_surrogate_table()
+_migrate_add_activity_surrogate_table()
+_migrate_add_bc_surrogate_audit_table()
 
 
 # Include routers
@@ -231,6 +238,8 @@ app.include_router(decision_instances_router.router)
 app.include_router(condition_assignments_router.router)
 app.include_router(footnotes_router.router)
 app.include_router(footnotes_router.ui_router)
+app.include_router(bc_surrogates_router.router)
+app.include_router(bc_surrogates_router.ui_router)
 
 
 def _record_visit_audit(
@@ -2412,6 +2421,38 @@ def _get_activity_concepts(activity_id: int):
     return rows
 
 
+def _get_activity_surrogates(soa_id: int, activity_id: int):
+    """Return (surrogates, selected_surrogate_list, selected_surrogate_uids) for concepts_cell render."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, surrogate_uid, name, label FROM biomedical_concept_surrogate WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    surrogates = [
+        {"id": r[0], "surrogate_uid": r[1], "name": r[2], "label": r[3]}
+        for r in cur.fetchall()
+    ]
+    cur.execute(
+        "SELECT bcs.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN biomedical_concept_surrogate bcs ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "JOIN activity a ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=? AND a.id=?",
+        (soa_id, activity_id),
+    )
+    selected_surrogate_list = [
+        {"id": r[0], "surrogate_uid": r[1], "name": r[2], "label": r[3]}
+        for r in cur.fetchall()
+    ]
+    conn.close()
+    return (
+        surrogates,
+        selected_surrogate_list,
+        [s["surrogate_uid"] for s in selected_surrogate_list],
+    )
+
+
 def _lookup_and_save_dss(soa_id: int, activity_id: int, concept_code: str) -> None:
     """Background task: auto-lookup DSS for a concept via CDISC API and persist."""
     import os
@@ -3191,6 +3232,9 @@ def ui_add_activity_concept(
         background_tasks.add_task(_populate_bc_properties_bg, soa_id, activity_id, code)
     conn.close()
     selected = _get_activity_concepts(activity_id)
+    surrogates, selected_surrogate_list, selected_surrogate_uids = (
+        _get_activity_surrogates(soa_id, activity_id)
+    )
     html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
@@ -3198,6 +3242,9 @@ def ui_add_activity_concept(
         concepts=concepts,
         selected_codes=[s["code"] for s in selected],
         selected_list=selected,
+        surrogates=surrogates,
+        selected_surrogate_list=selected_surrogate_list,
+        selected_surrogate_uids=selected_surrogate_uids,
         edit=False,
     )
     return HTMLResponse(html)
@@ -3260,6 +3307,9 @@ def ui_remove_activity_concept(
     conn.close()
     concepts = fetch_biomedical_concepts()
     selected = _get_activity_concepts(activity_id)
+    surrogates, selected_surrogate_list, selected_surrogate_uids = (
+        _get_activity_surrogates(soa_id, activity_id)
+    )
     html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
@@ -3267,6 +3317,9 @@ def ui_remove_activity_concept(
         concepts=concepts,
         selected_codes=[s["code"] for s in selected],
         selected_list=selected,
+        surrogates=surrogates,
+        selected_surrogate_list=selected_surrogate_list,
+        selected_surrogate_uids=selected_surrogate_uids,
         edit=False,
     )
     return HTMLResponse(html)
@@ -3478,6 +3531,23 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     conn.close()
     visits, activities, _cells = _fetch_matrix(soa_id)
     activity_ids_in_order = [a["id"] for a in activities]
+    # Fetch BC surrogates per activity
+    conn_s = _connect()
+    cur_s = conn_s.cursor()
+    cur_s.execute(
+        "SELECT a.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN activity a ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "JOIN biomedical_concept_surrogate bcs ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=?",
+        (soa_id,),
+    )
+    surrogates_map: dict = {}
+    for _aid, _sur_uid, _sur_name, _sur_label in cur_s.fetchall():
+        surrogates_map.setdefault(_aid, []).append(
+            {"surrogate_uid": _sur_uid, "name": _sur_name, "label": _sur_label}
+        )
+    conn_s.close()
     # Build display strings using EffectiveTitle (override if present) and show code in parentheses
     concepts_strings = []
     concept_titles_strings = []  # For Concept UIDs column, show titles with UIDs
@@ -3501,9 +3571,34 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
             else:
                 titles_with_uids.append(title)
         concept_titles_strings.append("; ".join(titles_with_uids))
+    surrogates_strings = []
+    for aid in activity_ids_in_order:
+        slist = surrogates_map.get(aid, [])
+        if not slist:
+            surrogates_strings.append("")
+        else:
+            surrogates_strings.append(
+                "; ".join(
+                    [
+                        f"[S] {s['label'] or s['name']} ({s['surrogate_uid']})"
+                        for s in slist
+                    ]
+                )
+            )
+    combined_uid_strings = []
+    for _i in range(len(activity_ids_in_order)):
+        _parts = [
+            _p for _p in [concept_titles_strings[_i], surrogates_strings[_i]] if _p
+        ]
+        combined_uid_strings.append("; ".join(_parts))
     if len(concepts_strings) == len(df):
         df.insert(1, "Concepts", concepts_strings)
-        df["Concept UIDs"] = concept_titles_strings
+        df["Concept UIDs"] = combined_uid_strings
+    if len(surrogates_strings) == len(df):
+        concepts_col_idx = (
+            df.columns.get_loc("Concepts") + 1 if "Concepts" in df.columns else 1
+        )
+        df.insert(concepts_col_idx, "Surrogates", surrogates_strings)
     # Build concept mappings sheet data
     mapping_rows = []
     for a in activities:
@@ -3543,6 +3638,18 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
             "ConceptTitle",
             "ConceptUID",
         ],
+    )
+    # Build BC surrogate mappings sheet data
+    surrogate_mapping_rows = []
+    for a in activities:
+        aid = a["id"]
+        for s in surrogates_map.get(aid, []):
+            surrogate_mapping_rows.append(
+                [aid, a["name"], s["surrogate_uid"], s["name"], s["label"]]
+            )
+    surrogate_mapping_df = pd.DataFrame(
+        surrogate_mapping_rows,
+        columns=["ActivityID", "ActivityName", "SurrogateUID", "Name", "Label"],
     )
     # Build rollback audit sheet data (optional)
     audit_rows = (
@@ -3703,6 +3810,9 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     with pd.ExcelWriter(bio, engine="openpyxl") as writer:
         study_df.to_excel(writer, index=False, sheet_name="Study")
         mapping_df.to_excel(writer, index=False, sheet_name="ConceptMappings")
+        surrogate_mapping_df.to_excel(
+            writer, index=False, sheet_name="SurrogateMappings"
+        )
         audit_df.to_excel(writer, index=False, sheet_name="RollbackAudit")
         if concept_diff_df is not None:
             concept_diff_df.to_excel(writer, index=False, sheet_name="ConceptDiff")
@@ -3744,7 +3854,14 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
                 # Add concepts columns
                 if len(concepts_strings) == len(df_tl):
                     df_tl.insert(1, "Concepts", concepts_strings)
-                    df_tl["Concept UIDs"] = concept_titles_strings
+                    df_tl["Concept UIDs"] = combined_uid_strings
+                if len(surrogates_strings) == len(df_tl):
+                    _sur_col_idx = (
+                        df_tl.columns.get_loc("Concepts") + 1
+                        if "Concepts" in df_tl.columns
+                        else 1
+                    )
+                    df_tl.insert(_sur_col_idx, "Surrogates", surrogates_strings)
 
                 # Sanitize sheet name (max 31 chars, no special chars)
                 sheet_name = f"SoA - {timeline_name}"[:31]
@@ -4393,6 +4510,29 @@ def ui_edit(request: Request, soa_id: int):
         for aid, code, title in cur.fetchall():
             activity_concepts.setdefault(aid, []).append({"code": code, "title": title})
         conn.close()
+    # Fetch per-activity surrogate mappings for the matrix view
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT a.id, bcs.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN activity a ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "JOIN biomedical_concept_surrogate bcs ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=?",
+        (soa_id,),
+    )
+    activity_surrogates: dict = {}
+    for row in cur.fetchall():
+        aid, sur_id, sur_uid, sur_name, sur_label = row
+        activity_surrogates.setdefault(aid, []).append(
+            {
+                "id": sur_id,
+                "surrogate_uid": sur_uid,
+                "name": sur_name,
+                "label": sur_label,
+            }
+        )
+    conn.close()
     concepts_diag = {
         "count": len(_concept_cache.get("data") or []),
         "last_status": _concept_cache.get("last_status"),
@@ -4713,6 +4853,7 @@ def ui_edit(request: Request, soa_id: int):
             "cell_map": cell_map,
             "concepts": concepts,
             "activity_concepts": activity_concepts,
+            "activity_surrogates": activity_surrogates,
             "concepts_empty": len(concepts) == 0,
             "concepts_diag": concepts_diag,
             "concepts_last_fetch_iso": last_fetch_iso,
@@ -5575,6 +5716,9 @@ def ui_set_activity_concepts(
             )
         selected = [{"code": c, "title": t} for c, t in cur.fetchall()]
         conn.close()
+        surrogates, selected_surrogate_list, selected_surrogate_uids = (
+            _get_activity_surrogates(soa_id, activity_id)
+        )
         html = templates.get_template("concepts_cell.html").render(
             request=request,
             soa_id=soa_id,
@@ -5582,6 +5726,9 @@ def ui_set_activity_concepts(
             concepts=concepts,
             selected_codes=[s["code"] for s in selected],
             selected_list=selected,
+            surrogates=surrogates,
+            selected_surrogate_list=selected_surrogate_list,
+            selected_surrogate_uids=selected_surrogate_uids,
             edit=False,
         )
         return HTMLResponse(html)
@@ -5619,6 +5766,9 @@ def ui_activity_concepts_cell(
         )
     selected = [{"code": c, "title": t} for c, t in cur.fetchall()]
     conn.close()
+    surrogates, selected_surrogate_list, selected_surrogate_uids = (
+        _get_activity_surrogates(soa_id, activity_id)
+    )
     return HTMLResponse(
         templates.get_template("concepts_cell.html").render(
             request=request,
@@ -5627,6 +5777,9 @@ def ui_activity_concepts_cell(
             concepts=concepts,
             selected_codes=[s["code"] for s in selected],
             selected_list=selected,
+            surrogates=surrogates,
+            selected_surrogate_list=selected_surrogate_list,
+            selected_surrogate_uids=selected_surrogate_uids,
             edit=bool(edit),
         )
     )
