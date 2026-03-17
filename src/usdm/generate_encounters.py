@@ -252,8 +252,8 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             "scheduledAt": timing_uid,
             "environmentSettings": env_settings,
             "contactModes": contact_mode,
-            "transitionStartRule": transition_start_rule_obj or {},
-            "transitionEndRule": transition_end_rule_obj or {},
+            "transitionStartRule": transition_start_rule_obj or None,
+            "transitionEndRule": transition_end_rule_obj or None,
             "notes": [],
             "instanceType": "Encounter",
         }

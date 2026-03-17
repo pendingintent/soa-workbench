@@ -79,7 +79,8 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
             "name": name,
             "label": label,
             "synonyms": synonyms,
-            "reference": reference,
+            "reference": reference
+            or "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/",
             "properties": _get_biomedical_concept_properties(soa_id, id),
             "code": {
                 "id": alias_code,
