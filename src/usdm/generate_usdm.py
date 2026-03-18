@@ -38,7 +38,10 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
             return fn(*args)
         except Exception:
             logger.warning(
-                "Failed to build %s for soa_id=%s, using empty list", label, soa_id
+                "Failed to build %s for soa_id=%s, using empty list",
+                label,
+                soa_id,
+                exc_info=True,
             )
             return []
 
@@ -66,7 +69,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "population": {
             "id": "StudyDesignPopulation_1",
             "extensionAttributes": [],
-            "name": "",
+            "name": "Population_1",
             "label": None,
             "description": None,
             "includesHealthySubjects": False,

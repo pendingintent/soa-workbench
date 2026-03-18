@@ -100,12 +100,37 @@ def build_usdm_timings(
             r[11],
             r[12],
         )
-        t_code, t_decode, t_codeSystem, t_codeSystemVersion = _get_timing_code_values(
-            soa_id, type
-        )
-        rtf_code, rtf_decode, rtf_codeSystem, rtf_codeSystemVersion = (
-            _get_timing_code_values(soa_id, relative_to_from)
-        )
+        type_code_obj = None
+        if type:
+            t_code, t_decode, t_codeSystem, t_codeSystemVersion = (
+                _get_timing_code_values(soa_id, type)
+            )
+            if t_code:
+                type_code_obj = {
+                    "id": type,
+                    "extensionAttributes": [],
+                    "code": t_code[0],
+                    "codeSystem": "http://www.cdisc.org",
+                    "codeSystemVersion": t_codeSystemVersion[0],
+                    "decode": t_decode[0],
+                    "instanceType": "Code",
+                }
+
+        rtf_code_obj = None
+        if relative_to_from:
+            rtf_code, rtf_decode, rtf_codeSystem, rtf_codeSystemVersion = (
+                _get_timing_code_values(soa_id, relative_to_from)
+            )
+            if rtf_code:
+                rtf_code_obj = {
+                    "id": relative_to_from,
+                    "extensionAttributes": [],
+                    "code": rtf_code[0],
+                    "codeSystem": "db://" + rtf_codeSystem[0],
+                    "codeSystemVersion": rtf_codeSystemVersion[0],
+                    "decode": rtf_decode[0],
+                    "instanceType": "Code",
+                }
 
         timing = {
             "id": timing_uid,
@@ -113,26 +138,10 @@ def build_usdm_timings(
             "name": name,
             "label": _nz(label),
             "description": _nz(description),
-            "type": {
-                "id": type,
-                "extensionAttributes": [],
-                "code": t_code[0],
-                "codeSystem": "http://www.cdisc.org",
-                "codeSystemVersion": t_codeSystemVersion[0],
-                "decode": t_decode[0],
-                "instanceType": "Code",
-            },
+            "type": type_code_obj,
             "value": value,
             "valueLabel": value_label,
-            "relativeToFrom": {
-                "id": relative_to_from,
-                "extensionAttributes": [],
-                "code": rtf_code[0],
-                "codeSystem": "db://" + rtf_codeSystem[0],
-                "codeSystemVersion": rtf_codeSystemVersion[0],
-                "decode": rtf_decode[0],
-                "instanceType": "Code",
-            },
+            "relativeToFrom": rtf_code_obj,
             "relativeFromScheduledInstanceId": relative_from_schedule_instance,
             "relativeToScheduledInstanceId": relative_to_schedule_instance,
             "windowLower": window_lower,
