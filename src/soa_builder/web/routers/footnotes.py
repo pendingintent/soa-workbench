@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from ..audit import _record_footnote_audit
 from ..db import _connect
@@ -205,7 +205,8 @@ def ui_create_footnote(
     redirect_url = f"/ui/soa/{soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
-    return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
+
+    return RedirectResponse(redirect_url, status_code=303)
 
 
 @ui_router.post(
@@ -237,7 +238,8 @@ def ui_update_footnote(
     redirect_url = f"/ui/soa/{soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
-    return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
+
+    return RedirectResponse(redirect_url, status_code=303)
 
 
 @ui_router.post(
@@ -254,4 +256,5 @@ def ui_delete_footnote(
     redirect_url = f"/ui/soa/{soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
-    return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
+
+    return RedirectResponse(redirect_url, status_code=303)
