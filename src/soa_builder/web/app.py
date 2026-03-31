@@ -6407,6 +6407,17 @@ def load_ddf_terminology(
     return {"columns": sanitized, "row_count": len(records)}
 
 
+def _validate_terminology_path(file_path: str, project_root: str) -> str:
+    safe_root = os.path.realpath(os.path.join(project_root, "files"))
+    resolved = os.path.realpath(file_path)
+    if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
+        raise HTTPException(
+            400,
+            f"file_path must be within the project files directory. Got: {file_path}",
+        )
+    return resolved
+
+
 # UI endpoint to load DDF Terminology
 @app.post("/admin/load_ddf_terminology")
 def admin_load_ddf(
@@ -6429,7 +6440,7 @@ def admin_load_ddf(
     ]
     # If explicit file_path provided, prefer it
     if file_path:
-        fp = file_path
+        fp = _validate_terminology_path(file_path, project_root)
     else:
         fp = None
         for c in candidates:
@@ -7015,7 +7026,7 @@ def admin_load_protocol(
         os.path.join(project_root, "files", "Protocol_Terminology_2025-09-26.xls"),
     ]
     if file_path:
-        fp = file_path
+        fp = _validate_terminology_path(file_path, project_root)
     else:
         fp = None
         for c in candidates:
