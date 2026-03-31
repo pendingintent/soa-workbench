@@ -7,6 +7,7 @@ Data persisted in SQLite (file: soa_builder_web.db by default).
 
 from __future__ import annotations
 import csv
+import html as _html
 import io
 import json
 import logging
@@ -69,6 +70,13 @@ from .migrate_database import (
     _migrate_study_cell_add_order_index,
     _migrate_biomedical_concept_audit,
     _migrate_backfill_biomedical_concept_codes,
+    _migrate_add_soa_id_indexes,
+    _migrate_add_footnote_table,
+    _migrate_add_footnote_audit_table,
+    _migrate_matrix_cells_add_superscript,
+    _migrate_add_bc_surrogate_table,
+    _migrate_add_activity_surrogate_table,
+    _migrate_add_bc_surrogate_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -87,6 +95,8 @@ from .routers import usdm_json as usdm_json_router
 from .routers import tdd as tdd_router
 from .routers import decision_instances as decision_instances_router
 from .routers import condition_assignments as condition_assignments_router
+from .routers import footnotes as footnotes_router
+from .routers import bc_surrogates as bc_surrogates_router
 from .audit import _record_element_audit
 
 
@@ -136,6 +146,11 @@ load_dotenv()  # must come BEFORE reading env-based configuration so values are 
 # Use the DB path resolved by db.py to keep consistency across modules
 DB_PATH = _DB_PATH
 NORMALIZED_ROOT = os.environ.get("SOA_BUILDER_NORMALIZED_ROOT", "normalized")
+
+
+# Set server listen port
+HTTP_LISTEN_PORT = 8000
+HTTP_LISTEN_IP = "0.0.0.0"
 
 
 _concept_cache = {"data": None, "fetched_at": 0}
@@ -199,6 +214,13 @@ _backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
+_migrate_add_soa_id_indexes()
+_migrate_add_footnote_table()
+_migrate_add_footnote_audit_table()
+_migrate_matrix_cells_add_superscript()
+_migrate_add_bc_surrogate_table()
+_migrate_add_activity_surrogate_table()
+_migrate_add_bc_surrogate_audit_table()
 
 
 # Include routers
@@ -220,6 +242,10 @@ app.include_router(usdm_json_router.router)
 app.include_router(tdd_router.router)
 app.include_router(decision_instances_router.router)
 app.include_router(condition_assignments_router.router)
+app.include_router(footnotes_router.router)
+app.include_router(footnotes_router.ui_router)
+app.include_router(bc_surrogates_router.router)
+app.include_router(bc_surrogates_router.ui_router)
 
 
 def _record_visit_audit(
@@ -301,72 +327,6 @@ def reorder_visits_api(soa_id: int, order: List[int]):
     _record_reorder_audit(soa_id, "visit", old_order, order)
     return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})
 '''
-
-
-# API functions for reordering Activities
-@app.post("/soa/{soa_id}/activities/reorder", response_class=JSONResponse)
-def reorder_activities_api(soa_id: int, order: List[int]):
-    """JSON reorder endpoint for activities."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    if not order:
-        raise HTTPException(400, "Order list required")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id FROM activity WHERE soa_id=? ORDER BY order_index", (soa_id,)
-    )
-    old_order = [r[0] for r in cur.fetchall()]
-    cur.execute("SELECT id FROM activity WHERE soa_id=?", (soa_id,))
-    existing = {r[0] for r in cur.fetchall()}
-    if set(order) - existing:
-        conn.close()
-        raise HTTPException(400, "Order contains invalid activity id")
-    # Capture before state for audit detail (id -> order_index)
-    before_rows = {
-        r[0]: r[1]
-        for r in cur.execute(
-            "SELECT id, order_index FROM activity WHERE soa_id=?", (soa_id,)
-        ).fetchall()
-    }
-    for idx, aid in enumerate(order, start=1):
-        cur.execute("UPDATE activity SET order_index=? WHERE id=?", (idx, aid))
-    # Prepare after state mapping prior to UID refresh
-    after_rows = {
-        r[0]: r[1]
-        for r in cur.execute(
-            "SELECT id, order_index FROM activity WHERE soa_id=?", (soa_id,)
-        ).fetchall()
-    }
-    # Two-phase UID reassignment to avoid UNIQUE constraint collisions during in-place changes
-    cur.execute(
-        "UPDATE activity SET activity_uid = 'TMP_' || id WHERE soa_id=?",
-        (soa_id,),
-    )
-    cur.execute(
-        "UPDATE activity SET activity_uid = 'Activity_' || order_index WHERE soa_id=?",
-        (soa_id,),
-    )
-    conn.commit()
-    conn.close()
-    _record_reorder_audit(soa_id, "activity", old_order, order)
-    # Activity-level audit entry capturing each id's order change list
-    reorder_details = [
-        {
-            "id": aid,
-            "before_order_index": before_rows.get(aid),
-            "after_order_index": after_rows.get(aid),
-        }
-        for aid in order
-    ]
-    _record_activity_audit(
-        soa_id,
-        "reorder",
-        activity_id=None,
-        before={"old_order": old_order},
-        after={"new_order": order, "details": reorder_details},
-    )
-    return JSONResponse({"ok": True, "old_order": old_order, "new_order": order})
 
 
 def _list_freezes(soa_id: int):
@@ -1108,12 +1068,13 @@ def _fetch_matrix(soa_id: int):
         ]
     cur.execute(
         """
-        SELECT instance_id, activity_id, status FROM matrix_cells WHERE soa_id=? AND instance_id IS NOT NULL
+        SELECT instance_id, activity_id, status, superscript FROM matrix_cells WHERE soa_id=? AND instance_id IS NOT NULL
         """,
         (soa_id,),
     )
     cells = [
-        dict(instance_id=r[0], activity_id=r[1], status=r[2]) for r in cur.fetchall()
+        dict(instance_id=r[0], activity_id=r[1], status=r[2], superscript=r[3])
+        for r in cur.fetchall()
     ]
     conn.close()
     return instances, activities, cells
@@ -2400,6 +2361,38 @@ def _get_activity_concepts(activity_id: int):
     return rows
 
 
+def _get_activity_surrogates(soa_id: int, activity_id: int):
+    """Return (surrogates, selected_surrogate_list, selected_surrogate_uids) for concepts_cell render."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, surrogate_uid, name, label FROM biomedical_concept_surrogate WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    surrogates = [
+        {"id": r[0], "surrogate_uid": r[1], "name": r[2], "label": r[3]}
+        for r in cur.fetchall()
+    ]
+    cur.execute(
+        "SELECT bcs.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN biomedical_concept_surrogate bcs ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "JOIN activity a ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=? AND a.id=?",
+        (soa_id, activity_id),
+    )
+    selected_surrogate_list = [
+        {"id": r[0], "surrogate_uid": r[1], "name": r[2], "label": r[3]}
+        for r in cur.fetchall()
+    ]
+    conn.close()
+    return (
+        surrogates,
+        selected_surrogate_list,
+        [s["surrogate_uid"] for s in selected_surrogate_list],
+    )
+
+
 def _lookup_and_save_dss(soa_id: int, activity_id: int, concept_code: str) -> None:
     """Background task: auto-lookup DSS for a concept via CDISC API and persist."""
     import os
@@ -3179,6 +3172,9 @@ def ui_add_activity_concept(
         background_tasks.add_task(_populate_bc_properties_bg, soa_id, activity_id, code)
     conn.close()
     selected = _get_activity_concepts(activity_id)
+    surrogates, selected_surrogate_list, selected_surrogate_uids = (
+        _get_activity_surrogates(soa_id, activity_id)
+    )
     html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
@@ -3186,6 +3182,9 @@ def ui_add_activity_concept(
         concepts=concepts,
         selected_codes=[s["code"] for s in selected],
         selected_list=selected,
+        surrogates=surrogates,
+        selected_surrogate_list=selected_surrogate_list,
+        selected_surrogate_uids=selected_surrogate_uids,
         edit=False,
     )
     return HTMLResponse(html)
@@ -3248,6 +3247,9 @@ def ui_remove_activity_concept(
     conn.close()
     concepts = fetch_biomedical_concepts()
     selected = _get_activity_concepts(activity_id)
+    surrogates, selected_surrogate_list, selected_surrogate_uids = (
+        _get_activity_surrogates(soa_id, activity_id)
+    )
     html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
@@ -3255,6 +3257,9 @@ def ui_remove_activity_concept(
         concepts=concepts,
         selected_codes=[s["code"] for s in selected],
         selected_list=selected,
+        surrogates=surrogates,
+        selected_surrogate_list=selected_surrogate_list,
+        selected_surrogate_uids=selected_surrogate_uids,
         edit=False,
     )
     return HTMLResponse(html)
@@ -3353,6 +3358,44 @@ def set_cell_instance(soa_id: int, payload: dict):
     return {"cell_id": cid, "status": status}
 
 
+def _render_cell_td(
+    soa_id: int,
+    instance_id: int,
+    activity_id: int,
+    status: str,
+    superscript: str | None,
+) -> str:
+    """Build the <td> HTML for a matrix cell, including superscript and edit button."""
+    soa_id_safe = _html.escape(str(soa_id), quote=True)
+    instance_id_safe = _html.escape(str(instance_id), quote=True)
+    activity_id_safe = _html.escape(str(activity_id), quote=True)
+
+    if status == "X":
+        sup_html = f"<sup>{_html.escape(superscript)}</sup>" if superscript else ""
+        edit_btn = (
+            f'<span class="sup-edit"'
+            f' hx-get="/ui/soa/{soa_id_safe}/cell_superscript_edit/{instance_id_safe}/{activity_id_safe}"'
+            f' hx-swap="outerHTML" hx-target="closest td"'
+            f' onclick="event.stopPropagation()" title="Edit superscript">\u270e</span>'
+        )
+        content = f"X{sup_html}{edit_btn}"
+    else:
+        content = ""
+
+    # Build hx-vals as JSON, then HTML-escape for safe embedding in attribute
+    hx_vals_json = json.dumps(
+        {"instance_id": instance_id, "activity_id": activity_id},
+        separators=(",", ":"),
+    )
+    hx_vals_attr = _html.escape(hx_vals_json, quote=True)
+
+    return (
+        f'<td hx-post="/ui/soa/{soa_id_safe}/toggle_cell"'
+        f" hx-vals='{hx_vals_attr}'"
+        f' hx-swap="outerHTML" class="cell">{content}</td>'
+    )
+
+
 @app.post("/ui/soa/{soa_id}/toggle_cell_instance", response_class=HTMLResponse)
 def ui_toggle_cell_instance(
     request: Request,
@@ -3370,16 +3413,11 @@ def ui_toggle_cell_instance(
         (soa_id, instance_id, activity_id),
     )
     row = cur.fetchone()
-    if row and row[0] == "X":
+    if row:
         cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
         conn.commit()
         conn.close()
-        current = ""
-    elif row:
-        cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
-        conn.commit()
-        conn.close()
-        current = ""
+        return HTMLResponse(_render_cell_td(soa_id, instance_id, activity_id, "", None))
     else:
         cur.execute(
             "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, status) VALUES (?,?,?,?)",
@@ -3387,9 +3425,9 @@ def ui_toggle_cell_instance(
         )
         conn.commit()
         conn.close()
-        current = "X"
-    cell_html = f'<td hx-post="/ui/soa/{soa_id}/toggle_cell_instance" hx-vals=\'{{"instance_id": {instance_id}, "activity_id": {activity_id}}}\' hx-swap="outerHTML" class="cell">{current}</td>'
-    return HTMLResponse(cell_html)
+        return HTMLResponse(
+            _render_cell_td(soa_id, instance_id, activity_id, "X", None)
+        )
 
 
 # API endpoint for exporting the Matrix as XLSX
@@ -3445,6 +3483,23 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     conn.close()
     visits, activities, _cells = _fetch_matrix(soa_id)
     activity_ids_in_order = [a["id"] for a in activities]
+    # Fetch BC surrogates per activity
+    conn_s = _connect()
+    cur_s = conn_s.cursor()
+    cur_s.execute(
+        "SELECT a.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN activity a ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "JOIN biomedical_concept_surrogate bcs ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=?",
+        (soa_id,),
+    )
+    surrogates_map: dict = {}
+    for _aid, _sur_uid, _sur_name, _sur_label in cur_s.fetchall():
+        surrogates_map.setdefault(_aid, []).append(
+            {"surrogate_uid": _sur_uid, "name": _sur_name, "label": _sur_label}
+        )
+    conn_s.close()
     # Build display strings using EffectiveTitle (override if present) and show code in parentheses
     concepts_strings = []
     concept_titles_strings = []  # For Concept UIDs column, show titles with UIDs
@@ -3468,9 +3523,34 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
             else:
                 titles_with_uids.append(title)
         concept_titles_strings.append("; ".join(titles_with_uids))
+    surrogates_strings = []
+    for aid in activity_ids_in_order:
+        slist = surrogates_map.get(aid, [])
+        if not slist:
+            surrogates_strings.append("")
+        else:
+            surrogates_strings.append(
+                "; ".join(
+                    [
+                        f"[S] {s['label'] or s['name']} ({s['surrogate_uid']})"
+                        for s in slist
+                    ]
+                )
+            )
+    combined_uid_strings = []
+    for _i in range(len(activity_ids_in_order)):
+        _parts = [
+            _p for _p in [concept_titles_strings[_i], surrogates_strings[_i]] if _p
+        ]
+        combined_uid_strings.append("; ".join(_parts))
     if len(concepts_strings) == len(df):
         df.insert(1, "Concepts", concepts_strings)
-        df["Concept UIDs"] = concept_titles_strings
+        df["Concept UIDs"] = combined_uid_strings
+    if len(surrogates_strings) == len(df):
+        concepts_col_idx = (
+            df.columns.get_loc("Concepts") + 1 if "Concepts" in df.columns else 1
+        )
+        df.insert(concepts_col_idx, "Surrogates", surrogates_strings)
     # Build concept mappings sheet data
     mapping_rows = []
     for a in activities:
@@ -3510,6 +3590,18 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
             "ConceptTitle",
             "ConceptUID",
         ],
+    )
+    # Build BC surrogate mappings sheet data
+    surrogate_mapping_rows = []
+    for a in activities:
+        aid = a["id"]
+        for s in surrogates_map.get(aid, []):
+            surrogate_mapping_rows.append(
+                [aid, a["name"], s["surrogate_uid"], s["name"], s["label"]]
+            )
+    surrogate_mapping_df = pd.DataFrame(
+        surrogate_mapping_rows,
+        columns=["ActivityID", "ActivityName", "SurrogateUID", "Name", "Label"],
     )
     # Build rollback audit sheet data (optional)
     audit_rows = (
@@ -3670,6 +3762,9 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     with pd.ExcelWriter(bio, engine="openpyxl") as writer:
         study_df.to_excel(writer, index=False, sheet_name="Study")
         mapping_df.to_excel(writer, index=False, sheet_name="ConceptMappings")
+        surrogate_mapping_df.to_excel(
+            writer, index=False, sheet_name="SurrogateMappings"
+        )
         audit_df.to_excel(writer, index=False, sheet_name="RollbackAudit")
         if concept_diff_df is not None:
             concept_diff_df.to_excel(writer, index=False, sheet_name="ConceptDiff")
@@ -3711,7 +3806,14 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
                 # Add concepts columns
                 if len(concepts_strings) == len(df_tl):
                     df_tl.insert(1, "Concepts", concepts_strings)
-                    df_tl["Concept UIDs"] = concept_titles_strings
+                    df_tl["Concept UIDs"] = combined_uid_strings
+                if len(surrogates_strings) == len(df_tl):
+                    _sur_col_idx = (
+                        df_tl.columns.get_loc("Concepts") + 1
+                        if "Concepts" in df_tl.columns
+                        else 1
+                    )
+                    df_tl.insert(_sur_col_idx, "Surrogates", surrogates_strings)
 
                 # Sanitize sheet name (max 31 chars, no special chars)
                 sheet_name = f"SoA - {timeline_name}"[:31]
@@ -4037,7 +4139,7 @@ def import_matrix(soa_id: int, payload: MatrixImport):
             next_order += 1
         if has_activity_uid:
             cols.append("activity_uid")
-            vals.append(f"Activity_{soa_id}_{next_order}")
+            vals.append(activities_router._next_activity_uid(cur, soa_id))
         cur.execute(
             f"INSERT INTO activity ({','.join(cols)}) VALUES ({','.join(['?'] * len(vals))})",
             vals,
@@ -4076,17 +4178,6 @@ def _reindex(table: str, soa_id: int):
     ids = [r[0] for r in cur.fetchall()]
     for idx, _id in enumerate(ids, start=1):
         cur.execute(f"UPDATE {table} SET order_index=? WHERE id=?", (idx, _id))
-    # Maintain activity_uid after any activity reindex
-    if table == "activity":
-        # Two-phase UID refresh to satisfy UNIQUE(soa_id, activity_uid) without transient collisions
-        cur.execute(
-            "UPDATE activity SET activity_uid = 'TMP_' || id WHERE soa_id=?",
-            (soa_id,),
-        )
-        cur.execute(
-            "UPDATE activity SET activity_uid = 'Activity_' || order_index WHERE soa_id=?",
-            (soa_id,),
-        )
     conn.commit()
     conn.close()
 
@@ -4179,7 +4270,7 @@ def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
     order_index = cur.fetchone()[0] + 1
     cur.execute(
         "INSERT INTO activity (soa_id,name,order_index,activity_uid) VALUES (?,?,?,?)",
-        (soa_id, nm, order_index, f"Activity_{order_index}"),
+        (soa_id, nm, order_index, activities_router._next_activity_uid(cur, soa_id)),
     )
     aid = cur.lastrowid
     conn.commit()
@@ -4348,6 +4439,9 @@ def ui_edit(request: Request, soa_id: int):
     activities_page = activities
     # Build cell lookup
     cell_map = {(c["instance_id"], c["activity_id"]): c["status"] for c in cells}
+    superscript_map = {
+        (c["instance_id"], c["activity_id"]): c.get("superscript") for c in cells
+    }
     concepts = fetch_biomedical_concepts()
     activity_ids = [a["id"] for a in activities_page]
     activity_concepts = {}
@@ -4368,6 +4462,29 @@ def ui_edit(request: Request, soa_id: int):
         for aid, code, title in cur.fetchall():
             activity_concepts.setdefault(aid, []).append({"code": code, "title": title})
         conn.close()
+    # Fetch per-activity surrogate mappings for the matrix view
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT a.id, bcs.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN activity a ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "JOIN biomedical_concept_surrogate bcs ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=?",
+        (soa_id,),
+    )
+    activity_surrogates: dict = {}
+    for row in cur.fetchall():
+        aid, sur_id, sur_uid, sur_name, sur_label = row
+        activity_surrogates.setdefault(aid, []).append(
+            {
+                "id": sur_id,
+                "surrogate_uid": sur_uid,
+                "name": sur_name,
+                "label": sur_label,
+            }
+        )
+    conn.close()
     concepts_diag = {
         "count": len(_concept_cache.get("data") or []),
         "last_status": _concept_cache.get("last_status"),
@@ -4642,6 +4759,28 @@ def ui_edit(request: Request, soa_id: int):
     if not default_timeline and "unassigned" in instances_by_timeline:
         default_timeline = "unassigned"
 
+    # Load footnotes for display below matrix
+    conn_fn = _connect()
+    cur_fn = conn_fn.cursor()
+    cur_fn.execute(
+        "SELECT id,soa_id,footnote_uid,name,label,description,text,dictionary_uid FROM footnote WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    footnotes = [
+        dict(
+            id=r[0],
+            soa_id=r[1],
+            footnote_uid=r[2],
+            name=r[3],
+            label=r[4],
+            description=r[5],
+            text=r[6],
+            dictionary_uid=r[7],
+        )
+        for r in cur_fn.fetchall()
+    ]
+    conn_fn.close()
+
     instances_crud = instances_router.list_instances(soa_id)
     encounter_options = get_encounter_id(soa_id)
     epoch_options = get_epoch_uid(soa_id)
@@ -4666,6 +4805,7 @@ def ui_edit(request: Request, soa_id: int):
             "cell_map": cell_map,
             "concepts": concepts,
             "activity_concepts": activity_concepts,
+            "activity_surrogates": activity_surrogates,
             "concepts_empty": len(concepts) == 0,
             "concepts_diag": concepts_diag,
             "concepts_last_fetch_iso": last_fetch_iso,
@@ -4685,6 +4825,8 @@ def ui_edit(request: Request, soa_id: int):
             "timelines": timelines,
             "instances_by_timeline": instances_by_timeline,
             "default_timeline": default_timeline,
+            "footnotes": footnotes,
+            "superscript_map": superscript_map,
         },
     )
 
@@ -5526,6 +5668,9 @@ def ui_set_activity_concepts(
             )
         selected = [{"code": c, "title": t} for c, t in cur.fetchall()]
         conn.close()
+        surrogates, selected_surrogate_list, selected_surrogate_uids = (
+            _get_activity_surrogates(soa_id, activity_id)
+        )
         html = templates.get_template("concepts_cell.html").render(
             request=request,
             soa_id=soa_id,
@@ -5533,6 +5678,9 @@ def ui_set_activity_concepts(
             concepts=concepts,
             selected_codes=[s["code"] for s in selected],
             selected_list=selected,
+            surrogates=surrogates,
+            selected_surrogate_list=selected_surrogate_list,
+            selected_surrogate_uids=selected_surrogate_uids,
             edit=False,
         )
         return HTMLResponse(html)
@@ -5570,6 +5718,9 @@ def ui_activity_concepts_cell(
         )
     selected = [{"code": c, "title": t} for c, t in cur.fetchall()]
     conn.close()
+    surrogates, selected_surrogate_list, selected_surrogate_uids = (
+        _get_activity_surrogates(soa_id, activity_id)
+    )
     return HTMLResponse(
         templates.get_template("concepts_cell.html").render(
             request=request,
@@ -5578,6 +5729,9 @@ def ui_activity_concepts_cell(
             concepts=concepts,
             selected_codes=[s["code"] for s in selected],
             selected_list=selected,
+            surrogates=surrogates,
+            selected_surrogate_list=selected_surrogate_list,
+            selected_surrogate_uids=selected_surrogate_uids,
             edit=bool(edit),
         )
     )
@@ -5625,7 +5779,9 @@ def ui_toggle_cell(
             cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
             conn.commit()
             conn.close()
-            current = ""
+            return HTMLResponse(
+                _render_cell_td(soa_id, int(instance_id), activity_id, "", None)
+            )
         else:
             cur.execute(
                 "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, status) VALUES (?,?,?,?)",
@@ -5633,12 +5789,9 @@ def ui_toggle_cell(
             )
             conn.commit()
             conn.close()
-            current = "X"
-        cell_html = (
-            f'<td hx-post="/ui/soa/{soa_id}/toggle_cell" '
-            f'hx-vals=\'{{"instance_id": {int(instance_id)}, "activity_id": {activity_id}}}\' '
-            f'hx-swap="outerHTML" class="cell">{current}</td>'
-        )
+            return HTMLResponse(
+                _render_cell_td(soa_id, int(instance_id), activity_id, "X", None)
+            )
     else:
         # Legacy visit-based toggle
         if visit_id is None:
@@ -5662,12 +5815,124 @@ def ui_toggle_cell(
             conn.commit()
             conn.close()
             current = "X"
+        # Legacy path: visit-based cells don't have superscript support
         cell_html = (
             f'<td hx-post="/ui/soa/{soa_id}/toggle_cell" '
             f'hx-vals=\'{{"visit_id": {int(visit_id)}, "activity_id": {activity_id}}}\' '
             f'hx-swap="outerHTML" class="cell">{current}</td>'
         )
     return HTMLResponse(cell_html)
+
+
+@app.get(
+    "/ui/soa/{soa_id}/cell_superscript_edit/{instance_id}/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_cell_superscript_edit(
+    request: Request,
+    soa_id: int,
+    instance_id: int,
+    activity_id: int,
+):
+    """Return edit-mode <td> for superscript inline editing."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT superscript FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (soa_id, instance_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Cell not found")
+    sup_val = _html.escape(row[0] or "", quote=True)
+    html = (
+        f'<td class="cell cell-editing" style="background:#fffde7;min-width:70px;">'
+        f"X"
+        f'<form style="display:inline;"'
+        f' hx-post="/ui/soa/{soa_id}/cell_superscript/{instance_id}/{activity_id}"'
+        f' hx-swap="outerHTML" hx-target="closest td">'
+        f'<input name="superscript" value="{sup_val}" size="5"'
+        f' style="width:45px;font-size:0.8em;" autofocus />'
+        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
+        f"</form>"
+        f'<span hx-get="/ui/soa/{soa_id}/cell_superscript_view/{instance_id}/{activity_id}"'
+        f' hx-swap="outerHTML" hx-target="closest td"'
+        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
+        f"</td>"
+    )
+    return HTMLResponse(html)
+
+
+@app.post(
+    "/ui/soa/{soa_id}/cell_superscript/{instance_id}/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_cell_superscript_save(
+    request: Request,
+    soa_id: int,
+    instance_id: int,
+    activity_id: int,
+    superscript: Optional[str] = Form(None),
+):
+    """Save superscript value for a cell and return rendered <td>."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    # Normalise empty string to NULL
+    sup_val = superscript.strip() if superscript else None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE matrix_cells SET superscript=? WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (sup_val, soa_id, instance_id, activity_id),
+    )
+    # If no rows were updated, the target cell does not exist (or does not belong to this SOA)
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(404, "Matrix cell not found")
+    # Read back the actual status and superscript from the database to render an accurate cell
+    cur.execute(
+        "SELECT status, superscript FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (soa_id, instance_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    conn.close()
+    status = row[0] if row else ""
+    sup_val_db = row[1] if row else None
+    return HTMLResponse(
+        _render_cell_td(soa_id, instance_id, activity_id, status or "", sup_val_db)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/cell_superscript_view/{instance_id}/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_cell_superscript_view(
+    request: Request,
+    soa_id: int,
+    instance_id: int,
+    activity_id: int,
+):
+    """Return rendered (view-mode) <td> — used for cancel."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT status, superscript FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (soa_id, instance_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    status = row[0] if row else ""
+    sup_val = row[1] if row else None
+    return HTMLResponse(
+        _render_cell_td(soa_id, instance_id, activity_id, status or "", sup_val)
+    )
 
 
 # UI endpoint for associating a Transition Start Rule with Visit/Encounter (visit.transitionStartRule)
@@ -6108,6 +6373,17 @@ def load_ddf_terminology(
     return {"columns": sanitized, "row_count": len(records)}
 
 
+def _validate_terminology_path(file_path: str, project_root: str) -> str:
+    safe_root = os.path.realpath(os.path.join(project_root, "files"))
+    resolved = os.path.realpath(file_path)
+    if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
+        raise HTTPException(
+            400,
+            f"file_path must be within the project files directory. Got: {file_path}",
+        )
+    return resolved
+
+
 # UI endpoint to load DDF Terminology
 @app.post("/admin/load_ddf_terminology")
 def admin_load_ddf(
@@ -6130,7 +6406,7 @@ def admin_load_ddf(
     ]
     # If explicit file_path provided, prefer it
     if file_path:
-        fp = file_path
+        fp = _validate_terminology_path(file_path, project_root)
     else:
         fp = None
         for c in candidates:
@@ -6716,7 +6992,7 @@ def admin_load_protocol(
         os.path.join(project_root, "files", "Protocol_Terminology_2025-09-26.xls"),
     ]
     if file_path:
-        fp = file_path
+        fp = _validate_terminology_path(file_path, project_root)
     else:
         fp = None
         for c in candidates:
@@ -7153,1115 +7429,13 @@ def ui_protocol_audit(
 def main():
     import uvicorn
 
-    uvicorn.run("soa_builder.web.app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "soa_builder.web.app:app",
+        host=HTTP_LISTEN_IP,
+        port=HTTP_LISTEN_PORT,
+        reload=True,
+    )
 
 
 if __name__ == "__main__":
     main()
-
-
-# Deprecated (Moved to routers/epochs.py)
-"""
-def _record_epoch_audit(
-    soa_id: int,
-    action: str,
-    epoch_id: Optional[int],
-    before: Optional[dict] = None,
-    after: Optional[dict] = None,
-):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO epoch_audit (soa_id, epoch_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                epoch_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:  # pragma: no cover
-        logger.warning("Failed recording epoch audit: %s", e)
-"""
-# Moved to routers/epochs.py
-'''
-@app.delete("/soa/{soa_id}/epochs/{epoch_id}")
-def delete_epoch(soa_id: int, epoch_id: int):
-    """Delete an Epoch from an SoA."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (epoch_id, soa_id))
-    if not cur.fetchone():
-        conn.close()
-        raise HTTPException(404, "Epoch not found")
-    cur.execute(
-        "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description FROM epoch WHERE id=?",
-        (epoch_id,),
-    )
-    b = cur.fetchone()
-    before = None
-    if b:
-        before = {
-            "id": b[0],
-            "name": b[1],
-            "order_index": b[2],
-            "epoch_seq": b[3],
-            "epoch_label": b[4],
-            "epoch_description": b[5],
-        }
-    # Include current type in before snapshot
-    try:
-        cur.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
-        tr = cur.fetchone()
-        if before is not None:
-            before["type"] = tr[0] if tr else None
-    except Exception:
-        pass
-    # Clear visit epoch references to avoid dangling links
-    try:
-        cur.execute(
-            "UPDATE visit SET epoch_id=NULL WHERE soa_id=? AND epoch_id=?",
-            (soa_id, epoch_id),
-        )
-    except Exception:
-        pass
-    # Delete the epoch row
-    cur.execute("DELETE FROM epoch WHERE id=?", (epoch_id,))
-    conn.commit()
-    conn.close()
-    _reindex("epoch", soa_id)
-    _record_epoch_audit(soa_id, "delete", epoch_id, before=before, after=None)
-    return {"deleted_epoch_id": epoch_id}
-'''
-
-# # UI endpoint for reordering Epochs   <- moved to routers/epochs.py
-'''
-@app.post("/ui/soa/{soa_id}/reorder_epochs", response_class=HTMLResponse)
-def ui_reorder_epochs(request: Request, soa_id: int, order: str = Form("")):
-    """Form handler to persist new epoch ordering."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
-    if not ids:
-        return HTMLResponse("Invalid order", status_code=400)
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM epoch WHERE soa_id=? ORDER BY order_index", (soa_id,))
-    old_order = [r[0] for r in cur.fetchall()]
-    cur.execute("SELECT id FROM epoch WHERE soa_id=?", (soa_id,))
-    existing = {r[0] for r in cur.fetchall()}
-    if set(ids) - existing:
-        conn.close()
-        return HTMLResponse("Order contains invalid epoch id", status_code=400)
-    for idx, eid in enumerate(ids, start=1):
-        cur.execute("UPDATE epoch SET order_index=? WHERE id=?", (idx, eid))
-    conn.commit()
-    conn.close()
-    _record_reorder_audit(soa_id, "epoch", old_order, ids)
-
-    # Also record epoch-specific reorder audit for parity with JSON endpoint
-    def _epoch_types_snapshot(soa_id_int: int) -> list[dict]:
-        conn_s = _connect()
-        cur_s = conn_s.cursor()
-        cur_s.execute(
-            "SELECT id,type FROM epoch WHERE soa_id=? ORDER BY order_index",
-            (soa_id_int,),
-        )
-        rows = cur_s.fetchall()
-        conn_s.close()
-        return [{"id": rid, "type": rtype} for rid, rtype in rows]
-
-    _record_epoch_audit(
-        soa_id,
-        "reorder",
-        epoch_id=None,
-        before={
-            "old_order": old_order,
-            "types": _epoch_types_snapshot(soa_id),
-        },
-        after={"new_order": ids},
-    )
-    return HTMLResponse("OK")
-'''
-# UI endpoint for deleting an Epoch <- moved to routers/epochs.py
-'''
-@app.post("/ui/soa/{soa_id}/delete_epoch", response_class=HTMLResponse)
-def ui_delete_epoch(request: Request, soa_id: int, epoch_id: int = Form(...)):
-    """Form handler to delete an Epoch."""
-    delete_epoch(soa_id, epoch_id)
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-'''
-
-# UI endpoint for reordering Encounters/Visits      <- Deprecated
-'''
-@app.post("/ui/soa/{soa_id}/reorder_visits", response_class=HTMLResponse)
-def ui_reorder_visits(request: Request, soa_id: int, order: str = Form("")):
-    """Persist new visit ordering. 'order' is a comma-separated list of visit IDs in desired order."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
-    if not ids:
-        return HTMLResponse("Invalid order", status_code=400)
-    conn = _connect()
-    cur = conn.cursor()
-    # Capture existing order BEFORE modifications
-    cur.execute("SELECT id FROM visit WHERE soa_id=? ORDER BY order_index", (soa_id,))
-    old_order = [r[0] for r in cur.fetchall()]
-    # Validate membership
-    cur.execute("SELECT id FROM visit WHERE soa_id=?", (soa_id,))
-    existing = {r[0] for r in cur.fetchall()}
-    if set(ids) - existing:
-        conn.close()
-        return HTMLResponse("Order contains invalid visit id", status_code=400)
-    # Apply new order indices
-    for idx, vid in enumerate(ids, start=1):
-        cur.execute("UPDATE visit SET order_index=? WHERE id=?", (idx, vid))
-    conn.commit()
-    conn.close()
-    _record_reorder_audit(soa_id, "visit", old_order, ids)
-    return HTMLResponse("OK")
-'''
-# UI endpoint for updating an Encounter/Visit       <- moved to routers/visits.py
-'''
-@app.post("/ui/soa/{soa_id}/update_visit", response_class=HTMLResponse)
-def ui_update_visit(
-    request: Request,
-    soa_id: int,
-    visit_id: int = Form(...),
-    name: Optional[str] = Form(None),
-    label: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-):
-    """Form handler to update a Visit's mutable fields (name/label/description)."""
-    # Build payload with provided fields; blanks should clear values
-    payload = VisitUpdate(
-        name=name,
-        label=label,
-        description=description,
-    )
-    try:
-        visits_router.update_visit(soa_id, visit_id, payload)
-    except Exception:
-        # Let redirect proceed; detailed errors will appear in API logs
-        pass
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-'''
-# UI code to delete an Encounter/Visit from an SOA  <- moved to routers/visits.py
-"""
-@app.post("/ui/soa/{soa_id}/delete_visit", response_class=HTMLResponse)
-def ui_delete_visit(request: Request, soa_id: int, visit_id: int = Form(...)):
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-
-    try:
-        # Call through router to avoid stale import bindings
-        visits_router.delete_visit(soa_id, visit_id)
-    except HTTPException:
-        # swallow 404 to keep UX smooth
-        pass
-    # If HTMX, use HX-Redirect; else script redirect
-    if request.headers.get("HX-Request") == "true":
-        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{int(soa_id)}/edit"})
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-"""
-
-
-# UI endpoint for associating an Epoch with a Visit/Encounter   <- Deprecated (Visits are not directly related to an Epoch)
-'''
-@app.post("/ui/soa/{soa_id}/set_visit_epoch", response_class=HTMLResponse)
-def ui_set_visit_epoch(
-    request: Request,
-    soa_id: int,
-    visit_id: int = Form(...),
-    epoch_id_raw: str = Form(""),  # new field name (blank means clear)
-    epoch_id: str = Form(""),  # legacy field name used by template select
-):
-    """Form handler to associate an Epoch with a Visit/Encounter."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    # Determine provided raw value (prefer epoch_id_raw if non-blank)
-    raw_val = (epoch_id_raw or "").strip() or (epoch_id or "").strip()
-    parsed_epoch: Optional[int] = None
-    if raw_val:
-        if raw_val.isdigit():
-            parsed_epoch = int(raw_val)
-        else:
-            raise HTTPException(400, "Invalid epoch_id value")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id,name,label,order_index,epoch_id,encounter_uid,description FROM visit WHERE id=? AND soa_id=?",
-        (visit_id, soa_id),
-    )
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Visit not found")
-    before = {
-        "id": row[0],
-        "name": row[1],
-        "label": row[2],
-        "order_index": row[3],
-        "epoch_id": row[4],
-        "encounter_uid": row[5],
-        "description": row[6],
-    }
-    if parsed_epoch is not None:
-        cur.execute(
-            "SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (parsed_epoch, soa_id)
-        )
-        if not cur.fetchone():
-            conn.close()
-            raise HTTPException(400, "Invalid epoch_id for this SOA")
-    cur.execute("UPDATE visit SET epoch_id=? WHERE id=?", (parsed_epoch, visit_id))
-    conn.commit()
-    """
-    logger.info(
-        "ui_set_visit_epoch updated visit id=%s soa_id=%s epoch_id=%s raw_val='%s' db_path=%s",
-        visit_id,
-        soa_id,
-        parsed_epoch,
-        raw_val,
-        DB_PATH,
-    )
-    """
-    # Fetch after and record audit
-    cur.execute(
-        "SELECT id,name,label,order_index,epoch_id,encounter_uid,description FROM visit WHERE id=? AND soa_id=?",
-        (visit_id, soa_id),
-    )
-    r = cur.fetchone()
-    after = {
-        "id": r[0],
-        "name": r[1],
-        "label": r[2],
-        "order_index": r[3],
-        "epoch_id": r[4],
-        "encounter_uid": r[5],
-        "description": r[6],
-    }
-    updated_fields = [
-        f for f in ["epoch_id"] if (before.get(f) or None) != (after.get(f) or None)
-    ]
-    _record_visit_audit(
-        soa_id,
-        "update",
-        visit_id,
-        before=before,
-        after={**after, "updated_fields": updated_fields},
-    )
-    conn.close()
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-'''
-# UI endpoint for adding a new Epoch    <- moved to routers/epochs.py
-'''
-@app.post("/ui/soa/{soa_id}/add_epoch", response_class=HTMLResponse)
-def ui_add_epoch(
-    request: Request,
-    soa_id: int,
-    name: str = Form(...),
-    epoch_label: Optional[str] = Form(None),
-    epoch_description: Optional[str] = Form(None),
-    epoch_type_submission_value: Optional[str] = Form(None),
-):
-    """Form handler to add an Epoch."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM epoch WHERE soa_id=?", (soa_id,))
-    order_index = cur.fetchone()[0] + 1
-    cur.execute("SELECT MAX(epoch_seq) FROM epoch WHERE soa_id=?", (soa_id,))
-    row = cur.fetchone()
-    next_seq = (row[0] or 0) + 1
-    # Optional epoch type mapping via code junction (C99079) using API-only map
-    epoch_type_submission_value = (epoch_type_submission_value or "").strip() or None
-    selected_code_uid = None
-    if epoch_type_submission_value:
-        try:
-            from .utils import load_epoch_type_map, get_epoch_parent_package_href_cached
-
-            epoch_map = load_epoch_type_map()
-        except Exception:
-            epoch_map = {}
-        # Invert map to find conceptId by submissionValue
-        concept_id = None
-        for cid, sv in (epoch_map or {}).items():
-            if sv and sv.strip().lower() == epoch_type_submission_value.strip().lower():
-                concept_id = cid
-                break
-        if concept_id:
-            # Create a new Code_N for this conceptId under C99079 (API-only)
-            code_uid = _get_next_code_uid(cur, soa_id)
-            try:
-                parent_href = get_epoch_parent_package_href_cached() or None
-            except Exception:
-                parent_href = None
-            cur.execute(
-                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-                (
-                    soa_id,
-                    code_uid,
-                    parent_href,
-                    "C99079",
-                    concept_id,
-                ),
-            )
-            selected_code_uid = code_uid
-    cur.execute(
-        "INSERT INTO epoch (soa_id,name,order_index,epoch_seq,epoch_label,epoch_description,type) VALUES (?,?,?,?,?,?,?)",
-        (
-            soa_id,
-            name,
-            order_index,
-            next_seq,
-            (epoch_label or "").strip() or None,
-            (epoch_description or "").strip() or None,
-            selected_code_uid,
-        ),
-    )
-    eid = cur.lastrowid
-    conn.commit()
-    conn.close()
-    _record_epoch_audit(
-        soa_id,
-        "create",
-        eid,
-        before={"type": None},
-        after={
-            "id": eid,
-            "name": name,
-            "order_index": order_index,
-            "epoch_seq": next_seq,
-            "epoch_label": (epoch_label or "").strip() or None,
-            "epoch_description": (epoch_description or "").strip() or None,
-            "type": selected_code_uid,
-        },
-    )
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-'''
-
-# UI endpoint for updating an Epoch <- moved to routers/epochs.py
-'''
-@app.post("/ui/soa/{soa_id}/update_epoch", response_class=HTMLResponse)
-def ui_update_epoch(
-    request: Request,
-    soa_id: int,
-    epoch_id: int = Form(...),
-    name: Optional[str] = Form(None),
-    epoch_label: Optional[str] = Form(None),
-    epoch_description: Optional[str] = Form(None),
-    epoch_type_submission_value: Optional[str] = Form(None),
-):
-    """Form handler to update an existing Epoch."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM epoch WHERE id=? AND soa_id=?", (epoch_id, soa_id))
-    if not cur.fetchone():
-        conn.close()
-        raise HTTPException(404, "Epoch not found")
-    conn.close()
-    # Capture before
-    conn_b = _connect()
-    cur_b = conn_b.cursor()
-    cur_b.execute(
-        "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description FROM epoch WHERE id=?",
-        (epoch_id,),
-    )
-    b = cur_b.fetchone()
-    conn_b.close()
-    before = None
-    if b:
-        before = {
-            "id": b[0],
-            "name": b[1],
-            "order_index": b[2],
-            "epoch_seq": b[3],
-            "epoch_label": b[4],
-            "epoch_description": b[5],
-        }
-    # Include current type in before snapshot for audit
-    try:
-        conn_bt = _connect()
-        cur_bt = conn_bt.cursor()
-        cur_bt.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
-        br = cur_bt.fetchone()
-        conn_bt.close()
-        if before is not None:
-            before["type"] = br[0] if br else None
-    except Exception:
-        pass
-    sets = []
-    vals: list[Any] = []
-    if name is not None:
-        sets.append("name=?")
-        vals.append((name or "").strip() or None)
-    if epoch_label is not None:
-        sets.append("epoch_label=?")
-        vals.append((epoch_label or "").strip() or None)
-    if epoch_description is not None:
-        sets.append("epoch_description=?")
-        vals.append((epoch_description or "").strip() or None)
-    # Handle epoch type mapping via code junction (C99079) using API-only map
-    epoch_type_submission_value = (epoch_type_submission_value or "").strip() or None
-    if epoch_type_submission_value is not None:
-        # If empty string provided, clear type
-        if epoch_type_submission_value == "":
-            sets.append("type=?")
-            vals.append(None)
-        else:
-            # Resolve submission value to conceptId via API-only map
-            try:
-                from .utils import (
-                    load_epoch_type_map,
-                    get_epoch_parent_package_href_cached,
-                )
-
-                epoch_map = load_epoch_type_map()
-            except Exception:
-                epoch_map = {}
-            concept_id = None
-            for cid, sv in (epoch_map or {}).items():
-                if (
-                    sv
-                    and sv.strip().lower()
-                    == epoch_type_submission_value.strip().lower()
-                ):
-                    concept_id = cid
-                    break
-            selected_code_uid = None
-            if concept_id:
-                conn_t = _connect()
-                cur_t = conn_t.cursor()
-                # Always create a new Code_N for C99079 selections (no reuse)
-                code_uid = _get_next_code_uid(cur_t, soa_id)
-                try:
-                    parent_href = get_epoch_parent_package_href_cached() or None
-                except Exception:
-                    parent_href = None
-                cur_t.execute(
-                    "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-                    (
-                        soa_id,
-                        code_uid,
-                        parent_href,
-                        "C99079",
-                        concept_id,
-                    ),
-                )
-                selected_code_uid = code_uid
-                conn_t.commit()
-                conn_t.close()
-            # Persist epoch.type even if concept_id not found will be None
-            sets.append("type=?")
-            vals.append(selected_code_uid)
-    if sets:
-        conn_u = _connect()
-        cur_u = conn_u.cursor()
-        vals.append(epoch_id)
-        cur_u.execute(f"UPDATE epoch SET {', '.join(sets)} WHERE id=?", vals)
-        conn_u.commit()
-        conn_u.close()
-    conn_a = _connect()
-    cur_a = conn_a.cursor()
-    cur_a.execute(
-        "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description FROM epoch WHERE id=?",
-        (epoch_id,),
-    )
-    r = cur_a.fetchone()
-    conn_a.close()
-    after_api = {
-        "id": r[0],
-        "name": r[1],
-        "order_index": r[2],
-        "epoch_seq": r[3],
-        "epoch_label": r[4],
-        "epoch_description": r[5],
-        "type": None,
-    }
-    # Fetch type from epoch for audit after snapshot
-    conn_ta = _connect()
-    cur_ta = conn_ta.cursor()
-    cur_ta.execute("SELECT type FROM epoch WHERE id=?", (epoch_id,))
-    tr_after = cur_ta.fetchone()
-    conn_ta.close()
-    if tr_after:
-        after_api["type"] = tr_after[0]
-    _record_epoch_audit(
-        soa_id,
-        "update",
-        epoch_id,
-        before=before,
-        after=after_api,
-    )
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-'''
-
-# UI endpoint for creating an Encounter/Visit   <-  Deprecated (moved to routers/visits.py)
-"""
-@app.post("/ui/soa/{soa_id}/add_visit", response_class=HTMLResponse)
-def ui_add_visit(
-    request: Request,
-    soa_id: int,
-    name: str = Form(...),
-    label: Optional[str] = Form(None),
-    epoch_id: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-):
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-
-    # Coerce empty epoch_id from form to None, otherwise to int
-    parsed_epoch_id: Optional[int] = None
-    if epoch_id is not None:
-        eid = str(epoch_id).strip()
-        if eid:
-            try:
-                parsed_epoch_id = int(eid)
-            except ValueError:
-                parsed_epoch_id = None
-
-    payload = VisitCreate(
-        name=name,
-        label=label,
-        epoch_id=parsed_epoch_id,
-        description=description,
-    )
-    # Create the visit via the API helper to ensure audits and ordering
-    try:
-        visits_router.add_visit(soa_id, payload)
-    except Exception:
-        pass
-
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-"""
-
-
-# UI endpoint for adding a new Arm  <- Deprecated (moved to routers/arms.py)
-'''
-@app.post("/ui/soa/{soa_id}/add_arm", response_class=HTMLResponse)
-async def ui_add_arm(
-    request: Request,
-    soa_id: int,
-    name: str = Form(...),
-    label: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    element_id: Optional[str] = Form(None),
-):
-    """Form handler to create a new Arm."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    # Accept blank/empty element selection gracefully. The form may submit "" which would 422 with Optional[int].
-    eid = int(element_id) if element_id and element_id.strip().isdigit() else None
-    payload = ArmCreate(name=name, label=label, description=description, element_id=eid)
-    # Create base arm (function may not return id; fetch if needed)
-    created = create_arm(soa_id, payload)
-    # routers.arms.create_arm returns a row dict; extract id
-    new_arm_id = None
-    try:
-        if isinstance(created, dict):
-            new_arm_id = created.get("id")
-        elif isinstance(created, int):
-            new_arm_id = created
-    except Exception:
-        new_arm_id = None
-    if not new_arm_id:
-        try:
-            conn_tmp = _connect()
-            cur_tmp = conn_tmp.cursor()
-            cur_tmp.execute(
-                "SELECT id FROM arm WHERE soa_id=? ORDER BY id DESC LIMIT 1",
-                (soa_id,),
-            )
-            rtmp = cur_tmp.fetchone()
-            new_arm_id = rtmp[0] if rtmp else None
-            conn_tmp.close()
-        except Exception:
-            new_arm_id = None
-    if not new_arm_id:
-        return HTMLResponse(
-            f"<script>alert('Failed to create arm');window.location='/ui/soa/{int(soa_id)}/edit';</script>",
-            status_code=500,
-        )
-    # Read optional type fields with hyphenated names
-    try:
-        form_data = await request.form()
-        arm_type_submission = (form_data.get("arm-type") or "").strip()
-        data_origin_type_submission = (form_data.get("data-origin-type") or "").strip()
-    except Exception:
-        arm_type_submission = ""
-        data_origin_type_submission = ""
-
-    # If type selections provided, resolve to terminology codes and persist via junction table
-    if arm_type_submission or data_origin_type_submission:
-        conn = _connect()
-        cur = conn.cursor()
-        logger.info(
-            "ui_add_arm: received type selections arm-type='%s', data-origin-type='%s' for soa_id=%s arm_id=%s",
-            arm_type_submission,
-            data_origin_type_submission,
-            soa_id,
-            new_arm_id,
-        )
-        new_type_uid: Optional[str] = None
-        new_data_origin_uid: Optional[str] = None
-        if arm_type_submission:
-            cur.execute(
-                "SELECT code FROM protocol_terminology WHERE codelist_code='C174222' AND (cdisc_submission_value=? OR LOWER(TRIM(cdisc_submission_value))=LOWER(TRIM(?)))",
-                (arm_type_submission, arm_type_submission),
-            )
-            r = cur.fetchone()
-            resolved_code = r[0] if r else None
-            if resolved_code is None:
-                logger.warning(
-                    "ui_add_arm: unknown arm type submission '%s' for soa_id=%s",
-                    arm_type_submission,
-                    soa_id,
-                )
-                conn.close()
-                return HTMLResponse(
-                    f"<script>alert('Unknown Arm Type selection: {json.dumps(str(arm_type_submission))});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
-                    status_code=400,
-                )
-            # Create Code_N
-            new_type_uid = _get_next_code_uid(cur, soa_id)
-            cur.execute(
-                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-                (
-                    soa_id,
-                    new_type_uid,
-                    "protocol_terminology",
-                    "C174222",
-                    resolved_code,
-                ),
-            )
-            logger.info(
-                "ui_add_arm: created code junction %s -> table=%s list=%s code=%s",
-                new_type_uid,
-                "protocol_terminology",
-                "C174222",
-                resolved_code,
-            )
-        if data_origin_type_submission:
-            cur.execute(
-                "SELECT code FROM ddf_terminology WHERE codelist_code='C188727' AND (cdisc_submission_value=? OR LOWER(TRIM(cdisc_submission_value))=LOWER(TRIM(?)))",
-                (data_origin_type_submission, data_origin_type_submission),
-            )
-            r2 = cur.fetchone()
-            resolved_ddf_code = r2[0] if r2 else None
-            if resolved_ddf_code is None:
-                logger.warning(
-                    "ui_add_arm: unknown data origin type submission '%s' for soa_id=%s",
-                    data_origin_type_submission,
-                    soa_id,
-                )
-                conn.close()
-                # Properly escape the value for safety in HTML/JS context
-                escaped_selection = json.dumps(data_origin_type_submission)
-                return HTMLResponse(
-                    f"<script>alert({escaped_selection});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
-                    status_code=400,
-                )
-            # Create Code_N (continue numbering)
-            new_data_origin_uid = _get_next_code_uid(cur, soa_id)
-            cur.execute(
-                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-                (
-                    soa_id,
-                    new_data_origin_uid,
-                    "ddf_terminology",
-                    "C188727",
-                    resolved_ddf_code,
-                ),
-            )
-            logger.info(
-                "ui_add_arm: created code junction %s -> table=%s list=%s code=%s",
-                new_data_origin_uid,
-                "ddf_terminology",
-                "C188727",
-                resolved_ddf_code,
-            )
-        # Update arm row with new code_uids
-        if new_type_uid or new_data_origin_uid:
-            cur.execute(
-                "UPDATE arm SET type=COALESCE(?, type), data_origin_type=COALESCE(?, data_origin_type) WHERE id=? AND soa_id=?",
-                (new_type_uid, new_data_origin_uid, new_arm_id, soa_id),
-            )
-            logger.info(
-                "ui_add_arm: updated arm id=%s set type=%s data_origin_type=%s",
-                new_arm_id,
-                new_type_uid,
-                new_data_origin_uid,
-            )
-        conn.commit()
-        # routers.arms.create_arm already records a create audit; avoid duplicating here
-        conn.close()
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-'''
-
-# UI endpoint for updating an Arm   <- Deprecated (moved to routers/arms.py)
-'''
-@app.post("/ui/soa/{soa_id}/update_arm", response_class=HTMLResponse)
-async def ui_update_arm(
-    request: Request,
-    soa_id: int,
-    arm_id: int = Form(...),
-    name: Optional[str] = Form(None),
-    label: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    element_id: Optional[str] = Form(None),
-):
-    """Form handler to update an existing Arm."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-
-    # Read raw form to capture field names with hyphens: 'arm-type' and 'data-origin-type'
-    try:
-        form_data = await request.form()
-        arm_type_submission = (form_data.get("arm-type") or "").strip()
-        data_origin_type_submission = (form_data.get("data-origin-type") or "").strip()
-    except Exception:
-        arm_type_submission = ""
-        data_origin_type_submission = ""
-    logger.info(
-        "ui_update_arm: arm_id=%s soa_id=%s incoming arm-type='%s' data-origin-type='%s'",
-        arm_id,
-        soa_id,
-        arm_type_submission,
-        data_origin_type_submission,
-    )
-
-    # Fetch current arm (including existing type code_uid if any)
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, name, label, description, COALESCE(type,''), COALESCE(data_origin_type,'') FROM arm WHERE id=? AND soa_id=?",
-        (arm_id, soa_id),
-    )
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Arm not found")
-    current_code_uid = row[4] or None
-    current_data_origin_uid = row[5] or None
-    # Capture prior code values for audits when code mapping changes without uid change
-    prior_arm_type_code_value: Optional[str] = None
-    prior_data_origin_code_value: Optional[str] = None
-    if current_code_uid:
-        cur.execute(
-            "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
-            (soa_id, current_code_uid),
-        )
-        rcv = cur.fetchone()
-        prior_arm_type_code_value = rcv[0] if rcv else None
-    if current_data_origin_uid:
-        cur.execute(
-            "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
-            (soa_id, current_data_origin_uid),
-        )
-        rdv = cur.fetchone()
-        prior_data_origin_code_value = rdv[0] if rdv else None
-    before_state = {
-        "id": row[0],
-        "name": row[1],
-        "label": row[2],
-        "description": row[3],
-        "type": current_code_uid,
-        "data_origin_type": current_data_origin_uid,
-    }
-
-    # Resolve submission value to protocol terminology code (C174222)
-    resolved_code: Optional[str] = None
-    if arm_type_submission:
-        cur.execute(
-            "SELECT code FROM protocol_terminology WHERE codelist_code='C174222' AND (cdisc_submission_value=? OR LOWER(TRIM(cdisc_submission_value))=LOWER(TRIM(?)))",
-            (arm_type_submission, arm_type_submission),
-        )
-        r = cur.fetchone()
-        resolved_code = r[0] if r else None
-        if resolved_code is None:
-            logger.warning(
-                "ui_update_arm: unknown arm type submission '%s' for soa_id=%s arm_id=%s",
-                arm_type_submission,
-                soa_id,
-                arm_id,
-            )
-            conn.close()
-            return HTMLResponse(
-                f"<script>alert({json.dumps('Unknown Arm Type selection: ' + arm_type_submission)});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
-                status_code=400,
-            )
-
-    # Maintain code table row with immutable code_uid (Code_N unique per SoA)
-    new_code_uid = current_code_uid
-    if resolved_code is not None:
-        if current_code_uid:
-            # Update existing junction row for this code_uid
-            cur.execute(
-                "UPDATE code_association SET code=?, codelist_code='C174222', codelist_table='protocol_terminology' WHERE soa_id=? AND code_uid=?",
-                (resolved_code, soa_id, current_code_uid),
-            )
-            logger.info(
-                "ui_update_arm: updated junction code_uid=%s -> table=%s list=%s code=%s",
-                current_code_uid,
-                "protocol_terminology",
-                "C174222",
-                resolved_code,
-            )
-        else:
-            # Create new Code_N within this SoA
-            new_code_uid = _get_next_code_uid(cur, soa_id)
-            cur.execute(
-                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-                (
-                    soa_id,
-                    new_code_uid,
-                    "protocol_terminology",
-                    "C174222",
-                    resolved_code,
-                ),
-            )
-            logger.info(
-                "ui_update_arm: created junction code_uid=%s -> table=%s list=%s code=%s",
-                new_code_uid,
-                "protocol_terminology",
-                "C174222",
-                resolved_code,
-            )
-
-    # Resolve Data Origin Type submission value to DDF terminology code (C188727)
-    resolved_ddf_code: Optional[str] = None
-    new_data_origin_uid = current_data_origin_uid
-    if data_origin_type_submission:
-        cur.execute(
-            "SELECT code FROM ddf_terminology WHERE codelist_code='C188727' AND (cdisc_submission_value=? OR LOWER(TRIM(cdisc_submission_value))=LOWER(TRIM(?)))",
-            (data_origin_type_submission, data_origin_type_submission),
-        )
-        r2 = cur.fetchone()
-        resolved_ddf_code = r2[0] if r2 else None
-        if resolved_ddf_code is None:
-            logger.warning(
-                "ui_update_arm: unknown data origin type submission '%s' for soa_id=%s arm_id=%s",
-                data_origin_type_submission,
-                soa_id,
-                arm_id,
-            )
-            conn.close()
-            return HTMLResponse(
-                f"<script>alert({json.dumps(f'Unknown Data Origin Type selection: {data_origin_type_submission}')});window.location='/ui/soa/{int(soa_id)}/edit';</script>",
-                status_code=400,
-            )
-        # Maintain/Upsert immutable Code_N for DDF mapping
-        if current_data_origin_uid:
-            cur.execute(
-                "UPDATE code_association SET code=?, codelist_code='C188727', codelist_table='ddf_terminology' WHERE soa_id=? AND code_uid=?",
-                (resolved_ddf_code, soa_id, current_data_origin_uid),
-            )
-            new_data_origin_uid = current_data_origin_uid
-            logger.info(
-                "ui_update_arm: updated junction code_uid=%s -> table=%s list=%s code=%s",
-                current_data_origin_uid,
-                "ddf_terminology",
-                "C188727",
-                resolved_ddf_code,
-            )
-        else:
-            # Create new Code_N, ensuring unique across this SoA
-            new_data_origin_uid = _get_next_code_uid(cur, soa_id)
-            cur.execute(
-                "INSERT INTO code_association (soa_id, code_uid, codelist_table, codelist_code, code) VALUES (?,?,?,?,?)",
-                (
-                    soa_id,
-                    new_data_origin_uid,
-                    "ddf_terminology",
-                    "C188727",
-                    resolved_ddf_code,
-                ),
-            )
-            logger.info(
-                "ui_update_arm: created junction code_uid=%s -> table=%s list=%s code=%s",
-                new_data_origin_uid,
-                "ddf_terminology",
-                "C188727",
-                resolved_ddf_code,
-            )
-
-    # Apply arm field updates (including setting type to code_uid if resolved)
-    new_name = name if name is not None else row[1]
-    new_label = label if label is not None else row[2]
-    new_desc = description if description is not None else row[3]
-    cur.execute(
-        "UPDATE arm SET name=?, label=?, description=?, type=?, data_origin_type=? WHERE id=? AND soa_id=?",
-        (
-            new_name,
-            new_label,
-            new_desc,
-            new_code_uid,
-            new_data_origin_uid,
-            arm_id,
-            soa_id,
-        ),
-    )
-    logger.info(
-        "ui_update_arm: applied UPDATE arm id=%s set name='%s' label='%s' type=%s data_origin_type=%s",
-        arm_id,
-        new_name,
-        new_label,
-        new_code_uid,
-        new_data_origin_uid,
-    )
-    conn.commit()
-    # Capture post-update code_association values
-    post_arm_type_code_value: Optional[str] = None
-    post_data_origin_code_value: Optional[str] = None
-    if new_code_uid:
-        cur.execute(
-            "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
-            (soa_id, new_code_uid),
-        )
-        rav = cur.fetchone()
-        post_arm_type_code_value = rav[0] if rav else None
-    if new_data_origin_uid:
-        cur.execute(
-            "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
-            (soa_id, new_data_origin_uid),
-        )
-        rdv2 = cur.fetchone()
-        post_data_origin_code_value = rdv2[0] if rdv2 else None
-    after_state = {
-        "id": arm_id,
-        "name": new_name,
-        "label": new_label,
-        "description": new_desc,
-        "type": new_code_uid,
-        "data_origin_type": new_data_origin_uid,
-        "type_code": post_arm_type_code_value,
-        "data_origin_type_code": post_data_origin_code_value,
-    }
-    # Record audit if any relevant fields or underlying code mappings changed
-    if (
-        before_state["type"] != after_state["type"]
-        or before_state["data_origin_type"] != after_state["data_origin_type"]
-        or prior_arm_type_code_value != post_arm_type_code_value
-        or prior_data_origin_code_value != post_data_origin_code_value
-        or before_state["name"] != after_state["name"]
-        or before_state["label"] != after_state["label"]
-        or before_state["description"] != after_state["description"]
-    ):
-        try:
-            _record_arm_audit(
-                soa_id,
-                "update",
-                arm_id=arm_id,
-                before=before_state,
-                after=after_state,
-            )
-        except Exception:
-            pass
-    else:
-        logger.info(
-            "ui_update_arm: no-op update detected for arm_id=%s (no field or code changes)",
-            arm_id,
-        )
-    conn.close()
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-'''
-
-# UI endpoint for deleting an Arm   <- Deprecated (moved to routers/arms.py)
-"""
-@app.post("/ui/soa/{soa_id}/delete_arm", response_class=HTMLResponse)
-def ui_delete_arm(request: Request, soa_id: int, arm_id: int = Form(...)):
-    delete_arm(soa_id, arm_id)
-    return HTMLResponse(
-        f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
-    )
-"""
-
-# UI endpoint for reordering Arms <- Deprecated (no longer needed)
-'''
-@app.post("/ui/soa/{soa_id}/reorder_arms", response_class=HTMLResponse)
-def ui_reorder_arms(request: Request, soa_id: int, order: str = Form("")):
-    """Form handler to reorder existing Arms."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    ids = [int(x) for x in order.split(",") if x.strip().isdigit()]
-    if not ids:
-        return HTMLResponse("Invalid order", status_code=400)
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM arm WHERE soa_id=? ORDER BY order_index", (soa_id,))
-    old_order = [r[0] for r in cur.fetchall()]
-    cur.execute("SELECT id FROM arm WHERE soa_id=?", (soa_id,))
-    existing = {r[0] for r in cur.fetchall()}
-    if set(ids) - existing:
-        conn.close()
-        return HTMLResponse("Order contains invalid arm id", status_code=400)
-    for idx, aid in enumerate(ids, start=1):
-        cur.execute("UPDATE arm SET order_index=? WHERE id=?", (idx, aid))
-    conn.commit()
-    conn.close()
-    _record_reorder_audit(soa_id, "arm", old_order, ids)
-    _record_arm_audit(
-        soa_id,
-        "reorder",
-        arm_id=None,
-        before={"old_order": old_order},
-        after={"new_order": ids},
-    )
-    return HTMLResponse("OK")
-'''
-# Deprecated (new definition in arms.py)
-"""
-def _record_arm_audit(
-    soa_id: int,
-    action: str,
-    arm_id: Optional[int],
-    before: Optional[dict] = None,
-    after: Optional[dict] = None,
-):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO arm_audit (soa_id, arm_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                arm_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:  # pragma: no cover
-        logger.warning("Failed recording arm audit: %s", e)
-"""

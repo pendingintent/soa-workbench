@@ -1,0 +1,3 @@
+[submodule "cdisc-json-validation"]
+	path = cdisc-json-validation
+	url = https://github.com/pendingintent/cdisc-json-validation.git

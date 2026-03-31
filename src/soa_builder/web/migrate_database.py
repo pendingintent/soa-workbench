@@ -1122,3 +1122,165 @@ def _migrate_biomedical_concept_property_add_uid():
         conn.close()
     except Exception as e:
         logger.warning("_migrate_biomedical_concept_property_add_uid: %s", e)
+
+
+def _migrate_add_soa_id_indexes():
+    """Add standalone soa_id indexes on high-traffic tables.
+
+    The existing UNIQUE constraints cover (soa_id, uid) lookups, but bare
+    WHERE soa_id=? list queries do full table scans without a leading index.
+    These indexes cover the ~259 soa_id filter sites in the codebase.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        indexes = [
+            ("idx_activity_soa", "activity", "soa_id"),
+            ("idx_visit_soa", "visit", "soa_id"),
+            ("idx_matrix_cells_soa", "matrix_cells", "soa_id"),
+            ("idx_activity_concept_soa", "activity_concept", "soa_id"),
+            ("idx_instances_soa", "instances", "soa_id"),
+            ("idx_timing_soa", "timing", "soa_id"),
+        ]
+        created = []
+        for idx_name, table, col in indexes:
+            cur.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table}({col})")
+            created.append(idx_name)
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_soa_id_indexes: ensured indexes %s", created)
+    except Exception as e:
+        logger.warning("_migrate_add_soa_id_indexes: %s", e)
+
+
+def _migrate_add_footnote_table():
+    """Add the database table footnote"""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS footnote (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INT,
+                footnote_uid TEXT NOT NULL,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT,
+                text TEXT,
+                dictionary_uid TEXT,
+                UNIQUE(soa_id, footnote_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_footnote_table created footnote table")
+    except Exception as e:
+        logger.warning("_migrate_add_footnote_table failed: %s", e)
+
+
+def _migrate_add_footnote_audit_table():
+    """Create footnote_audit table for tracking create/update/delete operations."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS footnote_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                footnote_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_footnote_audit_table created footnote_audit table")
+    except Exception as e:
+        logger.warning("_migrate_add_footnote_audit_table failed: %s", e)
+
+
+def _migrate_matrix_cells_add_superscript():
+    """Add superscript TEXT column to matrix_cells if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(matrix_cells)")
+        if "superscript" not in {r[1] for r in cur.fetchall()}:
+            cur.execute("ALTER TABLE matrix_cells ADD COLUMN superscript TEXT")
+            conn.commit()
+            logger.info("Added superscript column to matrix_cells")
+        conn.close()
+    except Exception as e:
+        logger.warning("matrix_cells superscript migration failed: %s", e)
+
+
+def _migrate_add_bc_surrogate_table():
+    """Create biomedical_concept_surrogate table if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS biomedical_concept_surrogate (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INT NOT NULL,
+                surrogate_uid TEXT NOT NULL,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT,
+                reference TEXT,
+                UNIQUE(surrogate_uid, soa_id)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_bc_surrogate_table: biomedical_concept_surrogate ready"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_bc_surrogate_table failed: %s", e)
+
+
+def _migrate_add_activity_surrogate_table():
+    """Create activity_surrogate junction table if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS activity_surrogate (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INT NOT NULL,
+                activity_uid TEXT NOT NULL,
+                surrogate_uid TEXT NOT NULL,
+                UNIQUE(soa_id, activity_uid, surrogate_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_activity_surrogate_table: activity_surrogate ready")
+    except Exception as e:
+        logger.warning("_migrate_add_activity_surrogate_table failed: %s", e)
+
+
+def _migrate_add_bc_surrogate_audit_table():
+    """Create biomedical_concept_surrogate_audit table if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS biomedical_concept_surrogate_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                surrogate_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_bc_surrogate_audit_table: audit table ready")
+    except Exception as e:
+        logger.warning("_migrate_add_bc_surrogate_audit_table failed: %s", e)

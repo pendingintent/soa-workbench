@@ -45,18 +45,6 @@ def _record_element_audit(
     try:
         conn = _connect()
         cur = conn.cursor()
-        # Ensure table exists (defensive for migrated databases)
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS element_audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                soa_id INTEGER NOT NULL,
-                element_id INTEGER,
-                action TEXT NOT NULL,
-                before_json TEXT,
-                after_json TEXT,
-                performed_at TEXT NOT NULL
-            )"""
-        )
         cur.execute(
             "INSERT INTO element_audit (soa_id, element_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
             (
@@ -163,18 +151,6 @@ def _record_study_cell_audit(
     try:
         conn = _connect()
         cur = conn.cursor()
-        # Ensure table exists (defensive for migrated databases)
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS study_cell_audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                soa_id INTEGER NOT NULL,
-                study_cell_id INTEGER,
-                action TEXT NOT NULL,
-                before_json TEXT,
-                after_json TEXT,
-                performed_at TEXT NOT NULL
-            )"""
-        )
         cur.execute(
             "INSERT INTO study_cell_audit (soa_id, study_cell_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
             (
@@ -256,18 +232,6 @@ def _record_instance_audit(
     try:
         conn = _connect()
         cur = conn.cursor()
-        # Ensure table exists defensively
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS instance_audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                soa_id INTEGER NOT NULL,
-                instance_id INTEGER,
-                action TEXT NOT NULL,
-                before_json TEXT,
-                after_json TEXT,
-                performed_at TEXT NOT NULL
-            )"""
-        )
         cur.execute(
             "INSERT INTO instance_audit (soa_id, instance_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
             (
@@ -296,17 +260,6 @@ def _record_decision_instance_audit(
         conn = _connect()
         cur = conn.cursor()
         cur.execute(
-            """CREATE TABLE IF NOT EXISTS decision_instance_audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                soa_id INTEGER NOT NULL,
-                decision_instance_id INTEGER,
-                action TEXT NOT NULL,
-                before_json TEXT,
-                after_json TEXT,
-                performed_at TEXT NOT NULL
-            )"""
-        )
-        cur.execute(
             "INSERT INTO decision_instance_audit (soa_id, decision_instance_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
             (
                 soa_id,
@@ -333,17 +286,6 @@ def _record_condition_assignment_audit(
     try:
         conn = _connect()
         cur = conn.cursor()
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS condition_assignment_audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                soa_id INTEGER NOT NULL,
-                condition_assignment_id INTEGER,
-                action TEXT NOT NULL,
-                before_json TEXT,
-                after_json TEXT,
-                performed_at TEXT NOT NULL
-            )"""
-        )
         cur.execute(
             "INSERT INTO condition_assignment_audit (soa_id, condition_assignment_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
             (
@@ -403,17 +345,6 @@ def _record_biomedical_concept_audit(
         if own_conn:
             conn = _connect()
             cur = conn.cursor()
-            cur.execute(
-                """CREATE TABLE IF NOT EXISTS biomedical_concept_audit (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    soa_id INTEGER NOT NULL,
-                    biomedical_concept_id INTEGER,
-                    action TEXT NOT NULL,
-                    before_json TEXT,
-                    after_json TEXT,
-                    performed_at TEXT NOT NULL
-                )"""
-            )
         cur.execute(
             "INSERT INTO biomedical_concept_audit"
             " (soa_id, biomedical_concept_id, action, before_json, after_json, performed_at)"
@@ -432,3 +363,59 @@ def _record_biomedical_concept_audit(
             conn.close()
     except Exception as e:
         logger.warning("Failed recording biomedical_concept audit: %s", e)
+
+
+def _record_bc_surrogate_audit(
+    soa_id: int,
+    action: str,
+    surrogate_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO biomedical_concept_surrogate_audit"
+            " (soa_id, surrogate_id, action, before_json, after_json, performed_at)"
+            " VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                surrogate_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording bc_surrogate audit: %s", e)
+
+
+def _record_footnote_audit(
+    soa_id: int,
+    action: str,
+    footnote_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO footnote_audit (soa_id, footnote_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                footnote_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording footnote audit: %s", e)

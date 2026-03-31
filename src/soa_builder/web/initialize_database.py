@@ -352,6 +352,21 @@ def _init_db():
         )"""
     )
 
+    # The footnote table (created until full incorporation of SyntaxTemplates)
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS footnote (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            soa_id INT,
+            footnote_uid TEXT NOT NULL,
+            name TEXT NOT NULL,
+            label TEXT,
+            description TEXT,
+            text TEXT,
+            dictionary_uid TEXT,
+            UNIQUE(soa_id, footnote_uid)
+        )"""
+    )
+
     # AUDIT TABLES FOR TRACKING ALL CHANGES TO ENTITIES
 
     # Element audit table capturing create/update/delete operations

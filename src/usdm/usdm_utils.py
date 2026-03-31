@@ -215,7 +215,9 @@ def _get_biomedical_concept_properties(
         label = r[2]
         isRequired = bool(r[3])
         datatype = r[4]
-        bc_uid = r[5]
+        _ = r[
+            5
+        ]  # Changed from bc_uid to suppress linting error arising from ISSUE #179
         alias_code_uid = r[6]
         standard_code = r[7]
         code = r[8]
@@ -223,8 +225,9 @@ def _get_biomedical_concept_properties(
         code_system_version = r[10]
         decode = r[11]
 
-        isEnabled = None
-        response_codes = _get_dss_response_codes(bc_uid, name, soa_id)
+        isEnabled = isRequired  # Fix for ISSUE #176
+        # Commented out for ISSUE #179
+        # response_codes = _get_dss_response_codes(bc_uid, name, soa_id)
 
         property = {
             "id": id,
@@ -233,7 +236,7 @@ def _get_biomedical_concept_properties(
             "isRequired": isRequired,
             "isEnabled": isEnabled,
             "datatype": datatype,
-            "responseCodes": response_codes,
+            "responseCodes": [],
             "code": {
                 "id": alias_code_uid,
                 "extensionAttributes": [],
@@ -246,6 +249,7 @@ def _get_biomedical_concept_properties(
                     "decode": decode,
                     "instanceType": "Code",
                 },
+                "instanceType": "AliasCode",
             },
             "notes": [],
             "instanceType": "BiomedicalConceptProperty",

@@ -6,7 +6,7 @@ import os
 import time
 from typing import List
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Form
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Request, Form
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -137,6 +137,41 @@ def get_activity(soa_id: int, activity_id: int):
     }
 
 
+def _next_activity_uid(cur, soa_id: int) -> str:
+    """Return the next Activity_N UID, never reusing a deleted one.
+
+    Scans both the live table and the audit trail so deleted UIDs are
+    never recycled — matching the pattern used by _next_study_cell_uid.
+    """
+    max_n = 0
+    cur.execute("SELECT activity_uid FROM activity WHERE soa_id=?", (soa_id,))
+    for (uid,) in cur.fetchall():
+        if isinstance(uid, str) and uid.startswith("Activity_"):
+            try:
+                n = int(uid.split("_")[-1])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                pass
+    cur.execute(
+        "SELECT before_json, after_json FROM activity_audit WHERE soa_id=?",
+        (soa_id,),
+    )
+    for before_raw, after_raw in cur.fetchall():
+        for raw in (before_raw, after_raw):
+            if not raw:
+                continue
+            try:
+                uid = json.loads(raw).get("activity_uid", "")
+                if isinstance(uid, str) and uid.startswith("Activity_"):
+                    n = int(uid.split("_")[-1])
+                    if n > max_n:
+                        max_n = n
+            except Exception:
+                pass
+    return f"Activity_{max_n + 1}"
+
+
 @router.post("/activities", response_class=JSONResponse)
 def add_activity(soa_id: int, payload: ActivityCreate):
     if not soa_exists(soa_id):
@@ -148,8 +183,7 @@ def add_activity(soa_id: int, payload: ActivityCreate):
         "SELECT COALESCE(MAX(order_index),0) FROM activity WHERE soa_id=?", (soa_id,)
     )
     order_index = (cur.fetchone() or [0])[0] + 1
-    # Compute activity_uid from order_index (keeps list stable after inserts)
-    activity_uid = f"Activity_{order_index}"
+    activity_uid = _next_activity_uid(cur, soa_id)
 
     name = (payload.name or "").strip()
     label = (payload.label or "").strip() or None
@@ -313,7 +347,7 @@ def ui_update_activity(
 
 
 @router.post("/activities/reorder", response_class=JSONResponse)
-def reorder_activities_api(soa_id: int, order: List[int]):
+def reorder_activities_api(soa_id: int, order: List[int] = Body(..., embed=True)):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     if not order:
@@ -355,14 +389,6 @@ def reorder_activities_api(soa_id: int, order: List[int]):
         ).fetchall()
     }
 
-    # Reassign activity_uid from order_index
-    cur.execute(
-        "UPDATE activity SET activity_uid='TMP_' || id WHERE soa_id=?", (soa_id,)
-    )
-    cur.execute(
-        "UPDATE activity SET activity_uid='Activity_' || order_index WHERE soa_id=?",
-        (soa_id,),
-    )
     conn.commit()
     conn.close()
 
@@ -411,7 +437,7 @@ def add_activities_bulk(soa_id: int, payload: BulkActivities):
         order_index += 1
         cur.execute(
             "INSERT INTO activity (soa_id,name,order_index,activity_uid) VALUES (?,?,?,?)",
-            (soa_id, name, order_index, f"Activity_{order_index}"),
+            (soa_id, name, order_index, _next_activity_uid(cur, soa_id)),
         )
         added.append(name)
         existing.add(lname)
@@ -554,7 +580,7 @@ def set_activity_concepts(
 
 
 def _reindex_activities(soa_id: int):
-    """Re-number order_index and activity_uid after a delete."""
+    """Re-number order_index after a delete. activity_uid is immutable and never changed."""
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -563,13 +589,6 @@ def _reindex_activities(soa_id: int):
     ids = [r[0] for r in cur.fetchall()]
     for idx, _id in enumerate(ids, start=1):
         cur.execute("UPDATE activity SET order_index=? WHERE id=?", (idx, _id))
-    cur.execute(
-        "UPDATE activity SET activity_uid = 'TMP_' || id WHERE soa_id=?", (soa_id,)
-    )
-    cur.execute(
-        "UPDATE activity SET activity_uid = 'Activity_' || order_index WHERE soa_id=?",
-        (soa_id,),
-    )
     conn.commit()
     conn.close()
 
@@ -648,8 +667,46 @@ def ui_list_activities(request: Request, soa_id: int):
     concepts = _app_fetch_concepts()
     sdtm_specializations = _app_fetch_dss()
 
+    # Fetch surrogates for this SOA
     conn = _connect()
     cur = conn.cursor()
+    cur.execute(
+        "SELECT id, surrogate_uid, name, label, description, reference FROM biomedical_concept_surrogate WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    surrogates = [
+        {
+            "id": r[0],
+            "surrogate_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "description": r[4],
+            "reference": r[5],
+        }
+        for r in cur.fetchall()
+    ]
+
+    # Per-activity surrogate mappings: activity_id -> [surrogate dicts]
+    cur.execute(
+        "SELECT a.id, bcs.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN activity a ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "JOIN biomedical_concept_surrogate bcs ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=?",
+        (soa_id,),
+    )
+    activity_surrogates: dict = {}
+    for row in cur.fetchall():
+        activity_id, sur_id, sur_uid, sur_name, sur_label = row
+        activity_surrogates.setdefault(activity_id, []).append(
+            {
+                "id": sur_id,
+                "surrogate_uid": sur_uid,
+                "name": sur_name,
+                "label": sur_label,
+            }
+        )
+
     cur.execute(
         "SELECT study_id, study_label, study_description, name, created_at FROM soa WHERE id=?",
         (soa_id,),
@@ -668,6 +725,8 @@ def ui_list_activities(request: Request, soa_id: int):
             "activity_concepts": activity_concepts,
             "concepts": concepts,
             "sdtm_specializations": sdtm_specializations,
+            "surrogates": surrogates,
+            "activity_surrogates": activity_surrogates,
             "study_id": study_id,
             "study_label": study_label,
             "study_description": study_description,

@@ -5,14 +5,34 @@
 This workspace provides a Python package `soa_builder` with APIs to create a Schedule of Activites for Clinical Studies.
 
 
+## Cloning the repository
+This project now includes a submodule for USDM JSON validation with the USDM_API_v4.0.0.json schema.
+
+In order to clone the repository with the new submodule, use the command:
+
+```bash
+> git clone --recurse-submodules https://github.com/pendingintent/soa-workbench.git
+```
+
+Once the repository has been cloned locally, in order to ensure the submodule is up-to-date, use the commands:
+```bash
+> cd cdisc-json-validation
+> git pull
+# or use the command for updating all registered submodules
+> git submodule update --remote
+```
+
+This will ensure the submodule is always up-to-date.
+
+
 ## Installation
 Recommended: editable install for development.
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pre-commit install
-pre-commit run --all-files
+> python3 -m venv .venv
+> source .venv/bin/activate
+> pip install -r requirements.txt
+> pre-commit install
+> pre-commit run --all-files
 ```
 
 ## Start web server
@@ -66,22 +86,20 @@ rm -f soa_builder_web_tests.db soa_builder_web_tests.db-wal soa_builder_web_test
 ## USDM Export
 Export USDM-compliant JSON for integration with external systems:
 ```bash
-
-# Or use the USDM generator scripts directly
-python -m usdm.generate_activities --soa-id 1 --output-file activities.json
-python -m usdm.generate_encounters --soa-id 1 --output-file encounters.json
-python -m usdm.generate_study_epochs --soa-id 1 --output-file epochs.json
+# Use the USDM generator scripts directly
+python -m usdm.generate_usdm 1 -o study_usdm.json
+python -m usdm.generate_activities 1 -o activities.json
+python -m usdm.generate_encounters 1 -o encounters.json
+python -m usdm.generate_study_epochs 1 -o epochs.json
 # See src/usdm/ for all generator scripts
 ```
 
 ---
 
 ## Architecture Notes
-- **Web UI**: HTMX loaded via CDN; no build step required
 - **Database**: SQLite with WAL mode (production) or DELETE mode (tests)
 - **Test Isolation**: Tests use `soa_builder_web_tests.db` (set via `SOA_BUILDER_DB` env var)
 - **Production Config**: Set `SOA_BUILDER_DB` environment variable for persistent DB path
 - **USDM Generators**: Python scripts in `src/usdm/` transform database state → USDM JSON artifacts
 
-For detailed architectural patterns, USDM entity relationships, and development workflows, see `.github/copilot-instructions.md`.
 

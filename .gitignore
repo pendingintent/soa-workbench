@@ -95,12 +95,18 @@ old-tests/
 *.db-corrupt
 docs/~*
 files/~*
-output/*
+output/*.xlsx
+output/*.svg
 SOA Workbench Wishlist.docx
 NCT01750580_limited.json
 CLAUDE.md
 edit-column-collapse.html
 .claude
 api_test.py
+.scripts
+files/pilot_LZZT_narrative_2026MAR10.json
+.help
+files/NCT01797120.pdf
+.mcp.json
 
 # End of file

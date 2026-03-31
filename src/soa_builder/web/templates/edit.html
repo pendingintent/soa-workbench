@@ -258,24 +258,27 @@
   </tr>
   {% for a in activities %}
   <tr data-activity-id="{{ a.id }}">
-    <td>{{ a.name }}</td>
+    <td>{% if a.label %}{{ a.label }}{% else %}{{ a.name }}{% endif %}</td>
     {% set concepts_list = activity_concepts.get(a.id, []) %}
     {% set selected_list = concepts_list %}
     {% set selected_codes = concepts_list | map(attribute='code') | list %}
+    {% set selected_surrogate_list = activity_surrogates.get(a.id, []) %}
+    {% set selected_surrogate_uids = selected_surrogate_list | map(attribute='surrogate_uid') | list %}
+    {% set readonly = True %}
     {% set activity_id = a.id %}
     {% set timeline_context = timeline_uid %}
     {% include 'concepts_cell.html' %}
     {% for inst in timeline_instances %}
       {% set raw_status = cell_map.get((inst.id, a.id), '') %}
-      {% set display = 'X' if raw_status == 'X' else '' %}
-      <td 
-        data-instance-id="{{ inst.id }}" 
-        data-visit-id="{{ inst.id }}" 
-        hx-post="/ui/soa/{{ soa_id }}/toggle_cell" 
-        hx-vals='{"instance_id": {{ inst.id }}, "activity_id": {{ a.id }} }' 
-        hx-swap="outerHTML" 
+      {% set sup_val = superscript_map.get((inst.id, a.id)) %}
+      <td
+        data-instance-id="{{ inst.id }}"
+        data-visit-id="{{ inst.id }}"
+        hx-post="/ui/soa/{{ soa_id }}/toggle_cell"
+        hx-vals='{"instance_id": {{ inst.id }}, "activity_id": {{ a.id }} }'
+        hx-swap="outerHTML"
         class="cell">
-        {{ display }}
+        {% if raw_status == 'X' %}X{% if sup_val %}<sup>{{ sup_val }}</sup>{% endif %}<span class="sup-edit" hx-get="/ui/soa/{{ soa_id }}/cell_superscript_edit/{{ inst.id }}/{{ a.id }}" hx-swap="outerHTML" hx-target="closest td" onclick="event.stopPropagation()" title="Edit superscript">&#9998;</span>{% endif %}
       </td>
     {% endfor %}
   </tr>
@@ -284,6 +287,62 @@
 {% endif %}
 </div>
 {% endfor %}
+<!-- Footnote display: rendered XHTML below the matrix -->
+{% if footnotes %}
+<div class="footnotes-display" style="margin-top:10px;font-size:0.85em;border-top:1px solid #ddd;padding-top:6px;">
+  {% for fn in footnotes %}
+  <div style="margin-bottom:4px;">
+    <strong>{{ fn.name }}</strong>:
+    {{ fn.text | safe }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+<!-- Manage Footnotes -->
+<details id="footnotes-section" class="collapsible" style="margin-top:8px;">
+  <summary>Manage Footnotes</summary>
+  <div style="margin-top:8px;">
+    {% if footnotes %}
+    <table style="width:100%;border-collapse:collapse;font-size:0.85em;margin-bottom:8px;">
+      <thead><tr>
+        <th style="text-align:left;padding:2px 4px;" colspan="6">Footnotes</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+      {% for fn in footnotes %}
+      <tr>
+        <td colspan="6" style="padding:2px 4px;">
+          <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/update"
+                style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;">
+            <span style="white-space:nowrap;font-weight:bold;align-self:center;">{{ fn.footnote_uid }}</span>
+            <input name="name" value="{{ fn.name }}" required style="width:120px;" />
+            <input name="label" value="{{ fn.label or '' }}" style="width:120px;" />
+            <input name="description" value="{{ fn.description or '' }}" style="width:120px;" />
+            <textarea name="text" rows="3" style="width:340px;font-family:monospace;font-size:0.9em;">{{ fn.text or '' }}</textarea>
+            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;align-self:flex-end;">Save</button>
+          </form>
+        </td>
+        <td style="padding:2px 4px;">
+          <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/delete"
+                onsubmit="return confirm('Delete this footnote?');">
+            <button class="delete-btn">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/create"
+          style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;margin-top:4px;">
+      <input name="name" placeholder="Name*" required style="width:120px;" />
+      <input name="label" placeholder="Label" style="width:120px;" />
+      <input name="description" placeholder="Description" style="width:120px;" />
+      <textarea name="text" placeholder="Text (XHTML)" rows="3" style="width:340px;font-family:monospace;font-size:0.9em;"></textarea>
+      <button class="small-btn" style="align-self:flex-end;">+ Add Footnote</button>
+    </form>
+  </div>
+</details>
 <!-- Export Excel Matrix for SoA -->
 <div class="export-buttons">
   <a
@@ -298,6 +357,9 @@
 <style>
   .delete-btn { background:#c62828; color:#fff; border:none; padding:0 6px; cursor:pointer; }
   .delete-btn:hover { background:#b71c1c; }
+  .sup-edit { font-size:0.65em; cursor:pointer; color:#bbb; margin-left:1px; vertical-align:super; }
+  .sup-edit:hover { color:#1976d2; }
+  .cell-editing { background:#fffde7 !important; }
   .export-buttons { margin-top:8px; }
   .export-buttons .btn { display:inline-block; margin-right:10px; background:#1976d2; color:#fff; padding:4px 10px; text-decoration:none; border-radius:3px; font-size:0.9em; }
   .export-buttons .btn:hover { background:#125aa0; }

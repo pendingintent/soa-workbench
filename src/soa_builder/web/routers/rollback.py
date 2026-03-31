@@ -9,7 +9,6 @@ from fastapi.templating import Jinja2Templates
 
 from ..utils import soa_exists
 
-DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 

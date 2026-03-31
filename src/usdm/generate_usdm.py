@@ -19,6 +19,7 @@ from usdm.generate_schedule_timelines import build_usdm_schedule_timelines
 from usdm.generate_study_cells import build_usdm_study_cells
 from usdm.generate_study_epochs import build_usdm_epochs
 from usdm.generate_biomedical_concepts import build_usdm_biomedical_concepts
+from usdm.generate_bc_surrogates import build_usdm_bc_surrogates
 
 logger = logging.getLogger("usdm.generate_usdm")
 
@@ -37,7 +38,10 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
             return fn(*args)
         except Exception:
             logger.warning(
-                "Failed to build %s for soa_id=%s, using empty list", label, soa_id
+                "Failed to build %s for soa_id=%s, using empty list",
+                label,
+                soa_id,
+                exc_info=True,
             )
             return []
 
@@ -65,7 +69,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "population": {
             "id": "StudyDesignPopulation_1",
             "extensionAttributes": [],
-            "name": "",
+            "name": "Population_1",
             "label": None,
             "description": None,
             "includesHealthySubjects": False,
@@ -139,6 +143,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "amendments": [],
         "businessTherapeuticAreas": [],
         "biomedicalConcepts": build_usdm_biomedical_concepts(soa_id),
+        "bcSurrogates": _safe("bcSurrogates", build_usdm_bc_surrogates, soa_id),
         "notes": [],
         "instanceType": "StudyVersion",
     }
