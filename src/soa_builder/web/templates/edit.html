@@ -305,24 +305,23 @@
     {% if footnotes %}
     <table style="width:100%;border-collapse:collapse;font-size:0.85em;margin-bottom:8px;">
       <thead><tr>
-        <th style="text-align:left;padding:2px 4px;">UID</th>
-        <th style="text-align:left;padding:2px 4px;">Name</th>
-        <th style="text-align:left;padding:2px 4px;">Label</th>
-        <th style="text-align:left;padding:2px 4px;">Description</th>
-        <th style="text-align:left;padding:2px 4px;">Text (XHTML)</th>
-        <th></th><th></th>
+        <th style="text-align:left;padding:2px 4px;" colspan="6">Footnotes</th>
+        <th></th>
       </tr></thead>
       <tbody>
       {% for fn in footnotes %}
       <tr>
-        <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/update">
-          <td style="padding:2px 4px;white-space:nowrap;"><strong>{{ fn.footnote_uid }}</strong></td>
-          <td style="padding:2px 4px;"><input name="name" value="{{ fn.name }}" required style="width:120px;" /></td>
-          <td style="padding:2px 4px;"><input name="label" value="{{ fn.label or '' }}" style="width:120px;" /></td>
-          <td style="padding:2px 4px;"><input name="description" value="{{ fn.description or '' }}" style="width:120px;" /></td>
-          <td style="padding:2px 4px;"><textarea name="text" rows="3" style="width:340px;font-family:monospace;font-size:0.9em;">{{ fn.text or '' }}</textarea></td>
-          <td style="padding:2px 4px;"><button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button></td>
-        </form>
+        <td colspan="6" style="padding:2px 4px;">
+          <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/update"
+                style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;">
+            <span style="white-space:nowrap;font-weight:bold;align-self:center;">{{ fn.footnote_uid }}</span>
+            <input name="name" value="{{ fn.name }}" required style="width:120px;" />
+            <input name="label" value="{{ fn.label or '' }}" style="width:120px;" />
+            <input name="description" value="{{ fn.description or '' }}" style="width:120px;" />
+            <textarea name="text" rows="3" style="width:340px;font-family:monospace;font-size:0.9em;">{{ fn.text or '' }}</textarea>
+            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;align-self:flex-end;">Save</button>
+          </form>
+        </td>
         <td style="padding:2px 4px;">
           <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/delete"
                 onsubmit="return confirm('Delete this footnote?');">
