@@ -258,7 +258,7 @@
   </tr>
   {% for a in activities %}
   <tr data-activity-id="{{ a.id }}">
-    <td>{{ a.label }}</td>
+    <td>{% if a.label %}{{ a.label }}{% else %}{{ a.name }}{% endif %}</td>
     {% set concepts_list = activity_concepts.get(a.id, []) %}
     {% set selected_list = concepts_list %}
     {% set selected_codes = concepts_list | map(attribute='code') | list %}
@@ -315,7 +315,7 @@
       <tbody>
       {% for fn in footnotes %}
       <tr>
-        <form method="post" action="/soa/{{ soa_id }}/footnotes/{{ fn.id }}/update">
+        <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/update">
           <td style="padding:2px 4px;white-space:nowrap;"><strong>{{ fn.footnote_uid }}</strong></td>
           <td style="padding:2px 4px;"><input name="name" value="{{ fn.name }}" required style="width:120px;" /></td>
           <td style="padding:2px 4px;"><input name="label" value="{{ fn.label or '' }}" style="width:120px;" /></td>
@@ -338,7 +338,7 @@
           style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;margin-top:4px;">
       <input name="name" placeholder="Name*" required style="width:120px;" />
       <input name="label" placeholder="Label" style="width:120px;" />
-      <input name="label" placeholder="Description" style="width:120px;" />
+      <input name="description" placeholder="Description" style="width:120px;" />
       <textarea name="text" placeholder="Text (XHTML)" rows="3" style="width:340px;font-family:monospace;font-size:0.9em;"></textarea>
       <button class="small-btn" style="align-self:flex-end;">+ Add Footnote</button>
     </form>
