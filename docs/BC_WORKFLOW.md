@@ -54,7 +54,7 @@ Response:
     "label": "Dataset Specializations List"
 }
 ```
-The `href` attribute has the value **/mdr/specializations/sdtm/datasetspecializations/SYSBP**.  This is then used by the application to retrieve the SDTM data set specialization adn corresponding data element concepts: https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/datasetspecializations/SYSBP
+The `href` attribute has the value **/mdr/specializations/sdtm/datasetspecializations/SYSBP**.  This is then used by the application to retrieve the SDTM data set specialization and corresponding data element concepts: https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/datasetspecializations/SYSBP
 
 Response:
 
@@ -331,7 +331,7 @@ Response:
 
 ## Assign Biomedical Concept Surrogate to an Activity
 
-When a Biomedical Concept does not exist in teh Library, there is a facility to create a Surrogate to link to an Activity.
+When a Biomedical Concept does not exist in the Library, there is a facility to create a Surrogate Concept to link to an Activity.
 
 The USDM Implementation Guide describes Biomedical Concept Surrogates as:
 
@@ -406,7 +406,7 @@ These Surrogates are shown in the USDM JSON associated with their Scheduled Acti
     },
 ```
 
-Since there is no C Code associated with the Biomedical Concept Surroagtes, there are no corresponding Data Set Specializations defined so there is no automagic mapping as seen with the Library Biomedical Concepts.
+Since there is no C Code associated with the Biomedical Concept Surrogate, there are no corresponding Data Set Specialization defined so there is no automagic mapping as seen with the Library Biomedical Concepts.
 
 
 

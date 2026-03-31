@@ -89,8 +89,8 @@ Export USDM-compliant JSON for integration with external systems:
 # Use the USDM generator scripts directly
 python -m usdm.generate_usdm 1 -o study_usdm.json
 python -m usdm.generate_activities 1 -o activities.json
-python -m usdm.generate_encounters 1 --o encounters.json
-python -m usdm.generate_study_epochs 1 --o epochs.json
+python -m usdm.generate_encounters 1 -o encounters.json
+python -m usdm.generate_study_epochs 1 -o epochs.json
 # See src/usdm/ for all generator scripts
 ```
 
