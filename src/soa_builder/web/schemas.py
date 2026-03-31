@@ -353,3 +353,19 @@ class BCSurrogateUpdate(BaseModel):
     label: Optional[str] = None
     description: Optional[str] = None
     reference: Optional[str] = None
+
+
+class FootnoteCreate(BaseModel):
+    name: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    text: Optional[str] = None
+    dictionary_uid: Optional[str] = None
+
+
+class FootnoteUpdate(BaseModel):
+    name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    text: Optional[str] = None
+    dictionary_uid: Optional[str] = None
