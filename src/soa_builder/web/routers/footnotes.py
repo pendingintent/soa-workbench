@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from ..audit import _record_footnote_audit
 from ..db import _connect
+from ..schemas import FootnoteCreate, FootnoteUpdate
 from ..utils import soa_exists
 
 router = APIRouter(prefix="/soa/{soa_id}")
@@ -61,14 +62,7 @@ def list_footnotes(soa_id: int):
 
 
 @router.post("/footnotes", response_class=JSONResponse)
-def create_footnote(
-    soa_id: int,
-    name: str = Form(...),
-    label: str | None = Form(None),
-    description: str | None = Form(None),
-    text: str | None = Form(None),
-    dictionary_uid: str | None = Form(None),
-):
+def create_footnote(soa_id: int, body: FootnoteCreate):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     uid = _next_footnote_uid(soa_id)
@@ -79,22 +73,22 @@ def create_footnote(
         (
             soa_id,
             uid,
-            name,
-            label or None,
-            description or None,
-            text or None,
-            dictionary_uid or None,
+            body.name,
+            body.label or None,
+            body.description or None,
+            body.text or None,
+            body.dictionary_uid or None,
         ),
     )
     conn.commit()
     footnote_id = cur.lastrowid
     after = {
         "footnote_uid": uid,
-        "name": name,
-        "label": label,
-        "description": description,
-        "text": text,
-        "dictionary_uid": dictionary_uid,
+        "name": body.name,
+        "label": body.label,
+        "description": body.description,
+        "text": body.text,
+        "dictionary_uid": body.dictionary_uid,
     }
     conn.close()
     _record_footnote_audit(soa_id, "create", footnote_id, before=None, after=after)
@@ -107,11 +101,7 @@ def create_footnote(
 def update_footnote(
     soa_id: int,
     footnote_id: int,
-    name: str | None = Form(None),
-    label: str | None = Form(None),
-    description: str | None = Form(None),
-    text: str | None = Form(None),
-    dictionary_uid: str | None = Form(None),
+    body: FootnoteUpdate,
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -126,12 +116,16 @@ def update_footnote(
         conn.close()
         raise HTTPException(404, "Footnote not found")
     before = _row_to_dict(row)
-    new_name = name if name is not None else before["name"]
-    new_label = label if label is not None else before["label"]
-    new_desc = description if description is not None else before["description"]
-    new_text = text if text is not None else before["text"]
+    new_name = body.name if body.name is not None else before["name"]
+    new_label = body.label if body.label is not None else before["label"]
+    new_desc = (
+        body.description if body.description is not None else before["description"]
+    )
+    new_text = body.text if body.text is not None else before["text"]
     new_dict_uid = (
-        dictionary_uid if dictionary_uid is not None else before["dictionary_uid"]
+        body.dictionary_uid
+        if body.dictionary_uid is not None
+        else before["dictionary_uid"]
     )
     cur.execute(
         "UPDATE footnote SET name=?, label=?, description=?, text=?, dictionary_uid=? WHERE id=? AND soa_id=?",
@@ -200,11 +194,13 @@ def ui_create_footnote(
         raise HTTPException(404, "SOA not found")
     create_footnote(
         soa_id,
-        name=name,
-        label=label,
-        description=description,
-        text=text,
-        dictionary_uid=dictionary_uid,
+        FootnoteCreate(
+            name=name,
+            label=label,
+            description=description,
+            text=text,
+            dictionary_uid=dictionary_uid,
+        ),
     )
     redirect_url = f"/ui/soa/{soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
@@ -212,7 +208,9 @@ def ui_create_footnote(
     return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
 
 
-@router.post("/footnotes/{footnote_id}/update", response_class=HTMLResponse)
+@ui_router.post(
+    "/ui/soa/{soa_id}/footnotes/{footnote_id}/update", response_class=HTMLResponse
+)
 def ui_update_footnote(
     request: Request,
     soa_id: int,
@@ -228,11 +226,13 @@ def ui_update_footnote(
     update_footnote(
         soa_id,
         footnote_id,
-        name=name,
-        label=label,
-        description=description,
-        text=text,
-        dictionary_uid=dictionary_uid,
+        FootnoteUpdate(
+            name=name,
+            label=label,
+            description=description,
+            text=text,
+            dictionary_uid=dictionary_uid,
+        ),
     )
     redirect_url = f"/ui/soa/{soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
