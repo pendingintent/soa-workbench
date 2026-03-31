@@ -3432,21 +3432,33 @@ def _render_cell_td(
     superscript: str | None,
 ) -> str:
     """Build the <td> HTML for a matrix cell, including superscript and edit button."""
+    soa_id_safe = _html.escape(str(soa_id), quote=True)
+    instance_id_safe = _html.escape(str(instance_id), quote=True)
+    activity_id_safe = _html.escape(str(activity_id), quote=True)
+
     if status == "X":
         sup_html = f"<sup>{_html.escape(superscript)}</sup>" if superscript else ""
         edit_btn = (
             f'<span class="sup-edit"'
-            f' hx-get="/ui/soa/{soa_id}/cell_superscript_edit/{instance_id}/{activity_id}"'
+            f' hx-get="/ui/soa/{soa_id_safe}/cell_superscript_edit/{instance_id_safe}/{activity_id_safe}"'
             f' hx-swap="outerHTML" hx-target="closest td"'
             f' onclick="event.stopPropagation()" title="Edit superscript">\u270e</span>'
         )
         content = f"X{sup_html}{edit_btn}"
     else:
         content = ""
+
+    # Build hx-vals as JSON, then HTML-escape for safe embedding in attribute
+    hx_vals_json = json.dumps(
+        {"instance_id": instance_id, "activity_id": activity_id},
+        separators=(",", ":"),
+    )
+    hx_vals_attr = _html.escape(hx_vals_json, quote=True)
+
     return (
-        f'<td hx-post="/ui/soa/{soa_id}/toggle_cell"'
-        f' hx-vals=\'{{"instance_id": {instance_id}, "activity_id": {activity_id}}}\''
-        f' hx-swap="outerHTML" class="cell" data-instance-id="{instance_id}">{content}</td>'
+        f'<td hx-post="/ui/soa/{soa_id_safe}/toggle_cell"'
+        f" hx-vals='{hx_vals_attr}'"
+        f' hx-swap="outerHTML" class="cell">{content}</td>'
     )
 
 
