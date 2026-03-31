@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import Optional
@@ -27,18 +28,45 @@ def _nz(v: Optional[str]) -> Optional[str]:
     return v if v else None
 
 
-def _next_surrogate_uid(cur) -> str:
-    """Generate next BiomedicalConceptSurrogate_N UID (monotonic, never reuses)."""
+def _next_surrogate_uid(cur, soa_id: int) -> str:
+    """Generate next BiomedicalConceptSurrogate_N UID (monotonic, never reuses).
+
+    Scans both the live table and the audit trail so deleted UIDs are never recycled.
+    """
+    prefix = "BiomedicalConceptSurrogate_"
+    max_n = 0
+
     cur.execute(
-        "SELECT surrogate_uid FROM biomedical_concept_surrogate WHERE surrogate_uid LIKE 'BiomedicalConceptSurrogate_%'"
+        "SELECT surrogate_uid FROM biomedical_concept_surrogate WHERE soa_id=?",
+        (soa_id,),
     )
-    used = set()
     for (uid,) in cur.fetchall():
-        tail = uid[len("BiomedicalConceptSurrogate_") :]
-        if tail.isdigit():
-            used.add(int(tail))
-    next_n = (max(used) if used else 0) + 1
-    return f"BiomedicalConceptSurrogate_{next_n}"
+        if isinstance(uid, str) and uid.startswith(prefix):
+            try:
+                n = int(uid[len(prefix) :])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                pass
+
+    cur.execute(
+        "SELECT before_json, after_json FROM biomedical_concept_surrogate_audit WHERE soa_id=?",
+        (soa_id,),
+    )
+    for before_raw, after_raw in cur.fetchall():
+        for raw in (before_raw, after_raw):
+            if not raw:
+                continue
+            try:
+                uid = json.loads(raw).get("surrogate_uid", "")
+                if isinstance(uid, str) and uid.startswith(prefix):
+                    n = int(uid[len(prefix) :])
+                    if n > max_n:
+                        max_n = n
+            except Exception:
+                pass
+
+    return f"{prefix}{max_n + 1}"
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +119,7 @@ def create_bc_surrogate(soa_id: int, payload: BCSurrogateCreate):
 
     conn = _connect()
     cur = conn.cursor()
-    uid = _next_surrogate_uid(cur)
+    uid = _next_surrogate_uid(cur, soa_id)
     cur.execute(
         "INSERT INTO biomedical_concept_surrogate (soa_id, surrogate_uid, name, label, description, reference) VALUES (?,?,?,?,?,?)",
         (
@@ -335,7 +363,7 @@ def ui_create_bc_surrogate(
 
     conn = _connect()
     cur = conn.cursor()
-    uid = _next_surrogate_uid(cur)
+    uid = _next_surrogate_uid(cur, soa_id)
     cur.execute(
         "INSERT INTO biomedical_concept_surrogate (soa_id, surrogate_uid, name, label, description, reference) VALUES (?,?,?,?,?,?)",
         (soa_id, uid, name, _nz(label), _nz(description), _nz(reference)),
