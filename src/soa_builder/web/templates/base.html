@@ -3,39 +3,70 @@
 <head>
   <meta charset="UTF-8" />
   <title>SoA Workbench</title>
-  <link rel="stylesheet" href="/static/style.css?v=20240109" />
+  <link rel="stylesheet" href="/static/style.css" />
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
     <div class="sidenav">
-      <a href="/">Home</a>
+      <a href="/">🏠 Home</a>
+      <!-- Study specific editing submenu -->
+
       {% if soa_id %}
-        <a href="/ui/soa/{{ soa_id }}/activities">Activities</a>
-        <a href="/ui/soa/{{ soa_id }}/study_timing">Study Timing</a>
-        <a href="/ui/soa/{{ soa_id }}/epochs">Epochs</a>
-        <a href="/ui/soa/{{ soa_id }}/arms">Arms</a>
-        <a href="/ui/soa/{{ soa_id }}/study_cells">Study Cells</a>
-        <a href="/ui/soa/{{ soa_id }}/visits">Encounters</a>
-        <a href="/ui/soa/{{ soa_id }}/elements">Elements</a>
-        <a href="/ui/soa/{{ soa_id }}/rules">Transition Rules</a>
-        <a href="/ui/soa/{{ soa_id }}/usdm_json">Generate USDM JSON</a>
-        <a href="/ui/soa/{{ soa_id }}/tdd">Generate Trial Design Domains</a>
+      <ul>
+        <li>
+          <a href="#">✍🏻 Study Design</a>
+          <ul>
+            <li><a href="{{ url_for('ui_list_activities', soa_id=soa_id) }}">Activities</a></li>
+            <li><a href="{{ url_for('ui_study_timing', soa_id=soa_id) }}">Study Timing</a></li>
+            <li><a href="{{ url_for('ui_list_epochs', soa_id=soa_id) }}">Epochs</a></li>
+            <li><a href="{{ url_for('ui_list_arms', soa_id=soa_id )}}">Arms</a></li>
+            <li><a href="{{ url_for('ui_list_study_cells', soa_id=soa_id) }}">Study Cells</a></li>
+            <li><a href="{{ url_for('ui_list_visits', soa_id=soa_id) }}">Encounters</a></li>
+            <li><a href="{{ url_for('ui_list_elements', soa_id=soa_id) }}">Elements</a></li>
+            <li><a href="{{ url_for('ui_list_rules', soa_id=soa_id) }}">Transition Rules</a></li>
+            <li><a href="{{ url_for('ui_usdm_json', soa_id=soa_id) }}">Generate USDM JSON</a></li>
+            <li><a href="{{ url_for('ui_tdd', soa_id=soa_id) }}">Generate Trial Design Domains</a></li>
+          </ul>
+        </li>
+      </ul>
       {% endif %}
-      <a href="/ui/concepts">Biomedical Concepts</a>
-      <a href="/ui/concept_categories">Biomedical Concept Categories</a>
-      <a href="/ui/concept-groups">Biomedical Concept Groups</a>
-      <a href="/ui/sdtm/specializations">SDTM Dataset Specializations</a>
-      <a href="/ui/ddf/terminology">DDF Terminology</a>
-      <a href="/ui/protocol/terminology">Protocol Terminology</a>
-      <a href="/ui/ddf/terminology/audit">DDF Audit</a>
-      <a href="/ui/protocol/terminology/audit">Protocol Audit</a>
-      <a href="/ui/help">Help and How To</a>
+      
+      <!-- Biomedical Concepts submenu -->
+      <ul>
+        <li>
+          <a href="#">🛠 Biomedical Concepts</a>
+          <ul>
+            <li><a href="{{ url_for('ui_concepts_list') }}">Concepts Explorer</a></li>
+            <li><a href="{{ url_for('ui_categories_list') }}">Concept Categories</a></li>
+            <li><a href="{{ url_for('ui_list_concept_groups') }}">Concept Groups</a></li>
+            <li><a href="{{ url_for('ui_sdtm_specializations_list') }}">Dataset Specializations</a></li>
+          </ul>
+        </li>
+      </ul>
+      
+      <!-- Terminology submenu -->
+      <ul>
+        <li>
+          <a href="#">📖 Terminology</a>
+          <ul>
+            <li><a href="{{ url_for('ui_ddf_terminology') }}">DDF Terminology</a></li>
+            <li><a href="{{ url_for('ui_protocol_terminology') }}">Protocol Terminology</a></li>
+            <li><a href="{{ url_for('ui_ddf_audit') }}">DDF Audit</a></li>
+            <li><a href="{{ url_for('ui_protocol_audit') }}">Protocol Audit</a></li>
+          </ul>
+        </li>
+      </ul>
+      
+      <a href="/ui/help">🤔 Help</a>
     </div>
+    
   <h1 class="heading">SoA Workbench</h1>
   <hr />
+  
 <main class="main">
   {% block content %}{% endblock %}
 </main>
+
 <footer>
   <hr />
   <small>&copy; 2025 SoA Workbench</small>
