@@ -1284,3 +1284,72 @@ def _migrate_add_bc_surrogate_audit_table():
         logger.info("_migrate_add_bc_surrogate_audit_table: audit table ready")
     except Exception as e:
         logger.warning("_migrate_add_bc_surrogate_audit_table failed: %s", e)
+
+
+def _migrate_add_concept_group_table():
+    """Create global concept_group and concept_group_concept tables if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS concept_group (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                concept_group_uid TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT
+            )"""
+        )
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS concept_group_concept (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                concept_group_uid TEXT NOT NULL,
+                concept_code TEXT NOT NULL,
+                concept_title TEXT,
+                UNIQUE(concept_group_uid, concept_code)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_concept_group_table: concept_group tables ready")
+    except Exception as e:
+        logger.warning("_migrate_add_concept_group_table failed: %s", e)
+
+
+def _migrate_activity_concept_add_concept_group_uid():
+    """Add concept_group_uid column to activity_concept if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_concept)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "concept_group_uid" not in cols:
+            cur.execute(
+                "ALTER TABLE activity_concept ADD COLUMN concept_group_uid TEXT"
+            )
+            conn.commit()
+            logger.info("Added concept_group_uid column to activity_concept")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_activity_concept_add_concept_group_uid failed: %s", e)
+
+
+def _migrate_surrogate_add_concept_group_uid():
+    """Add concept_group_uid column to biomedical_concept_surrogate if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(biomedical_concept_surrogate)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "concept_group_uid" not in cols:
+            cur.execute(
+                "ALTER TABLE biomedical_concept_surrogate "
+                "ADD COLUMN concept_group_uid TEXT"
+            )
+            conn.commit()
+            logger.info(
+                "Added concept_group_uid column to biomedical_concept_surrogate"
+            )
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_surrogate_add_concept_group_uid failed: %s", e)
