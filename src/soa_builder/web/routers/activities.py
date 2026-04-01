@@ -619,15 +619,40 @@ def ui_list_activities(request: Request, soa_id: int):
     # Fetch activity concepts for all activities in this SOA
     activity_concepts: dict = {}
     has_dss = _table_has_columns(cur, "activity_concept", ("dss_title",))
+    has_group = _table_has_columns(cur, "activity_concept", ("concept_group_uid",))
     if _table_has_columns(cur, "activity_concept", ("soa_id",)):
-        if has_dss:
+        if has_dss and has_group:
             cur.execute(
-                "SELECT activity_id, concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE soa_id=?",
+                "SELECT ac.activity_id, ac.concept_code, ac.concept_title, "
+                "ac.dss_title, ac.dss_href, ac.concept_group_uid, cg.name "
+                "FROM activity_concept ac "
+                "LEFT JOIN concept_group cg "
+                "ON cg.concept_group_uid=ac.concept_group_uid "
+                "WHERE ac.soa_id=? "
+                "ORDER BY ac.concept_group_uid NULLS LAST, ac.id",
+                (soa_id,),
+            )
+        elif has_dss:
+            cur.execute(
+                "SELECT activity_id, concept_code, concept_title, dss_title, dss_href "
+                "FROM activity_concept WHERE soa_id=?",
+                (soa_id,),
+            )
+        elif has_group:
+            cur.execute(
+                "SELECT ac.activity_id, ac.concept_code, ac.concept_title, "
+                "NULL, NULL, ac.concept_group_uid, cg.name "
+                "FROM activity_concept ac "
+                "LEFT JOIN concept_group cg "
+                "ON cg.concept_group_uid=ac.concept_group_uid "
+                "WHERE ac.soa_id=? "
+                "ORDER BY ac.concept_group_uid NULLS LAST, ac.id",
                 (soa_id,),
             )
         else:
             cur.execute(
-                "SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE soa_id=?",
+                "SELECT activity_id, concept_code, concept_title "
+                "FROM activity_concept WHERE soa_id=?",
                 (soa_id,),
             )
     else:
@@ -636,12 +661,14 @@ def ui_list_activities(request: Request, soa_id: int):
             placeholders = ",".join("?" * len(activity_ids))
             if has_dss:
                 cur.execute(
-                    f"SELECT activity_id, concept_code, concept_title, dss_title, dss_href FROM activity_concept WHERE activity_id IN ({placeholders})",
+                    f"SELECT activity_id, concept_code, concept_title, dss_title, dss_href "
+                    f"FROM activity_concept WHERE activity_id IN ({placeholders})",
                     activity_ids,
                 )
             else:
                 cur.execute(
-                    f"SELECT activity_id, concept_code, concept_title FROM activity_concept WHERE activity_id IN ({placeholders})",
+                    f"SELECT activity_id, concept_code, concept_title "
+                    f"FROM activity_concept WHERE activity_id IN ({placeholders})",
                     activity_ids,
                 )
         else:
@@ -650,14 +677,27 @@ def ui_list_activities(request: Request, soa_id: int):
         aid, code, title = row[0], row[1], row[2]
         dss_title = row[3] if has_dss and len(row) > 3 else None
         dss_href = row[4] if has_dss and len(row) > 4 else None
+        concept_group_uid = row[5] if has_group and len(row) > 5 else None
+        group_name = row[6] if has_group and len(row) > 6 else None
         activity_concepts.setdefault(aid, []).append(
             {
                 "code": code,
                 "title": title,
                 "dss_title": dss_title or "",
                 "dss_href": dss_href or "",
+                "concept_group_uid": concept_group_uid,
+                "group_name": group_name,
             }
         )
+
+    # Fetch concept groups globally (for the dropdown in concepts_cell)
+    cur.execute(
+        "SELECT id, concept_group_uid, name, label FROM concept_group ORDER BY id"
+    )
+    concept_groups = [
+        {"id": r[0], "concept_group_uid": r[1], "name": r[2], "label": r[3]}
+        for r in cur.fetchall()
+    ]
     conn.close()
 
     # Fetch biomedical concepts list (lazy import to avoid circular dependency)
@@ -727,6 +767,7 @@ def ui_list_activities(request: Request, soa_id: int):
             "sdtm_specializations": sdtm_specializations,
             "surrogates": surrogates,
             "activity_surrogates": activity_surrogates,
+            "concept_groups": concept_groups,
             "study_id": study_id,
             "study_label": study_label,
             "study_description": study_description,

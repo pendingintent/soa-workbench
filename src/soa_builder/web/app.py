@@ -77,6 +77,9 @@ from .migrate_database import (
     _migrate_add_bc_surrogate_table,
     _migrate_add_activity_surrogate_table,
     _migrate_add_bc_surrogate_audit_table,
+    _migrate_add_concept_group_table,
+    _migrate_activity_concept_add_concept_group_uid,
+    _migrate_surrogate_add_concept_group_uid,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -97,6 +100,7 @@ from .routers import decision_instances as decision_instances_router
 from .routers import condition_assignments as condition_assignments_router
 from .routers import footnotes as footnotes_router
 from .routers import bc_surrogates as bc_surrogates_router
+from .routers import concept_groups as concept_groups_router
 from .audit import _record_element_audit
 
 
@@ -221,6 +225,9 @@ _migrate_matrix_cells_add_superscript()
 _migrate_add_bc_surrogate_table()
 _migrate_add_activity_surrogate_table()
 _migrate_add_bc_surrogate_audit_table()
+_migrate_add_concept_group_table()
+_migrate_activity_concept_add_concept_group_uid()
+_migrate_surrogate_add_concept_group_uid()
 
 
 # Include routers
@@ -246,6 +253,8 @@ app.include_router(footnotes_router.router)
 app.include_router(footnotes_router.ui_router)
 app.include_router(bc_surrogates_router.router)
 app.include_router(bc_surrogates_router.ui_router)
+app.include_router(concept_groups_router.router)
+app.include_router(concept_groups_router.ui_router)
 
 
 def _record_visit_audit(
@@ -2343,22 +2352,90 @@ def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate
 
 # API endpoint for returning BC associated with an Activity
 def _get_activity_concepts(activity_id: int):
-    """Return list of concepts (immutable: stored snapshot)."""
+    """Return list of concepts including concept_group_uid and group_name."""
     conn = _connect()
     cur = conn.cursor()
-    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+    has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
+    has_group = _table_has_columns(cur, "activity_concept", ("concept_group_uid",))
+    if has_soa and has_group:
         cur.execute(
-            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=? AND soa_id=(SELECT soa_id FROM activity WHERE id=?)",
+            "SELECT ac.concept_code, ac.concept_title, "
+            "ac.concept_group_uid, cg.name AS group_name "
+            "FROM activity_concept ac "
+            "LEFT JOIN concept_group cg "
+            "ON cg.concept_group_uid=ac.concept_group_uid "
+            "WHERE ac.activity_id=? "
+            "AND ac.soa_id=(SELECT soa_id FROM activity WHERE id=?) "
+            "ORDER BY ac.concept_group_uid NULLS LAST, ac.id",
             (activity_id, activity_id),
         )
+        rows = [
+            {
+                "code": r[0],
+                "title": r[1],
+                "concept_group_uid": r[2],
+                "group_name": r[3],
+            }
+            for r in cur.fetchall()
+        ]
+    elif has_soa:
+        cur.execute(
+            "SELECT concept_code, concept_title "
+            "FROM activity_concept WHERE activity_id=? "
+            "AND soa_id=(SELECT soa_id FROM activity WHERE id=?)",
+            (activity_id, activity_id),
+        )
+        rows = [
+            {
+                "code": r[0],
+                "title": r[1],
+                "concept_group_uid": None,
+                "group_name": None,
+            }
+            for r in cur.fetchall()
+        ]
     else:
         cur.execute(
-            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+            "SELECT concept_code, concept_title "
+            "FROM activity_concept WHERE activity_id=?",
             (activity_id,),
         )
-    rows = [{"code": c, "title": t} for c, t in cur.fetchall()]
+        rows = [
+            {
+                "code": r[0],
+                "title": r[1],
+                "concept_group_uid": None,
+                "group_name": None,
+            }
+            for r in cur.fetchall()
+        ]
     conn.close()
     return rows
+
+
+def _get_concept_groups_for_cell(soa_id: int, activity_id: int):
+    """Return (concept_groups, activity_group_uids) for concepts_cell rendering."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, concept_group_uid, name, label FROM concept_group ORDER BY id"
+    )
+    concept_groups = [
+        {"id": r[0], "concept_group_uid": r[1], "name": r[2], "label": r[3]}
+        for r in cur.fetchall()
+    ]
+    has_group = _table_has_columns(cur, "activity_concept", ("concept_group_uid",))
+    if has_group:
+        cur.execute(
+            "SELECT DISTINCT concept_group_uid FROM activity_concept "
+            "WHERE activity_id=? AND soa_id=? AND concept_group_uid IS NOT NULL",
+            (activity_id, soa_id),
+        )
+        activity_group_uids = [r[0] for r in cur.fetchall()]
+    else:
+        activity_group_uids = []
+    conn.close()
+    return concept_groups, activity_group_uids
 
 
 def _get_activity_surrogates(soa_id: int, activity_id: int):
@@ -3175,6 +3252,9 @@ def ui_add_activity_concept(
     surrogates, selected_surrogate_list, selected_surrogate_uids = (
         _get_activity_surrogates(soa_id, activity_id)
     )
+    concept_groups, activity_group_uids = _get_concept_groups_for_cell(
+        soa_id, activity_id
+    )
     html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
@@ -3185,6 +3265,8 @@ def ui_add_activity_concept(
         surrogates=surrogates,
         selected_surrogate_list=selected_surrogate_list,
         selected_surrogate_uids=selected_surrogate_uids,
+        concept_groups=concept_groups,
+        activity_group_uids=activity_group_uids,
         edit=False,
     )
     return HTMLResponse(html)
@@ -3250,6 +3332,9 @@ def ui_remove_activity_concept(
     surrogates, selected_surrogate_list, selected_surrogate_uids = (
         _get_activity_surrogates(soa_id, activity_id)
     )
+    concept_groups, activity_group_uids = _get_concept_groups_for_cell(
+        soa_id, activity_id
+    )
     html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
@@ -3260,6 +3345,8 @@ def ui_remove_activity_concept(
         surrogates=surrogates,
         selected_surrogate_list=selected_surrogate_list,
         selected_surrogate_uids=selected_surrogate_uids,
+        concept_groups=concept_groups,
+        activity_group_uids=activity_group_uids,
         edit=False,
     )
     return HTMLResponse(html)
@@ -5671,6 +5758,9 @@ def ui_set_activity_concepts(
         surrogates, selected_surrogate_list, selected_surrogate_uids = (
             _get_activity_surrogates(soa_id, activity_id)
         )
+        concept_groups, activity_group_uids = _get_concept_groups_for_cell(
+            soa_id, activity_id
+        )
         html = templates.get_template("concepts_cell.html").render(
             request=request,
             soa_id=soa_id,
@@ -5681,6 +5771,8 @@ def ui_set_activity_concepts(
             surrogates=surrogates,
             selected_surrogate_list=selected_surrogate_list,
             selected_surrogate_uids=selected_surrogate_uids,
+            concept_groups=concept_groups,
+            activity_group_uids=activity_group_uids,
             edit=False,
         )
         return HTMLResponse(html)
@@ -5721,6 +5813,9 @@ def ui_activity_concepts_cell(
     surrogates, selected_surrogate_list, selected_surrogate_uids = (
         _get_activity_surrogates(soa_id, activity_id)
     )
+    concept_groups, activity_group_uids = _get_concept_groups_for_cell(
+        soa_id, activity_id
+    )
     return HTMLResponse(
         templates.get_template("concepts_cell.html").render(
             request=request,
@@ -5732,6 +5827,8 @@ def ui_activity_concepts_cell(
             surrogates=surrogates,
             selected_surrogate_list=selected_surrogate_list,
             selected_surrogate_uids=selected_surrogate_uids,
+            concept_groups=concept_groups,
+            activity_group_uids=activity_group_uids,
             edit=bool(edit),
         )
     )
