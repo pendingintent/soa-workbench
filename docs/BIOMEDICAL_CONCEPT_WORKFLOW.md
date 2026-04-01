@@ -2,18 +2,18 @@
 
 Assumes that the Activties and Scheduled Activity Instances have been created to form the SOA Matrix.
 
-![Activities linked with Concepts](../images/image-1.png)
+![Activities linked with Concepts](../src/soa_builder/web/static/images/image-1.png)
 
 
 ## Assign Biomedical Concept to an Activity
 
-![Add Biomedical Concept from CDISC Library](../images/image-4.png)
+![Add Biomedical Concept from CDISC Library](../src/soa_builder/web/static/images/image-4.png)
 
-![Activity linked to Biomedical Concepts](../images/image-3.png)
+![Activity linked to Biomedical Concepts](../src/soa_builder/web/static/images/image-3.png)
 
 Hovering the cursor over a Biomedical Concept (BC) will display the C code for the BC.
 
-![C Code on Hover](../images/image-5.png)
+![C Code on Hover](../src/soa_builder/web/static/images/image-5.png)
 
 C25298 is the C Code for Systolic Blood Pressure.
 
@@ -342,15 +342,15 @@ reference field is also provided to allow for links to reference materials (e.g.
 
 In order to map a Surrogate to an Activity, first create the Surrogate.
 
-![Define Surrogates](../images/image-6.png)
+![Define Surrogates](../src/soa_builder/web/static/images/image-6.png)
 
 Once created, these Surrogates can be added to a Scheduled Activity Instance in the same way as Biomedical Concepts.
 
-![Surrogate selection box](../images/image-7.png)
+![Surrogate selection box](../src/soa_builder/web/static/images/image-7.png)
 
-![Choose from list of defined Surrogates](../images/image-8.png)
+![Choose from list of defined Surrogates](../src/soa_builder/web/static/images/image-8.png)
 
-![Surrogates linked to Activity](../images/image-10.png)
+![Surrogates linked to Activity](../src/soa_builder/web/static/images/image-10.png)
 
 These Surrogates are shown in the USDM JSON associated with their Scheduled Activity Instances.
 
