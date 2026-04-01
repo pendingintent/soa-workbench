@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>BIOMEDICAL_CONCEPT_GROUPINGS</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="biomedical-concept-groupings">Biomedical Concept Groupings</h1>
+<ul>
+<li>Groupings are a way of ‘tagging’ Biomedical Concepts so they are
+associated with one another</li>
+<li>Groupings are created by a user</li>
+<li>Groupings exist at the UX layer</li>
+<li>Groupings exist outside of the scope of an SOA so they can be reused
+in multiple studies</li>
+<li>Groups of Biomedical Concepts can be assigned to an Activity</li>
+<li>Individual Biomedical Concepts can be removed from a group when
+assigned to an activity to support further customizations</li>
+<li>Existing groups can be copied to another group to support
+inheritance and overriding</li>
+<li>Biomedical Concepts are still automagically mapped to corresponding
+Data Set Specializations when assigned to an <code>Activity</code></li>
+</ul>
+<h2 id="create-a-new-group-and-assign-to-an-activity">Create a new group
+and assign to an activity</h2>
+<ol type="1">
+<li>Select <code>Biomedical Concepts</code> &gt;
+<code>Concept Groups</code> from the navigation bar.</li>
+</ol>
+<figure>
+<img src="../images/select_concept_groups.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<ol start="2" type="1">
+<li>Select <code>New Group</code>.</li>
+</ol>
+<figure>
+<img src="../images/create_new_group_1.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<p>If there are existing groups, the user can choose to copy the group
+and <code>tagged</code> biomedical concepts.</p>
+<figure>
+<img src="../images/create_new_group_2.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<ol start="3" type="1">
+<li>Once the group has been created, the user can <code>tag</code>
+(assign) biomedical concepts to add to the group.</li>
+</ol>
+<figure>
+<img src="../images/add_bc_to_group_1.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<figure>
+<img src="../images/add_bc_to_group_2.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<p>The user can also add an entire Biomedical Concept Category to a new
+group.</p>
+<p>The user can also add a Biomedical Concept Surrogate to the new
+group.</p>
+<ol start="4" type="1">
+<li>Once created, the user navigates to the <code>Activities</code> page
+for a study.</li>
+</ol>
+<figure>
+<img src="../images/select_activties.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<ol start="5" type="1">
+<li>The user can then select a group from the select dropdown for any
+activity.</li>
+</ol>
+<figure>
+<img src="../images/select_group_for_activity.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<h2 id="customize-biomedical-concepts-in-a-group">Customize Biomedical
+Concepts in a group</h2>
+<ol type="1">
+<li>On the <code>Biomedical Concepts</code> &gt;
+<code>Concept Groups</code> page, expand a group.</li>
+</ol>
+<figure>
+<img src="../images/customize_group.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<p>Simply click on the ‘x’ beside a biomedical concept to remove from
+the group.</p>
+<ol start="2" type="1">
+<li>On the <code>Study Design</code> &gt; <code>Activities</code> page,
+expand an assigned group.</li>
+</ol>
+<figure>
+<img src="../images/customize_activity_group.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<p>Simply click on the <code>x</code> beside a biomedical concept to
+remove from the group and activity.</p>
+<h2 id="remove-entire-group-from-an-activity">Remove entire group from
+an Activity</h2>
+<ol type="1">
+<li>On the <code>Study Design</code> &gt; <code>Activities</code> page,
+expand an assigned group.</li>
+</ol>
+<figure>
+<img src="../images/remove_activity_group.png" alt="alt text" />
+<figcaption aria-hidden="true">alt text</figcaption>
+</figure>
+<p>Simply click on the <code>x all</code> icon and the group will be
+unassigned from the activity.</p>
+</body>
+</html>
