@@ -99,6 +99,30 @@ def _expand_group_to_activity(
         )
         _upsert_biomedical_concept(cur, soa_id, concept_uid, title, code)
         added += 1
+
+    # Also insert surrogates that belong to this group
+    cur.execute(
+        "SELECT surrogate_uid FROM biomedical_concept_surrogate "
+        "WHERE concept_group_uid=? AND soa_id=?",
+        (group_uid, soa_id),
+    )
+    surrogate_rows = cur.fetchall()
+    for (surrogate_uid,) in surrogate_rows:
+        cur.execute(
+            "SELECT 1 FROM activity_surrogate "
+            "WHERE soa_id=? AND activity_uid=? AND surrogate_uid=?",
+            (soa_id, activity_uid, surrogate_uid),
+        )
+        if cur.fetchone():
+            continue
+        cur.execute(
+            "INSERT INTO activity_surrogate "
+            "(soa_id, activity_uid, surrogate_uid, concept_group_uid) "
+            "VALUES (?,?,?,?)",
+            (soa_id, activity_uid, surrogate_uid, group_uid),
+        )
+        added += 1
+
     return added
 
 
@@ -787,14 +811,12 @@ def ui_add_group_to_activity(
     from ..app import (
         _enrich_biomedical_concept_bg,
         _enrich_code_bg,
-        _lookup_and_save_dss,
         _populate_bc_properties_bg,
     )
 
     for code in codes:
         background_tasks.add_task(_enrich_biomedical_concept_bg, code, soa_id)
         background_tasks.add_task(_enrich_code_bg, code, soa_id)
-        background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
         background_tasks.add_task(_populate_bc_properties_bg, soa_id, activity_id, code)
 
     from .bc_surrogates import _render_concepts_cell
@@ -817,16 +839,23 @@ def ui_remove_group_from_activity(
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT 1 FROM activity WHERE id=? AND soa_id=?",
+        "SELECT activity_uid FROM activity WHERE id=? AND soa_id=?",
         (activity_id, soa_id),
     )
-    if not cur.fetchone():
+    act_row = cur.fetchone()
+    if not act_row:
         conn.close()
         raise HTTPException(404, "Activity not found")
+    activity_uid = act_row[0]
     cur.execute(
         "DELETE FROM activity_concept "
         "WHERE activity_id=? AND soa_id=? AND concept_group_uid=?",
         (activity_id, soa_id, concept_group_uid),
+    )
+    cur.execute(
+        "DELETE FROM activity_surrogate "
+        "WHERE activity_uid=? AND soa_id=? AND concept_group_uid=?",
+        (activity_uid, soa_id, concept_group_uid),
     )
     conn.commit()
     conn.close()

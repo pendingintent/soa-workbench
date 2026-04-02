@@ -1353,3 +1353,92 @@ def _migrate_surrogate_add_concept_group_uid():
         conn.close()
     except Exception as e:
         logger.warning("_migrate_surrogate_add_concept_group_uid failed: %s", e)
+
+
+def _migrate_activity_surrogate_add_concept_group_uid():
+    """Add concept_group_uid column to activity_surrogate if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_surrogate)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "concept_group_uid" not in cols:
+            cur.execute(
+                "ALTER TABLE activity_surrogate ADD COLUMN concept_group_uid TEXT"
+            )
+            conn.commit()
+            logger.info("Added concept_group_uid column to activity_surrogate")
+        conn.close()
+    except Exception as e:
+        logger.warning(
+            "_migrate_activity_surrogate_add_concept_group_uid failed: %s",
+            e,
+        )
+
+
+def _migrate_add_activity_concept_dss_table():
+    """Create activity_concept_dss table for one-to-many DSS assignments.
+
+    Migrates any existing single-row assignments from the
+    activity_concept.dss_title / dss_href columns into the new table.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity_concept_dss (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id      INTEGER NOT NULL,
+                activity_id INTEGER NOT NULL,
+                concept_code TEXT NOT NULL,
+                dss_title   TEXT NOT NULL,
+                dss_href    TEXT NOT NULL,
+                dss_domain  TEXT
+            )
+            """
+        )
+        conn.commit()
+
+        # Migrate existing single-row assignments from activity_concept
+        cur.execute("PRAGMA table_info(activity_concept)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "dss_title" in cols and "dss_href" in cols:
+            # Only insert rows that are not already present
+            cur.execute("SELECT COUNT(*) FROM activity_concept_dss")
+            if cur.fetchone()[0] == 0:
+                dss_domain_col = "dss_domain" if "dss_domain" in cols else "NULL"
+                cur.execute(
+                    f"""
+                    INSERT INTO activity_concept_dss
+                        (soa_id, activity_id, concept_code,
+                         dss_title, dss_href, dss_domain)
+                    SELECT soa_id, activity_id, concept_code,
+                           dss_title, dss_href, {dss_domain_col}
+                    FROM activity_concept
+                    WHERE dss_title IS NOT NULL AND dss_title != ''
+                    """
+                )
+                conn.commit()
+                logger.info(
+                    "Migrated existing DSS assignments into activity_concept_dss"
+                )
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_add_activity_concept_dss_table failed: %s", e)
+
+
+def _migrate_activity_concept_dss_add_display():
+    """Add dss_display column to activity_concept_dss for human-readable title."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_concept_dss)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "dss_display" not in cols:
+            cur.execute("ALTER TABLE activity_concept_dss ADD COLUMN dss_display TEXT")
+            conn.commit()
+            logger.info("Added dss_display column to activity_concept_dss")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_activity_concept_dss_add_display failed: %s", e)

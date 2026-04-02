@@ -1,14 +1,17 @@
-{# Partial for DSS assignment cell — one row per concept code with DSS dropdown #}
-<td id="dss-cell-{{ activity_id }}" style="padding:4px;vertical-align:top;max-width:280px;">
+{# Partial for DSS assignment cell — lazy-loaded options per concept #}
+<td id="dss-cell-{{ activity_id }}" style="padding:4px;vertical-align:top;max-width:300px;">
   {% set dss_concepts = activity_concepts.get(activity_id, []) %}
   {% if dss_concepts %}
-    {% set assigned_count = dss_concepts | selectattr('dss_title') | list | length %}
+    {% set ns = namespace(total=0) %}
+    {% for ac in dss_concepts %}
+      {% set ns.total = ns.total + (ac.assigned_dss | length) %}
+    {% endfor %}
 
     <!-- Clickable header -->
     <div class="concepts-toggle" onclick="toggleDss('{{ activity_id }}')">
       <span class="concepts-label">Specializations</span>
-      {% if assigned_count > 0 %}
-        <span class="concept-count-pill">{{ assigned_count }}</span>
+      {% if ns.total > 0 %}
+        <span class="concept-count-pill">{{ ns.total }}</span>
       {% endif %}
       <span class="concepts-arrow">▸</span>
     </div>
@@ -16,46 +19,45 @@
     <!-- Collapsible content -->
     <div id="dss-content-{{ activity_id }}" style="display:none;margin-top:4px;">
       {% for ac in dss_concepts %}
-        <div style="display:flex;align-items:center;gap:4px;margin:2px 0;font-size:0.8em;">
-          <span title="{{ ac.title }}" style="background:#eef;color:#224;padding:1px 4px;border-radius:3px;white-space:nowrap;min-width:70px;text-align:center;display:inline-block;">{{ ac.code }}</span>
-          {% if ac.dss_title %}
-            {# Assigned — show DSS name as pill + clear/properties controls #}
-            {% set ns = namespace(dss_display=ac.dss_title) %}
-            {% for d in sdtm_specializations %}
-              {% if d.href.rstrip('/').split('/')|last == ac.dss_title %}
-                {% set ns.dss_display = d.title %}
-              {% endif %}
-            {% endfor %}
-            <span title="{{ ac.dss_title }}" style="background:#eef;color:#224;padding:2px 5px;border-radius:3px;min-width:160px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ns.dss_display }}</span>
-            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss"
+
+        <!-- Inline row: concept pill + lazy-loaded select -->
+        <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss"
+              hx-target="#dss-cell-{{ activity_id }}"
+              hx-swap="outerHTML"
+              style="display:flex;align-items:center;gap:4px;margin:4px 0;font-size:0.8em;">
+          <span title="{{ ac.title }}"
+                style="background:#eef;color:#224;padding:1px 4px;border-radius:3px;
+                       white-space:nowrap;min-width:70px;text-align:center;
+                       display:inline-block;flex-shrink:0;">{{ ac.code }}</span>
+          <select name="dss_selection"
+                  style="font-size:1em;max-width:150px;min-width:0;"
+                  hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss/options"
+                  hx-trigger="focus once"
+                  hx-target="this"
+                  hx-swap="innerHTML">
+            <option value="" disabled selected>Select DSS...</option>
+          </select>
+          <button type="submit" style="font-size:0.7em;flex-shrink:0;">+</button>
+        </form>
+
+        <!-- Assigned DSS rows -->
+        {% for assigned in ac.assigned_dss %}
+          <div style="display:flex;align-items:center;gap:4px;margin:2px 0 2px 4px;font-size:0.8em;">
+            <span title="{{ assigned.dss_title }}"
+                  style="background:#eef;color:#224;padding:2px 5px;border-radius:3px;
+                         min-width:120px;max-width:120px;overflow:hidden;
+                         text-overflow:ellipsis;white-space:nowrap;">{{ assigned.dss_display }}</span>
+            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss/{{ assigned.id }}/delete"
                   hx-target="#dss-cell-{{ activity_id }}"
                   hx-swap="outerHTML"
                   style="margin:0;display:inline;">
-              <input type="hidden" name="dss_selection" value="" />
-              <button type="submit" style="font-size:0.7em;" title="Clear DSS">&minus;</button>
+              <button type="submit" style="font-size:0.7em;" title="Remove DSS">&minus;</button>
             </form>
-            <a href="/ui/soa/{{ soa_id }}/dss/detail?href={{ ac.dss_href|urlencode }}&title={{ ac.dss_title|urlencode }}"
-               style="font-size:0.7em;margin-left:4px;">properties</a>
-          {% else %}
-            {# Not assigned — show dropdown + button #}
-            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss"
-                  hx-target="#dss-cell-{{ activity_id }}"
-                  hx-swap="outerHTML"
-                  style="margin:0;display:flex;align-items:center;gap:4px;">
-              <select name="dss_selection"
-                      style="font-size:1em;max-width:160px;">
-                <option value="" disabled selected>Select DSS...</option>
-                {% for d in sdtm_specializations %}
-                  {% set dss_id = d.href.rstrip('/').split('/')|last %}
-                  <option value="{{ dss_id }}||{{ d.href }}">
-                    {{ d.title }}
-                  </option>
-                {% endfor %}
-              </select>
-              <button type="submit" style="font-size:0.7em;">+</button>
-            </form>
-          {% endif %}
-        </div>
+            <a href="/ui/soa/{{ soa_id }}/dss/detail?href={{ assigned.dss_href|urlencode }}&title={{ assigned.dss_title|urlencode }}"
+               style="font-size:0.7em;">properties</a>
+          </div>
+        {% endfor %}
+        <hr style="border:none;border-top:1px solid #dde;margin:4px 0;">
       {% endfor %}
     </div>
   {% else %}

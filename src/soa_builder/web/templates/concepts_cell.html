@@ -51,9 +51,9 @@
 
     <!-- Collapsible content -->
     <div class="concepts-content" id="concepts-content-{{ cell_id_suffix }}" style="display:none;margin-top:4px;">
+      {% set _seen_group_uids = [] %}
       {% if selected_list %}
         {# Group-assigned concepts first, then individually assigned #}
-        {% set _seen_group_uids = [] %}
         {% for ac in selected_list %}
           {% if ac.concept_group_uid %}
             {# Show group header once per group #}
@@ -103,18 +103,51 @@
         {% endfor %}
       {% endif %}
       {% for s in _surrogate_list %}
-        <div style="display:flex;align-items:center;justify-content:space-between;background:#fff3e0;color:#4e342e;margin:2px 0;padding:2px 5px;border-radius:3px;font-size:0.8em;">
-          <span title="{{ s.surrogate_uid }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">[S] {{ s.label or s.name }}</span>
-          {% if not readonly %}
-          <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/bc-surrogates/remove"
-                hx-target="#concepts-cell-{{ cell_id_suffix }}"
-                hx-swap="outerHTML"
-                style="margin:0;">
-            <input type="hidden" name="surrogate_uid" value="{{ s.surrogate_uid }}" />
-            <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
-          </form>
+        {% if s.concept_group_uid %}
+          {# Show group header once per surrogate group #}
+          {% if s.concept_group_uid not in _seen_group_uids %}
+            {% set _ = _seen_group_uids.append(s.concept_group_uid) %}
+            <div style="font-size:0.75em;color:#2e7d32;font-weight:600;margin:4px 0 1px 0;">
+              [G] {{ s.group_name or s.concept_group_uid }}
+              {% if not readonly %}
+              <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept-groups/remove"
+                    hx-target="#concepts-cell-{{ cell_id_suffix }}"
+                    hx-swap="outerHTML"
+                    style="display:inline;margin:0;">
+                <input type="hidden" name="concept_group_uid" value="{{ s.concept_group_uid }}" />
+                <button type="submit"
+                        style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 2px;font-size:0.9em;"
+                        title="Remove all concepts from this group">×all</button>
+              </form>
+              {% endif %}
+            </div>
           {% endif %}
-        </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff3e0;color:#4e342e;margin:2px 0 2px 8px;padding:2px 5px;border-radius:3px;font-size:0.8em;">
+            <span title="{{ s.surrogate_uid }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">[S] {{ s.label or s.name }}</span>
+            {% if not readonly %}
+            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/bc-surrogates/remove"
+                  hx-target="#concepts-cell-{{ cell_id_suffix }}"
+                  hx-swap="outerHTML"
+                  style="margin:0;">
+              <input type="hidden" name="surrogate_uid" value="{{ s.surrogate_uid }}" />
+              <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
+            </form>
+            {% endif %}
+          </div>
+        {% else %}
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff3e0;color:#4e342e;margin:2px 0;padding:2px 5px;border-radius:3px;font-size:0.8em;">
+            <span title="{{ s.surrogate_uid }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">[S] {{ s.label or s.name }}</span>
+            {% if not readonly %}
+            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/bc-surrogates/remove"
+                  hx-target="#concepts-cell-{{ cell_id_suffix }}"
+                  hx-swap="outerHTML"
+                  style="margin:0;">
+              <input type="hidden" name="surrogate_uid" value="{{ s.surrogate_uid }}" />
+              <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
+            </form>
+            {% endif %}
+          </div>
+        {% endif %}
       {% endfor %}
       {% if not selected_list and not _surrogate_list %}
         <div class="no-concepts" style="color:#888;font-size:0.8em;">–</div>

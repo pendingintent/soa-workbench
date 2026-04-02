@@ -80,6 +80,9 @@ from .migrate_database import (
     _migrate_add_concept_group_table,
     _migrate_activity_concept_add_concept_group_uid,
     _migrate_surrogate_add_concept_group_uid,
+    _migrate_activity_surrogate_add_concept_group_uid,
+    _migrate_add_activity_concept_dss_table,
+    _migrate_activity_concept_dss_add_display,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -162,6 +165,8 @@ _CONCEPT_CACHE_TTL = 60 * 60  # 1 hour TTL
 # SDTM dataset specializations cache (similar TTL)
 _sdtm_specializations_cache = {"data": None, "fetched_at": 0}
 _SDTM_SPECIALIZATIONS_CACHE_TTL = 60 * 60
+# Per-code SDTM specializations cache: {code: (fetched_at, [results])}
+_sdtm_specializations_by_code_cache: dict[str, tuple[float, list]] = {}
 # Category-specific biomedical concepts cache (per category key)
 _category_concepts_cache: dict[str, dict] = {}
 _CATEGORY_CONCEPTS_CACHE_TTL = 60 * 60  # 1 hour
@@ -228,6 +233,9 @@ _migrate_add_bc_surrogate_audit_table()
 _migrate_add_concept_group_table()
 _migrate_activity_concept_add_concept_group_uid()
 _migrate_surrogate_add_concept_group_uid()
+_migrate_activity_surrogate_add_concept_group_uid()
+_migrate_add_activity_concept_dss_table()
+_migrate_activity_concept_dss_add_display()
 
 
 # Include routers
@@ -1534,6 +1542,15 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
 
     # --------- code-specific branch (use generic endpoint) ----------
     if code:
+        # Return cached result if still fresh
+        cached = _sdtm_specializations_by_code_cache.get(code)
+        if (
+            not force
+            and cached is not None
+            and (now - cached[0]) < _SDTM_SPECIALIZATIONS_CACHE_TTL
+        ):
+            return cached[1]
+
         url = (
             f"{base_prefix}/mdr/specializations/datasetspecializations"
             f"?biomedicalconcept={code}"
@@ -1595,6 +1612,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
                 len(packages),
                 code,
             )
+            _sdtm_specializations_by_code_cache[code] = (now, packages)
             return packages
         except Exception as e:
             logger.error(
@@ -2470,96 +2488,45 @@ def _get_activity_surrogates(soa_id: int, activity_id: int):
     )
 
 
-def _lookup_and_save_dss(soa_id: int, activity_id: int, concept_code: str) -> None:
-    """Background task: auto-lookup DSS for a concept via CDISC API and persist."""
-    import os
-    import requests as _requests
-
-    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
-        "CDISC_SUBSCRIPTION_KEY"
-    )
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
-    headers: dict = {"Accept": "application/json"}
-    if subscription_key:
-        headers["Ocp-Apim-Subscription-Key"] = subscription_key
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-        headers["api-key"] = api_key
-
-    try:
-        # Step 1: discover DSS href for this concept
-        list_url = (
-            "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations"
-            "/datasetspecializations?biomedicalconcept=" + concept_code
-        )
-        r1 = _requests.get(list_url, headers=headers, timeout=15)
-        if r1.status_code != 200:
-            return
-        data1 = r1.json()
-        sdtm_links = data1["_links"]["datasetSpecializations"]["sdtm"]
-        if not sdtm_links:
-            return
-        dss_href = sdtm_links[0]["href"]
-        if dss_href.startswith("/"):
-            dss_href = "https://api.library.cdisc.org/api/cosmos/v2" + dss_href
-
-        # Step 2: fetch DSS detail to get datasetSpecializationId
-        r2 = _requests.get(dss_href, headers=headers, timeout=15)
-        if r2.status_code != 200:
-            return
-        data2 = r2.json()
-        dss_id = data2.get("datasetSpecializationId")
-        dss_domain = data2.get("domain")
-        if not dss_id:
-            return
-
-        # Step 3: persist to activity_concept
-        conn = _connect()
-        cur = conn.cursor()
-        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
-            cur.execute(
-                "UPDATE activity_concept SET dss_title=?, dss_href=?, dss_domain=?"
-                " WHERE activity_id=? AND concept_code=? AND soa_id=?",
-                (dss_id, dss_href, dss_domain, activity_id, concept_code, soa_id),
-            )
-        else:
-            cur.execute(
-                "UPDATE activity_concept SET dss_title=?, dss_href=?, dss_domain=?"
-                " WHERE activity_id=? AND concept_code=?",
-                (dss_id, dss_href, dss_domain, activity_id, concept_code),
-            )
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass  # silent failure — DSS column remains unset; user can assign manually
-
-
 def _populate_bc_properties_bg(soa_id: int, activity_id: int, concept_code: str):
     """
     Background task: fetch DSS variables, parse them, insert BiomedicalConceptProperty rows.
     Restructured to only hold database lock during quick writes, not during slow API calls.
     """
-    # Step 1: Quick read - fetch activity concept data (NO WRITE LOCK YET)
+    # Step 1: Quick read - fetch concept_uid and all DSS hrefs (NO WRITE LOCK)
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        """
-        SELECT ac.concept_uid, ac.dss_href
-        FROM activity_concept ac
-        WHERE ac.soa_id = ? AND ac.activity_id = ? AND ac.concept_code = ?
-        """,
+        "SELECT concept_uid FROM activity_concept"
+        " WHERE soa_id=? AND activity_id=? AND concept_code=?",
         (soa_id, activity_id, concept_code),
     )
-    row = cur.fetchone()
+    uid_row = cur.fetchone()
+    if not uid_row:
+        conn.close()
+        return
+    concept_uid = uid_row[0]
+
+    cur.execute(
+        "SELECT dss_href FROM activity_concept_dss"
+        " WHERE soa_id=? AND activity_id=? AND concept_code=?",
+        (soa_id, activity_id, concept_code),
+    )
+    dss_hrefs = [r[0] for r in cur.fetchall() if r[0]]
     conn.close()  # Close connection immediately after read
 
-    if not row:
+    if not dss_hrefs:
         return
 
-    concept_uid, dss_href = row
-    if not dss_href:
-        return
+    # Process each DSS href in turn
+    for dss_href in dss_hrefs:
+        _populate_bc_properties_for_href(soa_id, concept_uid, concept_code, dss_href)
 
+
+def _populate_bc_properties_for_href(
+    soa_id: int, concept_uid: str, concept_code: str, dss_href: str
+) -> None:
+    """Fetch one DSS href and insert/update BiomedicalConceptProperty rows."""
     # Step 2: Slow API calls (NO DATABASE CONNECTION HELD)
     api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
         "CDISC_SUBSCRIPTION_KEY"
@@ -3243,7 +3210,6 @@ def ui_add_activity_concept(
                 )
         _upsert_biomedical_concept(cur, soa_id, concept_uid, title, code)
         conn.commit()
-        background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
         background_tasks.add_task(_enrich_biomedical_concept_bg, code, soa_id)
         background_tasks.add_task(_enrich_code_bg, code, soa_id)
         background_tasks.add_task(_populate_bc_properties_bg, soa_id, activity_id, code)
@@ -3255,7 +3221,7 @@ def ui_add_activity_concept(
     concept_groups, activity_group_uids = _get_concept_groups_for_cell(
         soa_id, activity_id
     )
-    html = templates.get_template("concepts_cell.html").render(
+    concepts_html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
         activity_id=activity_id,
@@ -3269,7 +3235,16 @@ def ui_add_activity_concept(
         activity_group_uids=activity_group_uids,
         edit=False,
     )
-    return HTMLResponse(html)
+    dss_html = activities_router._render_dss_cell(
+        request, soa_id, activity_id
+    ).body.decode()
+    # Wrap DSS cell in OOB swap so HTMX updates it alongside the concepts cell
+    dss_oob = dss_html.replace(
+        f'id="dss-cell-{activity_id}"',
+        f'id="dss-cell-{activity_id}" hx-swap-oob="outerHTML:#dss-cell-{activity_id}"',
+        1,
+    )
+    return HTMLResponse(concepts_html + dss_oob)
 
 
 # UI endpoint for removing a BC from an Activity
@@ -3335,7 +3310,7 @@ def ui_remove_activity_concept(
     concept_groups, activity_group_uids = _get_concept_groups_for_cell(
         soa_id, activity_id
     )
-    html = templates.get_template("concepts_cell.html").render(
+    concepts_html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
         activity_id=activity_id,
@@ -3349,7 +3324,15 @@ def ui_remove_activity_concept(
         activity_group_uids=activity_group_uids,
         edit=False,
     )
-    return HTMLResponse(html)
+    dss_html = activities_router._render_dss_cell(
+        request, soa_id, activity_id
+    ).body.decode()
+    dss_oob = dss_html.replace(
+        f'id="dss-cell-{activity_id}"',
+        f'id="dss-cell-{activity_id}" hx-swap-oob="outerHTML:#dss-cell-{activity_id}"',
+        1,
+    )
+    return HTMLResponse(concepts_html + dss_oob)
 
 
 # API endpoint for marking a matrix cell association between an Activity and Encounter/Visit
@@ -5729,8 +5712,6 @@ def ui_set_activity_concepts(
             " WHERE activity_id=? AND (dss_title IS NULL OR dss_title='')",
             (activity_id,),
         )
-    for (code,) in cur.fetchall():
-        background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
     conn.close()
     for code in payload.concept_codes:
         if code.strip():

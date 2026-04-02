@@ -148,7 +148,13 @@ def _get_dss_response_codes(
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT dss_href FROM activity_concept WHERE concept_uid=? AND soa_id=?",
+        "SELECT acd.dss_href FROM activity_concept_dss acd"
+        " JOIN activity_concept ac"
+        " ON ac.soa_id=acd.soa_id"
+        " AND ac.activity_id=acd.activity_id"
+        " AND ac.concept_code=acd.concept_code"
+        " WHERE ac.concept_uid=? AND acd.soa_id=?"
+        " LIMIT 1",
         (biomedical_concept_uid, soa_id),
     )
     row = cur.fetchone()

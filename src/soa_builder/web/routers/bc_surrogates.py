@@ -542,17 +542,28 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
         ]
     selected_codes = [c["code"] for c in selected_list]
 
-    # Fetch linked surrogates
+    # Fetch linked surrogates (include concept_group_uid and group name)
     cur.execute(
-        "SELECT bcs.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "SELECT bcs.id, bcs.surrogate_uid, bcs.name, bcs.label,"
+        " asr.concept_group_uid, cg.name AS group_name "
         "FROM activity_surrogate asr "
         "JOIN biomedical_concept_surrogate bcs "
         "ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
-        "WHERE asr.activity_uid=? AND asr.soa_id=?",
+        "LEFT JOIN concept_group cg "
+        "ON cg.concept_group_uid=asr.concept_group_uid "
+        "WHERE asr.activity_uid=? AND asr.soa_id=? "
+        "ORDER BY asr.concept_group_uid NULLS LAST, asr.id",
         (activity_uid, soa_id),
     )
     selected_surrogate_list = [
-        {"id": r[0], "surrogate_uid": r[1], "name": r[2], "label": r[3]}
+        {
+            "id": r[0],
+            "surrogate_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "concept_group_uid": r[4],
+            "group_name": r[5],
+        }
         for r in cur.fetchall()
     ]
     selected_surrogate_uids = [s["surrogate_uid"] for s in selected_surrogate_list]
@@ -578,6 +589,11 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
     ]
     activity_group_uids = list(
         {c["concept_group_uid"] for c in selected_list if c["concept_group_uid"]}
+        | {
+            s["concept_group_uid"]
+            for s in selected_surrogate_list
+            if s["concept_group_uid"]
+        }
     )
     conn.close()
 

@@ -34,7 +34,11 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
             bc.label label,
             bc.code alias_code,
             ac.concept_code concept_code,
-            ac.dss_href reference,
+            (SELECT acd.dss_href FROM activity_concept_dss acd
+             WHERE acd.soa_id=ac.soa_id
+               AND acd.activity_id=ac.activity_id
+               AND acd.concept_code=ac.concept_code
+             LIMIT 1) reference,
             c.code_uid code_uid,
             c.code_system code_system,
             c.code_system_version code_system_version,
