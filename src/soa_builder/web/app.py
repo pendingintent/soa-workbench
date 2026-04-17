@@ -5118,6 +5118,7 @@ def ui_concept_detail(code: str, request: Request):
     parent_bc_href = None
     parent_pkg_href = None
     parent_bc_title = None
+    parent_pkg_name = None
     status = None
     try:
         resp = requests.get(api_href, headers=headers, timeout=10)
@@ -5134,13 +5135,18 @@ def ui_concept_detail(code: str, request: Request):
                 )
                 parent_bc_href = parent_bc_href.get("href") or parent_bc_href.get("url")
             # Extract parent package link
-            parent_pkg_href = concept_json.get("parentPackage") or concept_json.get(
+            parent_pkg_obj = concept_json.get("parentPackage") or concept_json.get(
                 "parent_package"
             )
-            if isinstance(parent_pkg_href, dict):
-                parent_pkg_href = parent_pkg_href.get("href") or parent_pkg_href.get(
+            if isinstance(parent_pkg_obj, dict):
+                parent_pkg_name = parent_pkg_obj.get("name") or parent_pkg_obj.get(
+                    "title"
+                )
+                parent_pkg_href = parent_pkg_obj.get("href") or parent_pkg_obj.get(
                     "url"
                 )
+            elif isinstance(parent_pkg_obj, str):
+                parent_pkg_href = parent_pkg_obj
         else:
             concept_json = {"error": f"Upstream returned {resp.status_code}"}
     except Exception as e:  # pragma: no cover
@@ -5153,6 +5159,51 @@ def ui_concept_detail(code: str, request: Request):
             or concept_json.get("name")
             or code
         )
+
+    # Build summary dict (scalar top-level fields only, truthy values)
+    summary: dict = {}
+    data_element_concepts: list = []
+    if isinstance(concept_json, dict) and "error" not in concept_json:
+        scalar_keys = (
+            "conceptId",
+            "shortName",
+            "definition",
+            "href",
+        )
+        for key in scalar_keys:
+            val = concept_json.get(key)
+            if val not in (None, ""):
+                summary[key] = val
+        list_str_keys = ("synonyms", "categories", "resultScales")
+        for key in list_str_keys:
+            val = concept_json.get(key)
+            if isinstance(val, list) and val:
+                summary[key] = ", ".join(str(item) for item in val if item is not None)
+        coding = concept_json.get("coding")
+        if isinstance(coding, list) and coding:
+            try:
+                parts = []
+                for entry in coding:
+                    if isinstance(entry, dict):
+                        system = entry.get("system", "")
+                        ccode = entry.get("code", "")
+                        display = entry.get("display", "")
+                        parts.append(f"{system}:{ccode} ({display})".strip())
+                if parts:
+                    summary["coding"] = "; ".join(parts)
+                else:
+                    summary["coding"] = f"{len(coding)} entries"
+            except Exception:
+                summary["coding"] = f"{len(coding)} entries"
+        # Extract data element concepts array
+        raw_decs = concept_json.get("dataElementConcepts") or []
+        if isinstance(raw_decs, list):
+            data_element_concepts = [d for d in raw_decs if isinstance(d, dict)]
+
+    pretty_json = (
+        json.dumps(concept_json, indent=2, sort_keys=True) if concept_json else None
+    )
+
     return templates.TemplateResponse(
         request,
         "concept_detail.html",
@@ -5163,8 +5214,11 @@ def ui_concept_detail(code: str, request: Request):
             "parent_bc_href": parent_bc_href,
             "parent_bc_title": parent_bc_title,
             "parent_pkg_href": parent_pkg_href,
+            "parent_pkg_name": parent_pkg_name,
             "status": status,
-            "raw": json.dumps(concept_json, indent=2) if concept_json else None,
+            "summary": summary,
+            "data_element_concepts": data_element_concepts,
+            "pretty_json": pretty_json,
             "missing_key": unified_key is None,
         },
     )
