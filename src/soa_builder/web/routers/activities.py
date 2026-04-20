@@ -506,7 +506,6 @@ def set_activity_concepts(
         _enrich_biomedical_concept_bg,
         _enrich_code_bg,
         _cleanup_orphaned_concept_rows,
-        _populate_bc_properties_bg,
     )
 
     inserted = 0
@@ -563,9 +562,6 @@ def set_activity_concepts(
         _upsert_biomedical_concept(cur, soa_id, concept_uid, title, ccode)
         background_tasks.add_task(_enrich_biomedical_concept_bg, ccode, soa_id)
         background_tasks.add_task(_enrich_code_bg, ccode, soa_id)
-        background_tasks.add_task(
-            _populate_bc_properties_bg, soa_id, activity_id, ccode
-        )
         inserted += 1
     _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
     conn.commit()
@@ -949,7 +945,6 @@ def ui_save_dss_assignment(
     soa_id: int,
     activity_id: int,
     concept_code: str,
-    background_tasks: BackgroundTasks,
     dss_selection: str = Form(""),
 ):
     """Add a DSS assignment for a specific concept on an activity."""
@@ -997,12 +992,6 @@ def ui_save_dss_assignment(
     )
     conn.commit()
     conn.close()
-
-    from ..app import _populate_bc_properties_bg
-
-    background_tasks.add_task(
-        _populate_bc_properties_bg, soa_id, activity_id, concept_code
-    )
 
     _record_activity_audit(
         soa_id,
@@ -1053,73 +1042,6 @@ def ui_delete_dss_assignment(
         "DELETE FROM activity_concept_dss WHERE id=? AND soa_id=?",
         (dss_row_id, soa_id),
     )
-
-    # Check whether any DSS assignments remain for this concept
-    cur.execute(
-        "SELECT COUNT(*) FROM activity_concept_dss"
-        " WHERE soa_id=? AND activity_id=? AND concept_code=?",
-        (soa_id, activity_id, concept_code),
-    )
-    remaining = cur.fetchone()[0]
-
-    if remaining == 0:
-        # Cascade-delete BC properties when all DSS are removed
-        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
-            cur.execute(
-                "SELECT concept_uid FROM activity_concept"
-                " WHERE activity_id=? AND concept_code=? AND soa_id=?",
-                (activity_id, concept_code, soa_id),
-            )
-        else:
-            cur.execute(
-                "SELECT concept_uid FROM activity_concept"
-                " WHERE activity_id=? AND concept_code=?",
-                (activity_id, concept_code),
-            )
-        uid_row = cur.fetchone()
-        bc_uid = uid_row[0] if uid_row else None
-        if bc_uid:
-            cur.execute(
-                "SELECT code FROM biomedical_concept_property"
-                " WHERE biomedical_concept_uid=? AND soa_id=?",
-                (bc_uid, soa_id),
-            )
-            prop_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
-            cur.execute(
-                "DELETE FROM biomedical_concept_property"
-                " WHERE biomedical_concept_uid=? AND soa_id=?",
-                (bc_uid, soa_id),
-            )
-            for prop_alias in prop_alias_uids:
-                cur.execute(
-                    "SELECT 1 FROM biomedical_concept_property"
-                    " WHERE soa_id=? AND code=? LIMIT 1",
-                    (soa_id, prop_alias),
-                )
-                if cur.fetchone():
-                    continue
-                cur.execute(
-                    "SELECT 1 FROM biomedical_concept"
-                    " WHERE soa_id=? AND code=? LIMIT 1",
-                    (soa_id, prop_alias),
-                )
-                if cur.fetchone():
-                    continue
-                cur.execute(
-                    "SELECT standard_code FROM alias_code"
-                    " WHERE alias_code_uid=? AND soa_id=?",
-                    (prop_alias, soa_id),
-                )
-                prop_ac_row = cur.fetchone()
-                cur.execute(
-                    "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
-                    (prop_alias, soa_id),
-                )
-                if prop_ac_row:
-                    cur.execute(
-                        "DELETE FROM code WHERE code_uid=? AND soa_id=?",
-                        (prop_ac_row[0], soa_id),
-                    )
 
     conn.commit()
     conn.close()

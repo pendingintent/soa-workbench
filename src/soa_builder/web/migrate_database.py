@@ -1124,6 +1124,63 @@ def _migrate_biomedical_concept_property_add_uid():
         logger.warning("_migrate_biomedical_concept_property_add_uid: %s", e)
 
 
+def _migrate_truncate_biomedical_concept_property_data():
+    """Truncate biomedical_concept_property rows that were populated from DSS.
+
+    The prior DSS-based writer produced incorrect BiomedicalConceptProperty
+    values. This one-time migration clears those rows and the alias_code/code
+    rows that were created solely to back them. Idempotent: a no-op on an
+    empty table.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(biomedical_concept_property)")
+        cols = {r[1] for r in cur.fetchall()}
+        if not cols:
+            conn.close()
+            return
+        cur.execute(
+            "SELECT DISTINCT soa_id, code FROM biomedical_concept_property"
+            " WHERE code IS NOT NULL"
+        )
+        alias_refs = cur.fetchall()
+        cur.execute("DELETE FROM biomedical_concept_property")
+        for soa_id, alias_uid in alias_refs:
+            cur.execute(
+                "SELECT 1 FROM biomedical_concept_property"
+                " WHERE soa_id=? AND code=? LIMIT 1",
+                (soa_id, alias_uid),
+            )
+            if cur.fetchone():
+                continue
+            cur.execute(
+                "SELECT 1 FROM biomedical_concept WHERE soa_id=? AND code=? LIMIT 1",
+                (soa_id, alias_uid),
+            )
+            if cur.fetchone():
+                continue
+            cur.execute(
+                "SELECT standard_code FROM alias_code"
+                " WHERE alias_code_uid=? AND soa_id=?",
+                (alias_uid, soa_id),
+            )
+            code_row = cur.fetchone()
+            cur.execute(
+                "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
+                (alias_uid, soa_id),
+            )
+            if code_row:
+                cur.execute(
+                    "DELETE FROM code WHERE code_uid=? AND soa_id=?",
+                    (code_row[0], soa_id),
+                )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_truncate_biomedical_concept_property_data: %s", e)
+
+
 def _migrate_add_soa_id_indexes():
     """Add standalone soa_id indexes on high-traffic tables.
 

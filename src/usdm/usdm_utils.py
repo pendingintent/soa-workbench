@@ -165,104 +165,27 @@ def _get_dss_response_codes(
 
 
 @functools.lru_cache(maxsize=256)
-def _get_biomedical_concept_synonyms(concept_code: str) -> List[str]:
-    """Fetch the synonyms of a biomedical concept using the CDISC API. Cached per code."""
+def _get_biomedical_concept_data(concept_code: str) -> Dict[str, Any]:
+    """Fetch the full CDISC Biomedical Concept API response. Cached per code."""
     url = URL_PREFIX + "mdr/bc/biomedicalconcepts/" + concept_code
     try:
         resp = requests.get(url, headers=_build_api_headers(), timeout=15)
         if resp.status_code != 200:
-            return []
-        data = resp.json()
-        return data.get("synonyms", [])
+            return {}
+        return resp.json()
     except (requests.RequestException, ValueError) as e:
-        print(f"Error fetching biomedical concept synonyms: {e}")
-        return []
+        print(f"Error fetching biomedical concept: {e}")
+        return {}
 
 
-@functools.lru_cache(maxsize=256)
-def _get_biomedical_concept_properties(
-    soa_id: int, biomedical_concept_uid: str
-) -> List[Dict[str, Any]]:
-    """Fetch biomedical concept properties from the database using the BiomedicalConcept_{}."""
+def _get_biomedical_concept_synonyms(concept_code: str) -> List[str]:
+    """Return synonyms from the BC API response."""
+    return _get_biomedical_concept_data(concept_code).get("synonyms", []) or []
 
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT
-            p.biomedical_concept_property_uid id,
-            p.name name,
-            p.label label,
-            p.isRequired isRequired,
-            p.datatype datatype,
-            p.biomedical_concept_uid biomedical_concept_uid,
-            a.alias_code_uid alias_code_uid,
-            a.standard_code standard_code,
-            c.code code,
-            c.code_system code_system,
-            c.code_system_version code_system_version,
-            c.decode decode
-        FROM biomedical_concept_property p
-        INNER JOIN alias_code a ON p.code = a.alias_code_uid AND p.soa_id = a.soa_id
-        INNER JOIN code c ON a.standard_code = c.code_uid AND a.soa_id = c.soa_id
-        WHERE p.soa_id = ? AND p.biomedical_concept_uid = ?
-        ORDER BY p.id;
-        """,
-        (soa_id, biomedical_concept_uid),
-    )
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    out: List[Dict[str, Any]] = []
 
-    for r in rows:
-        id = r[0]
-        name = r[1]
-        label = r[2]
-        isRequired = bool(r[3])
-        datatype = r[4]
-        _ = r[
-            5
-        ]  # Changed from bc_uid to suppress linting error arising from ISSUE #179
-        alias_code_uid = r[6]
-        standard_code = r[7]
-        code = r[8]
-        code_system = r[9]
-        code_system_version = r[10]
-        decode = r[11]
-
-        isEnabled = isRequired  # Fix for ISSUE #176
-        # Commented out for ISSUE #179
-        # response_codes = _get_dss_response_codes(bc_uid, name, soa_id)
-
-        property = {
-            "id": id,
-            "name": name,
-            "label": label,
-            "isRequired": isRequired,
-            "isEnabled": isEnabled,
-            "datatype": datatype,
-            "responseCodes": [],
-            "code": {
-                "id": alias_code_uid,
-                "extensionAttributes": [],
-                "standardCode": {
-                    "id": standard_code,
-                    "extensionAttributes": [],
-                    "code": code,
-                    "codeSystem": code_system,
-                    "codeSystemVersion": code_system_version,
-                    "decode": decode,
-                    "instanceType": "Code",
-                },
-                "instanceType": "AliasCode",
-            },
-            "notes": [],
-            "instanceType": "BiomedicalConceptProperty",
-        }
-        out.append(property)
-
-    return out
+def _get_biomedical_concept_reference(concept_code: str) -> str:
+    """Return the root 'href' from the BC API response, or '' if unavailable."""
+    return _get_biomedical_concept_data(concept_code).get("href", "") or ""
 
 
 # Helper for Activities
