@@ -106,6 +106,7 @@ from .routers import condition_assignments as condition_assignments_router
 from .routers import footnotes as footnotes_router
 from .routers import bc_surrogates as bc_surrogates_router
 from .routers import concept_groups as concept_groups_router
+from .routers import sdtm_terminology as sdtm_terminology_router
 from .audit import _record_element_audit
 
 
@@ -266,6 +267,7 @@ app.include_router(bc_surrogates_router.router)
 app.include_router(bc_surrogates_router.ui_router)
 app.include_router(concept_groups_router.router)
 app.include_router(concept_groups_router.ui_router)
+app.include_router(sdtm_terminology_router.router)
 
 
 def _record_visit_audit(
