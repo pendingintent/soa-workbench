@@ -71,6 +71,16 @@ _protocol_ct_cache: dict[str, Any] = {
 }
 _PROTOCOL_CT_CACHE_TTL = 60 * 60  # 1 hour
 
+_ddf_ct_cache: dict[str, Any] = {
+    "slug": None,
+    "rows": None,
+    "codelist_count": 0,
+    "fetched_at": 0,
+    "last_error": None,
+    "last_status": None,
+}
+_DDF_CT_CACHE_TTL = 60 * 60  # 1 hour
+
 
 # Constants for the helper function
 _ISO_DURATION_RE = re.compile(
@@ -260,21 +270,8 @@ def load_arm_type_map() -> Dict[str, str]:
 
 # Function for creating {code: submission_value} for Arm dataOriginType selector
 def load_arm_data_origin_type_map() -> Dict[str, str]:
-    """Fetch arm data origin type from the ddf_terminology database table"""
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT code,cdisc_submission_value FROM ddf_terminology
-        WHERE codelist_code='C188727'
-        ORDER BY cdisc_submission_value
-        """
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return {
-        str(code): str(sv) for (code, sv) in rows if code is not None and sv is not None
-    }
+    """Fetch Arm Data Origin Type (C188727) mapping from CDISC Library DDF CT."""
+    return get_ddf_ct_codelist_map("C188727")
 
 
 def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
@@ -481,20 +478,8 @@ def table_has_columns(cur: Any, table: str, required: List[str] | tuple) -> bool
 
 
 def get_study_timing_type(codelist_code: str) -> Dict[str, str]:
-    """Return a dictionary of {submissionValue: code} from the DDF
-    Terminology (ddf_terminology) table.
-
-    """
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT cdisc_submission_value,code FROM ddf_terminology WHERE codelist_code=?",
-        (codelist_code,),
-    )
-    rows = cur.fetchall()
-    conn.close()
-
-    return {str(sub): str(code) for (sub, code) in rows}
+    """Return {submissionValue: code} from CDISC Library DDF CT."""
+    return get_ddf_ct_codelist_map_by_submission(codelist_code)
 
 
 def get_conditions(soa_id: int) -> Dict[str, str]:
@@ -724,21 +709,30 @@ def get_timing_id(soa_id: int) -> Dict[str, str]:
 
 
 def get_encounter_type_sv(soa_id: int, code_uid: str):
-    """Return the submission value for the encounter type using Code_{n} value"""
+    """Return (submission_value,) for the encounter type using Code_{n} value.
+
+    Looks up the code/codelist_code from code_association, then resolves the
+    submission value via the cached DDF CT package. Returns None when not found,
+    matching the previous DB-JOIN behavior.
+    """
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        """
-        SELECT ddf.cdisc_submission_value FROM visit v
-        INNER JOIN code_association c ON v.type=c.code_uid AND v.soa_id=c.soa_id
-        INNER JOIN ddf_terminology ddf ON c.codelist_code=ddf.codelist_code AND c.code=ddf.code
-        WHERE v.soa_id =? AND v.type=?
-        """,
+        "SELECT c.codelist_code, c.code "
+        "FROM visit v "
+        "INNER JOIN code_association c ON v.type=c.code_uid AND v.soa_id=c.soa_id "
+        "WHERE v.soa_id=? AND v.type=?",
         (soa_id, code_uid),
     )
     row = cur.fetchone()
     conn.close()
-    return row
+    if not row:
+        return None
+    codelist_code, code = row
+    term = get_ddf_ct_term(codelist_code, code)
+    if not term:
+        return None
+    return (term.get("submission_value") or "",)
 
 
 def get_latest_sdtm_ct_href(timeout: int = 10) -> str | None:
@@ -952,6 +946,11 @@ def get_latest_protocol_ct_href(timeout: int = 10) -> str | None:
     return _get_latest_ct_package_slug("protocolct", timeout=timeout)
 
 
+def get_latest_ddf_ct_href(timeout: int = 10) -> str | None:
+    """Return the href (slug) for the latest DDF CT package."""
+    return _get_latest_ct_package_slug("ddfct", timeout=timeout)
+
+
 def _get_ct_rows(
     cache: dict,
     ttl: int,
@@ -1101,6 +1100,52 @@ def get_protocol_ct_term(codelist_code: str, code: str) -> Optional[dict]:
     if not code:
         return None
     payload = get_protocol_ct_rows()
+    rows = payload.get("rows") or []
+    for r in rows:
+        if r.get("codelist_code") == codelist_code and r.get("code") == code:
+            return r
+    return None
+
+
+def get_ddf_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest DDF CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _ddf_ct_cache,
+        _DDF_CT_CACHE_TTL,
+        "DDF CT",
+        get_latest_ddf_ct_href,
+        force,
+        timeout,
+    )
+
+
+def get_ddf_ct_codelist_map(codelist_code: str) -> Dict[str, str]:
+    """Return {code: submission_value} for the given DDF CT codelist."""
+    payload = get_ddf_ct_rows()
+    rows = payload.get("rows") or []
+    return {
+        str(r.get("code") or ""): str(r.get("submission_value") or "")
+        for r in rows
+        if r.get("codelist_code") == codelist_code and r.get("code")
+    }
+
+
+def get_ddf_ct_codelist_map_by_submission(codelist_code: str) -> Dict[str, str]:
+    """Return {submission_value: code} for the given DDF CT codelist."""
+    payload = get_ddf_ct_rows()
+    rows = payload.get("rows") or []
+    return {
+        str(r.get("submission_value") or ""): str(r.get("code") or "")
+        for r in rows
+        if r.get("codelist_code") == codelist_code and r.get("submission_value")
+    }
+
+
+def get_ddf_ct_term(codelist_code: str, code: str) -> Optional[dict]:
+    """Return the term row for the given DDF codelist_code + term code, or None."""
+    if not code:
+        return None
+    payload = get_ddf_ct_rows()
     rows = payload.get("rows") or []
     for r in rows:
         if r.get("codelist_code") == codelist_code and r.get("code") == code:

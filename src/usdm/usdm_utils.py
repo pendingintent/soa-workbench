@@ -247,24 +247,39 @@ def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str
 def _get_data_origin_type_tuple(
     soa_id: int, code_uid: str
 ) -> Tuple[str, str, str, str]:
+    """Enrich ARM data-origin-type code_association rows via CDISC Library DDF CT."""
+    from soa_builder.web.utils import get_ddf_ct_rows, get_ddf_ct_term
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT DISTINCT c.codelist_table,d.code,d.cdisc_submission_value,d.dataset_date "
-        "FROM code_association c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
-        "AND c.code = d.code WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
+        "SELECT DISTINCT codelist_table, code, codelist_code "
+        "FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, code_uid),
     )
     rows = cur.fetchall()
     conn.close()
-    code_system = [r[0] for r in rows]
-    code_code = [r[1] for r in rows]
-    code_decode = [r[2] for r in rows]
-    code_system_version = [r[3] for r in rows]
 
+    payload = get_ddf_ct_rows()
+    slug = payload.get("slug") or ""
+    version = ""
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+
+    code_system: list = []
+    code_code: list = []
+    code_decode: list = []
+    code_system_version: list = []
+    for codelist_table, code, codelist_code in rows:
+        term = get_ddf_ct_term(codelist_code, code)
+        if not term:
+            continue
+        code_system.append(codelist_table)
+        code_code.append(code)
+        code_decode.append(term.get("submission_value") or "")
+        code_system_version.append(version)
     return code_code, code_decode, code_system, code_system_version
 
 
@@ -596,24 +611,39 @@ def _get_epoch_code_values(
 
 # Helpers for Study Timings
 def _get_timing_code_values(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
+    """Enrich timing code_association rows via CDISC Library DDF CT."""
+    from soa_builder.web.utils import get_ddf_ct_rows, get_ddf_ct_term
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT DISTINCT c.codelist_table,d.code,d.cdisc_submission_value,d.dataset_date "
-        "FROM code_association c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
-        "AND c.code = d.code WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
+        "SELECT DISTINCT codelist_table, code, codelist_code "
+        "FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, code_uid),
     )
     rows = cur.fetchall()
     conn.close()
-    code_system = [r[0] for r in rows]
-    code_code = [r[1] for r in rows]
-    code_decode = [r[2] for r in rows]
-    code_system_version = [r[3] for r in rows]
 
+    payload = get_ddf_ct_rows()
+    slug = payload.get("slug") or ""
+    version = ""
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+
+    code_system: list = []
+    code_code: list = []
+    code_decode: list = []
+    code_system_version: list = []
+    for codelist_table, code, codelist_code in rows:
+        term = get_ddf_ct_term(codelist_code, code)
+        if not term:
+            continue
+        code_system.append(codelist_table)
+        code_code.append(code)
+        code_decode.append(term.get("submission_value") or "")
+        code_system_version.append(version)
     return code_code, code_decode, code_system, code_system_version
 
 

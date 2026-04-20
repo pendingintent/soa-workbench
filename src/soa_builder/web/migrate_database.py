@@ -1733,3 +1733,20 @@ def _migrate_drop_protocol_terminology_tables():
         conn.close()
     except Exception as e:
         logger.warning("_migrate_drop_protocol_terminology_tables failed: %s", e)
+
+
+def _migrate_drop_ddf_terminology_tables():
+    """Drop the legacy ddf_terminology and ddf_terminology_audit tables.
+
+    DDF CT is now sourced live from the CDISC Library API, so these local
+    tables are obsolete. Idempotent.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("DROP TABLE IF EXISTS ddf_terminology")
+        cur.execute("DROP TABLE IF EXISTS ddf_terminology_audit")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_drop_ddf_terminology_tables failed: %s", e)

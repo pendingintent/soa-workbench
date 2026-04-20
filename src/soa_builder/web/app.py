@@ -12,7 +12,6 @@ import io
 import json
 import logging
 import os
-import re
 import re as _re
 import urllib.parse
 import tempfile
@@ -27,14 +26,12 @@ from dotenv import load_dotenv
 from fastapi import (
     BackgroundTasks,
     FastAPI,
-    File,
     Form,
     HTTPException,
     Request,
     Response,
-    UploadFile,
 )
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -42,7 +39,6 @@ from ..normalization import normalize_soa
 from .initialize_database import _connect, _init_db
 from .db import DB_PATH as _DB_PATH
 from .migrate_database import (
-    _backfill_dataset_date,
     _drop_unused_override_table,
     _migrate_activity_add_uid,
     _migrate_add_arm_uid,
@@ -86,6 +82,7 @@ from .migrate_database import (
     _migrate_add_activity_concept_dss_table,
     _migrate_activity_concept_dss_add_display,
     _migrate_drop_protocol_terminology_tables,
+    _migrate_drop_ddf_terminology_tables,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -112,6 +109,9 @@ from .routers import cdash_terminology as cdash_terminology_router
 from .routers import define_xml_terminology as define_xml_terminology_router
 from .routers import (
     protocol_controlled_terminology as protocol_controlled_terminology_router,
+)
+from .routers import (
+    ddf_controlled_terminology as ddf_controlled_terminology_router,
 )
 from .audit import _record_element_audit
 
@@ -227,7 +227,6 @@ _migrate_rollback_add_elements_restored()
 _migrate_activity_add_uid()
 _migrate_arm_add_type_fields()
 _migrate_element_audit_columns()
-_backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
 _migrate_truncate_biomedical_concept_property_data()
@@ -244,6 +243,7 @@ _migrate_activity_concept_add_concept_group_uid()
 _migrate_surrogate_add_concept_group_uid()
 _migrate_activity_surrogate_add_concept_group_uid()
 _migrate_drop_protocol_terminology_tables()
+_migrate_drop_ddf_terminology_tables()
 _migrate_add_activity_concept_dss_table()
 _migrate_activity_concept_dss_add_display()
 
@@ -277,6 +277,7 @@ app.include_router(sdtm_terminology_router.router)
 app.include_router(cdash_terminology_router.router)
 app.include_router(define_xml_terminology_router.router)
 app.include_router(protocol_controlled_terminology_router.router)
+app.include_router(ddf_controlled_terminology_router.router)
 
 
 def _record_visit_audit(
@@ -4384,26 +4385,25 @@ def ui_edit(request: Request, soa_id: int):
         opt.get("cdisc_submission_value") or "" for opt in protocol_terminology_C174222
     }
 
-    # DDF Terminology options for Arm type (C188727)
-    conn_ddft = _connect()
-    cur_ddft = conn_ddft.cursor()
-    cur_ddft.execute(
-        "SELECT cdisc_submission_value FROM ddf_terminology WHERE codelist_code = 'C188727' ORDER BY cdisc_submission_value"
-    )
+    # DDF Terminology options for Arm Data Origin Type (C188727) from CDISC Library
+    from .utils import get_ddf_ct_codelist_map as _get_ddf_ct_codelist_map
+
+    c188727_map = _get_ddf_ct_codelist_map("C188727")
     ddf_terminology_C188727 = [
-        {"cdisc_submission_value": r[0] or ""} for r in cur_ddft.fetchall()
+        {"cdisc_submission_value": sv}
+        for sv in sorted({v for v in c188727_map.values() if v})
     ]
-    conn_ddft.close()
     # Build mapping code_uid -> submission value (Arm dataOriginType C188727)
     conn_ddf_map = _connect()
     cur_ddf_map = conn_ddf_map.cursor()
     cur_ddf_map.execute(
-        "SELECT c.code_uid, dt.cdisc_submission_value "
-        "FROM code_association c JOIN ddf_terminology dt ON dt.code = c.code "
-        "WHERE c.soa_id=? AND c.codelist_code='C188727'",
+        "SELECT code_uid, code FROM code_association "
+        "WHERE soa_id=? AND codelist_code='C188727'",
         (soa_id,),
     )
-    ddf_code_to_submission = {row[0]: row[1] for row in cur_ddf_map.fetchall()}
+    ddf_code_to_submission = {
+        row[0]: c188727_map.get(row[1], "") for row in cur_ddf_map.fetchall()
+    }
     conn_ddf_map.close()
     ddf_submission_values = {
         ddf_opt.get("cdisc_submission_value") or ""
@@ -6104,633 +6104,6 @@ def ui_reorder_activities(request: Request, soa_id: int, order: str = Form("")):
     conn.close()
     _record_reorder_audit(soa_id, "activity", old_order, ids)
     return HTMLResponse("OK")
-
-
-# Sanitize column headers in the XLSX export
-def _sanitize_column(name: str) -> str:
-    """Sanitize Excel column header to safe SQLite identifier: lowercase, replace spaces & non-alnum with underscore, collapse repeats."""
-    import re
-
-    s = name.strip().lower()
-    s = re.sub(r"[^a-z0-9]+", "_", s)
-    s = re.sub(r"_+", "_", s).strip("_")
-    if not s:
-        s = "col"
-    return s
-
-
-# API to load new DDF Terminology spreadsheet
-def load_ddf_terminology(
-    file_path: str,
-    sheet_name: str = "DDF Terminology 2025-09-26",
-    source: str = "admin",
-    original_filename: Optional[str] = None,
-    file_hash: Optional[str] = None,
-) -> dict:
-    """Load DDF terminology Excel sheet into SQLite table `ddf_terminology`.
-    Recreates table each time (drop + create) for schema drift tolerance.
-    Records an audit entry in ddf_terminology_audit.
-    Returns dict with columns and row count.
-    """
-    # Extract dataset date ONLY from sheet_name (must contain YYYY-MM-DD).
-    _date_pattern = re.compile(r"(20\d{2}-\d{2}-\d{2})")
-    m = _date_pattern.search(sheet_name or "")
-    if not m:
-        raise HTTPException(
-            400,
-            "Sheet name must contain dataset date YYYY-MM-DD (e.g. 'DDF Terminology 2025-09-26')",
-        )
-    dataset_date = m.group(1)
-    if not os.path.exists(file_path):
-        # audit error record
-        _record_ddf_audit(
-            file_path=file_path,
-            sheet_name=sheet_name,
-            row_count=0,
-            column_count=0,
-            columns_json="[]",
-            source=source,
-            file_hash=file_hash,
-            error=f"File not found: {file_path}",
-            dataset_date=dataset_date,
-        )
-        raise HTTPException(400, f"File not found: {file_path}")
-    try:
-        df = pd.read_excel(file_path, sheet_name=sheet_name, dtype=str)
-    except Exception as e:
-        _record_ddf_audit(
-            file_path=file_path,
-            sheet_name=sheet_name,
-            row_count=0,
-            column_count=0,
-            columns_json="[]",
-            source=source,
-            file_hash=file_hash,
-            error=f"Read error: {e}",
-            dataset_date=dataset_date,
-        )
-        raise HTTPException(400, f"Failed reading Excel: {e}")
-    if df.empty:
-        _record_ddf_audit(
-            file_path=file_path,
-            sheet_name=sheet_name,
-            row_count=0,
-            column_count=0,
-            columns_json="[]",
-            source=source,
-            file_hash=file_hash,
-            error="Worksheet empty",
-            dataset_date=dataset_date,
-        )
-        raise HTTPException(400, "Worksheet is empty")
-    # Build sanitized headers, discarding any worksheet column that normalizes to 'dataset_date'.
-    raw_cols = list(df.columns)
-    pairs = []  # (raw, sanitized)
-    seen = set()
-    for c in raw_cols:
-        sc = _sanitize_column(str(c))
-        if sc == "dataset_date":
-            continue  # drop original dataset_date worksheet column; we inject a single synthetic one sourced from sheet name
-        base = sc
-        i = 2
-        while sc in seen:
-            sc = f"{base}_{i}"
-            i += 1
-        seen.add(sc)
-        pairs.append((c, sc))
-    sanitized = [sc for _, sc in pairs]
-    sanitized.append("dataset_date")  # single authoritative dataset date column
-    cols_sql = ", ".join(f"{c} TEXT" for c in sanitized)
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("DROP TABLE IF EXISTS ddf_terminology")
-    cur.execute(
-        f"CREATE TABLE ddf_terminology (id INTEGER PRIMARY KEY AUTOINCREMENT, {cols_sql})"
-    )
-    df = df.fillna("")
-    kept_raw_cols = [raw for raw, sc in pairs]
-    base_records = [
-        tuple(str(row[c]) for c in kept_raw_cols) for _, row in df.iterrows()
-    ]
-    # Append dataset_date value per row (same for all rows)
-    records = [r + (dataset_date,) for r in base_records]
-    placeholders = ",".join(["?"] * (len(kept_raw_cols) + 1))
-    cur.executemany(
-        f"INSERT INTO ddf_terminology ({','.join(sanitized)}) VALUES ({placeholders})",
-        records,
-    )
-    # Indexes for faster search/filter
-    try:
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_ddf_code ON ddf_terminology(code)")
-        if "cdisc_submission_value" in sanitized:
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ddf_submission ON ddf_terminology(cdisc_submission_value)"
-            )
-        if "codelist_name" in sanitized:
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ddf_codelist_name ON ddf_terminology(codelist_name)"
-            )
-    except Exception as ie:  # pragma: no cover
-        logger.warning("Failed creating DDF indexes: %s", ie)
-    conn.commit()
-    conn.close()
-    # Audit success
-    _record_ddf_audit(
-        file_path=file_path,
-        sheet_name=sheet_name,
-        row_count=len(records),
-        column_count=len(sanitized),
-        columns_json=json.dumps(sanitized),
-        source=source,
-        file_hash=file_hash,
-        error=None,
-        original_filename=original_filename or os.path.basename(file_path),
-        dataset_date=dataset_date,
-    )
-    return {"columns": sanitized, "row_count": len(records)}
-
-
-def _validate_terminology_path(file_path: str, project_root: str) -> str:
-    safe_root = os.path.realpath(os.path.join(project_root, "files"))
-    resolved = os.path.realpath(file_path)
-    if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
-        raise HTTPException(
-            400,
-            f"file_path must be within the project files directory. Got: {file_path}",
-        )
-    return resolved
-
-
-# UI endpoint to load DDF Terminology
-@app.post("/admin/load_ddf_terminology")
-def admin_load_ddf(
-    file_path: Optional[str] = None, sheet_name: str = "DDF Terminology 2025-09-26"
-):
-    """Admin endpoint to (re)load DDF terminology Excel sheet into SQLite."""
-    # Determine repo root (src/soa_builder/web/app.py -> ascend 3 levels to /src, then one more to project root)
-    project_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    )
-    candidates = [
-        os.path.join(
-            project_root, "files", "DDF_Terminology_2025-09-26.xls"
-        ),  # correct location
-        os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "files",
-            "DDF_Terminology_2025-09-26.xls",
-        ),  # previous wrong path for backward compatibility
-    ]
-    # If explicit file_path provided, prefer it
-    if file_path:
-        fp = _validate_terminology_path(file_path, project_root)
-    else:
-        fp = None
-        for c in candidates:
-            if os.path.exists(c):
-                fp = c
-                break
-        if fp is None:
-            raise HTTPException(
-                400, f"DDF terminology file not found in candidates: {candidates}"
-            )
-    # compute file hash for audit
-    try:
-        import hashlib
-
-        with open(fp, "rb") as fh:
-            file_hash = hashlib.sha256(fh.read()).hexdigest()
-    except Exception:
-        file_hash = None
-    result = load_ddf_terminology(
-        fp,
-        sheet_name=sheet_name,
-        source="admin",
-        original_filename=os.path.basename(fp),
-        file_hash=file_hash,
-    )
-    return JSONResponse(
-        {"ok": True, **result, "file_path": fp, "sheet_name": sheet_name}
-    )
-
-
-# API endpoint to display DDF Terminology from the `ddf_terminology`` database table
-@app.get("/ddf/terminology")
-def get_ddf_terminology(
-    search: Optional[str] = None,
-    code: Optional[str] = None,
-    codelist_name: Optional[str] = None,
-    codelist_code: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
-):
-    """Query DDF terminology rows.
-    Parameters:
-      - search: case-insensitive substring across selected text columns.
-      - code: exact match on primary code column (overrides search if provided).
-      - limit/offset: pagination controls (limit capped at 200).
-    Returns JSON with total_count, matched_count, rows, applied_filters.
-    """
-    limit = max(1, min(limit, 200))
-    offset = max(0, offset)
-    conn = _connect()
-    cur = conn.cursor()
-    # Ensure table exists
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='ddf_terminology'"
-    )
-    if not cur.fetchone():
-        conn.close()
-        raise HTTPException(
-            404,
-            "ddf_terminology table not found (load via POST /admin/load_ddf_terminology)",
-        )
-    # Column discovery
-    cur.execute("PRAGMA table_info(ddf_terminology)")
-    cols = [r[1] for r in cur.fetchall() if r[1] != "id"]
-    searchable = [
-        c
-        for c in cols
-        if c
-        in [
-            "code",
-            "cdisc_submission_value",
-            "cdisc_definition",
-            "cdisc_synonym_s",
-            "nci_preferred_term",
-            "codelist_name",
-            "codelist_code",
-        ]
-    ]
-    cur.execute("SELECT COUNT(*) FROM ddf_terminology")
-    total_count = cur.fetchone()[0]
-    params = []
-    where = []
-    if code:
-        where.append("code = ?")
-        params.append(code)
-    if codelist_name:
-        where.append("codelist_name = ?")
-        params.append(codelist_name)
-    if codelist_code:
-        where.append("codelist_code = ?")
-        params.append(codelist_code)
-    if (not code) and search:
-        pattern = f"%{search.lower()}%"
-        like_clauses = [f"LOWER({c}) LIKE ?" for c in searchable]
-        params.extend([pattern] * len(like_clauses))
-        where.append("(" + " OR ".join(like_clauses) + ")")
-    where_sql = " WHERE " + " AND ".join(where) if where else ""
-    count_sql = f"SELECT COUNT(*) FROM ddf_terminology{where_sql}"
-    cur.execute(count_sql, params)
-    matched_count = cur.fetchone()[0]
-    select_cols = ["id"] + cols
-    select_sql = f"SELECT {', '.join(select_cols)} FROM ddf_terminology{where_sql} ORDER BY code LIMIT ? OFFSET ?"
-    cur.execute(select_sql, params + [limit, offset])
-    rows_raw = cur.fetchall()
-    # Build dict rows
-    rows = []
-    for r in rows_raw:
-        d = {}
-        for idx, col in enumerate(select_cols):
-            d[col] = r[idx]
-        rows.append(d)
-    conn.close()
-    return {
-        "total_count": total_count,
-        "matched_count": matched_count,
-        "limit": limit,
-        "offset": offset,
-        "filters": {
-            "search": search,
-            "code": code,
-            "codelist_name": codelist_name,
-            "codelist_code": codelist_code,
-        },
-        "columns": select_cols,
-        "rows": rows,
-    }
-
-
-# UI endpoint to display DDF Terminology
-@app.get("/ui/ddf/terminology", response_class=HTMLResponse)
-def ui_ddf_terminology(
-    request: Request,
-    search: Optional[str] = None,
-    code: Optional[str] = None,
-    codelist_name: Optional[str] = None,
-    codelist_code: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
-    uploaded: Optional[str] = None,
-    error: Optional[str] = None,
-):
-    """Detail page to display loaded DDF terminology from the SQLite table"""
-    data = get_ddf_terminology(
-        search=search,
-        code=code,
-        codelist_name=codelist_name,
-        codelist_code=codelist_code,
-        limit=limit,
-        offset=offset,
-    )
-    return templates.TemplateResponse(
-        request,
-        "ddf_terminology.html",
-        {
-            **data,
-            "search": search or "",
-            "code": code or "",
-            "codelist_name": codelist_name or "",
-            "codelist_code": codelist_code or "",
-            "uploaded": uploaded,
-            "error": error,
-        },
-    )
-
-
-# UI endpoint to load new DDF Terminology
-@app.post("/ui/ddf/terminology/upload", response_class=HTMLResponse)
-def ui_ddf_upload(
-    request: Request,
-    sheet_name: str = Form("DDF Terminology 2025-09-26"),
-    file: UploadFile = File(...),
-):
-    """Upload an XLS/XLSX file and reload ddf_terminology table. Redirects back with status message."""
-    # Basic validation
-    filename = file.filename or "uploaded.xls"
-    if not (filename.lower().endswith(".xls") or filename.lower().endswith(".xlsx")):
-        return HTMLResponse(
-            "<script>window.location='/ui/ddf/terminology?error=Unsupported+file+type';</script>",
-            status_code=400,
-        )
-    try:
-        import tempfile
-
-        suffix = ".xls" if filename.lower().endswith(".xls") else ".xlsx"
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        contents = file.file.read()
-        tmp.write(contents)
-        tmp.flush()
-        tmp.close()
-        # hash
-        import hashlib
-
-        file_hash = hashlib.sha256(contents).hexdigest()
-        load_ddf_terminology(
-            tmp.name,
-            sheet_name=sheet_name,
-            source="upload",
-            original_filename=filename,
-            file_hash=file_hash,
-        )
-        return HTMLResponse(
-            "<script>window.location='/ui/ddf/terminology?uploaded=1';</script>"
-        )
-    except HTTPException as he:
-        return HTMLResponse(
-            f"<script>window.location='/ui/ddf/terminology?error={he.detail}';</script>",
-            status_code=400,
-        )
-    except Exception as e:
-        esc = str(e).replace("'", "").replace('"', "")
-        return HTMLResponse(
-            f"<script>window.location='/ui/ddf/terminology?error={esc}';</script>",
-            status_code=500,
-        )
-
-
-# API endpoint to record DDF Terminology Load
-def _record_ddf_audit(
-    file_path: str,
-    sheet_name: str,
-    row_count: int,
-    column_count: int,
-    columns_json: str,
-    source: str,
-    file_hash: Optional[str],
-    error: Optional[str],
-    original_filename: Optional[str] = None,
-    dataset_date: Optional[str] = None,
-):
-    """Insert audit row (create table if missing)."""
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS ddf_terminology_audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                loaded_at TEXT NOT NULL,
-                file_path TEXT,
-                original_filename TEXT,
-                sheet_name TEXT,
-                row_count INTEGER,
-                column_count INTEGER,
-                columns_json TEXT,
-                source TEXT,
-                file_hash TEXT,
-                error TEXT,
-                dataset_date TEXT
-            )"""
-        )
-        # Migration: ensure dataset_date column exists if table was created earlier without it.
-        cur.execute("PRAGMA table_info(ddf_terminology_audit)")
-        audit_cols = {r[1] for r in cur.fetchall()}
-        if "dataset_date" not in audit_cols:
-            try:
-                cur.execute(
-                    "ALTER TABLE ddf_terminology_audit ADD COLUMN dataset_date TEXT"
-                )
-            except Exception:
-                pass
-        cur.execute(
-            "INSERT INTO ddf_terminology_audit (loaded_at,file_path,original_filename,sheet_name,row_count,column_count,columns_json,source,file_hash,error,dataset_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (
-                datetime.now(timezone.utc).isoformat(),
-                file_path,
-                original_filename,
-                sheet_name,
-                row_count,
-                column_count,
-                columns_json,
-                source,
-                file_hash,
-                error,
-                dataset_date,
-            ),
-        )
-        # Index for future date filtering
-        try:
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ddf_audit_dataset_date ON ddf_terminology_audit(dataset_date)"
-            )
-        except Exception:
-            pass
-        conn.commit()
-        conn.close()
-    except Exception as e:  # pragma: no cover
-        logger.warning("Failed recording DDF audit: %s", e)
-
-
-# Helper function to return SQLite DDF Terminology table
-def _get_ddf_sources() -> List[str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='ddf_terminology_audit'"
-    )
-    if not cur.fetchone():
-        conn.close()
-        return []
-    cur.execute(
-        "SELECT DISTINCT source FROM ddf_terminology_audit WHERE source IS NOT NULL ORDER BY source"
-    )
-    sources = [r[0] for r in cur.fetchall()]
-    conn.close()
-    return sources
-
-
-# API endpoint to return DDF Terminology audits
-@app.get("/ddf/terminology/audit")
-def get_ddf_audit(
-    source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
-):
-    """Return audit report of DDF Terminology loads."""
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='ddf_terminology_audit'"
-    )
-    if not cur.fetchone():
-        conn.close()
-        return []
-    where_clauses = []
-    params: List[Any] = []
-
-    # Validate date inputs (YYYY-MM-DD)
-    def _valid_date(d: str) -> bool:
-        try:
-            datetime.strptime(d, "%Y-%m-%d")
-            return True
-        except Exception:
-            return False
-
-    if source:
-        where_clauses.append("source = ?")
-        params.append(source)
-    if start and _valid_date(start):
-        where_clauses.append("substr(loaded_at,1,10) >= ?")
-        params.append(start)
-    if end and _valid_date(end):
-        where_clauses.append("substr(loaded_at,1,10) <= ?")
-        params.append(end)
-    where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
-    cur.execute(
-        f"SELECT id,loaded_at,original_filename,file_path,sheet_name,row_count,column_count,source,file_hash,error,dataset_date FROM ddf_terminology_audit{where_sql} ORDER BY id DESC",
-        params,
-    )
-    rows = []
-    for r in cur.fetchall():
-        rows.append(
-            {
-                "id": r[0],
-                "loaded_at": r[1],
-                "original_filename": r[2],
-                "file_path": r[3],
-                "sheet_name": r[4],
-                "row_count": r[5],
-                "column_count": r[6],
-                "source": r[7],
-                "file_hash": r[8],
-                "error": r[9],
-                "dataset_date": r[10],
-            }
-        )
-    conn.close()
-    return {"rows": rows}
-
-
-# API endpoint to export DDF Terminology audit report in XLSX format
-@app.get("/ddf/terminology/audit/export.csv")
-def export_ddf_audit_csv(
-    source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
-):
-    """Export DDF terminology audit report in CSV format."""
-    rows = get_ddf_audit(source=source, start=start, end=end)
-    import csv
-    import io
-
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(
-        [
-            "id",
-            "loaded_at",
-            "source",
-            "original_filename",
-            "file_hash",
-            "row_count",
-            "column_count",
-            "sheet_name",
-            "error",
-        ]
-    )
-    for r in rows:
-        writer.writerow(
-            [
-                r["id"],
-                r["loaded_at"],
-                r["source"],
-                r["original_filename"],
-                r["file_hash"],
-                r["row_count"],
-                r["column_count"],
-                r["sheet_name"],
-                r["error"] or "",
-            ]
-        )
-    csv_data = buf.getvalue()
-    return Response(
-        content=csv_data,
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=ddf_terminology_audit.csv"
-        },
-    )
-
-
-# API endpoint to export DDF Terminology audit report in JSON format
-@app.get("/ddf/terminology/audit/export.json")
-def export_ddf_audit_json(
-    source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
-):
-    """Export DDF terminology audit report in JSON format."""
-    return get_ddf_audit(source=source, start=start, end=end)
-
-
-# UI endpoint to display DDF terminology audits
-@app.get("/ui/ddf/terminology/audit", response_class=HTMLResponse)
-def ui_ddf_audit(
-    request: Request,
-    source: Optional[str] = None,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
-):
-    """Display audit report of DDF Terminology loads"""
-    rows = get_ddf_audit(source=source, start=start, end=end)
-    sources = _get_ddf_sources()
-    return templates.TemplateResponse(
-        request,
-        "ddf_terminology_audit.html",
-        {
-            "rows": rows,
-            "count": len(rows),
-            "sources": sources,
-            "current_source": source or "",
-            "start": start or "",
-            "end": end or "",
-        },
-    )
 
 
 def main():
