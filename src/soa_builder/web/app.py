@@ -71,6 +71,7 @@ from .migrate_database import (
     _migrate_biomedical_concept_audit,
     _migrate_backfill_biomedical_concept_codes,
     _migrate_truncate_biomedical_concept_property_data,
+    _migrate_repoint_stale_bc_code_chains,
     _migrate_add_soa_id_indexes,
     _migrate_add_footnote_table,
     _migrate_add_footnote_audit_table,
@@ -224,6 +225,7 @@ _backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
 _migrate_truncate_biomedical_concept_property_data()
+_migrate_repoint_stale_bc_code_chains()
 _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
 _migrate_add_footnote_audit_table()
@@ -2732,14 +2734,14 @@ def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
         cur = conn.cursor()
         cur.execute(
             """
-            UPDATE biomedical_concept SET label=?, description=?
+            UPDATE biomedical_concept SET name=?, label=?, description=?
             WHERE soa_id=?
               AND biomedical_concept_uid IN (
                   SELECT concept_uid FROM activity_concept
                   WHERE soa_id=? AND concept_code=? AND concept_uid IS NOT NULL
               )
             """,
-            (label, description, soa_id, soa_id, concept_code),
+            (label, label, description, soa_id, soa_id, concept_code),
         )
         conn.commit()
     except Exception:

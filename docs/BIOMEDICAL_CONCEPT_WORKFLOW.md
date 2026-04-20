@@ -2,10 +2,12 @@
 
 Assumes that the Activties and Scheduled Activity Instances have been created to form the SOA Matrix.
 
-![Activities linked with Concepts](../src/soa_builder/web/static/images/image-1.png)
+![Activities with assigned biomedical concepts](../src/soa_builder/web/static/images/activities_w_bcs.png)
 
 
 ## Assign Biomedical Concept to an Activity
+
+Individual Biomedical Concepts can be assigned to an Activity or they can be assigned by Biomedical Concept Group.  
 
 ![Add Biomedical Concept from CDISC Library](../src/soa_builder/web/static/images/image-4.png)
 
@@ -17,317 +19,11 @@ Hovering the cursor over a Biomedical Concept (BC) will display the C code for t
 
 C25298 is the C Code for Systolic Blood Pressure.
 
-In the DSS (Data Set Specialization) column, the SDTM DSS values corresponding to the C Code of the Biomedical Concept is automagically mapped in the background.  This is done using the CDISC Library API: https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/datasetspecializations?biomedicalconcept=C25298
+In the DSS (Data Set Specialization) column, the SDTM DSS values corresponding to the C Code of the Biomedical Concept are shown in the dropdown next to the biomedical concept C-code.  This is done using the CDISC Library API: https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/datasetspecializations?biomedicalconcept=C25298
 
+![Adding Data Set Specialization](../src/soa_builder/web/static/images/adding_dss.png)
 
-Response:
-
-```JSON
-{
-    "_links": {
-        "datasetSpecializations": {
-            "sdtm": [
-                {
-                    "href": "/mdr/specializations/sdtm/datasetspecializations/SYSBP",
-                    "title": "Systolic Blood Pressure",
-                    "type": "SDTM Dataset Specialization"
-                },
-                {
-                    "href": "/mdr/specializations/sdtm/datasetspecializations/SYSBP_EXT",
-                    "title": "Systolic Blood Pressure Extended",
-                    "type": "SDTM Dataset Specialization"
-                }
-            ]
-        },
-        "self": {
-            "href": "/mdr/specializations/datasetspecializations?biomedicalconcept=C25298",
-            "title": "Dataset Specializations that specialize a Biomedical Concept",
-            "type": "Dataset Specializations List"
-        },
-        "parentBiomedicalConcept": {
-            "href": "/mdr/bc/biomedicalconcepts/C25298",
-            "title": "Systolic Blood Pressure",
-            "type": "Biomedical Concept"
-        }
-    },
-    "name": "Dataset Specializations (latest version)",
-    "label": "Dataset Specializations List"
-}
-```
-The `href` attribute has the value **/mdr/specializations/sdtm/datasetspecializations/SYSBP**.  This is then used by the application to retrieve the SDTM data set specialization and corresponding data element concepts: https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/datasetspecializations/SYSBP
-
-Response:
-
-```JSON
-{
-    "_links": {
-        "parentBiomedicalConcept": {
-            "href": "/mdr/bc/biomedicalconcepts/C25298",
-            "title": "Systolic Blood Pressure",
-            "type": "Biomedical Concept"
-        },
-        "parentPackage": {
-            "href": "/mdr/specializations/sdtm/packages/2025-04-01/datasetspecializations",
-            "title": "SDTM Dataset Specialization Package Effective 2025-04-01",
-            "type": "SDTM Dataset Specialization Package"
-        },
-        "self": {
-            "href": "/mdr/specializations/sdtm/datasetspecializations/SYSBP",
-            "title": "Systolic Blood Pressure",
-            "type": "SDTM Dataset Specialization"
-        }
-    },
-    "datasetSpecializationId": "SYSBP",
-    "domain": "VS",
-    "shortName": "Systolic Blood Pressure",
-    "source": "VS.VSTESTCD",
-    "sdtmigStartVersion": "3-2",
-    "sdtmigEndVersion": "",
-    "variables": [
-        {
-            "name": "VSTESTCD",
-            "isNonStandard": false,
-            "codelist": {
-                "conceptId": "C66741",
-                "submissionValue": "VSTESTCD",
-                "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C66741"
-            },
-            "assignedTerm": {
-                "conceptId": "C25298",
-                "value": "SYSBP"
-            },
-            "role": "Topic",
-            "relationship": {
-                "subject": "VSTESTCD",
-                "linkingPhrase": "is the code for the value in",
-                "predicateTerm": "IS_DECODED_BY",
-                "object": "VSTEST"
-            },
-            "mandatoryVariable": true,
-            "mandatoryValue": false,
-            "comparator": "EQ"
-        },
-        {
-            "name": "VSTEST",
-            "isNonStandard": false,
-            "codelist": {
-                "conceptId": "C67153",
-                "submissionValue": "VSTEST",
-                "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C67153"
-            },
-            "assignedTerm": {
-                "conceptId": "C25298",
-                "value": "Systolic Blood Pressure"
-            },
-            "role": "Qualifier",
-            "relationship": {
-                "subject": "VSTEST",
-                "linkingPhrase": "decodes the value in",
-                "predicateTerm": "DECODES",
-                "object": "VSTESTCD"
-            },
-            "mandatoryVariable": true,
-            "mandatoryValue": false
-        },
-        {
-            "name": "VSORRES",
-            "dataElementConceptId": "C70856",
-            "isNonStandard": false,
-            "role": "Qualifier",
-            "dataType": "integer",
-            "length": 3,
-            "relationship": {
-                "subject": "VSORRES",
-                "linkingPhrase": "is the result of the test in",
-                "predicateTerm": "IS_RESULT_OF",
-                "object": "VSTESTCD"
-            },
-            "mandatoryVariable": true,
-            "mandatoryValue": false,
-            "originType": "Collected",
-            "originSource": "Investigator",
-            "vlmTarget": true
-        },
-        {
-            "name": "VSORRESU",
-            "dataElementConceptId": "C49669",
-            "isNonStandard": false,
-            "codelist": {
-                "conceptId": "C66770",
-                "submissionValue": "VSRESU",
-                "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C66770"
-            },
-            "assignedTerm": {
-                "conceptId": "C49670",
-                "value": "mmHg"
-            },
-            "role": "Qualifier",
-            "relationship": {
-                "subject": "VSORRESU",
-                "linkingPhrase": "is the unit for the value in",
-                "predicateTerm": "IS_UNIT_FOR",
-                "object": "VSORRES"
-            },
-            "mandatoryVariable": true,
-            "mandatoryValue": false,
-            "vlmTarget": true
-        },
-        {
-            "name": "VSSTRESC",
-            "dataElementConceptId": "C70856",
-            "isNonStandard": false,
-            "role": "Qualifier",
-            "dataType": "integer",
-            "length": 3,
-            "relationship": {
-                "subject": "VSSTRESC",
-                "linkingPhrase": "is the result of the test in",
-                "predicateTerm": "IS_RESULT_OF",
-                "object": "VSTESTCD"
-            },
-            "mandatoryVariable": false,
-            "mandatoryValue": false,
-            "vlmTarget": true
-        },
-        {
-            "name": "VSSTRESN",
-            "dataElementConceptId": "C70856",
-            "isNonStandard": false,
-            "role": "Qualifier",
-            "dataType": "integer",
-            "length": 3,
-            "relationship": {
-                "subject": "VSSTRESN",
-                "linkingPhrase": "is the result of the test in",
-                "predicateTerm": "IS_RESULT_OF",
-                "object": "VSTESTCD"
-            },
-            "mandatoryVariable": false,
-            "mandatoryValue": false,
-            "vlmTarget": true
-        },
-        {
-            "name": "VSSTRESU",
-            "dataElementConceptId": "C49669",
-            "isNonStandard": false,
-            "codelist": {
-                "conceptId": "C66770",
-                "submissionValue": "VSRESU",
-                "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C66770"
-            },
-            "assignedTerm": {
-                "conceptId": "C49670",
-                "value": "mmHg"
-            },
-            "role": "Qualifier",
-            "relationship": {
-                "subject": "VSSTRESU",
-                "linkingPhrase": "is the unit for the value in",
-                "predicateTerm": "IS_UNIT_FOR",
-                "object": "VSSTRESN"
-            },
-            "mandatoryVariable": false,
-            "mandatoryValue": false,
-            "vlmTarget": true
-        },
-        {
-            "name": "VSPOS",
-            "dataElementConceptId": "C62164",
-            "isNonStandard": false,
-            "codelist": {
-                "conceptId": "C71148",
-                "submissionValue": "POSITION",
-                "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C71148"
-            },
-            "valueList": [
-                "PRONE",
-                "SEMI-RECUMBENT",
-                "SITTING",
-                "STANDING",
-                "SUPINE"
-            ],
-            "role": "Qualifier",
-            "relationship": {
-                "subject": "VSPOS",
-                "linkingPhrase": "is the subject position during performance of the test in",
-                "predicateTerm": "IS_SUBJECT_STATE_FOR",
-                "object": "VSTESTCD"
-            },
-            "mandatoryVariable": false,
-            "mandatoryValue": false,
-            "comparator": "IN"
-        },
-        {
-            "name": "VSLOC",
-            "dataElementConceptId": "C13717",
-            "isNonStandard": false,
-            "codelist": {
-                "conceptId": "C74456",
-                "submissionValue": "LOC",
-                "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C74456"
-            },
-            "valueList": [
-                "BRACHIAL ARTERY",
-                "CAROTID ARTERY",
-                "DORSALIS PEDIS ARTERY",
-                "FEMORAL ARTERY",
-                "FINGER",
-                "PERIPHERAL ARTERY",
-                "RADIAL ARTERY"
-            ],
-            "role": "Qualifier",
-            "relationship": {
-                "subject": "VSLOC",
-                "linkingPhrase": "specifies the anatomical location of the performance of the test in",
-                "predicateTerm": "SPECIFIES",
-                "object": "VSTESTCD"
-            },
-            "mandatoryVariable": false,
-            "mandatoryValue": false,
-            "comparator": "IN"
-        },
-        {
-            "name": "VSLAT",
-            "dataElementConceptId": "C25185",
-            "isNonStandard": false,
-            "codelist": {
-                "conceptId": "C99073",
-                "submissionValue": "LAT",
-                "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C99073"
-            },
-            "subsetCodelist": "VSLAT_BP",
-            "valueList": [
-                "LEFT",
-                "RIGHT"
-            ],
-            "role": "Qualifier",
-            "relationship": {
-                "subject": "VSLAT",
-                "linkingPhrase": "further specifies the anatomical location in",
-                "predicateTerm": "SPECIFIES",
-                "object": "VSLOC"
-            },
-            "mandatoryVariable": false,
-            "mandatoryValue": false,
-            "comparator": "IN"
-        },
-        {
-            "name": "VSDTC",
-            "dataElementConceptId": "C82515",
-            "isNonStandard": false,
-            "role": "Timing",
-            "relationship": {
-                "subject": "VSDTC",
-                "linkingPhrase": "is the date of occurrence for",
-                "predicateTerm": "IS_TIMING_FOR",
-                "object": "VSTESTCD"
-            },
-            "mandatoryVariable": true,
-            "mandatoryValue": false
-        }
-    ]
-}
-```
+If more than one data set Specialization is associated with a Biomedical Concept, all options are listed in the dropdown.  This is shown in the image above for `Activity_18`, where there are three DSS available for the Biomedical Concept `Concomitant Therapy`, C-code C53630.
 
 ## Assign Biomedical Concept Surrogate to an Activity
 
@@ -405,8 +101,170 @@ These Surrogates are shown in the USDM JSON associated with their Scheduled Acti
     "instanceType": "BiomedicalConceptSurrogate"
     },
 ```
+## Using CDISC Library API response to map to USDM JSON.
 
-Since there is no C Code associated with the Biomedical Concept Surrogate, there are no corresponding Data Set Specialization defined so there is no automagic mapping as seen with the Library Biomedical Concepts.
+
+
+
+
+### CDISC Library API response for C-code C16809 (Magnetic Resonance Imaging), 
+
+```json
+{
+    "_links": {
+        "parentBiomedicalConcept": {
+            "href": "/mdr/bc/biomedicalconcepts/C16502",
+            "title": "Diagnostic Imaging Testing",
+            "type": "Biomedical Concept"
+        },
+        "parentPackage": {
+            "href": "/mdr/bc/packages/2023-12-12/biomedicalconcepts",
+            "title": "Biomedical Concept Package Effective 2023-12-12",
+            "type": "Biomedical Concept Package"
+        },
+        "self": {
+            "href": "/mdr/bc/biomedicalconcepts/C16809",
+            "title": "Magnetic Resonance Imaging",
+            "type": "Biomedical Concept"
+        }
+    },
+    "conceptId": "C16809",
+    "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C16809",
+    "categories": [
+        "Diagnostic Imaging",
+        "Medical Imaging"
+    ],
+    "shortName": "Magnetic Resonance Imaging",
+    "synonyms": [
+        "Magnetic Resonance",
+        "MRI",
+        "MRI Scan",
+        "NMR",
+        "NMR Imaging"
+    ],
+    "resultScales": [
+        "Nominal"
+    ],
+    "definition": "Imaging that uses radiofrequency waves and a strong magnetic field rather than x-rays to provide detailed pictures of internal organs and tissues. The technique is valuable for the diagnosis of many pathologic conditions, including cancer, heart and vascular disease, stroke, and joint and musculoskeletal disorders.",
+    "dataElementConcepts": [
+        {
+            "conceptId": "C117511",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C117511",
+            "shortName": "Reported Name of Procedure",
+            "dataType": "string",
+            "ncitCode": "C117511"
+        },
+        {
+            "conceptId": "C117512",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C117512",
+            "shortName": "Standardized Name of Procedure",
+            "dataType": "string",
+            "ncitCode": "C117512"
+        },
+        {
+            "conceptId": "C25372",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C25372",
+            "shortName": "Category",
+            "dataType": "string",
+            "ncitCode": "C25372"
+        },
+        {
+            "conceptId": "C25692",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C25692",
+            "shortName": "Subcategory",
+            "dataType": "string",
+            "ncitCode": "C25692"
+        },
+        {
+            "conceptId": "C171000",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C171000",
+            "shortName": "Prespecified Event or Intervention Indicator",
+            "dataType": "boolean",
+            "exampleSet": [
+                "Y",
+                "N"
+            ],
+            "ncitCode": "C171000"
+        },
+        {
+            "conceptId": "C127786",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C127786",
+            "shortName": "Occurrence Indicator",
+            "dataType": "boolean",
+            "exampleSet": [
+                "Y",
+                "N"
+            ],
+            "ncitCode": "C127786"
+        },
+        {
+            "conceptId": "C13717",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C13717",
+            "shortName": "Anatomic Site",
+            "dataType": "string",
+            "exampleSet": [
+                "Brain",
+                "Spine",
+                "Bone",
+                "Soft Tissue of Joints"
+            ],
+            "ncitCode": "C13717"
+        },
+        {
+            "conceptId": "C25185",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C25185",
+            "shortName": "Laterality",
+            "dataType": "string",
+            "exampleSet": [
+                "Right",
+                "Left",
+                "Bilateral"
+            ],
+            "ncitCode": "C25185"
+        },
+        {
+            "conceptId": "C54215",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C54215",
+            "shortName": "Directionality",
+            "dataType": "string",
+            "exampleSet": [
+                "Inner",
+                "Outer",
+                "Anterior",
+                "Dorsal"
+            ],
+            "ncitCode": "C54215"
+        },
+        {
+            "conceptId": "C117529",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C117529",
+            "shortName": "Start Date and Time of Procedure",
+            "dataType": "datetime",
+            "ncitCode": "C117529"
+        },
+        {
+            "conceptId": "C117530",
+            "href": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C117530",
+            "shortName": "End Date and Time of Procedure",
+            "dataType": "datetime",
+            "ncitCode": "C117530"
+        }
+    ],
+    "ncitCode": "C16809"
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
