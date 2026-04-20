@@ -208,25 +208,39 @@ def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
 
 # Helper for Arms
 def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
-    """Fetch type codes for ARMS only.  These values are stored in the protocol_terminology table."""
+    """Fetch ARM type codes enriched from CDISC Library Protocol CT."""
+    from soa_builder.web.utils import get_protocol_ct_rows, get_protocol_ct_term
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT DISTINCT c.codelist_table, p.code,p.cdisc_submission_value,p.dataset_date "
-        "FROM code_association c INNER JOIN protocol_terminology p ON c.codelist_code = p.codelist_code "
-        "AND c.code = p.code WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
+        "SELECT DISTINCT codelist_table, code, codelist_code "
+        "FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, code_uid),
     )
     rows = cur.fetchall()
     conn.close()
-    code_system = [r[0] for r in rows]
-    code_code = [r[1] for r in rows]
-    code_decode = [r[2] for r in rows]
-    code_system_version = [r[3] for r in rows]
 
+    payload = get_protocol_ct_rows()
+    slug = payload.get("slug") or ""
+    version = ""
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+
+    code_system: list = []
+    code_code: list = []
+    code_decode: list = []
+    code_system_version: list = []
+    for codelist_table, code, codelist_code in rows:
+        term = get_protocol_ct_term(codelist_code, code)
+        if not term:
+            continue
+        code_system.append(codelist_table)
+        code_code.append(code)
+        code_decode.append(term.get("submission_value") or "")
+        code_system_version.append(version)
     return code_code, code_decode, code_system, code_system_version
 
 

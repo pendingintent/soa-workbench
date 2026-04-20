@@ -1715,3 +1715,21 @@ def _migrate_activity_concept_dss_add_display():
         conn.close()
     except Exception as e:
         logger.warning("_migrate_activity_concept_dss_add_display failed: %s", e)
+
+
+def _migrate_drop_protocol_terminology_tables():
+    """Drop the legacy protocol_terminology and protocol_terminology_audit tables.
+
+    Protocol CT is now sourced live from the CDISC Library API, so these
+    local tables are obsolete. Idempotent: DROP TABLE IF EXISTS is safe to
+    re-run on an already-clean database.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("DROP TABLE IF EXISTS protocol_terminology")
+        cur.execute("DROP TABLE IF EXISTS protocol_terminology_audit")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_drop_protocol_terminology_tables failed: %s", e)

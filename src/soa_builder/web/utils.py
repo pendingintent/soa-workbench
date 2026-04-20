@@ -51,6 +51,26 @@ _cdash_ct_cache: dict[str, Any] = {
 }
 _CDASH_CT_CACHE_TTL = 60 * 60  # 1 hour
 
+_define_xml_ct_cache: dict[str, Any] = {
+    "slug": None,
+    "rows": None,
+    "codelist_count": 0,
+    "fetched_at": 0,
+    "last_error": None,
+    "last_status": None,
+}
+_DEFINE_XML_CT_CACHE_TTL = 60 * 60  # 1 hour
+
+_protocol_ct_cache: dict[str, Any] = {
+    "slug": None,
+    "rows": None,
+    "codelist_count": 0,
+    "fetched_at": 0,
+    "last_error": None,
+    "last_status": None,
+}
+_PROTOCOL_CT_CACHE_TTL = 60 * 60  # 1 hour
+
 
 # Constants for the helper function
 _ISO_DURATION_RE = re.compile(
@@ -234,21 +254,8 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
 
 # Function for creating {code: submission_value} for Arm type selector
 def load_arm_type_map() -> Dict[str, str]:
-    """Fetch Arm Type term mapping from the protocol_terminology database table"""
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT code,cdisc_submission_value FROM protocol_terminology
-        WHERE codelist_code='C174222'
-        ORDER BY cdisc_submission_value
-        """
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return {
-        str(code): str(sv) for (code, sv) in rows if code is not None and sv is not None
-    }
+    """Fetch Arm Type (C174222) term mapping from CDISC Library Protocol CT."""
+    return get_protocol_ct_codelist_map("C174222")
 
 
 # Function for creating {code: submission_value} for Arm dataOriginType selector
@@ -875,10 +882,13 @@ def _get_latest_ct_package_slug(prefix: str, timeout: int = 10) -> str | None:
     lead = f"{prefix.lower()}-"
 
     def _extract_date(name: str) -> tuple:
-        parts = name.split("-")
-        if len(parts) >= 4 and parts[0].lower() == prefix.lower():
+        if not name.lower().startswith(lead):
+            return (0, 0, 0)
+        rest = name[len(lead) :]
+        parts = rest.split("-")
+        if len(parts) >= 3:
             try:
-                return int(parts[1]), int(parts[2]), int(parts[3])
+                return int(parts[0]), int(parts[1]), int(parts[2])
             except ValueError:
                 pass
         return (0, 0, 0)
@@ -930,6 +940,16 @@ def _get_latest_ct_package_slug(prefix: str, timeout: int = 10) -> str | None:
 def get_latest_cdash_ct_href(timeout: int = 10) -> str | None:
     """Return the href (slug) for the latest CDASH CT package."""
     return _get_latest_ct_package_slug("cdashct", timeout=timeout)
+
+
+def get_latest_define_xml_ct_href(timeout: int = 10) -> str | None:
+    """Return the href (slug) for the latest Define-XML CT package."""
+    return _get_latest_ct_package_slug("define-xmlct", timeout=timeout)
+
+
+def get_latest_protocol_ct_href(timeout: int = 10) -> str | None:
+    """Return the href (slug) for the latest Protocol CT package."""
+    return _get_latest_ct_package_slug("protocolct", timeout=timeout)
 
 
 def _get_ct_rows(
@@ -1036,6 +1056,56 @@ def get_cdash_ct_rows(force: bool = False, timeout: int = 30) -> dict:
         force,
         timeout,
     )
+
+
+def get_define_xml_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest Define-XML CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _define_xml_ct_cache,
+        _DEFINE_XML_CT_CACHE_TTL,
+        "Define-XML CT",
+        get_latest_define_xml_ct_href,
+        force,
+        timeout,
+    )
+
+
+def get_protocol_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest Protocol CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _protocol_ct_cache,
+        _PROTOCOL_CT_CACHE_TTL,
+        "Protocol CT",
+        get_latest_protocol_ct_href,
+        force,
+        timeout,
+    )
+
+
+def get_protocol_ct_codelist_map(codelist_code: str) -> Dict[str, str]:
+    """Return {code: submission_value} for the given Protocol CT codelist.
+
+    Uses the cached Protocol CT package. Empty dict on fetch failure.
+    """
+    payload = get_protocol_ct_rows()
+    rows = payload.get("rows") or []
+    return {
+        str(r.get("code") or ""): str(r.get("submission_value") or "")
+        for r in rows
+        if r.get("codelist_code") == codelist_code and r.get("code")
+    }
+
+
+def get_protocol_ct_term(codelist_code: str, code: str) -> Optional[dict]:
+    """Return the term row for the given codelist_code + term code, or None."""
+    if not code:
+        return None
+    payload = get_protocol_ct_rows()
+    rows = payload.get("rows") or []
+    for r in rows:
+        if r.get("codelist_code") == codelist_code and r.get("code") == code:
+            return r
+    return None
 
 
 def get_encounter_environment_sv(soa_id: int, code_uid: str):
