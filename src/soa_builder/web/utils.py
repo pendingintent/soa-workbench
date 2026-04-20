@@ -41,6 +41,16 @@ _sdtm_ct_cache: dict[str, Any] = {
 }
 _SDTM_CT_CACHE_TTL = 60 * 60  # 1 hour
 
+_cdash_ct_cache: dict[str, Any] = {
+    "slug": None,
+    "rows": None,
+    "codelist_count": 0,
+    "fetched_at": 0,
+    "last_error": None,
+    "last_status": None,
+}
+_CDASH_CT_CACHE_TTL = 60 * 60  # 1 hour
+
 
 # Constants for the helper function
 _ISO_DURATION_RE = re.compile(
@@ -789,7 +799,7 @@ def get_latest_sdtm_ct_href(timeout: int = 10) -> str | None:
     return latest
 
 
-def _sdtm_ct_auth_headers() -> dict[str, str]:
+def _ct_auth_headers() -> dict[str, str]:
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     api_key = os.environ.get("CDISC_API_KEY") or subscription_key
@@ -801,7 +811,7 @@ def _sdtm_ct_auth_headers() -> dict[str, str]:
     return headers
 
 
-def _flatten_sdtm_ct_package(payload: Any) -> tuple[list[dict], int]:
+def _flatten_ct_package(payload: Any) -> tuple[list[dict], int]:
     """Flatten a CDISC CT package payload into a list of term rows.
 
     Returns (rows, codelist_count). Parses defensively so HAL-style
@@ -855,108 +865,139 @@ def _flatten_sdtm_ct_package(payload: Any) -> tuple[list[dict], int]:
     return rows, len(codelists)
 
 
-def get_sdtm_ct_rows(force: bool = False, timeout: int = 30) -> dict:
-    """Fetch and cache the latest SDTM CT package, flattened to term rows.
+def _get_latest_ct_package_slug(prefix: str, timeout: int = 10) -> str | None:
+    """Return the latest CT package slug matching `<prefix>-YYYY-MM-DD`.
 
-    Returns a dict with keys:
-      slug, rows, codelist_count, error, fetched_at
-    On failure, rows is [] and error is populated (never raises).
+    `prefix` is the lower-case package family, e.g. "sdtmct" or "cdashct".
+    """
+    url = "https://library.cdisc.org/api/mdr/ct/packages"
+    headers = _ct_auth_headers()
+    lead = f"{prefix.lower()}-"
+
+    def _extract_date(name: str) -> tuple:
+        parts = name.split("-")
+        if len(parts) >= 4 and parts[0].lower() == prefix.lower():
+            try:
+                return int(parts[1]), int(parts[2]), int(parts[3])
+            except ValueError:
+                pass
+        return (0, 0, 0)
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=timeout)
+        if resp.status_code != 200:
+            return None
+        payload = resp.json() or {}
+    except Exception:
+        return None
+
+    packages: list = []
+    if isinstance(payload, list):
+        packages = payload
+    elif isinstance(payload, dict):
+        packages = (
+            payload.get("packages")
+            or payload.get("_embedded", {}).get("packages")
+            or payload.get("items")
+            or payload.get("_links", {}).get("packages")
+            or []
+        )
+
+    latest = None
+    latest_date = (0, 0, 0)
+    for pkg in packages:
+        if not isinstance(pkg, dict):
+            continue
+        raw_href = (
+            pkg.get("href")
+            or pkg.get("url")
+            or pkg.get("_links", {}).get("self", {}).get("href")
+        )
+        title = pkg.get("name") or pkg.get("packageName") or pkg.get("title") or ""
+        segment = (raw_href or "").rstrip("/").split("/")[-1]
+        name = (segment or title).lower()
+        if not name.startswith(lead):
+            continue
+        date_tuple = _extract_date(name)
+        if date_tuple <= latest_date:
+            continue
+        latest = name
+        latest_date = date_tuple
+
+    return latest
+
+
+def get_latest_cdash_ct_href(timeout: int = 10) -> str | None:
+    """Return the href (slug) for the latest CDASH CT package."""
+    return _get_latest_ct_package_slug("cdashct", timeout=timeout)
+
+
+def _get_ct_rows(
+    cache: dict,
+    ttl: int,
+    label: str,
+    get_slug_fn,
+    force: bool,
+    timeout: int,
+) -> dict:
+    """Fetch, flatten, and cache a CDISC CT package payload.
+
+    Returns { slug, rows, codelist_count, error, fetched_at } and never raises.
     """
     now = time.time()
-    if (
-        not force
-        and _sdtm_ct_cache["rows"] is not None
-        and now - _sdtm_ct_cache["fetched_at"] < _SDTM_CT_CACHE_TTL
-    ):
+    if not force and cache["rows"] is not None and now - cache["fetched_at"] < ttl:
         return {
-            "slug": _sdtm_ct_cache["slug"],
-            "rows": _sdtm_ct_cache["rows"],
-            "codelist_count": _sdtm_ct_cache["codelist_count"],
-            "error": _sdtm_ct_cache["last_error"],
-            "fetched_at": _sdtm_ct_cache["fetched_at"],
+            "slug": cache["slug"],
+            "rows": cache["rows"],
+            "codelist_count": cache["codelist_count"],
+            "error": cache["last_error"],
+            "fetched_at": cache["fetched_at"],
         }
 
-    slug = get_latest_sdtm_ct_href(timeout=timeout)
-    if not slug:
-        err = "Could not discover latest SDTM CT package from CDISC Library."
-        _sdtm_ct_cache.update(
-            slug=None,
+    def _fail(err: str, slug: str | None, status: int | None) -> dict:
+        cache.update(
+            slug=slug,
             rows=[],
             codelist_count=0,
             fetched_at=now,
             last_error=err,
-            last_status=None,
+            last_status=status,
         )
         return {
-            "slug": None,
+            "slug": slug,
             "rows": [],
             "codelist_count": 0,
             "error": err,
             "fetched_at": now,
         }
 
+    slug = get_slug_fn(timeout=timeout)
+    if not slug:
+        return _fail(
+            f"Could not discover latest {label} package from CDISC Library.",
+            None,
+            None,
+        )
+
     url = f"https://library.cdisc.org/api/mdr/ct/packages/{slug}"
-    headers = _sdtm_ct_auth_headers()
+    headers = _ct_auth_headers()
     try:
         resp = requests.get(url, headers=headers, timeout=timeout)
     except Exception as exc:
-        err = f"SDTM CT request failed: {exc}"
-        _sdtm_ct_cache.update(
-            slug=slug,
-            rows=[],
-            codelist_count=0,
-            fetched_at=now,
-            last_error=err,
-            last_status=None,
-        )
-        return {
-            "slug": slug,
-            "rows": [],
-            "codelist_count": 0,
-            "error": err,
-            "fetched_at": now,
-        }
+        return _fail(f"{label} request failed: {exc}", slug, None)
 
     if resp.status_code != 200:
-        err = f"SDTM CT API returned HTTP {resp.status_code}"
-        _sdtm_ct_cache.update(
-            slug=slug,
-            rows=[],
-            codelist_count=0,
-            fetched_at=now,
-            last_error=err,
-            last_status=resp.status_code,
+        return _fail(
+            f"{label} API returned HTTP {resp.status_code}", slug, resp.status_code
         )
-        return {
-            "slug": slug,
-            "rows": [],
-            "codelist_count": 0,
-            "error": err,
-            "fetched_at": now,
-        }
 
     try:
         payload = resp.json() or {}
     except Exception as exc:
-        err = f"SDTM CT response not JSON: {exc}"
-        _sdtm_ct_cache.update(
-            slug=slug,
-            rows=[],
-            codelist_count=0,
-            fetched_at=now,
-            last_error=err,
-            last_status=resp.status_code,
-        )
-        return {
-            "slug": slug,
-            "rows": [],
-            "codelist_count": 0,
-            "error": err,
-            "fetched_at": now,
-        }
+        return _fail(f"{label} response not JSON: {exc}", slug, resp.status_code)
 
-    rows, codelist_count = _flatten_sdtm_ct_package(payload)
-    _sdtm_ct_cache.update(
+    rows, codelist_count = _flatten_ct_package(payload)
+    cache.update(
         slug=slug,
         rows=rows,
         codelist_count=codelist_count,
@@ -971,6 +1012,30 @@ def get_sdtm_ct_rows(force: bool = False, timeout: int = 30) -> dict:
         "error": None,
         "fetched_at": now,
     }
+
+
+def get_sdtm_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest SDTM CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _sdtm_ct_cache,
+        _SDTM_CT_CACHE_TTL,
+        "SDTM CT",
+        get_latest_sdtm_ct_href,
+        force,
+        timeout,
+    )
+
+
+def get_cdash_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest CDASH CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _cdash_ct_cache,
+        _CDASH_CT_CACHE_TTL,
+        "CDASH CT",
+        get_latest_cdash_ct_href,
+        force,
+        timeout,
+    )
 
 
 def get_encounter_environment_sv(soa_id: int, code_uid: str):
