@@ -2986,9 +2986,10 @@ def ui_add_activity_concept(
         request, soa_id, activity_id
     ).body.decode()
     # Wrap DSS cell in OOB swap so HTMX updates it alongside the concepts cell
+    safe_activity_id = int(activity_id)
     dss_oob = dss_html.replace(
-        f'id="dss-cell-{activity_id}"',
-        f'id="dss-cell-{activity_id}" hx-swap-oob="outerHTML:#dss-cell-{activity_id}"',
+        f'id="dss-cell-{safe_activity_id}"',
+        f'id="dss-cell-{safe_activity_id}" hx-swap-oob="outerHTML:#dss-cell-{safe_activity_id}"',
         1,
     )
     return HTMLResponse(concepts_html + dss_oob)
@@ -3074,9 +3075,10 @@ def ui_remove_activity_concept(
     dss_html = activities_router._render_dss_cell(
         request, soa_id, activity_id
     ).body.decode()
+    safe_activity_id = int(activity_id)
     dss_oob = dss_html.replace(
-        f'id="dss-cell-{activity_id}"',
-        f'id="dss-cell-{activity_id}" hx-swap-oob="outerHTML:#dss-cell-{activity_id}"',
+        f'id="dss-cell-{safe_activity_id}"',
+        f'id="dss-cell-{safe_activity_id}" hx-swap-oob="outerHTML:#dss-cell-{safe_activity_id}"',
         1,
     )
     return HTMLResponse(concepts_html + dss_oob)

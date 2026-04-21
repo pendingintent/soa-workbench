@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional
+import logging
 import os
 import re
 import requests
@@ -6,6 +7,8 @@ import time
 from urllib.parse import urlparse, urlunparse
 from fastapi import Request
 from .db import _connect
+
+logger = logging.getLogger(__name__)
 
 _epoch_type_cache: dict[str, Any] = {
     "data": None,
@@ -1002,8 +1005,9 @@ def _get_ct_rows(
     headers = _ct_auth_headers()
     try:
         resp = requests.get(url, headers=headers, timeout=timeout)
-    except Exception as exc:
-        return _fail(f"{label} request failed: {exc}", slug, None)
+    except Exception:
+        logger.exception("%s request failed", label)
+        return _fail(f"{label} request failed.", slug, None)
 
     if resp.status_code != 200:
         return _fail(
@@ -1012,8 +1016,9 @@ def _get_ct_rows(
 
     try:
         payload = resp.json() or {}
-    except Exception as exc:
-        return _fail(f"{label} response not JSON: {exc}", slug, resp.status_code)
+    except Exception:
+        logger.exception("%s response not JSON.", label)
+        return _fail(f"{label} response not JSON.", slug, resp.status_code)
 
     rows, codelist_count = _flatten_ct_package(payload)
     cache.update(

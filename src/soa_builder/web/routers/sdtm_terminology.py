@@ -123,9 +123,9 @@ def ui_sdtm_terminology(
             offset=offset,
             refresh=refresh,
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Failed to render SDTM terminology page")
-        raise HTTPException(500, f"Failed to render SDTM terminology: {exc}")
+        raise HTTPException(500, "Failed to render SDTM terminology.")
 
     return templates.TemplateResponse(
         request,

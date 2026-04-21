@@ -18,6 +18,7 @@ from ..utils import (
     get_next_concept_uid as _get_next_concept_uid,
     get_cdisc_api_key as _get_cdisc_api_key,
 )
+import html as _html
 
 _ACT_CONCEPT_CACHE = {"data": None, "fetched_at": 0}
 _ACT_CONCEPT_TTL = 60 * 60
@@ -930,8 +931,8 @@ def ui_dss_options(
         if dss_id not in assigned_ids:
             # value = dss_id||href||display_title
             value = f"{dss_id}||{d['href']}||{d['title']}"
-            title_escaped = d["title"].replace('"', "&quot;")
-            value_escaped = value.replace('"', "&quot;")
+            title_escaped = _html.escape(str(d["title"]), quote=True)
+            value_escaped = _html.escape(value, quote=True)
             options.append(f'<option value="{value_escaped}">{title_escaped}</option>')
     return HTMLResponse("\n".join(options))
 
