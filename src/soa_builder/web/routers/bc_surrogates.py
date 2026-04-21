@@ -483,7 +483,7 @@ def ui_delete_bc_surrogate(request: Request, soa_id: int, surrogate_id: int):
 
 
 def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
-    """Re-render the concepts_cell partial after a surrogate link/unlink."""
+    """Re-render the concepts_cell partial after a surrogate/group link/unlink."""
     conn = _connect()
     cur = conn.cursor()
 
@@ -498,40 +498,103 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
         raise HTTPException(404, "Activity not found")
     activity_uid = act_row[0]
 
-    # Fetch linked BC concepts
-    cur.execute(
-        "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=? AND soa_id=?",
-        (activity_id, soa_id),
-    )
-    selected_list = [
-        {"code": r[0], "title": r[1], "dss_title": "", "dss_href": ""}
-        for r in cur.fetchall()
-    ]
+    # Fetch linked BC concepts (include concept_group_uid and group name)
+    cur.execute("PRAGMA table_info(activity_concept)")
+    ac_cols = {r[1] for r in cur.fetchall()}
+    has_group_uid = "concept_group_uid" in ac_cols
+    if has_group_uid:
+        cur.execute(
+            "SELECT ac.concept_code, ac.concept_title, ac.concept_group_uid, "
+            "cg.name AS group_name "
+            "FROM activity_concept ac "
+            "LEFT JOIN concept_group cg ON cg.concept_group_uid=ac.concept_group_uid "
+            "WHERE ac.activity_id=? AND ac.soa_id=? "
+            "ORDER BY ac.concept_group_uid NULLS LAST, ac.id",
+            (activity_id, soa_id),
+        )
+        selected_list = [
+            {
+                "code": r[0],
+                "title": r[1],
+                "dss_title": "",
+                "dss_href": "",
+                "concept_group_uid": r[2],
+                "group_name": r[3],
+            }
+            for r in cur.fetchall()
+        ]
+    else:
+        cur.execute(
+            "SELECT concept_code, concept_title "
+            "FROM activity_concept WHERE activity_id=? AND soa_id=?",
+            (activity_id, soa_id),
+        )
+        selected_list = [
+            {
+                "code": r[0],
+                "title": r[1],
+                "dss_title": "",
+                "dss_href": "",
+                "concept_group_uid": None,
+                "group_name": None,
+            }
+            for r in cur.fetchall()
+        ]
     selected_codes = [c["code"] for c in selected_list]
 
-    # Fetch linked surrogates
+    # Fetch linked surrogates (include concept_group_uid and group name)
     cur.execute(
-        "SELECT bcs.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "SELECT bcs.id, bcs.surrogate_uid, bcs.name, bcs.label,"
+        " asr.concept_group_uid, cg.name AS group_name "
         "FROM activity_surrogate asr "
-        "JOIN biomedical_concept_surrogate bcs ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
-        "WHERE asr.activity_uid=? AND asr.soa_id=?",
+        "JOIN biomedical_concept_surrogate bcs "
+        "ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "LEFT JOIN concept_group cg "
+        "ON cg.concept_group_uid=asr.concept_group_uid "
+        "WHERE asr.activity_uid=? AND asr.soa_id=? "
+        "ORDER BY asr.concept_group_uid NULLS LAST, asr.id",
         (activity_uid, soa_id),
     )
     selected_surrogate_list = [
-        {"id": r[0], "surrogate_uid": r[1], "name": r[2], "label": r[3]}
+        {
+            "id": r[0],
+            "surrogate_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "concept_group_uid": r[4],
+            "group_name": r[5],
+        }
         for r in cur.fetchall()
     ]
     selected_surrogate_uids = [s["surrogate_uid"] for s in selected_surrogate_list]
 
     # Fetch all surrogates for this SOA (for the dropdown)
     cur.execute(
-        "SELECT id, surrogate_uid, name, label FROM biomedical_concept_surrogate WHERE soa_id=? ORDER BY id",
+        "SELECT id, surrogate_uid, name, label "
+        "FROM biomedical_concept_surrogate WHERE soa_id=? ORDER BY id",
         (soa_id,),
     )
     surrogates = [
         {"id": r[0], "surrogate_uid": r[1], "name": r[2], "label": r[3]}
         for r in cur.fetchall()
     ]
+
+    # Fetch all concept groups (for the dropdown)
+    cur.execute(
+        "SELECT id, concept_group_uid, name, label FROM concept_group ORDER BY id"
+    )
+    concept_groups = [
+        {"id": r[0], "concept_group_uid": r[1], "name": r[2], "label": r[3]}
+        for r in cur.fetchall()
+    ]
+    activity_group_uids = list(
+        {c["concept_group_uid"] for c in selected_list if c["concept_group_uid"]}
+        | {
+            s["concept_group_uid"]
+            for s in selected_surrogate_list
+            if s["concept_group_uid"]
+        }
+    )
     conn.close()
 
     # Fetch BC concepts list (for the dropdown)
@@ -552,6 +615,8 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
             "selected_surrogate_uids": selected_surrogate_uids,
             "concepts": concepts,
             "surrogates": surrogates,
+            "concept_groups": concept_groups,
+            "activity_group_uids": activity_group_uids,
             "edit": False,
         },
     )

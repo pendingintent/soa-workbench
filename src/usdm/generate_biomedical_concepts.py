@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from soa_builder.web.db import _connect
 from .usdm_utils import (
     _get_biomedical_concept_synonyms as _get_biomedical_concept_synonyms,
-    _get_biomedical_concept_properties as _get_biomedical_concept_properties,
+    _get_biomedical_concept_reference as _get_biomedical_concept_reference,
 )
 
 
@@ -34,9 +34,7 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
             bc.label label,
             bc.code alias_code,
             ac.concept_code concept_code,
-            ac.dss_href reference,
             c.code_uid code_uid,
-            c.code_system code_system,
             c.code_system_version code_system_version,
             c.decode decode
         FROM biomedical_concept bc
@@ -51,11 +49,16 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
     rows = cur.fetchall()
     conn.close()
 
-    # Prefetch all synonyms in parallel — one API call per concept, all concurrent
+    # Prefetch synonyms and reference in parallel — one BC API call per concept,
+    # shared by both helpers via the cached _get_biomedical_concept_data()
     concept_codes = [r[4] for r in rows]
     with ThreadPoolExecutor(max_workers=8) as pool:
         synonyms_list = list(pool.map(_get_biomedical_concept_synonyms, concept_codes))
+        reference_list = list(
+            pool.map(_get_biomedical_concept_reference, concept_codes)
+        )
     synonyms_map = dict(zip(concept_codes, synonyms_list))
+    reference_map = dict(zip(concept_codes, reference_list))
 
     out: List[Dict[str, Any]] = []
 
@@ -65,13 +68,11 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
         label = r[2]
         alias_code = r[3]
         concept_code = r[4]
-        reference = r[5]
-        code_uid = r[6]
-        code_system = r[7]
-        code_system_version = r[8]
-        decode = r[9]
-
+        code_uid = r[5]
+        code_system_version = r[6]
+        decode = r[7]
         synonyms = synonyms_map[concept_code]
+        reference = reference_map[concept_code]
 
         biomedical_concept = {
             "id": id,
@@ -79,9 +80,8 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
             "name": name,
             "label": label,
             "synonyms": synonyms,
-            "reference": reference
-            or "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/",
-            "properties": _get_biomedical_concept_properties(soa_id, id),
+            "reference": reference,
+            "properties": [],
             "code": {
                 "id": alias_code,
                 "extensionAttributes": [],
@@ -89,7 +89,7 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
                     "id": code_uid,
                     "extensionAttributes": [],
                     "code": concept_code,
-                    "codeSystem": code_system,
+                    "codeSystem": "http://www.cdisc.org",
                     "codeSystemVersion": code_system_version,
                     "decode": decode,
                     "instanceType": "Code",

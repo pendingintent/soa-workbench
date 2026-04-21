@@ -1124,6 +1124,279 @@ def _migrate_biomedical_concept_property_add_uid():
         logger.warning("_migrate_biomedical_concept_property_add_uid: %s", e)
 
 
+def _migrate_truncate_biomedical_concept_property_data():
+    """Truncate biomedical_concept_property rows that were populated from DSS.
+
+    The prior DSS-based writer produced incorrect BiomedicalConceptProperty
+    values. This one-time migration clears those rows and the alias_code/code
+    rows that were created solely to back them. Idempotent: a no-op on an
+    empty table.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(biomedical_concept_property)")
+        cols = {r[1] for r in cur.fetchall()}
+        if not cols:
+            conn.close()
+            return
+        cur.execute(
+            "SELECT DISTINCT soa_id, code FROM biomedical_concept_property"
+            " WHERE code IS NOT NULL"
+        )
+        alias_refs = cur.fetchall()
+        cur.execute("DELETE FROM biomedical_concept_property")
+        for soa_id, alias_uid in alias_refs:
+            cur.execute(
+                "SELECT 1 FROM biomedical_concept_property"
+                " WHERE soa_id=? AND code=? LIMIT 1",
+                (soa_id, alias_uid),
+            )
+            if cur.fetchone():
+                continue
+            cur.execute(
+                "SELECT 1 FROM biomedical_concept WHERE soa_id=? AND code=? LIMIT 1",
+                (soa_id, alias_uid),
+            )
+            if cur.fetchone():
+                continue
+            cur.execute(
+                "SELECT standard_code FROM alias_code"
+                " WHERE alias_code_uid=? AND soa_id=?",
+                (alias_uid, soa_id),
+            )
+            code_row = cur.fetchone()
+            cur.execute(
+                "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
+                (alias_uid, soa_id),
+            )
+            if code_row:
+                cur.execute(
+                    "DELETE FROM code WHERE code_uid=? AND soa_id=?",
+                    (code_row[0], soa_id),
+                )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_truncate_biomedical_concept_property_data: %s", e)
+
+
+def _migrate_repoint_stale_bc_code_chains():
+    """Realign biomedical_concept.code chain with activity_concept.concept_code.
+
+    Legacy data-loading paths left some biomedical_concept rows whose
+    code/alias_code/code chain points at a different concept than the one
+    recorded in activity_concept. For each mismatch, this migration:
+
+      1. Ensures a (code, alias_code) chain exists for the correct
+         activity_concept.concept_code in the same soa.
+      2. Repoints biomedical_concept.code to the correct alias_code_uid
+         and rewrites biomedical_concept.name to activity_concept.concept_title.
+      3. Drops the now-orphaned old alias_code and code rows.
+      4. Fires a synchronous CDISC BC API call for each repointed
+         concept_code to populate code.decode/code_system/code_system_version
+         and biomedical_concept.label/description/name. Network or API
+         failures are logged and the migration continues — the normal
+         enrichment path will backfill on next user interaction.
+
+    Idempotent: re-running finds no mismatches and is a no-op.
+    """
+    try:
+        import requests
+
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT bc.id, bc.soa_id, bc.biomedical_concept_uid,
+                   bc.code, ac.concept_code, ac.concept_title
+            FROM biomedical_concept bc
+            INNER JOIN activity_concept ac
+              ON bc.biomedical_concept_uid = ac.concept_uid
+             AND bc.soa_id = ac.soa_id
+            INNER JOIN alias_code a
+              ON bc.code = a.alias_code_uid AND bc.soa_id = a.soa_id
+            INNER JOIN code c
+              ON a.standard_code = c.code_uid AND a.soa_id = c.soa_id
+            WHERE ac.concept_code IS NOT NULL
+              AND ac.concept_code != c.code
+            """
+        )
+        rows = cur.fetchall()
+        if not rows:
+            conn.close()
+            return
+        touched = set()  # (soa_id, concept_code)
+        for bc_id, soa_id, bc_uid, old_alias, new_code, new_title in rows:
+            # get-or-create the correct code row
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code=?",
+                (soa_id, new_code),
+            )
+            r = cur.fetchone()
+            if r:
+                new_code_uid = r[0]
+            else:
+                cur.execute(
+                    "SELECT code_uid FROM code"
+                    " WHERE soa_id=? AND code_uid LIKE 'Code_%'"
+                    " UNION"
+                    " SELECT code_uid FROM code_association"
+                    " WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                    (soa_id, soa_id),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = (
+                    max(
+                        (int(x.split("_")[1]) for x in existing),
+                        default=0,
+                    )
+                    + 1
+                )
+                new_code_uid = f"Code_{n}"
+                cur.execute(
+                    "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
+                    (soa_id, new_code_uid, new_code),
+                )
+            # get-or-create the alias_code row
+            cur.execute(
+                "SELECT alias_code_uid FROM alias_code"
+                " WHERE soa_id=? AND standard_code=?",
+                (soa_id, new_code_uid),
+            )
+            r = cur.fetchone()
+            if r:
+                new_alias_uid = r[0]
+            else:
+                cur.execute(
+                    "SELECT alias_code_uid FROM alias_code"
+                    " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+                    (soa_id,),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = (
+                    max(
+                        (int(x.split("_")[1]) for x in existing),
+                        default=0,
+                    )
+                    + 1
+                )
+                new_alias_uid = f"AliasCode_{n}"
+                cur.execute(
+                    "INSERT INTO alias_code"
+                    " (soa_id, alias_code_uid, standard_code)"
+                    " VALUES (?,?,?)",
+                    (soa_id, new_alias_uid, new_code_uid),
+                )
+            # repoint the BC and refresh name to best-available title
+            cur.execute(
+                "UPDATE biomedical_concept SET code=?, name=? WHERE id=?",
+                (new_alias_uid, new_title, bc_id),
+            )
+            touched.add((soa_id, new_code))
+            # orphan-cleanup: old alias_code -> old code
+            cur.execute(
+                "SELECT 1 FROM biomedical_concept WHERE soa_id=? AND code=? LIMIT 1",
+                (soa_id, old_alias),
+            )
+            if cur.fetchone():
+                continue
+            cur.execute(
+                "SELECT standard_code FROM alias_code"
+                " WHERE soa_id=? AND alias_code_uid=?",
+                (soa_id, old_alias),
+            )
+            code_row = cur.fetchone()
+            cur.execute(
+                "DELETE FROM alias_code WHERE soa_id=? AND alias_code_uid=?",
+                (soa_id, old_alias),
+            )
+            if code_row:
+                old_code_uid = code_row[0]
+                cur.execute(
+                    "SELECT 1 FROM alias_code"
+                    " WHERE soa_id=? AND standard_code=? LIMIT 1",
+                    (soa_id, old_code_uid),
+                )
+                if not cur.fetchone():
+                    cur.execute(
+                        "DELETE FROM code WHERE soa_id=? AND code_uid=?",
+                        (soa_id, old_code_uid),
+                    )
+        conn.commit()
+        # synchronous enrichment for each touched (soa_id, concept_code)
+        api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
+            "CDISC_SUBSCRIPTION_KEY"
+        )
+        subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+        headers = {"Accept": "application/json"}
+        if subscription_key:
+            headers["Ocp-Apim-Subscription-Key"] = subscription_key
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+            headers["api-key"] = api_key
+        for soa_id, concept_code in touched:
+            try:
+                url = (
+                    "https://api.library.cdisc.org/api/cosmos/v2/"
+                    "mdr/bc/biomedicalconcepts/" + concept_code
+                )
+                resp = requests.get(url, headers=headers, timeout=15)
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                href = (data.get("_links") or {}).get("parentPackage") or {}
+                href = href.get("href", "") if isinstance(href, dict) else ""
+                try:
+                    code_system_version = href.split("/")[4]
+                except Exception:
+                    code_system_version = ""
+                short_name = data.get("shortName")
+                definition = data.get("definition")
+                cur.execute(
+                    "UPDATE code SET code_system=?, code_system_version=?,"
+                    " decode=? WHERE code=? AND soa_id=?",
+                    (
+                        href,
+                        code_system_version,
+                        short_name,
+                        concept_code,
+                        soa_id,
+                    ),
+                )
+                cur.execute(
+                    """
+                    UPDATE biomedical_concept
+                       SET name=?, label=?, description=?
+                     WHERE soa_id=?
+                       AND biomedical_concept_uid IN (
+                           SELECT concept_uid FROM activity_concept
+                            WHERE soa_id=? AND concept_code=?
+                              AND concept_uid IS NOT NULL
+                       )
+                    """,
+                    (
+                        short_name,
+                        short_name,
+                        definition,
+                        soa_id,
+                        soa_id,
+                        concept_code,
+                    ),
+                )
+                conn.commit()
+            except Exception as e:
+                logger.warning(
+                    "_migrate_repoint_stale_bc_code_chains enrich soa=%s code=%s: %s",
+                    soa_id,
+                    concept_code,
+                    e,
+                )
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_repoint_stale_bc_code_chains: %s", e)
+
+
 def _migrate_add_soa_id_indexes():
     """Add standalone soa_id indexes on high-traffic tables.
 
@@ -1284,3 +1557,196 @@ def _migrate_add_bc_surrogate_audit_table():
         logger.info("_migrate_add_bc_surrogate_audit_table: audit table ready")
     except Exception as e:
         logger.warning("_migrate_add_bc_surrogate_audit_table failed: %s", e)
+
+
+def _migrate_add_concept_group_table():
+    """Create global concept_group and concept_group_concept tables if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS concept_group (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                concept_group_uid TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT
+            )"""
+        )
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS concept_group_concept (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                concept_group_uid TEXT NOT NULL,
+                concept_code TEXT NOT NULL,
+                concept_title TEXT,
+                UNIQUE(concept_group_uid, concept_code)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_concept_group_table: concept_group tables ready")
+    except Exception as e:
+        logger.warning("_migrate_add_concept_group_table failed: %s", e)
+
+
+def _migrate_activity_concept_add_concept_group_uid():
+    """Add concept_group_uid column to activity_concept if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_concept)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "concept_group_uid" not in cols:
+            cur.execute(
+                "ALTER TABLE activity_concept ADD COLUMN concept_group_uid TEXT"
+            )
+            conn.commit()
+            logger.info("Added concept_group_uid column to activity_concept")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_activity_concept_add_concept_group_uid failed: %s", e)
+
+
+def _migrate_surrogate_add_concept_group_uid():
+    """Add concept_group_uid column to biomedical_concept_surrogate if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(biomedical_concept_surrogate)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "concept_group_uid" not in cols:
+            cur.execute(
+                "ALTER TABLE biomedical_concept_surrogate "
+                "ADD COLUMN concept_group_uid TEXT"
+            )
+            conn.commit()
+            logger.info(
+                "Added concept_group_uid column to biomedical_concept_surrogate"
+            )
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_surrogate_add_concept_group_uid failed: %s", e)
+
+
+def _migrate_activity_surrogate_add_concept_group_uid():
+    """Add concept_group_uid column to activity_surrogate if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_surrogate)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "concept_group_uid" not in cols:
+            cur.execute(
+                "ALTER TABLE activity_surrogate ADD COLUMN concept_group_uid TEXT"
+            )
+            conn.commit()
+            logger.info("Added concept_group_uid column to activity_surrogate")
+        conn.close()
+    except Exception as e:
+        logger.warning(
+            "_migrate_activity_surrogate_add_concept_group_uid failed: %s",
+            e,
+        )
+
+
+def _migrate_add_activity_concept_dss_table():
+    """Create activity_concept_dss table for one-to-many DSS assignments.
+
+    Migrates any existing single-row assignments from the
+    activity_concept.dss_title / dss_href columns into the new table.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity_concept_dss (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id      INTEGER NOT NULL,
+                activity_id INTEGER NOT NULL,
+                concept_code TEXT NOT NULL,
+                dss_title   TEXT NOT NULL,
+                dss_href    TEXT NOT NULL,
+                dss_domain  TEXT
+            )
+            """
+        )
+        conn.commit()
+
+        # Migrate existing single-row assignments from activity_concept
+        cur.execute("PRAGMA table_info(activity_concept)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "dss_title" in cols and "dss_href" in cols:
+            # Only insert rows that are not already present
+            cur.execute("SELECT COUNT(*) FROM activity_concept_dss")
+            if cur.fetchone()[0] == 0:
+                dss_domain_col = "dss_domain" if "dss_domain" in cols else "NULL"
+                cur.execute(
+                    f"""
+                    INSERT INTO activity_concept_dss
+                        (soa_id, activity_id, concept_code,
+                         dss_title, dss_href, dss_domain)
+                    SELECT soa_id, activity_id, concept_code,
+                           dss_title, dss_href, {dss_domain_col}
+                    FROM activity_concept
+                    WHERE dss_title IS NOT NULL AND dss_title != ''
+                    """
+                )
+                conn.commit()
+                logger.info(
+                    "Migrated existing DSS assignments into activity_concept_dss"
+                )
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_add_activity_concept_dss_table failed: %s", e)
+
+
+def _migrate_activity_concept_dss_add_display():
+    """Add dss_display column to activity_concept_dss for human-readable title."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_concept_dss)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "dss_display" not in cols:
+            cur.execute("ALTER TABLE activity_concept_dss ADD COLUMN dss_display TEXT")
+            conn.commit()
+            logger.info("Added dss_display column to activity_concept_dss")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_activity_concept_dss_add_display failed: %s", e)
+
+
+def _migrate_drop_protocol_terminology_tables():
+    """Drop the legacy protocol_terminology and protocol_terminology_audit tables.
+
+    Protocol CT is now sourced live from the CDISC Library API, so these
+    local tables are obsolete. Idempotent: DROP TABLE IF EXISTS is safe to
+    re-run on an already-clean database.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("DROP TABLE IF EXISTS protocol_terminology")
+        cur.execute("DROP TABLE IF EXISTS protocol_terminology_audit")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_drop_protocol_terminology_tables failed: %s", e)
+
+
+def _migrate_drop_ddf_terminology_tables():
+    """Drop the legacy ddf_terminology and ddf_terminology_audit tables.
+
+    DDF CT is now sourced live from the CDISC Library API, so these local
+    tables are obsolete. Idempotent.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("DROP TABLE IF EXISTS ddf_terminology")
+        cur.execute("DROP TABLE IF EXISTS ddf_terminology_audit")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_drop_ddf_terminology_tables failed: %s", e)

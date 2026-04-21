@@ -109,54 +109,44 @@ def test_delete_arm():
 
 
 def test_ui_create_arm():
-    """Test creating arm via UI form redirects (requires protocol_terminology table)."""
+    """Test creating arm via UI form redirects."""
     r = client.post("/soa", json={"name": "UI Create Test"})
     soa_id = r.json()["id"]
 
     form_data = {"name": "UI Arm", "arm_label": "UIA", "description": "Created via UI"}
-    # This will fail with OperationalError if protocol_terminology table missing
-    # Skip test or mock table
-    try:
-        resp = client.post(f"/ui/soa/{soa_id}/arms/create", data=form_data)
-        assert resp.status_code in [200, 303]  # 303 is redirect
-    except Exception as e:
-        # Expected to fail in test DB without protocol_terminology table
-        assert "protocol_terminology" in str(e)
+    resp = client.post(
+        f"/ui/soa/{soa_id}/arms/create", data=form_data, follow_redirects=False
+    )
+    assert resp.status_code in [200, 303]
 
 
 def test_ui_update_arm():
-    """Test updating arm via UI form (requires protocol_terminology table)."""
+    """Test updating arm via UI form."""
     r = client.post("/soa", json={"name": "UI Update Test"})
     soa_id = r.json()["id"]
 
-    # Create arm
     arm_resp = client.post(f"/soa/{soa_id}/arms", json={"name": "Original"})
     arm_id = arm_resp.json()["id"]
 
-    # Update via UI - will fail without protocol_terminology table
     form_data = {"name": "Updated via UI"}
-    try:
-        resp = client.post(f"/ui/soa/{soa_id}/arms/{arm_id}/update", data=form_data)
-        assert resp.status_code in [200, 303]
-    except Exception as e:
-        assert "protocol_terminology" in str(e)
+    resp = client.post(
+        f"/ui/soa/{soa_id}/arms/{arm_id}/update",
+        data=form_data,
+        follow_redirects=False,
+    )
+    assert resp.status_code in [200, 303]
 
 
 def test_ui_delete_arm():
-    """Test deleting arm via UI form (requires protocol_terminology table)."""
+    """Test deleting arm via UI form."""
     r = client.post("/soa", json={"name": "UI Delete Test"})
     soa_id = r.json()["id"]
 
-    # Create arm
     arm_resp = client.post(f"/soa/{soa_id}/arms", json={"name": "To Delete UI"})
     arm_id = arm_resp.json()["id"]
 
-    # Delete via UI - will fail without protocol_terminology table
-    try:
-        resp = client.post(f"/ui/soa/{soa_id}/arms/{arm_id}/delete")
-        assert resp.status_code in [200, 303]
-    except Exception as e:
-        assert "protocol_terminology" in str(e)
+    resp = client.post(f"/ui/soa/{soa_id}/arms/{arm_id}/delete", follow_redirects=False)
+    assert resp.status_code in [200, 303]
 
 
 def test_ui_reorder_arms():

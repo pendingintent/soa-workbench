@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional
+import logging
 import os
 import re
 import requests
@@ -6,6 +7,8 @@ import time
 from urllib.parse import urlparse, urlunparse
 from fastapi import Request
 from .db import _connect
+
+logger = logging.getLogger(__name__)
 
 _epoch_type_cache: dict[str, Any] = {
     "data": None,
@@ -30,6 +33,56 @@ _contact_mode_cache: dict[str, Any] = {
     "last_error": None,
 }
 _CONTACT_MODE_CACHE_TTL = 60 * 60  # 1 hour
+
+_sdtm_ct_cache: dict[str, Any] = {
+    "slug": None,
+    "rows": None,
+    "codelist_count": 0,
+    "fetched_at": 0,
+    "last_error": None,
+    "last_status": None,
+}
+_SDTM_CT_CACHE_TTL = 60 * 60  # 1 hour
+
+_cdash_ct_cache: dict[str, Any] = {
+    "slug": None,
+    "rows": None,
+    "codelist_count": 0,
+    "fetched_at": 0,
+    "last_error": None,
+    "last_status": None,
+}
+_CDASH_CT_CACHE_TTL = 60 * 60  # 1 hour
+
+_define_xml_ct_cache: dict[str, Any] = {
+    "slug": None,
+    "rows": None,
+    "codelist_count": 0,
+    "fetched_at": 0,
+    "last_error": None,
+    "last_status": None,
+}
+_DEFINE_XML_CT_CACHE_TTL = 60 * 60  # 1 hour
+
+_protocol_ct_cache: dict[str, Any] = {
+    "slug": None,
+    "rows": None,
+    "codelist_count": 0,
+    "fetched_at": 0,
+    "last_error": None,
+    "last_status": None,
+}
+_PROTOCOL_CT_CACHE_TTL = 60 * 60  # 1 hour
+
+_ddf_ct_cache: dict[str, Any] = {
+    "slug": None,
+    "rows": None,
+    "codelist_count": 0,
+    "fetched_at": 0,
+    "last_error": None,
+    "last_status": None,
+}
+_DDF_CT_CACHE_TTL = 60 * 60  # 1 hour
 
 
 # Constants for the helper function
@@ -214,40 +267,14 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
 
 # Function for creating {code: submission_value} for Arm type selector
 def load_arm_type_map() -> Dict[str, str]:
-    """Fetch Arm Type term mapping from the protocol_terminology database table"""
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT code,cdisc_submission_value FROM protocol_terminology
-        WHERE codelist_code='C174222'
-        ORDER BY cdisc_submission_value
-        """
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return {
-        str(code): str(sv) for (code, sv) in rows if code is not None and sv is not None
-    }
+    """Fetch Arm Type (C174222) term mapping from CDISC Library Protocol CT."""
+    return get_protocol_ct_codelist_map("C174222")
 
 
 # Function for creating {code: submission_value} for Arm dataOriginType selector
 def load_arm_data_origin_type_map() -> Dict[str, str]:
-    """Fetch arm data origin type from the ddf_terminology database table"""
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT code,cdisc_submission_value FROM ddf_terminology
-        WHERE codelist_code='C188727'
-        ORDER BY cdisc_submission_value
-        """
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return {
-        str(code): str(sv) for (code, sv) in rows if code is not None and sv is not None
-    }
+    """Fetch Arm Data Origin Type (C188727) mapping from CDISC Library DDF CT."""
+    return get_ddf_ct_codelist_map("C188727")
 
 
 def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
@@ -454,20 +481,8 @@ def table_has_columns(cur: Any, table: str, required: List[str] | tuple) -> bool
 
 
 def get_study_timing_type(codelist_code: str) -> Dict[str, str]:
-    """Return a dictionary of {submissionValue: code} from the DDF
-    Terminology (ddf_terminology) table.
-
-    """
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT cdisc_submission_value,code FROM ddf_terminology WHERE codelist_code=?",
-        (codelist_code,),
-    )
-    rows = cur.fetchall()
-    conn.close()
-
-    return {str(sub): str(code) for (sub, code) in rows}
+    """Return {submissionValue: code} from CDISC Library DDF CT."""
+    return get_ddf_ct_codelist_map_by_submission(codelist_code)
 
 
 def get_conditions(soa_id: int) -> Dict[str, str]:
@@ -697,21 +712,30 @@ def get_timing_id(soa_id: int) -> Dict[str, str]:
 
 
 def get_encounter_type_sv(soa_id: int, code_uid: str):
-    """Return the submission value for the encounter type using Code_{n} value"""
+    """Return (submission_value,) for the encounter type using Code_{n} value.
+
+    Looks up the code/codelist_code from code_association, then resolves the
+    submission value via the cached DDF CT package. Returns None when not found,
+    matching the previous DB-JOIN behavior.
+    """
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        """
-        SELECT ddf.cdisc_submission_value FROM visit v
-        INNER JOIN code_association c ON v.type=c.code_uid AND v.soa_id=c.soa_id
-        INNER JOIN ddf_terminology ddf ON c.codelist_code=ddf.codelist_code AND c.code=ddf.code
-        WHERE v.soa_id =? AND v.type=?
-        """,
+        "SELECT c.codelist_code, c.code "
+        "FROM visit v "
+        "INNER JOIN code_association c ON v.type=c.code_uid AND v.soa_id=c.soa_id "
+        "WHERE v.soa_id=? AND v.type=?",
         (soa_id, code_uid),
     )
     row = cur.fetchone()
     conn.close()
-    return row
+    if not row:
+        return None
+    codelist_code, code = row
+    term = get_ddf_ct_term(codelist_code, code)
+    if not term:
+        return None
+    return (term.get("submission_value") or "",)
 
 
 def get_latest_sdtm_ct_href(timeout: int = 10) -> str | None:
@@ -777,6 +801,361 @@ def get_latest_sdtm_ct_href(timeout: int = 10) -> str | None:
         latest_date = date_tuple
 
     return latest
+
+
+def _ct_auth_headers() -> dict[str, str]:
+    headers: dict[str, str] = {"Accept": "application/json"}
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = os.environ.get("CDISC_API_KEY") or subscription_key
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+    return headers
+
+
+def _flatten_ct_package(payload: Any) -> tuple[list[dict], int]:
+    """Flatten a CDISC CT package payload into a list of term rows.
+
+    Returns (rows, codelist_count). Parses defensively so HAL-style
+    _embedded / _links variants and plain `codelists` all work.
+    """
+    codelists: list[Any] = []
+    if isinstance(payload, dict):
+        if isinstance(payload.get("codelists"), list):
+            codelists = payload["codelists"]
+        elif isinstance(payload.get("_embedded"), dict) and isinstance(
+            payload["_embedded"].get("codelists"), list
+        ):
+            codelists = payload["_embedded"]["codelists"]
+        elif isinstance(payload.get("_links"), dict) and isinstance(
+            payload["_links"].get("codelists"), list
+        ):
+            codelists = payload["_links"]["codelists"]
+
+    rows: list[dict] = []
+    for cl in codelists:
+        if not isinstance(cl, dict):
+            continue
+        cl_code = cl.get("conceptId") or cl.get("code") or ""
+        cl_name = cl.get("submissionValue") or cl.get("name") or ""
+        terms = cl.get("terms")
+        if not isinstance(terms, list):
+            embedded = cl.get("_embedded")
+            if isinstance(embedded, dict):
+                terms = embedded.get("terms") or []
+            else:
+                terms = []
+        for term in terms:
+            if not isinstance(term, dict):
+                continue
+            syns = term.get("synonyms")
+            if isinstance(syns, list):
+                synonyms = "; ".join(str(s) for s in syns if s)
+            else:
+                synonyms = ""
+            rows.append(
+                {
+                    "code": term.get("conceptId") or term.get("code") or "",
+                    "codelist_code": cl_code,
+                    "codelist_name": cl_name,
+                    "submission_value": term.get("submissionValue") or "",
+                    "definition": term.get("definition") or "",
+                    "synonyms": synonyms,
+                    "preferred_term": term.get("preferredTerm") or "",
+                }
+            )
+    return rows, len(codelists)
+
+
+def _get_latest_ct_package_slug(prefix: str, timeout: int = 10) -> str | None:
+    """Return the latest CT package slug matching `<prefix>-YYYY-MM-DD`.
+
+    `prefix` is the lower-case package family, e.g. "sdtmct" or "cdashct".
+    """
+    url = "https://library.cdisc.org/api/mdr/ct/packages"
+    headers = _ct_auth_headers()
+    lead = f"{prefix.lower()}-"
+
+    def _extract_date(name: str) -> tuple:
+        if not name.lower().startswith(lead):
+            return (0, 0, 0)
+        rest = name[len(lead) :]
+        parts = rest.split("-")
+        if len(parts) >= 3:
+            try:
+                return int(parts[0]), int(parts[1]), int(parts[2])
+            except ValueError:
+                pass
+        return (0, 0, 0)
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=timeout)
+        if resp.status_code != 200:
+            return None
+        payload = resp.json() or {}
+    except Exception:
+        return None
+
+    packages: list = []
+    if isinstance(payload, list):
+        packages = payload
+    elif isinstance(payload, dict):
+        packages = (
+            payload.get("packages")
+            or payload.get("_embedded", {}).get("packages")
+            or payload.get("items")
+            or payload.get("_links", {}).get("packages")
+            or []
+        )
+
+    latest = None
+    latest_date = (0, 0, 0)
+    for pkg in packages:
+        if not isinstance(pkg, dict):
+            continue
+        raw_href = (
+            pkg.get("href")
+            or pkg.get("url")
+            or pkg.get("_links", {}).get("self", {}).get("href")
+        )
+        title = pkg.get("name") or pkg.get("packageName") or pkg.get("title") or ""
+        segment = (raw_href or "").rstrip("/").split("/")[-1]
+        name = (segment or title).lower()
+        if not name.startswith(lead):
+            continue
+        date_tuple = _extract_date(name)
+        if date_tuple <= latest_date:
+            continue
+        latest = name
+        latest_date = date_tuple
+
+    return latest
+
+
+def get_latest_cdash_ct_href(timeout: int = 10) -> str | None:
+    """Return the href (slug) for the latest CDASH CT package."""
+    return _get_latest_ct_package_slug("cdashct", timeout=timeout)
+
+
+def get_latest_define_xml_ct_href(timeout: int = 10) -> str | None:
+    """Return the href (slug) for the latest Define-XML CT package."""
+    return _get_latest_ct_package_slug("define-xmlct", timeout=timeout)
+
+
+def get_latest_protocol_ct_href(timeout: int = 10) -> str | None:
+    """Return the href (slug) for the latest Protocol CT package."""
+    return _get_latest_ct_package_slug("protocolct", timeout=timeout)
+
+
+def get_latest_ddf_ct_href(timeout: int = 10) -> str | None:
+    """Return the href (slug) for the latest DDF CT package."""
+    return _get_latest_ct_package_slug("ddfct", timeout=timeout)
+
+
+def _get_ct_rows(
+    cache: dict,
+    ttl: int,
+    label: str,
+    get_slug_fn,
+    force: bool,
+    timeout: int,
+) -> dict:
+    """Fetch, flatten, and cache a CDISC CT package payload.
+
+    Returns { slug, rows, codelist_count, error, fetched_at } and never raises.
+    """
+    now = time.time()
+    if not force and cache["rows"] is not None and now - cache["fetched_at"] < ttl:
+        return {
+            "slug": cache["slug"],
+            "rows": cache["rows"],
+            "codelist_count": cache["codelist_count"],
+            "error": cache["last_error"],
+            "fetched_at": cache["fetched_at"],
+        }
+
+    def _fail(err: str, slug: str | None, status: int | None) -> dict:
+        cache.update(
+            slug=slug,
+            rows=[],
+            codelist_count=0,
+            fetched_at=now,
+            last_error=err,
+            last_status=status,
+        )
+        return {
+            "slug": slug,
+            "rows": [],
+            "codelist_count": 0,
+            "error": err,
+            "fetched_at": now,
+        }
+
+    slug = get_slug_fn(timeout=timeout)
+    if not slug:
+        return _fail(
+            f"Could not discover latest {label} package from CDISC Library.",
+            None,
+            None,
+        )
+
+    url = f"https://library.cdisc.org/api/mdr/ct/packages/{slug}"
+    headers = _ct_auth_headers()
+    try:
+        resp = requests.get(url, headers=headers, timeout=timeout)
+    except Exception:
+        logger.exception("%s request failed", label)
+        return _fail(f"{label} request failed.", slug, None)
+
+    if resp.status_code != 200:
+        return _fail(
+            f"{label} API returned HTTP {resp.status_code}", slug, resp.status_code
+        )
+
+    try:
+        payload = resp.json() or {}
+    except Exception:
+        logger.exception("%s response not JSON.", label)
+        return _fail(f"{label} response not JSON.", slug, resp.status_code)
+
+    rows, codelist_count = _flatten_ct_package(payload)
+    cache.update(
+        slug=slug,
+        rows=rows,
+        codelist_count=codelist_count,
+        fetched_at=now,
+        last_error=None,
+        last_status=resp.status_code,
+    )
+    return {
+        "slug": slug,
+        "rows": rows,
+        "codelist_count": codelist_count,
+        "error": None,
+        "fetched_at": now,
+    }
+
+
+def get_sdtm_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest SDTM CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _sdtm_ct_cache,
+        _SDTM_CT_CACHE_TTL,
+        "SDTM CT",
+        get_latest_sdtm_ct_href,
+        force,
+        timeout,
+    )
+
+
+def get_cdash_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest CDASH CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _cdash_ct_cache,
+        _CDASH_CT_CACHE_TTL,
+        "CDASH CT",
+        get_latest_cdash_ct_href,
+        force,
+        timeout,
+    )
+
+
+def get_define_xml_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest Define-XML CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _define_xml_ct_cache,
+        _DEFINE_XML_CT_CACHE_TTL,
+        "Define-XML CT",
+        get_latest_define_xml_ct_href,
+        force,
+        timeout,
+    )
+
+
+def get_protocol_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest Protocol CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _protocol_ct_cache,
+        _PROTOCOL_CT_CACHE_TTL,
+        "Protocol CT",
+        get_latest_protocol_ct_href,
+        force,
+        timeout,
+    )
+
+
+def get_protocol_ct_codelist_map(codelist_code: str) -> Dict[str, str]:
+    """Return {code: submission_value} for the given Protocol CT codelist.
+
+    Uses the cached Protocol CT package. Empty dict on fetch failure.
+    """
+    payload = get_protocol_ct_rows()
+    rows = payload.get("rows") or []
+    return {
+        str(r.get("code") or ""): str(r.get("submission_value") or "")
+        for r in rows
+        if r.get("codelist_code") == codelist_code and r.get("code")
+    }
+
+
+def get_protocol_ct_term(codelist_code: str, code: str) -> Optional[dict]:
+    """Return the term row for the given codelist_code + term code, or None."""
+    if not code:
+        return None
+    payload = get_protocol_ct_rows()
+    rows = payload.get("rows") or []
+    for r in rows:
+        if r.get("codelist_code") == codelist_code and r.get("code") == code:
+            return r
+    return None
+
+
+def get_ddf_ct_rows(force: bool = False, timeout: int = 30) -> dict:
+    """Fetch and cache the latest DDF CT package, flattened to term rows."""
+    return _get_ct_rows(
+        _ddf_ct_cache,
+        _DDF_CT_CACHE_TTL,
+        "DDF CT",
+        get_latest_ddf_ct_href,
+        force,
+        timeout,
+    )
+
+
+def get_ddf_ct_codelist_map(codelist_code: str) -> Dict[str, str]:
+    """Return {code: submission_value} for the given DDF CT codelist."""
+    payload = get_ddf_ct_rows()
+    rows = payload.get("rows") or []
+    return {
+        str(r.get("code") or ""): str(r.get("submission_value") or "")
+        for r in rows
+        if r.get("codelist_code") == codelist_code and r.get("code")
+    }
+
+
+def get_ddf_ct_codelist_map_by_submission(codelist_code: str) -> Dict[str, str]:
+    """Return {submission_value: code} for the given DDF CT codelist."""
+    payload = get_ddf_ct_rows()
+    rows = payload.get("rows") or []
+    return {
+        str(r.get("submission_value") or ""): str(r.get("code") or "")
+        for r in rows
+        if r.get("codelist_code") == codelist_code and r.get("submission_value")
+    }
+
+
+def get_ddf_ct_term(codelist_code: str, code: str) -> Optional[dict]:
+    """Return the term row for the given DDF codelist_code + term code, or None."""
+    if not code:
+        return None
+    payload = get_ddf_ct_rows()
+    rows = payload.get("rows") or []
+    for r in rows:
+        if r.get("codelist_code") == codelist_code and r.get("code") == code:
+            return r
+    return None
 
 
 def get_encounter_environment_sv(soa_id: int, code_uid: str):

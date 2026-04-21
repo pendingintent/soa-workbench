@@ -1,4 +1,3 @@
-
 .sidenav {
     height: 100%;
     width: 200px;
@@ -24,25 +23,76 @@
     background-color: #575757;
 }
 
+/* Reset list styles */
+.sidenav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.sidenav ul li {
+    position: relative;
+}
+
+/* Parent link always visible */
+.sidenav ul > li > a {
+    display: block;
+    padding: 6px 8px 6px 16px;
+    text-decoration: none;
+    font-size: 20px;
+    color: #818181;
+}
+
+.sidenav ul > li > a:hover {
+    color: #f1f1f1;
+    background-color: #575757;
+}
+
+/* Submenu hidden by default */
+.sidenav ul li ul {
+    display: none;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Show submenu on hover */
+.sidenav ul li:hover > ul {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Submenu item styling */
+.sidenav ul li ul li a {
+    display: block;
+    padding-left: 30px;
+    background-color: #444;
+    font-size: 18px;
+    text-decoration: none;
+    color: #818181;
+}
+
+.sidenav ul li ul li a:hover {
+    background-color: #575757;
+    color: #f1f1f1;
+}
+
 body {
-    margin: 0; /* Zero-out body margin and put the spacing on main */
+    margin: 0;
     font-family: Arial, Helvetica, sans-serif
 }
 
-/* Let the sidebar sit flush left while keeping content padded */
 .main {
     margin-left: 220px;
     padding: 1.5rem;
 }
 
-/* Let the heading class (h1) sit flush while keeping the content padded */
 .heading {
     margin-left: 220px;
     padding: 1.5rem;
 }
 
-
-/*nav a { margin-right: 1rem; } */
 .table, table { border-collapse: collapse; }
 th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 0.9rem; }
 th { background: #f2f2f2; }
@@ -58,7 +108,6 @@ button { cursor: pointer; }
 .export-buttons .btn:hover { background:#125aa0; }
 .small-btn { background:#2e7d32; color:#fff; border:none; padding:2px 8px; margin-top:4px; cursor:pointer; font-size:0.75em; }
 .small-btn:hover { background:#1b5e20; }
-/* Removed per-activity concept editor styles */
 details.collapsible { border:1px solid #ddd; padding:6px 8px; border-radius:4px; background:#fafafa; }
 details.collapsible summary { cursor:pointer; font-weight:600; }
 details.collapsible[open] { background:#fdfdfd; }
@@ -71,8 +120,6 @@ details.collapsible[open] { background:#fdfdfd; }
 .activity-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
 .hint { font-weight:400; font-size:0.7em; color:#666; }
 
-
-/* Media queries for responsiveness */
 @media screen and (max-height: 450px) {
     .sidenav {padding-top: 15px;}
     .sidenav a {font-size: 18px;}

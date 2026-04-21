@@ -148,7 +148,13 @@ def _get_dss_response_codes(
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT dss_href FROM activity_concept WHERE concept_uid=? AND soa_id=?",
+        "SELECT acd.dss_href FROM activity_concept_dss acd"
+        " JOIN activity_concept ac"
+        " ON ac.soa_id=acd.soa_id"
+        " AND ac.activity_id=acd.activity_id"
+        " AND ac.concept_code=acd.concept_code"
+        " WHERE ac.concept_uid=? AND acd.soa_id=?"
+        " LIMIT 1",
         (biomedical_concept_uid, soa_id),
     )
     row = cur.fetchone()
@@ -159,104 +165,27 @@ def _get_dss_response_codes(
 
 
 @functools.lru_cache(maxsize=256)
-def _get_biomedical_concept_synonyms(concept_code: str) -> List[str]:
-    """Fetch the synonyms of a biomedical concept using the CDISC API. Cached per code."""
+def _get_biomedical_concept_data(concept_code: str) -> Dict[str, Any]:
+    """Fetch the full CDISC Biomedical Concept API response. Cached per code."""
     url = URL_PREFIX + "mdr/bc/biomedicalconcepts/" + concept_code
     try:
         resp = requests.get(url, headers=_build_api_headers(), timeout=15)
         if resp.status_code != 200:
-            return []
-        data = resp.json()
-        return data.get("synonyms", [])
+            return {}
+        return resp.json()
     except (requests.RequestException, ValueError) as e:
-        print(f"Error fetching biomedical concept synonyms: {e}")
-        return []
+        print(f"Error fetching biomedical concept: {e}")
+        return {}
 
 
-@functools.lru_cache(maxsize=256)
-def _get_biomedical_concept_properties(
-    soa_id: int, biomedical_concept_uid: str
-) -> List[Dict[str, Any]]:
-    """Fetch biomedical concept properties from the database using the BiomedicalConcept_{}."""
+def _get_biomedical_concept_synonyms(concept_code: str) -> List[str]:
+    """Return synonyms from the BC API response."""
+    return _get_biomedical_concept_data(concept_code).get("synonyms", []) or []
 
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT
-            p.biomedical_concept_property_uid id,
-            p.name name,
-            p.label label,
-            p.isRequired isRequired,
-            p.datatype datatype,
-            p.biomedical_concept_uid biomedical_concept_uid,
-            a.alias_code_uid alias_code_uid,
-            a.standard_code standard_code,
-            c.code code,
-            c.code_system code_system,
-            c.code_system_version code_system_version,
-            c.decode decode
-        FROM biomedical_concept_property p
-        INNER JOIN alias_code a ON p.code = a.alias_code_uid AND p.soa_id = a.soa_id
-        INNER JOIN code c ON a.standard_code = c.code_uid AND a.soa_id = c.soa_id
-        WHERE p.soa_id = ? AND p.biomedical_concept_uid = ?
-        ORDER BY p.id;
-        """,
-        (soa_id, biomedical_concept_uid),
-    )
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    out: List[Dict[str, Any]] = []
 
-    for r in rows:
-        id = r[0]
-        name = r[1]
-        label = r[2]
-        isRequired = bool(r[3])
-        datatype = r[4]
-        _ = r[
-            5
-        ]  # Changed from bc_uid to suppress linting error arising from ISSUE #179
-        alias_code_uid = r[6]
-        standard_code = r[7]
-        code = r[8]
-        code_system = r[9]
-        code_system_version = r[10]
-        decode = r[11]
-
-        isEnabled = isRequired  # Fix for ISSUE #176
-        # Commented out for ISSUE #179
-        # response_codes = _get_dss_response_codes(bc_uid, name, soa_id)
-
-        property = {
-            "id": id,
-            "name": name,
-            "label": label,
-            "isRequired": isRequired,
-            "isEnabled": isEnabled,
-            "datatype": datatype,
-            "responseCodes": [],
-            "code": {
-                "id": alias_code_uid,
-                "extensionAttributes": [],
-                "standardCode": {
-                    "id": standard_code,
-                    "extensionAttributes": [],
-                    "code": code,
-                    "codeSystem": code_system,
-                    "codeSystemVersion": code_system_version,
-                    "decode": decode,
-                    "instanceType": "Code",
-                },
-                "instanceType": "AliasCode",
-            },
-            "notes": [],
-            "instanceType": "BiomedicalConceptProperty",
-        }
-        out.append(property)
-
-    return out
+def _get_biomedical_concept_reference(concept_code: str) -> str:
+    """Return the root 'href' from the BC API response, or '' if unavailable."""
+    return _get_biomedical_concept_data(concept_code).get("href", "") or ""
 
 
 # Helper for Activities
@@ -279,49 +208,78 @@ def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
 
 # Helper for Arms
 def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
-    """Fetch type codes for ARMS only.  These values are stored in the protocol_terminology table."""
+    """Fetch ARM type codes enriched from CDISC Library Protocol CT."""
+    from soa_builder.web.utils import get_protocol_ct_rows, get_protocol_ct_term
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT DISTINCT c.codelist_table, p.code,p.cdisc_submission_value,p.dataset_date "
-        "FROM code_association c INNER JOIN protocol_terminology p ON c.codelist_code = p.codelist_code "
-        "AND c.code = p.code WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
+        "SELECT DISTINCT codelist_table, code, codelist_code "
+        "FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, code_uid),
     )
     rows = cur.fetchall()
     conn.close()
-    code_system = [r[0] for r in rows]
-    code_code = [r[1] for r in rows]
-    code_decode = [r[2] for r in rows]
-    code_system_version = [r[3] for r in rows]
 
+    payload = get_protocol_ct_rows()
+    slug = payload.get("slug") or ""
+    version = ""
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+
+    code_system: list = []
+    code_code: list = []
+    code_decode: list = []
+    code_system_version: list = []
+    for codelist_table, code, codelist_code in rows:
+        term = get_protocol_ct_term(codelist_code, code)
+        if not term:
+            continue
+        code_system.append(codelist_table)
+        code_code.append(code)
+        code_decode.append(term.get("submission_value") or "")
+        code_system_version.append(version)
     return code_code, code_decode, code_system, code_system_version
 
 
 def _get_data_origin_type_tuple(
     soa_id: int, code_uid: str
 ) -> Tuple[str, str, str, str]:
+    """Enrich ARM data-origin-type code_association rows via CDISC Library DDF CT."""
+    from soa_builder.web.utils import get_ddf_ct_rows, get_ddf_ct_term
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT DISTINCT c.codelist_table,d.code,d.cdisc_submission_value,d.dataset_date "
-        "FROM code_association c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
-        "AND c.code = d.code WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
+        "SELECT DISTINCT codelist_table, code, codelist_code "
+        "FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, code_uid),
     )
     rows = cur.fetchall()
     conn.close()
-    code_system = [r[0] for r in rows]
-    code_code = [r[1] for r in rows]
-    code_decode = [r[2] for r in rows]
-    code_system_version = [r[3] for r in rows]
 
+    payload = get_ddf_ct_rows()
+    slug = payload.get("slug") or ""
+    version = ""
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+
+    code_system: list = []
+    code_code: list = []
+    code_decode: list = []
+    code_system_version: list = []
+    for codelist_table, code, codelist_code in rows:
+        term = get_ddf_ct_term(codelist_code, code)
+        if not term:
+            continue
+        code_system.append(codelist_table)
+        code_code.append(code)
+        code_decode.append(term.get("submission_value") or "")
+        code_system_version.append(version)
     return code_code, code_decode, code_system, code_system_version
 
 
@@ -653,24 +611,39 @@ def _get_epoch_code_values(
 
 # Helpers for Study Timings
 def _get_timing_code_values(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
+    """Enrich timing code_association rows via CDISC Library DDF CT."""
+    from soa_builder.web.utils import get_ddf_ct_rows, get_ddf_ct_term
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT DISTINCT c.codelist_table,d.code,d.cdisc_submission_value,d.dataset_date "
-        "FROM code_association c INNER JOIN ddf_terminology d ON c.codelist_code = d.codelist_code "
-        "AND c.code = d.code WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
+        "SELECT DISTINCT codelist_table, code, codelist_code "
+        "FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, code_uid),
     )
     rows = cur.fetchall()
     conn.close()
-    code_system = [r[0] for r in rows]
-    code_code = [r[1] for r in rows]
-    code_decode = [r[2] for r in rows]
-    code_system_version = [r[3] for r in rows]
 
+    payload = get_ddf_ct_rows()
+    slug = payload.get("slug") or ""
+    version = ""
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+
+    code_system: list = []
+    code_code: list = []
+    code_decode: list = []
+    code_system_version: list = []
+    for codelist_table, code, codelist_code in rows:
+        term = get_ddf_ct_term(codelist_code, code)
+        if not term:
+            continue
+        code_system.append(codelist_table)
+        code_code.append(code)
+        code_decode.append(term.get("submission_value") or "")
+        code_system_version.append(version)
     return code_code, code_decode, code_system, code_system_version
 
 

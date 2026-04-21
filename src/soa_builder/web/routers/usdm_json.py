@@ -21,6 +21,11 @@ _COMPONENTS = [
     ("arms", "Arms", "usdm_arms.json"),
     ("activities", "Activities", "usdm_activities.json"),
     ("biomedical_concepts", "Biomedical Concepts", "usdm_biomedical_concepts.json"),
+    (
+        "bc_surrogates",
+        "Biomedical Concept Surrogates",
+        "usdm_bc_surrogates.json",
+    ),
     ("elements", "Study Elements", "usdm_elements.json"),
     ("encounters", "Encounters", "usdm_encounters.json"),
     ("epochs", "Study Epochs", "usdm_epochs.json"),
@@ -50,6 +55,11 @@ def _build(component: str, soa_id: int):
         from usdm.generate_biomedical_concepts import build_usdm_biomedical_concepts
 
         return build_usdm_biomedical_concepts(soa_id)
+
+    if component == "bc_surrogates":
+        from usdm.generate_bc_surrogates import build_usdm_bc_surrogates
+
+        return build_usdm_bc_surrogates(soa_id)
 
     if component == "elements":
         from usdm.generate_elements import build_usdm_elements

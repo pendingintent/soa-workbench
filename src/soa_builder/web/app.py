@@ -12,7 +12,6 @@ import io
 import json
 import logging
 import os
-import re
 import re as _re
 import urllib.parse
 import tempfile
@@ -27,14 +26,12 @@ from dotenv import load_dotenv
 from fastapi import (
     BackgroundTasks,
     FastAPI,
-    File,
     Form,
     HTTPException,
     Request,
     Response,
-    UploadFile,
 )
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -42,7 +39,6 @@ from ..normalization import normalize_soa
 from .initialize_database import _connect, _init_db
 from .db import DB_PATH as _DB_PATH
 from .migrate_database import (
-    _backfill_dataset_date,
     _drop_unused_override_table,
     _migrate_activity_add_uid,
     _migrate_add_arm_uid,
@@ -70,6 +66,8 @@ from .migrate_database import (
     _migrate_study_cell_add_order_index,
     _migrate_biomedical_concept_audit,
     _migrate_backfill_biomedical_concept_codes,
+    _migrate_truncate_biomedical_concept_property_data,
+    _migrate_repoint_stale_bc_code_chains,
     _migrate_add_soa_id_indexes,
     _migrate_add_footnote_table,
     _migrate_add_footnote_audit_table,
@@ -77,6 +75,14 @@ from .migrate_database import (
     _migrate_add_bc_surrogate_table,
     _migrate_add_activity_surrogate_table,
     _migrate_add_bc_surrogate_audit_table,
+    _migrate_add_concept_group_table,
+    _migrate_activity_concept_add_concept_group_uid,
+    _migrate_surrogate_add_concept_group_uid,
+    _migrate_activity_surrogate_add_concept_group_uid,
+    _migrate_add_activity_concept_dss_table,
+    _migrate_activity_concept_dss_add_display,
+    _migrate_drop_protocol_terminology_tables,
+    _migrate_drop_ddf_terminology_tables,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -97,6 +103,16 @@ from .routers import decision_instances as decision_instances_router
 from .routers import condition_assignments as condition_assignments_router
 from .routers import footnotes as footnotes_router
 from .routers import bc_surrogates as bc_surrogates_router
+from .routers import concept_groups as concept_groups_router
+from .routers import sdtm_terminology as sdtm_terminology_router
+from .routers import cdash_terminology as cdash_terminology_router
+from .routers import define_xml_terminology as define_xml_terminology_router
+from .routers import (
+    protocol_controlled_terminology as protocol_controlled_terminology_router,
+)
+from .routers import (
+    ddf_controlled_terminology as ddf_controlled_terminology_router,
+)
 from .audit import _record_element_audit
 
 
@@ -113,7 +129,6 @@ from .schemas import (
 from .utils import (
     get_cdisc_api_key as _get_cdisc_api_key,
     get_concepts_override as _get_concepts_override,
-    get_next_alias_code_uid as _get_next_alias_code_uid,
     get_next_code_uid as _get_next_code_uid,
     get_next_concept_uid as _get_next_concept_uid,
     load_epoch_type_options,
@@ -158,6 +173,8 @@ _CONCEPT_CACHE_TTL = 60 * 60  # 1 hour TTL
 # SDTM dataset specializations cache (similar TTL)
 _sdtm_specializations_cache = {"data": None, "fetched_at": 0}
 _SDTM_SPECIALIZATIONS_CACHE_TTL = 60 * 60
+# Per-code SDTM specializations cache: {code: (fetched_at, [results])}
+_sdtm_specializations_by_code_cache: dict[str, tuple[float, list]] = {}
 # Category-specific biomedical concepts cache (per category key)
 _category_concepts_cache: dict[str, dict] = {}
 _CATEGORY_CONCEPTS_CACHE_TTL = 60 * 60  # 1 hour
@@ -210,10 +227,10 @@ _migrate_rollback_add_elements_restored()
 _migrate_activity_add_uid()
 _migrate_arm_add_type_fields()
 _migrate_element_audit_columns()
-_backfill_dataset_date("ddf_terminology", "ddf_terminology_audit")
-_backfill_dataset_date("protocol_terminology", "protocol_terminology_audit")
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
+_migrate_truncate_biomedical_concept_property_data()
+_migrate_repoint_stale_bc_code_chains()
 _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
 _migrate_add_footnote_audit_table()
@@ -221,6 +238,14 @@ _migrate_matrix_cells_add_superscript()
 _migrate_add_bc_surrogate_table()
 _migrate_add_activity_surrogate_table()
 _migrate_add_bc_surrogate_audit_table()
+_migrate_add_concept_group_table()
+_migrate_activity_concept_add_concept_group_uid()
+_migrate_surrogate_add_concept_group_uid()
+_migrate_activity_surrogate_add_concept_group_uid()
+_migrate_drop_protocol_terminology_tables()
+_migrate_drop_ddf_terminology_tables()
+_migrate_add_activity_concept_dss_table()
+_migrate_activity_concept_dss_add_display()
 
 
 # Include routers
@@ -246,6 +271,13 @@ app.include_router(footnotes_router.router)
 app.include_router(footnotes_router.ui_router)
 app.include_router(bc_surrogates_router.router)
 app.include_router(bc_surrogates_router.ui_router)
+app.include_router(concept_groups_router.router)
+app.include_router(concept_groups_router.ui_router)
+app.include_router(sdtm_terminology_router.router)
+app.include_router(cdash_terminology_router.router)
+app.include_router(define_xml_terminology_router.router)
+app.include_router(protocol_controlled_terminology_router.router)
+app.include_router(ddf_controlled_terminology_router.router)
 
 
 def _record_visit_audit(
@@ -1525,6 +1557,15 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
 
     # --------- code-specific branch (use generic endpoint) ----------
     if code:
+        # Return cached result if still fresh
+        cached = _sdtm_specializations_by_code_cache.get(code)
+        if (
+            not force
+            and cached is not None
+            and (now - cached[0]) < _SDTM_SPECIALIZATIONS_CACHE_TTL
+        ):
+            return cached[1]
+
         url = (
             f"{base_prefix}/mdr/specializations/datasetspecializations"
             f"?biomedicalconcept={code}"
@@ -1586,6 +1627,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
                 len(packages),
                 code,
             )
+            _sdtm_specializations_by_code_cache[code] = (now, packages)
             return packages
         except Exception as e:
             logger.error(
@@ -2343,22 +2385,90 @@ def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate
 
 # API endpoint for returning BC associated with an Activity
 def _get_activity_concepts(activity_id: int):
-    """Return list of concepts (immutable: stored snapshot)."""
+    """Return list of concepts including concept_group_uid and group_name."""
     conn = _connect()
     cur = conn.cursor()
-    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+    has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
+    has_group = _table_has_columns(cur, "activity_concept", ("concept_group_uid",))
+    if has_soa and has_group:
         cur.execute(
-            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=? AND soa_id=(SELECT soa_id FROM activity WHERE id=?)",
+            "SELECT ac.concept_code, ac.concept_title, "
+            "ac.concept_group_uid, cg.name AS group_name "
+            "FROM activity_concept ac "
+            "LEFT JOIN concept_group cg "
+            "ON cg.concept_group_uid=ac.concept_group_uid "
+            "WHERE ac.activity_id=? "
+            "AND ac.soa_id=(SELECT soa_id FROM activity WHERE id=?) "
+            "ORDER BY ac.concept_group_uid NULLS LAST, ac.id",
             (activity_id, activity_id),
         )
+        rows = [
+            {
+                "code": r[0],
+                "title": r[1],
+                "concept_group_uid": r[2],
+                "group_name": r[3],
+            }
+            for r in cur.fetchall()
+        ]
+    elif has_soa:
+        cur.execute(
+            "SELECT concept_code, concept_title "
+            "FROM activity_concept WHERE activity_id=? "
+            "AND soa_id=(SELECT soa_id FROM activity WHERE id=?)",
+            (activity_id, activity_id),
+        )
+        rows = [
+            {
+                "code": r[0],
+                "title": r[1],
+                "concept_group_uid": None,
+                "group_name": None,
+            }
+            for r in cur.fetchall()
+        ]
     else:
         cur.execute(
-            "SELECT concept_code, concept_title FROM activity_concept WHERE activity_id=?",
+            "SELECT concept_code, concept_title "
+            "FROM activity_concept WHERE activity_id=?",
             (activity_id,),
         )
-    rows = [{"code": c, "title": t} for c, t in cur.fetchall()]
+        rows = [
+            {
+                "code": r[0],
+                "title": r[1],
+                "concept_group_uid": None,
+                "group_name": None,
+            }
+            for r in cur.fetchall()
+        ]
     conn.close()
     return rows
+
+
+def _get_concept_groups_for_cell(soa_id: int, activity_id: int):
+    """Return (concept_groups, activity_group_uids) for concepts_cell rendering."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, concept_group_uid, name, label FROM concept_group ORDER BY id"
+    )
+    concept_groups = [
+        {"id": r[0], "concept_group_uid": r[1], "name": r[2], "label": r[3]}
+        for r in cur.fetchall()
+    ]
+    has_group = _table_has_columns(cur, "activity_concept", ("concept_group_uid",))
+    if has_group:
+        cur.execute(
+            "SELECT DISTINCT concept_group_uid FROM activity_concept "
+            "WHERE activity_id=? AND soa_id=? AND concept_group_uid IS NOT NULL",
+            (activity_id, soa_id),
+        )
+        activity_group_uids = [r[0] for r in cur.fetchall()]
+    else:
+        activity_group_uids = []
+    conn.close()
+    return concept_groups, activity_group_uids
 
 
 def _get_activity_surrogates(soa_id: int, activity_id: int):
@@ -2391,280 +2501,6 @@ def _get_activity_surrogates(soa_id: int, activity_id: int):
         selected_surrogate_list,
         [s["surrogate_uid"] for s in selected_surrogate_list],
     )
-
-
-def _lookup_and_save_dss(soa_id: int, activity_id: int, concept_code: str) -> None:
-    """Background task: auto-lookup DSS for a concept via CDISC API and persist."""
-    import os
-    import requests as _requests
-
-    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
-        "CDISC_SUBSCRIPTION_KEY"
-    )
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
-    headers: dict = {"Accept": "application/json"}
-    if subscription_key:
-        headers["Ocp-Apim-Subscription-Key"] = subscription_key
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-        headers["api-key"] = api_key
-
-    try:
-        # Step 1: discover DSS href for this concept
-        list_url = (
-            "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations"
-            "/datasetspecializations?biomedicalconcept=" + concept_code
-        )
-        r1 = _requests.get(list_url, headers=headers, timeout=15)
-        if r1.status_code != 200:
-            return
-        data1 = r1.json()
-        sdtm_links = data1["_links"]["datasetSpecializations"]["sdtm"]
-        if not sdtm_links:
-            return
-        dss_href = sdtm_links[0]["href"]
-        if dss_href.startswith("/"):
-            dss_href = "https://api.library.cdisc.org/api/cosmos/v2" + dss_href
-
-        # Step 2: fetch DSS detail to get datasetSpecializationId
-        r2 = _requests.get(dss_href, headers=headers, timeout=15)
-        if r2.status_code != 200:
-            return
-        data2 = r2.json()
-        dss_id = data2.get("datasetSpecializationId")
-        dss_domain = data2.get("domain")
-        if not dss_id:
-            return
-
-        # Step 3: persist to activity_concept
-        conn = _connect()
-        cur = conn.cursor()
-        if _table_has_columns(cur, "activity_concept", ("soa_id",)):
-            cur.execute(
-                "UPDATE activity_concept SET dss_title=?, dss_href=?, dss_domain=?"
-                " WHERE activity_id=? AND concept_code=? AND soa_id=?",
-                (dss_id, dss_href, dss_domain, activity_id, concept_code, soa_id),
-            )
-        else:
-            cur.execute(
-                "UPDATE activity_concept SET dss_title=?, dss_href=?, dss_domain=?"
-                " WHERE activity_id=? AND concept_code=?",
-                (dss_id, dss_href, dss_domain, activity_id, concept_code),
-            )
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass  # silent failure — DSS column remains unset; user can assign manually
-
-
-def _populate_bc_properties_bg(soa_id: int, activity_id: int, concept_code: str):
-    """
-    Background task: fetch DSS variables, parse them, insert BiomedicalConceptProperty rows.
-    Restructured to only hold database lock during quick writes, not during slow API calls.
-    """
-    # Step 1: Quick read - fetch activity concept data (NO WRITE LOCK YET)
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT ac.concept_uid, ac.dss_href
-        FROM activity_concept ac
-        WHERE ac.soa_id = ? AND ac.activity_id = ? AND ac.concept_code = ?
-        """,
-        (soa_id, activity_id, concept_code),
-    )
-    row = cur.fetchone()
-    conn.close()  # Close connection immediately after read
-
-    if not row:
-        return
-
-    concept_uid, dss_href = row
-    if not dss_href:
-        return
-
-    # Step 2: Slow API calls (NO DATABASE CONNECTION HELD)
-    api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
-        "CDISC_SUBSCRIPTION_KEY"
-    )
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
-    headers: dict = {"Accept": "application/json"}
-    if subscription_key:
-        headers["Ocp-Apim-Subscription-Key"] = subscription_key
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-        headers["api-key"] = api_key
-
-    try:
-        resp = requests.get(dss_href, headers=headers, timeout=15)
-        if resp.status_code != 200:
-            return
-        dss_data = resp.json()
-    except (requests.RequestException, ValueError) as e:
-        logger.warning(f"API error fetching DSS for {concept_code}: {e}")
-        return
-
-    # Step 3: Parse response data (NO DATABASE CONNECTION)
-    variables = dss_data.get("variables", [])
-    if not variables:
-        return
-
-    # Extract parent package info for code system
-    try:
-        dss_code_system = dss_data["_links"]["parentPackage"]["href"]
-        dss_code_system_version = dss_code_system.split("/")[5]
-    except (KeyError, TypeError, IndexError):
-        dss_code_system = ""
-        dss_code_system_version = ""
-
-    # Prepare all insert data in memory (no DB connection held during API work)
-    properties_to_insert = []
-    for var in variables:
-        var_concept_id = var.get("dataElementConceptId", "")
-        name = var.get("name", "")
-        label = var.get("label", name)
-        is_required = var.get("mandatoryVariable", False)
-        datatype = var.get("dataType", "")
-
-        properties_to_insert.append(
-            {
-                "concept_uid": concept_uid,
-                "name": name,
-                "label": label,
-                "is_required": is_required,
-                "datatype": datatype,
-                "var_concept_id": var_concept_id,
-            }
-        )
-
-    # Step 4: NOW acquire write lock and do fast inserts
-    conn = _connect()
-    conn.isolation_level = None  # manual transaction management
-    cur = conn.cursor()
-    try:
-        cur.execute("BEGIN IMMEDIATE")
-
-        # Collect existing property alias_code UIDs BEFORE deleting (for cascade cleanup)
-        cur.execute(
-            "SELECT code FROM biomedical_concept_property"
-            " WHERE biomedical_concept_uid = ? AND soa_id = ?",
-            (concept_uid, soa_id),
-        )
-        orphaned_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
-
-        # Delete existing properties for this concept
-        cur.execute(
-            "DELETE FROM biomedical_concept_property"
-            " WHERE biomedical_concept_uid = ? AND soa_id = ?",
-            (concept_uid, soa_id),
-        )
-
-        # Cascade-delete orphaned alias_code + code rows
-        for alias_uid in orphaned_alias_uids:
-            # Check if this alias_code is still referenced by other properties or biomedical_concept
-            cur.execute(
-                "SELECT 1 FROM biomedical_concept_property WHERE soa_id=? AND code=? LIMIT 1",
-                (soa_id, alias_uid),
-            )
-            if cur.fetchone():
-                continue  # Still in use
-            cur.execute(
-                "SELECT 1 FROM biomedical_concept WHERE soa_id=? AND code=? LIMIT 1",
-                (soa_id, alias_uid),
-            )
-            if cur.fetchone():
-                continue  # Still in use
-
-            # This alias_code is orphaned; fetch its standard_code before deleting
-            cur.execute(
-                "SELECT standard_code FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
-                (alias_uid, soa_id),
-            )
-            code_row = cur.fetchone()
-
-            # Delete the orphaned alias_code row
-            cur.execute(
-                "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
-                (alias_uid, soa_id),
-            )
-
-            # Cascade-delete the orphaned code row if it exists
-            if code_row:
-                code_uid = code_row[0]
-                cur.execute(
-                    "DELETE FROM code WHERE code_uid=? AND soa_id=?",
-                    (code_uid, soa_id),
-                )
-
-        # Insert all new properties, creating code + alias_code rows per property
-        for prop in properties_to_insert:
-            # code row: stores the CDISC dataElementConceptId
-            code_uid = _get_next_code_uid(cur, soa_id)
-            cur.execute(
-                "INSERT INTO code"
-                " (soa_id, code_uid, code, code_system, code_system_version, decode)"
-                " VALUES (?,?,?,?,?,?)",
-                (
-                    soa_id,
-                    code_uid,
-                    prop["var_concept_id"],
-                    dss_code_system,
-                    dss_code_system_version,
-                    prop["name"],
-                ),
-            )
-
-            # alias_code row pointing at the code row
-            alias_uid = _get_next_alias_code_uid(cur, soa_id)
-            cur.execute(
-                "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code)"
-                " VALUES (?,?,?)",
-                (soa_id, alias_uid, code_uid),
-            )
-
-            # generate monotonic BiomedicalConceptProperty_N uid
-            cur.execute(
-                "SELECT MAX(CAST(SUBSTR(biomedical_concept_property_uid, 27) AS INTEGER))"
-                " FROM biomedical_concept_property"
-                " WHERE soa_id=?"
-                " AND biomedical_concept_property_uid LIKE 'BiomedicalConceptProperty_%'",
-                (soa_id,),
-            )
-            n = (cur.fetchone()[0] or 0) + 1
-            bcp_uid = f"BiomedicalConceptProperty_{n}"
-
-            cur.execute(
-                "INSERT INTO biomedical_concept_property"
-                " (soa_id, biomedical_concept_uid, biomedical_concept_property_uid,"
-                "  name, label, isRequired, datatype, code)"
-                " VALUES (?,?,?,?,?,?,?,?)",
-                (
-                    soa_id,
-                    prop["concept_uid"],
-                    bcp_uid,
-                    prop["name"],
-                    prop["label"],
-                    prop["is_required"],
-                    prop["datatype"],
-                    alias_uid,
-                ),
-            )
-
-        cur.execute("COMMIT")
-
-    except Exception as exc:
-        try:
-            cur.execute("ROLLBACK")
-        except Exception:
-            pass
-        logger.warning(
-            "_populate_bc_properties_bg: soa_id=%s concept=%s failed: %s",
-            soa_id,
-            concept_code,
-            exc,
-        )
-    finally:
-        conn.close()
 
 
 def _upsert_code(cur, soa_id: int, concept_code: str):
@@ -2910,14 +2746,14 @@ def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
         cur = conn.cursor()
         cur.execute(
             """
-            UPDATE biomedical_concept SET label=?, description=?
+            UPDATE biomedical_concept SET name=?, label=?, description=?
             WHERE soa_id=?
               AND biomedical_concept_uid IN (
                   SELECT concept_uid FROM activity_concept
                   WHERE soa_id=? AND concept_code=? AND concept_uid IS NOT NULL
               )
             """,
-            (label, description, soa_id, soa_id, concept_code),
+            (label, label, description, soa_id, soa_id, concept_code),
         )
         conn.commit()
     except Exception:
@@ -2963,50 +2799,6 @@ def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
                     after=None,
                     cur=cur,
                 )
-            # collect property alias_uids before deleting rows
-            cur.execute(
-                "SELECT code FROM biomedical_concept_property"
-                " WHERE biomedical_concept_uid=? AND soa_id=?",
-                (concept_uid, soa_id),
-            )
-            prop_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
-
-            # delete property rows
-            cur.execute(
-                "DELETE FROM biomedical_concept_property"
-                " WHERE biomedical_concept_uid=? AND soa_id=?",
-                (concept_uid, soa_id),
-            )
-
-            # cascade-delete orphaned alias_code + code rows created for properties
-            for prop_alias in prop_alias_uids:
-                cur.execute(
-                    "SELECT 1 FROM biomedical_concept_property WHERE soa_id=? AND code=? LIMIT 1",
-                    (soa_id, prop_alias),
-                )
-                if cur.fetchone():
-                    continue
-                cur.execute(
-                    "SELECT 1 FROM biomedical_concept WHERE soa_id=? AND code=? LIMIT 1",
-                    (soa_id, prop_alias),
-                )
-                if cur.fetchone():
-                    continue
-                cur.execute(
-                    "SELECT standard_code FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
-                    (prop_alias, soa_id),
-                )
-                prop_ac_row = cur.fetchone()
-                cur.execute(
-                    "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
-                    (prop_alias, soa_id),
-                )
-                if prop_ac_row:
-                    cur.execute(
-                        "DELETE FROM code WHERE code_uid=? AND soa_id=?",
-                        (prop_ac_row[0], soa_id),
-                    )
-
             cur.execute(
                 "DELETE FROM biomedical_concept"
                 " WHERE biomedical_concept_uid=? AND soa_id=?",
@@ -3166,16 +2958,17 @@ def ui_add_activity_concept(
                 )
         _upsert_biomedical_concept(cur, soa_id, concept_uid, title, code)
         conn.commit()
-        background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
         background_tasks.add_task(_enrich_biomedical_concept_bg, code, soa_id)
         background_tasks.add_task(_enrich_code_bg, code, soa_id)
-        background_tasks.add_task(_populate_bc_properties_bg, soa_id, activity_id, code)
     conn.close()
     selected = _get_activity_concepts(activity_id)
     surrogates, selected_surrogate_list, selected_surrogate_uids = (
         _get_activity_surrogates(soa_id, activity_id)
     )
-    html = templates.get_template("concepts_cell.html").render(
+    concept_groups, activity_group_uids = _get_concept_groups_for_cell(
+        soa_id, activity_id
+    )
+    concepts_html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
         activity_id=activity_id,
@@ -3185,9 +2978,21 @@ def ui_add_activity_concept(
         surrogates=surrogates,
         selected_surrogate_list=selected_surrogate_list,
         selected_surrogate_uids=selected_surrogate_uids,
+        concept_groups=concept_groups,
+        activity_group_uids=activity_group_uids,
         edit=False,
     )
-    return HTMLResponse(html)
+    dss_html = activities_router._render_dss_cell(
+        request, soa_id, activity_id
+    ).body.decode()
+    # Wrap DSS cell in OOB swap so HTMX updates it alongside the concepts cell
+    safe_activity_id = int(activity_id)
+    dss_oob = dss_html.replace(
+        f'id="dss-cell-{safe_activity_id}"',
+        f'id="dss-cell-{safe_activity_id}" hx-swap-oob="outerHTML:#dss-cell-{safe_activity_id}"',
+        1,
+    )
+    return HTMLResponse(concepts_html + dss_oob)
 
 
 # UI endpoint for removing a BC from an Activity
@@ -3250,7 +3055,10 @@ def ui_remove_activity_concept(
     surrogates, selected_surrogate_list, selected_surrogate_uids = (
         _get_activity_surrogates(soa_id, activity_id)
     )
-    html = templates.get_template("concepts_cell.html").render(
+    concept_groups, activity_group_uids = _get_concept_groups_for_cell(
+        soa_id, activity_id
+    )
+    concepts_html = templates.get_template("concepts_cell.html").render(
         request=request,
         soa_id=soa_id,
         activity_id=activity_id,
@@ -3260,9 +3068,20 @@ def ui_remove_activity_concept(
         surrogates=surrogates,
         selected_surrogate_list=selected_surrogate_list,
         selected_surrogate_uids=selected_surrogate_uids,
+        concept_groups=concept_groups,
+        activity_group_uids=activity_group_uids,
         edit=False,
     )
-    return HTMLResponse(html)
+    dss_html = activities_router._render_dss_cell(
+        request, soa_id, activity_id
+    ).body.decode()
+    safe_activity_id = int(activity_id)
+    dss_oob = dss_html.replace(
+        f'id="dss-cell-{safe_activity_id}"',
+        f'id="dss-cell-{safe_activity_id}" hx-swap-oob="outerHTML:#dss-cell-{safe_activity_id}"',
+        1,
+    )
+    return HTMLResponse(concepts_html + dss_oob)
 
 
 # API endpoint for marking a matrix cell association between an Activity and Encounter/Visit
@@ -4544,51 +4363,49 @@ def ui_edit(request: Request, soa_id: int):
     # Precompute next Code_N if needed for UI defaults (currently not displayed)
     _ = _get_next_code_uid(cur_codes, soa_id)
     conn_codes.close()
-    # Load Protocol Terminology (C174222) options
-    conn_pt = _connect()
-    cur_pt = conn_pt.cursor()
-    cur_pt.execute(
-        "SELECT cdisc_submission_value FROM protocol_terminology WHERE codelist_code='C174222' ORDER BY cdisc_submission_value"
-    )
+    # Load Protocol Terminology (C174222) options from CDISC Library
+    from .utils import get_protocol_ct_codelist_map as _get_protocol_ct_codelist_map
+
+    c174222_map = _get_protocol_ct_codelist_map("C174222")
     protocol_terminology_C174222 = [
-        {"cdisc_submission_value": r[0] or ""} for r in cur_pt.fetchall()
+        {"cdisc_submission_value": sv}
+        for sv in sorted({v for v in c174222_map.values() if v})
     ]
-    conn_pt.close()
     # Build mapping code_uid -> submission value (Arm Type C174222)
     conn_map = _connect()
     cur_map = conn_map.cursor()
     cur_map.execute(
-        "SELECT c.code_uid, pt.cdisc_submission_value "
-        "FROM code_association c JOIN protocol_terminology pt ON pt.code = c.code "
-        "WHERE c.soa_id=? AND c.codelist_code='C174222'",
+        "SELECT code_uid, code FROM code_association "
+        "WHERE soa_id=? AND codelist_code='C174222'",
         (soa_id,),
     )
-    code_to_submission = {row[0]: row[1] for row in cur_map.fetchall()}
+    code_to_submission = {
+        row[0]: c174222_map.get(row[1], "") for row in cur_map.fetchall()
+    }
     conn_map.close()
     submission_values = {
         opt.get("cdisc_submission_value") or "" for opt in protocol_terminology_C174222
     }
 
-    # DDF Terminology options for Arm type (C188727)
-    conn_ddft = _connect()
-    cur_ddft = conn_ddft.cursor()
-    cur_ddft.execute(
-        "SELECT cdisc_submission_value FROM ddf_terminology WHERE codelist_code = 'C188727' ORDER BY cdisc_submission_value"
-    )
+    # DDF Terminology options for Arm Data Origin Type (C188727) from CDISC Library
+    from .utils import get_ddf_ct_codelist_map as _get_ddf_ct_codelist_map
+
+    c188727_map = _get_ddf_ct_codelist_map("C188727")
     ddf_terminology_C188727 = [
-        {"cdisc_submission_value": r[0] or ""} for r in cur_ddft.fetchall()
+        {"cdisc_submission_value": sv}
+        for sv in sorted({v for v in c188727_map.values() if v})
     ]
-    conn_ddft.close()
     # Build mapping code_uid -> submission value (Arm dataOriginType C188727)
     conn_ddf_map = _connect()
     cur_ddf_map = conn_ddf_map.cursor()
     cur_ddf_map.execute(
-        "SELECT c.code_uid, dt.cdisc_submission_value "
-        "FROM code_association c JOIN ddf_terminology dt ON dt.code = c.code "
-        "WHERE c.soa_id=? AND c.codelist_code='C188727'",
+        "SELECT code_uid, code FROM code_association "
+        "WHERE soa_id=? AND codelist_code='C188727'",
         (soa_id,),
     )
-    ddf_code_to_submission = {row[0]: row[1] for row in cur_ddf_map.fetchall()}
+    ddf_code_to_submission = {
+        row[0]: c188727_map.get(row[1], "") for row in cur_ddf_map.fetchall()
+    }
     conn_ddf_map.close()
     ddf_submission_values = {
         ddf_opt.get("cdisc_submission_value") or ""
@@ -5048,6 +4865,7 @@ def ui_concept_detail(code: str, request: Request):
     parent_bc_href = None
     parent_pkg_href = None
     parent_bc_title = None
+    parent_pkg_name = None
     status = None
     try:
         resp = requests.get(api_href, headers=headers, timeout=10)
@@ -5064,13 +4882,18 @@ def ui_concept_detail(code: str, request: Request):
                 )
                 parent_bc_href = parent_bc_href.get("href") or parent_bc_href.get("url")
             # Extract parent package link
-            parent_pkg_href = concept_json.get("parentPackage") or concept_json.get(
+            parent_pkg_obj = concept_json.get("parentPackage") or concept_json.get(
                 "parent_package"
             )
-            if isinstance(parent_pkg_href, dict):
-                parent_pkg_href = parent_pkg_href.get("href") or parent_pkg_href.get(
+            if isinstance(parent_pkg_obj, dict):
+                parent_pkg_name = parent_pkg_obj.get("name") or parent_pkg_obj.get(
+                    "title"
+                )
+                parent_pkg_href = parent_pkg_obj.get("href") or parent_pkg_obj.get(
                     "url"
                 )
+            elif isinstance(parent_pkg_obj, str):
+                parent_pkg_href = parent_pkg_obj
         else:
             concept_json = {"error": f"Upstream returned {resp.status_code}"}
     except Exception as e:  # pragma: no cover
@@ -5083,6 +4906,51 @@ def ui_concept_detail(code: str, request: Request):
             or concept_json.get("name")
             or code
         )
+
+    # Build summary dict (scalar top-level fields only, truthy values)
+    summary: dict = {}
+    data_element_concepts: list = []
+    if isinstance(concept_json, dict) and "error" not in concept_json:
+        scalar_keys = (
+            "conceptId",
+            "shortName",
+            "definition",
+            "href",
+        )
+        for key in scalar_keys:
+            val = concept_json.get(key)
+            if val not in (None, ""):
+                summary[key] = val
+        list_str_keys = ("synonyms", "categories", "resultScales")
+        for key in list_str_keys:
+            val = concept_json.get(key)
+            if isinstance(val, list) and val:
+                summary[key] = ", ".join(str(item) for item in val if item is not None)
+        coding = concept_json.get("coding")
+        if isinstance(coding, list) and coding:
+            try:
+                parts = []
+                for entry in coding:
+                    if isinstance(entry, dict):
+                        system = entry.get("system", "")
+                        ccode = entry.get("code", "")
+                        display = entry.get("display", "")
+                        parts.append(f"{system}:{ccode} ({display})".strip())
+                if parts:
+                    summary["coding"] = "; ".join(parts)
+                else:
+                    summary["coding"] = f"{len(coding)} entries"
+            except Exception:
+                summary["coding"] = f"{len(coding)} entries"
+        # Extract data element concepts array
+        raw_decs = concept_json.get("dataElementConcepts") or []
+        if isinstance(raw_decs, list):
+            data_element_concepts = [d for d in raw_decs if isinstance(d, dict)]
+
+    pretty_json = (
+        json.dumps(concept_json, indent=2, sort_keys=True) if concept_json else None
+    )
+
     return templates.TemplateResponse(
         request,
         "concept_detail.html",
@@ -5093,8 +4961,11 @@ def ui_concept_detail(code: str, request: Request):
             "parent_bc_href": parent_bc_href,
             "parent_bc_title": parent_bc_title,
             "parent_pkg_href": parent_pkg_href,
+            "parent_pkg_name": parent_pkg_name,
             "status": status,
-            "raw": json.dumps(concept_json, indent=2) if concept_json else None,
+            "summary": summary,
+            "data_element_concepts": data_element_concepts,
+            "pretty_json": pretty_json,
             "missing_key": unified_key is None,
         },
     )
@@ -5642,8 +5513,6 @@ def ui_set_activity_concepts(
             " WHERE activity_id=? AND (dss_title IS NULL OR dss_title='')",
             (activity_id,),
         )
-    for (code,) in cur.fetchall():
-        background_tasks.add_task(_lookup_and_save_dss, soa_id, activity_id, code)
     conn.close()
     for code in payload.concept_codes:
         if code.strip():
@@ -5671,6 +5540,9 @@ def ui_set_activity_concepts(
         surrogates, selected_surrogate_list, selected_surrogate_uids = (
             _get_activity_surrogates(soa_id, activity_id)
         )
+        concept_groups, activity_group_uids = _get_concept_groups_for_cell(
+            soa_id, activity_id
+        )
         html = templates.get_template("concepts_cell.html").render(
             request=request,
             soa_id=soa_id,
@@ -5681,6 +5553,8 @@ def ui_set_activity_concepts(
             surrogates=surrogates,
             selected_surrogate_list=selected_surrogate_list,
             selected_surrogate_uids=selected_surrogate_uids,
+            concept_groups=concept_groups,
+            activity_group_uids=activity_group_uids,
             edit=False,
         )
         return HTMLResponse(html)
@@ -5721,6 +5595,9 @@ def ui_activity_concepts_cell(
     surrogates, selected_surrogate_list, selected_surrogate_uids = (
         _get_activity_surrogates(soa_id, activity_id)
     )
+    concept_groups, activity_group_uids = _get_concept_groups_for_cell(
+        soa_id, activity_id
+    )
     return HTMLResponse(
         templates.get_template("concepts_cell.html").render(
             request=request,
@@ -5732,6 +5609,8 @@ def ui_activity_concepts_cell(
             surrogates=surrogates,
             selected_surrogate_list=selected_surrogate_list,
             selected_surrogate_uids=selected_surrogate_uids,
+            concept_groups=concept_groups,
+            activity_group_uids=activity_group_uids,
             edit=bool(edit),
         )
     )
@@ -6227,1203 +6106,6 @@ def ui_reorder_activities(request: Request, soa_id: int, order: str = Form("")):
     conn.close()
     _record_reorder_audit(soa_id, "activity", old_order, ids)
     return HTMLResponse("OK")
-
-
-# Sanitize column headers in the XLSX export
-def _sanitize_column(name: str) -> str:
-    """Sanitize Excel column header to safe SQLite identifier: lowercase, replace spaces & non-alnum with underscore, collapse repeats."""
-    import re
-
-    s = name.strip().lower()
-    s = re.sub(r"[^a-z0-9]+", "_", s)
-    s = re.sub(r"_+", "_", s).strip("_")
-    if not s:
-        s = "col"
-    return s
-
-
-# API to load new DDF Terminology spreadsheet
-def load_ddf_terminology(
-    file_path: str,
-    sheet_name: str = "DDF Terminology 2025-09-26",
-    source: str = "admin",
-    original_filename: Optional[str] = None,
-    file_hash: Optional[str] = None,
-) -> dict:
-    """Load DDF terminology Excel sheet into SQLite table `ddf_terminology`.
-    Recreates table each time (drop + create) for schema drift tolerance.
-    Records an audit entry in ddf_terminology_audit.
-    Returns dict with columns and row count.
-    """
-    # Extract dataset date ONLY from sheet_name (must contain YYYY-MM-DD).
-    _date_pattern = re.compile(r"(20\d{2}-\d{2}-\d{2})")
-    m = _date_pattern.search(sheet_name or "")
-    if not m:
-        raise HTTPException(
-            400,
-            "Sheet name must contain dataset date YYYY-MM-DD (e.g. 'DDF Terminology 2025-09-26')",
-        )
-    dataset_date = m.group(1)
-    if not os.path.exists(file_path):
-        # audit error record
-        _record_ddf_audit(
-            file_path=file_path,
-            sheet_name=sheet_name,
-            row_count=0,
-            column_count=0,
-            columns_json="[]",
-            source=source,
-            file_hash=file_hash,
-            error=f"File not found: {file_path}",
-            dataset_date=dataset_date,
-        )
-        raise HTTPException(400, f"File not found: {file_path}")
-    try:
-        df = pd.read_excel(file_path, sheet_name=sheet_name, dtype=str)
-    except Exception as e:
-        _record_ddf_audit(
-            file_path=file_path,
-            sheet_name=sheet_name,
-            row_count=0,
-            column_count=0,
-            columns_json="[]",
-            source=source,
-            file_hash=file_hash,
-            error=f"Read error: {e}",
-            dataset_date=dataset_date,
-        )
-        raise HTTPException(400, f"Failed reading Excel: {e}")
-    if df.empty:
-        _record_ddf_audit(
-            file_path=file_path,
-            sheet_name=sheet_name,
-            row_count=0,
-            column_count=0,
-            columns_json="[]",
-            source=source,
-            file_hash=file_hash,
-            error="Worksheet empty",
-            dataset_date=dataset_date,
-        )
-        raise HTTPException(400, "Worksheet is empty")
-    # Build sanitized headers, discarding any worksheet column that normalizes to 'dataset_date'.
-    raw_cols = list(df.columns)
-    pairs = []  # (raw, sanitized)
-    seen = set()
-    for c in raw_cols:
-        sc = _sanitize_column(str(c))
-        if sc == "dataset_date":
-            continue  # drop original dataset_date worksheet column; we inject a single synthetic one sourced from sheet name
-        base = sc
-        i = 2
-        while sc in seen:
-            sc = f"{base}_{i}"
-            i += 1
-        seen.add(sc)
-        pairs.append((c, sc))
-    sanitized = [sc for _, sc in pairs]
-    sanitized.append("dataset_date")  # single authoritative dataset date column
-    cols_sql = ", ".join(f"{c} TEXT" for c in sanitized)
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("DROP TABLE IF EXISTS ddf_terminology")
-    cur.execute(
-        f"CREATE TABLE ddf_terminology (id INTEGER PRIMARY KEY AUTOINCREMENT, {cols_sql})"
-    )
-    df = df.fillna("")
-    kept_raw_cols = [raw for raw, sc in pairs]
-    base_records = [
-        tuple(str(row[c]) for c in kept_raw_cols) for _, row in df.iterrows()
-    ]
-    # Append dataset_date value per row (same for all rows)
-    records = [r + (dataset_date,) for r in base_records]
-    placeholders = ",".join(["?"] * (len(kept_raw_cols) + 1))
-    cur.executemany(
-        f"INSERT INTO ddf_terminology ({','.join(sanitized)}) VALUES ({placeholders})",
-        records,
-    )
-    # Indexes for faster search/filter
-    try:
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_ddf_code ON ddf_terminology(code)")
-        if "cdisc_submission_value" in sanitized:
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ddf_submission ON ddf_terminology(cdisc_submission_value)"
-            )
-        if "codelist_name" in sanitized:
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ddf_codelist_name ON ddf_terminology(codelist_name)"
-            )
-    except Exception as ie:  # pragma: no cover
-        logger.warning("Failed creating DDF indexes: %s", ie)
-    conn.commit()
-    conn.close()
-    # Audit success
-    _record_ddf_audit(
-        file_path=file_path,
-        sheet_name=sheet_name,
-        row_count=len(records),
-        column_count=len(sanitized),
-        columns_json=json.dumps(sanitized),
-        source=source,
-        file_hash=file_hash,
-        error=None,
-        original_filename=original_filename or os.path.basename(file_path),
-        dataset_date=dataset_date,
-    )
-    return {"columns": sanitized, "row_count": len(records)}
-
-
-def _validate_terminology_path(file_path: str, project_root: str) -> str:
-    safe_root = os.path.realpath(os.path.join(project_root, "files"))
-    resolved = os.path.realpath(file_path)
-    if not resolved.startswith(safe_root + os.sep) and resolved != safe_root:
-        raise HTTPException(
-            400,
-            f"file_path must be within the project files directory. Got: {file_path}",
-        )
-    return resolved
-
-
-# UI endpoint to load DDF Terminology
-@app.post("/admin/load_ddf_terminology")
-def admin_load_ddf(
-    file_path: Optional[str] = None, sheet_name: str = "DDF Terminology 2025-09-26"
-):
-    """Admin endpoint to (re)load DDF terminology Excel sheet into SQLite."""
-    # Determine repo root (src/soa_builder/web/app.py -> ascend 3 levels to /src, then one more to project root)
-    project_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    )
-    candidates = [
-        os.path.join(
-            project_root, "files", "DDF_Terminology_2025-09-26.xls"
-        ),  # correct location
-        os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-            "files",
-            "DDF_Terminology_2025-09-26.xls",
-        ),  # previous wrong path for backward compatibility
-    ]
-    # If explicit file_path provided, prefer it
-    if file_path:
-        fp = _validate_terminology_path(file_path, project_root)
-    else:
-        fp = None
-        for c in candidates:
-            if os.path.exists(c):
-                fp = c
-                break
-        if fp is None:
-            raise HTTPException(
-                400, f"DDF terminology file not found in candidates: {candidates}"
-            )
-    # compute file hash for audit
-    try:
-        import hashlib
-
-        with open(fp, "rb") as fh:
-            file_hash = hashlib.sha256(fh.read()).hexdigest()
-    except Exception:
-        file_hash = None
-    result = load_ddf_terminology(
-        fp,
-        sheet_name=sheet_name,
-        source="admin",
-        original_filename=os.path.basename(fp),
-        file_hash=file_hash,
-    )
-    return JSONResponse(
-        {"ok": True, **result, "file_path": fp, "sheet_name": sheet_name}
-    )
-
-
-# API endpoint to display DDF Terminology from the `ddf_terminology`` database table
-@app.get("/ddf/terminology")
-def get_ddf_terminology(
-    search: Optional[str] = None,
-    code: Optional[str] = None,
-    codelist_name: Optional[str] = None,
-    codelist_code: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
-):
-    """Query DDF terminology rows.
-    Parameters:
-      - search: case-insensitive substring across selected text columns.
-      - code: exact match on primary code column (overrides search if provided).
-      - limit/offset: pagination controls (limit capped at 200).
-    Returns JSON with total_count, matched_count, rows, applied_filters.
-    """
-    limit = max(1, min(limit, 200))
-    offset = max(0, offset)
-    conn = _connect()
-    cur = conn.cursor()
-    # Ensure table exists
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='ddf_terminology'"
-    )
-    if not cur.fetchone():
-        conn.close()
-        raise HTTPException(
-            404,
-            "ddf_terminology table not found (load via POST /admin/load_ddf_terminology)",
-        )
-    # Column discovery
-    cur.execute("PRAGMA table_info(ddf_terminology)")
-    cols = [r[1] for r in cur.fetchall() if r[1] != "id"]
-    searchable = [
-        c
-        for c in cols
-        if c
-        in [
-            "code",
-            "cdisc_submission_value",
-            "cdisc_definition",
-            "cdisc_synonym_s",
-            "nci_preferred_term",
-            "codelist_name",
-            "codelist_code",
-        ]
-    ]
-    cur.execute("SELECT COUNT(*) FROM ddf_terminology")
-    total_count = cur.fetchone()[0]
-    params = []
-    where = []
-    if code:
-        where.append("code = ?")
-        params.append(code)
-    if codelist_name:
-        where.append("codelist_name = ?")
-        params.append(codelist_name)
-    if codelist_code:
-        where.append("codelist_code = ?")
-        params.append(codelist_code)
-    if (not code) and search:
-        pattern = f"%{search.lower()}%"
-        like_clauses = [f"LOWER({c}) LIKE ?" for c in searchable]
-        params.extend([pattern] * len(like_clauses))
-        where.append("(" + " OR ".join(like_clauses) + ")")
-    where_sql = " WHERE " + " AND ".join(where) if where else ""
-    count_sql = f"SELECT COUNT(*) FROM ddf_terminology{where_sql}"
-    cur.execute(count_sql, params)
-    matched_count = cur.fetchone()[0]
-    select_cols = ["id"] + cols
-    select_sql = f"SELECT {', '.join(select_cols)} FROM ddf_terminology{where_sql} ORDER BY code LIMIT ? OFFSET ?"
-    cur.execute(select_sql, params + [limit, offset])
-    rows_raw = cur.fetchall()
-    # Build dict rows
-    rows = []
-    for r in rows_raw:
-        d = {}
-        for idx, col in enumerate(select_cols):
-            d[col] = r[idx]
-        rows.append(d)
-    conn.close()
-    return {
-        "total_count": total_count,
-        "matched_count": matched_count,
-        "limit": limit,
-        "offset": offset,
-        "filters": {
-            "search": search,
-            "code": code,
-            "codelist_name": codelist_name,
-            "codelist_code": codelist_code,
-        },
-        "columns": select_cols,
-        "rows": rows,
-    }
-
-
-# UI endpoint to display DDF Terminology
-@app.get("/ui/ddf/terminology", response_class=HTMLResponse)
-def ui_ddf_terminology(
-    request: Request,
-    search: Optional[str] = None,
-    code: Optional[str] = None,
-    codelist_name: Optional[str] = None,
-    codelist_code: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
-    uploaded: Optional[str] = None,
-    error: Optional[str] = None,
-):
-    """Detail page to display loaded DDF terminology from the SQLite table"""
-    data = get_ddf_terminology(
-        search=search,
-        code=code,
-        codelist_name=codelist_name,
-        codelist_code=codelist_code,
-        limit=limit,
-        offset=offset,
-    )
-    return templates.TemplateResponse(
-        request,
-        "ddf_terminology.html",
-        {
-            **data,
-            "search": search or "",
-            "code": code or "",
-            "codelist_name": codelist_name or "",
-            "codelist_code": codelist_code or "",
-            "uploaded": uploaded,
-            "error": error,
-        },
-    )
-
-
-# UI endpoint to load new DDF Terminology
-@app.post("/ui/ddf/terminology/upload", response_class=HTMLResponse)
-def ui_ddf_upload(
-    request: Request,
-    sheet_name: str = Form("DDF Terminology 2025-09-26"),
-    file: UploadFile = File(...),
-):
-    """Upload an XLS/XLSX file and reload ddf_terminology table. Redirects back with status message."""
-    # Basic validation
-    filename = file.filename or "uploaded.xls"
-    if not (filename.lower().endswith(".xls") or filename.lower().endswith(".xlsx")):
-        return HTMLResponse(
-            "<script>window.location='/ui/ddf/terminology?error=Unsupported+file+type';</script>",
-            status_code=400,
-        )
-    try:
-        import tempfile
-
-        suffix = ".xls" if filename.lower().endswith(".xls") else ".xlsx"
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        contents = file.file.read()
-        tmp.write(contents)
-        tmp.flush()
-        tmp.close()
-        # hash
-        import hashlib
-
-        file_hash = hashlib.sha256(contents).hexdigest()
-        load_ddf_terminology(
-            tmp.name,
-            sheet_name=sheet_name,
-            source="upload",
-            original_filename=filename,
-            file_hash=file_hash,
-        )
-        return HTMLResponse(
-            "<script>window.location='/ui/ddf/terminology?uploaded=1';</script>"
-        )
-    except HTTPException as he:
-        return HTMLResponse(
-            f"<script>window.location='/ui/ddf/terminology?error={he.detail}';</script>",
-            status_code=400,
-        )
-    except Exception as e:
-        esc = str(e).replace("'", "").replace('"', "")
-        return HTMLResponse(
-            f"<script>window.location='/ui/ddf/terminology?error={esc}';</script>",
-            status_code=500,
-        )
-
-
-# API endpoint to record DDF Terminology Load
-def _record_ddf_audit(
-    file_path: str,
-    sheet_name: str,
-    row_count: int,
-    column_count: int,
-    columns_json: str,
-    source: str,
-    file_hash: Optional[str],
-    error: Optional[str],
-    original_filename: Optional[str] = None,
-    dataset_date: Optional[str] = None,
-):
-    """Insert audit row (create table if missing)."""
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS ddf_terminology_audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                loaded_at TEXT NOT NULL,
-                file_path TEXT,
-                original_filename TEXT,
-                sheet_name TEXT,
-                row_count INTEGER,
-                column_count INTEGER,
-                columns_json TEXT,
-                source TEXT,
-                file_hash TEXT,
-                error TEXT,
-                dataset_date TEXT
-            )"""
-        )
-        # Migration: ensure dataset_date column exists if table was created earlier without it.
-        cur.execute("PRAGMA table_info(ddf_terminology_audit)")
-        audit_cols = {r[1] for r in cur.fetchall()}
-        if "dataset_date" not in audit_cols:
-            try:
-                cur.execute(
-                    "ALTER TABLE ddf_terminology_audit ADD COLUMN dataset_date TEXT"
-                )
-            except Exception:
-                pass
-        cur.execute(
-            "INSERT INTO ddf_terminology_audit (loaded_at,file_path,original_filename,sheet_name,row_count,column_count,columns_json,source,file_hash,error,dataset_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (
-                datetime.now(timezone.utc).isoformat(),
-                file_path,
-                original_filename,
-                sheet_name,
-                row_count,
-                column_count,
-                columns_json,
-                source,
-                file_hash,
-                error,
-                dataset_date,
-            ),
-        )
-        # Index for future date filtering
-        try:
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ddf_audit_dataset_date ON ddf_terminology_audit(dataset_date)"
-            )
-        except Exception:
-            pass
-        conn.commit()
-        conn.close()
-    except Exception as e:  # pragma: no cover
-        logger.warning("Failed recording DDF audit: %s", e)
-
-
-# Helper function to return SQLite DDF Terminology table
-def _get_ddf_sources() -> List[str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='ddf_terminology_audit'"
-    )
-    if not cur.fetchone():
-        conn.close()
-        return []
-    cur.execute(
-        "SELECT DISTINCT source FROM ddf_terminology_audit WHERE source IS NOT NULL ORDER BY source"
-    )
-    sources = [r[0] for r in cur.fetchall()]
-    conn.close()
-    return sources
-
-
-# API endpoint to return DDF Terminology audits
-@app.get("/ddf/terminology/audit")
-def get_ddf_audit(
-    source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
-):
-    """Return audit report of DDF Terminology loads."""
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='ddf_terminology_audit'"
-    )
-    if not cur.fetchone():
-        conn.close()
-        return []
-    where_clauses = []
-    params: List[Any] = []
-
-    # Validate date inputs (YYYY-MM-DD)
-    def _valid_date(d: str) -> bool:
-        try:
-            datetime.strptime(d, "%Y-%m-%d")
-            return True
-        except Exception:
-            return False
-
-    if source:
-        where_clauses.append("source = ?")
-        params.append(source)
-    if start and _valid_date(start):
-        where_clauses.append("substr(loaded_at,1,10) >= ?")
-        params.append(start)
-    if end and _valid_date(end):
-        where_clauses.append("substr(loaded_at,1,10) <= ?")
-        params.append(end)
-    where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
-    cur.execute(
-        f"SELECT id,loaded_at,original_filename,file_path,sheet_name,row_count,column_count,source,file_hash,error,dataset_date FROM ddf_terminology_audit{where_sql} ORDER BY id DESC",
-        params,
-    )
-    rows = []
-    for r in cur.fetchall():
-        rows.append(
-            {
-                "id": r[0],
-                "loaded_at": r[1],
-                "original_filename": r[2],
-                "file_path": r[3],
-                "sheet_name": r[4],
-                "row_count": r[5],
-                "column_count": r[6],
-                "source": r[7],
-                "file_hash": r[8],
-                "error": r[9],
-                "dataset_date": r[10],
-            }
-        )
-    conn.close()
-    return {"rows": rows}
-
-
-# API endpoint to export DDF Terminology audit report in XLSX format
-@app.get("/ddf/terminology/audit/export.csv")
-def export_ddf_audit_csv(
-    source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
-):
-    """Export DDF terminology audit report in CSV format."""
-    rows = get_ddf_audit(source=source, start=start, end=end)
-    import csv
-    import io
-
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(
-        [
-            "id",
-            "loaded_at",
-            "source",
-            "original_filename",
-            "file_hash",
-            "row_count",
-            "column_count",
-            "sheet_name",
-            "error",
-        ]
-    )
-    for r in rows:
-        writer.writerow(
-            [
-                r["id"],
-                r["loaded_at"],
-                r["source"],
-                r["original_filename"],
-                r["file_hash"],
-                r["row_count"],
-                r["column_count"],
-                r["sheet_name"],
-                r["error"] or "",
-            ]
-        )
-    csv_data = buf.getvalue()
-    return Response(
-        content=csv_data,
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=ddf_terminology_audit.csv"
-        },
-    )
-
-
-# API endpoint to export DDF Terminology audit report in JSON format
-@app.get("/ddf/terminology/audit/export.json")
-def export_ddf_audit_json(
-    source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
-):
-    """Export DDF terminology audit report in JSON format."""
-    return get_ddf_audit(source=source, start=start, end=end)
-
-
-# UI endpoint to display DDF terminology audits
-@app.get("/ui/ddf/terminology/audit", response_class=HTMLResponse)
-def ui_ddf_audit(
-    request: Request,
-    source: Optional[str] = None,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
-):
-    """Display audit report of DDF Terminology loads"""
-    rows = get_ddf_audit(source=source, start=start, end=end)
-    sources = _get_ddf_sources()
-    return templates.TemplateResponse(
-        request,
-        "ddf_terminology_audit.html",
-        {
-            "rows": rows,
-            "count": len(rows),
-            "sources": sources,
-            "current_source": source or "",
-            "start": start or "",
-            "end": end or "",
-        },
-    )
-
-
-# API endpoint to load protocol terminology into the `protocol_terminology` database table
-def load_protocol_terminology(
-    file_path: str,
-    sheet_name: str = "Protocol Terminology 2025-09-26",
-    source: str = "admin",
-    original_filename: Optional[str] = None,
-    file_hash: Optional[str] = None,
-) -> dict:
-    """Load Protocol terminology Excel sheet into SQLite table `protocol_terminology`.
-    Mirrors load_ddf_terminology: drop/create table, sanitize headers, create indexes, record audit.
-    """
-    # Extract dataset date ONLY from sheet_name (must contain YYYY-MM-DD).
-    _date_pattern = re.compile(r"(20\d{2}-\d{2}-\d{2})")
-    m = _date_pattern.search(sheet_name or "")
-    if not m:
-        raise HTTPException(
-            400,
-            "Sheet name must contain dataset date YYYY-MM-DD (e.g. 'Protocol Terminology 2025-09-26')",
-        )
-    dataset_date = m.group(1)
-    if not os.path.exists(file_path):
-        _record_protocol_audit(
-            file_path=file_path,
-            sheet_name=sheet_name,
-            row_count=0,
-            column_count=0,
-            columns_json="[]",
-            source=source,
-            file_hash=file_hash,
-            error=f"File not found: {file_path}",
-            dataset_date=dataset_date,
-        )
-        raise HTTPException(400, f"File not found: {file_path}")
-    try:
-        df = pd.read_excel(file_path, sheet_name=sheet_name, dtype=str)
-    except Exception as e:
-        _record_protocol_audit(
-            file_path=file_path,
-            sheet_name=sheet_name,
-            row_count=0,
-            column_count=0,
-            columns_json="[]",
-            source=source,
-            file_hash=file_hash,
-            error=f"Read error: {e}",
-            dataset_date=dataset_date,
-        )
-        raise HTTPException(400, f"Failed reading Excel: {e}")
-    if df.empty:
-        _record_protocol_audit(
-            file_path=file_path,
-            sheet_name=sheet_name,
-            row_count=0,
-            column_count=0,
-            columns_json="[]",
-            source=source,
-            file_hash=file_hash,
-            error="Worksheet empty",
-            dataset_date=dataset_date,
-        )
-        raise HTTPException(400, "Worksheet is empty")
-    raw_cols = list(df.columns)
-    pairs = []  # (raw, sanitized)
-    seen = set()
-    for c in raw_cols:
-        sc = re.sub(r"[^a-zA-Z0-9_]+", "_", c.strip().lower()).strip("_") or "col"
-        if sc == "dataset_date":
-            continue  # drop any existing dataset_date worksheet column
-        base = sc
-        i = 1
-        while sc in seen:
-            sc = f"{base}_{i}"
-            i += 1
-        seen.add(sc)
-        pairs.append((c, sc))
-    sanitized = [sc for _, sc in pairs]
-    sanitized.append("dataset_date")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("DROP TABLE IF EXISTS protocol_terminology")
-    cur.execute(
-        "CREATE TABLE protocol_terminology (id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        + ",".join(f"{c} TEXT" for c in sanitized)
-        + ")"
-    )
-    kept_raw_cols = [raw for raw, sc in pairs]
-    base_records = [
-        tuple(str(row[c]) for c in kept_raw_cols) for _, row in df.iterrows()
-    ]
-    records = [r + (dataset_date,) for r in base_records]
-    placeholders = ",".join(["?"] * (len(kept_raw_cols) + 1))
-    cur.executemany(
-        f"INSERT INTO protocol_terminology ({','.join(sanitized)}) VALUES ({placeholders})",
-        records,
-    )
-    try:
-        if "code" in sanitized:
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_protocol_code ON protocol_terminology(code)"
-            )
-        if "codelist_name" in sanitized:
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_protocol_codelist_name ON protocol_terminology(codelist_name)"
-            )
-    except Exception as ie:  # pragma: no cover
-        logger.warning("Failed creating Protocol indexes: %s", ie)
-    conn.commit()
-    conn.close()
-    _record_protocol_audit(
-        file_path=file_path,
-        sheet_name=sheet_name,
-        row_count=len(records),
-        column_count=len(sanitized),
-        columns_json=json.dumps(sanitized),
-        source=source,
-        file_hash=file_hash,
-        error=None,
-        original_filename=original_filename or os.path.basename(file_path),
-        dataset_date=dataset_date,
-    )
-    return {"columns": sanitized, "row_count": len(records)}
-
-
-# UI endpoint to load new protocol terminology
-@app.post("/admin/load_protocol_terminology")
-def admin_load_protocol(
-    file_path: Optional[str] = None, sheet_name: str = "Protocol Terminology 2025-09-26"
-):
-    """Load new Protocol Terminology XLS."""
-    project_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    )
-    candidates = [
-        os.path.join(project_root, "files", "Protocol_Terminology_2025-09-26.xls"),
-    ]
-    if file_path:
-        fp = _validate_terminology_path(file_path, project_root)
-    else:
-        fp = None
-        for c in candidates:
-            if os.path.exists(c):
-                fp = c
-                break
-        if fp is None:
-            raise HTTPException(
-                400, f"Protocol terminology file not found in candidates: {candidates}"
-            )
-    try:
-        import hashlib
-
-        with open(fp, "rb") as fh:
-            file_hash = hashlib.sha256(fh.read()).hexdigest()
-    except Exception:
-        file_hash = None
-    result = load_protocol_terminology(
-        fp,
-        sheet_name=sheet_name,
-        source="admin",
-        original_filename=os.path.basename(fp),
-        file_hash=file_hash,
-    )
-    return JSONResponse(
-        {"ok": True, **result, "file_path": fp, "sheet_name": sheet_name}
-    )
-
-
-# API endpoint to list protocol terminology
-@app.get("/protocol/terminology")
-def get_protocol_terminology(
-    search: Optional[str] = None,
-    code: Optional[str] = None,
-    codelist_name: Optional[str] = None,
-    codelist_code: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
-):
-    """Return latest Protocol Terminology loaded into SQLite database."""
-    limit = max(1, min(limit, 200))
-    offset = max(0, offset)
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='protocol_terminology'"
-    )
-    if not cur.fetchone():
-        conn.close()
-        raise HTTPException(
-            404,
-            "protocol_terminology table not found (load via POST /admin/load_protocol_terminology)",
-        )
-    cur.execute("PRAGMA table_info(protocol_terminology)")
-    cols = [r[1] for r in cur.fetchall() if r[1] != "id"]
-    searchable = [
-        c
-        for c in cols
-        if c
-        in [
-            "code",
-            "cdisc_submission_value",
-            "cdisc_definition",
-            "cdisc_synonym_s",
-            "nci_preferred_term",
-            "codelist_name",
-            "codelist_code",
-        ]
-    ]
-    cur.execute("SELECT COUNT(*) FROM protocol_terminology")
-    total_count = cur.fetchone()[0]
-    params: List[Any] = []
-    where = []
-    if code:
-        where.append("code = ?")
-        params.append(code)
-    if codelist_name:
-        where.append("codelist_name = ?")
-        params.append(codelist_name)
-    if codelist_code:
-        where.append("codelist_code = ?")
-        params.append(codelist_code)
-    if (not code) and search:
-        pattern = f"%{search.lower()}%"
-        like_clauses = [f"LOWER({c}) LIKE ?" for c in searchable]
-        params.extend([pattern] * len(like_clauses))
-        where.append("(" + " OR ".join(like_clauses) + ")")
-    where_sql = " WHERE " + " AND ".join(where) if where else ""
-    cur.execute(f"SELECT COUNT(*) FROM protocol_terminology{where_sql}", params)
-    matched_count = cur.fetchone()[0]
-    select_cols = ["id"] + cols
-    cur.execute(
-        f"SELECT {', '.join(select_cols)} FROM protocol_terminology{where_sql} ORDER BY code LIMIT ? OFFSET ?",
-        params + [limit, offset],
-    )
-    rows_raw = cur.fetchall()
-    rows = []
-    for r in rows_raw:
-        d = {}
-        for idx, col in enumerate(select_cols):
-            d[col] = r[idx]
-        rows.append(d)
-    conn.close()
-    return {
-        "total_count": total_count,
-        "matched_count": matched_count,
-        "limit": limit,
-        "offset": offset,
-        "filters": {
-            "search": search,
-            "code": code,
-            "codelist_name": codelist_name,
-            "codelist_code": codelist_code,
-        },
-        "columns": select_cols,
-        "rows": rows,
-    }
-
-
-# UI endpoint to return protocol terminology
-@app.get("/ui/protocol/terminology", response_class=HTMLResponse)
-def ui_protocol_terminology(
-    request: Request,
-    search: Optional[str] = None,
-    code: Optional[str] = None,
-    codelist_name: Optional[str] = None,
-    codelist_code: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
-    uploaded: Optional[str] = None,
-    error: Optional[str] = None,
-):
-    """Form handler to display the latest loaded Protocol Terminology from the SQLite database."""
-    data = get_protocol_terminology(
-        search=search,
-        code=code,
-        codelist_name=codelist_name,
-        codelist_code=codelist_code,
-        limit=limit,
-        offset=offset,
-    )
-    return templates.TemplateResponse(
-        request,
-        "protocol_terminology.html",
-        {
-            **data,
-            "search": search or "",
-            "code": code or "",
-            "codelist_name": codelist_name or "",
-            "codelist_code": codelist_code or "",
-            "uploaded": uploaded,
-            "error": error,
-        },
-    )
-
-
-# UI endpoint to upload new protocol terminology
-@app.post("/ui/protocol/terminology/upload", response_class=HTMLResponse)
-def ui_protocol_upload(
-    request: Request,
-    sheet_name: str = Form("Protocol Terminology 2025-09-26"),
-    file: UploadFile = File(...),
-):
-    """Form handler for the upload of Protocol Terminology XLS."""
-    filename = file.filename or "uploaded.xls"
-    if not (filename.lower().endswith(".xls") or filename.lower().endswith(".xlsx")):
-        return HTMLResponse(
-            "<script>window.location='/ui/protocol/terminology?error=Unsupported+file+type';</script>",
-            status_code=400,
-        )
-    try:
-        import hashlib
-        import tempfile
-
-        suffix = ".xls" if filename.lower().endswith(".xls") else ".xlsx"
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        contents = file.file.read()
-        tmp.write(contents)
-        tmp.flush()
-        tmp.close()
-        file_hash = hashlib.sha256(contents).hexdigest()
-        load_protocol_terminology(
-            tmp.name,
-            sheet_name=sheet_name,
-            source="upload",
-            original_filename=filename,
-            file_hash=file_hash,
-        )
-        return HTMLResponse(
-            "<script>window.location='/ui/protocol/terminology?uploaded=1';</script>"
-        )
-    except HTTPException as he:
-        return HTMLResponse(
-            f"<script>window.location='/ui/protocol/terminology?error={he.detail}';</script>",
-            status_code=400,
-        )
-    except Exception as e:
-        esc = str(e).replace("'", "").replace('"', "")
-        return HTMLResponse(
-            f"<script>window.location='/ui/protocol/terminology?error={esc}';</script>",
-            status_code=500,
-        )
-
-
-# API endpoint to record a protocol terminology upload audit
-def _record_protocol_audit(
-    file_path: str,
-    sheet_name: str,
-    row_count: int,
-    column_count: int,
-    columns_json: str,
-    source: str,
-    file_hash: Optional[str],
-    error: Optional[str],
-    original_filename: Optional[str] = None,
-    dataset_date: Optional[str] = None,
-):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS protocol_terminology_audit (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            loaded_at TEXT NOT NULL,
-            file_path TEXT,
-            original_filename TEXT,
-            sheet_name TEXT,
-            row_count INTEGER,
-            column_count INTEGER,
-            columns_json TEXT,
-            source TEXT,
-            file_hash TEXT,
-            error TEXT,
-            dataset_date TEXT
-        )"""
-        )
-        cur.execute("PRAGMA table_info(protocol_terminology_audit)")
-        audit_cols = {r[1] for r in cur.fetchall()}
-        if "dataset_date" not in audit_cols:
-            try:
-                cur.execute(
-                    "ALTER TABLE protocol_terminology_audit ADD COLUMN dataset_date TEXT"
-                )
-            except Exception:
-                pass
-        cur.execute(
-            "INSERT INTO protocol_terminology_audit (loaded_at,file_path,original_filename,sheet_name,row_count,column_count,columns_json,source,file_hash,error,dataset_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (
-                datetime.now(timezone.utc).isoformat(),
-                file_path,
-                original_filename,
-                sheet_name,
-                row_count,
-                column_count,
-                columns_json,
-                source,
-                file_hash,
-                error,
-                dataset_date,
-            ),
-        )
-        try:
-            cur.execute(
-                "CREATE INDEX IF NOT EXISTS idx_protocol_audit_dataset_date ON protocol_terminology_audit(dataset_date)"
-            )
-        except Exception:
-            pass
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording Protocol audit: %s", e)
-
-
-# Helper function to return SQLite Protocol Terminology table
-def _get_protocol_sources() -> List[str]:
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='protocol_terminology_audit'"
-    )
-    if not cur.fetchone():
-        conn.close()
-        return []
-    cur.execute(
-        "SELECT DISTINCT source FROM protocol_terminology_audit WHERE source IS NOT NULL ORDER BY source"
-    )
-    sources = [r[0] for r in cur.fetchall()]
-    conn.close()
-    return sources
-
-
-# UI endpoint to display protocol terminology audits
-@app.get("/protocol/terminology/audit")
-def get_protocol_audit(
-    source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
-):
-    """Return the Protocol Terminology audit report."""
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='protocol_terminology_audit'"
-    )
-    if not cur.fetchone():
-        conn.close()
-        return []
-    where_clauses = []
-    params: List[Any] = []
-
-    def _valid_date(d: str) -> bool:
-        try:
-            datetime.strptime(d, "%Y-%m-%d")
-            return True
-        except Exception:
-            return False
-
-    if source:
-        where_clauses.append("source = ?")
-        params.append(source)
-    if start and _valid_date(start):
-        where_clauses.append("substr(loaded_at,1,10) >= ?")
-        params.append(start)
-    if end and _valid_date(end):
-        where_clauses.append("substr(loaded_at,1,10) <= ?")
-        params.append(end)
-    where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
-    cur.execute(
-        f"SELECT id,loaded_at,original_filename,file_path,sheet_name,row_count,column_count,source,file_hash,error,dataset_date FROM protocol_terminology_audit{where_sql} ORDER BY id DESC",
-        params,
-    )
-    rows = []
-    for r in cur.fetchall():
-        rows.append(
-            {
-                "id": r[0],
-                "loaded_at": r[1],
-                "original_filename": r[2],
-                "file_path": r[3],
-                "sheet_name": r[4],
-                "row_count": r[5],
-                "column_count": r[6],
-                "source": r[7],
-                "file_hash": r[8],
-                "error": r[9],
-                "dataset_date": r[10],
-            }
-        )
-    conn.close()
-    return {"rows": rows}
-
-
-# API endpoint to export Protocol Terminology audit report in XLSX format
-@app.get("/protocol/terminology/audit/export.csv")
-def export_protocol_audit_csv(
-    source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
-):
-    """Export the latest Protocol Terminology from the SQLite database in CSV format."""
-    rows = get_protocol_audit(source=source, start=start, end=end)
-    import csv
-    import io
-
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(
-        [
-            "id",
-            "loaded_at",
-            "source",
-            "original_filename",
-            "file_hash",
-            "row_count",
-            "column_count",
-            "sheet_name",
-            "error",
-        ]
-    )
-    for r in rows:
-        writer.writerow(
-            [
-                r["id"],
-                r["loaded_at"],
-                r["source"],
-                r["original_filename"],
-                r["file_hash"],
-                r["row_count"],
-                r["column_count"],
-                r["sheet_name"],
-                r["error"] or "",
-            ]
-        )
-    csv_data = buf.getvalue()
-    return Response(
-        content=csv_data,
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=protocol_terminology_audit.csv"
-        },
-    )
-
-
-# API endpoint to export Protocol Terminology audit report in JSON format
-@app.get("/protocol/terminology/audit/export.json")
-def export_protocol_audit_json(
-    source: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None
-):
-    """Export the latest Protocol Terminology from the SQLite database in JSON format."""
-    return get_protocol_audit(source=source, start=start, end=end)
-
-
-# UI endpoint to export Protocol Terminology audit report
-@app.get("/ui/protocol/terminology/audit", response_class=HTMLResponse)
-def ui_protocol_audit(
-    request: Request,
-    source: Optional[str] = None,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
-):
-    """Form handler for display of the Protocol Terminology audit report."""
-    rows = get_protocol_audit(source=source, start=start, end=end)
-    sources = _get_protocol_sources()
-    return templates.TemplateResponse(
-        request,
-        "protocol_terminology_audit.html",
-        {
-            "rows": rows,
-            "count": len(rows),
-            "sources": sources,
-            "current_source": source or "",
-            "start": start or "",
-            "end": end or "",
-        },
-    )
 
 
 def main():

@@ -15,12 +15,6 @@
     <small style="color:#555;">(forces remote re-fetch &amp; cache reset)</small>
 </div>
 
-<div style="margin:4px 0 24px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <form hx-post="/ui/soa/{{ soa_id }}/activities/dss_auto_assign" style="display:inline;">
-        <button type="submit" style="background:#1565c0;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.9em;">&#x21bb; Auto-assign DSS</button>
-    </form>
-    <small style="color:#555;">(fetches DSS for all unmapped concepts)</small>
-</div>
 
 <div style="margin:4px 0 12px 12px">
     <form method="post" action="/ui/soa/{{ soa_id }}/activities/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
@@ -75,6 +69,7 @@
         {% set selected_codes = concepts_list | map(attribute='code') | list %}
         {% set selected_surrogate_list = activity_surrogates.get(a.id, []) %}
         {% set selected_surrogate_uids = selected_surrogate_list | map(attribute='surrogate_uid') | list %}
+        {% set activity_group_uids = concepts_list | selectattr('concept_group_uid', 'defined') | selectattr('concept_group_uid') | map(attribute='concept_group_uid') | unique | list %}
         {% set activity_id = a.id %}
         {% include 'concepts_cell.html' %}
         {% set activity_id = a.id %}

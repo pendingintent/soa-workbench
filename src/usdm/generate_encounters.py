@@ -5,27 +5,41 @@ from soa_builder.web.db import _connect
 
 
 # Override the definition in usdm_utils.py
-# Encounters are currently storing type codes in the ddf_terminology table
+# Encounter type codes are resolved via CDISC Library DDF CT.
 def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
-    """Fetch type codes for ENCOUNTERS only.  These values are stored in the ddf_terminology table."""
+    """Enrich ENCOUNTER type code_association rows via CDISC Library DDF CT."""
+    from soa_builder.web.utils import get_ddf_ct_rows, get_ddf_ct_term
+
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT DISTINCT c.codelist_table, p.code,p.cdisc_submission_value,p.dataset_date "
-        "FROM code_association c INNER JOIN ddf_terminology p ON c.codelist_code = p.codelist_code "
-        "AND c.code = p.code WHERE c.soa_id=? AND c.code_uid=?",
-        (
-            soa_id,
-            code_uid,
-        ),
+        "SELECT DISTINCT codelist_table, code, codelist_code "
+        "FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, code_uid),
     )
     rows = cur.fetchall()
     conn.close()
-    code_system = [r[0] for r in rows]
-    code_code = [r[1] for r in rows]
-    code_decode = [r[2] for r in rows]
-    code_system_version = [r[3] for r in rows]
 
+    payload = get_ddf_ct_rows()
+    slug = payload.get("slug") or ""
+    version = ""
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+
+    code_system: list = []
+    code_code: list = []
+    code_decode: list = []
+    code_system_version: list = []
+    for codelist_table, code, codelist_code in rows:
+        term = get_ddf_ct_term(codelist_code, code)
+        if not term:
+            continue
+        code_system.append(codelist_table)
+        code_code.append(code)
+        code_decode.append(term.get("submission_value") or "")
+        code_system_version.append(version)
     return code_code, code_decode, code_system, code_system_version
 
 
@@ -76,20 +90,32 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
     )
     rows = cur.fetchall()
 
-    # Pre-fetch code_association + ddf_terminology for type codes (keyed by code_uid)
+    # Pre-fetch code_association for type codes (keyed by code_uid); enrich via
+    # CDISC Library DDF CT.
+    from soa_builder.web.utils import get_ddf_ct_rows, get_ddf_ct_term
+
     cur.execute(
-        "SELECT DISTINCT c.code_uid, c.codelist_table, p.code, p.cdisc_submission_value, p.dataset_date "
-        "FROM code_association c INNER JOIN ddf_terminology p ON c.codelist_code = p.codelist_code "
-        "AND c.code = p.code WHERE c.soa_id=?",
+        "SELECT DISTINCT code_uid, codelist_table, code, codelist_code "
+        "FROM code_association WHERE soa_id=?",
         (soa_id,),
     )
+    ddf_payload = get_ddf_ct_rows()
+    ddf_slug = ddf_payload.get("slug") or ""
+    ddf_version = ""
+    if ddf_slug:
+        parts = ddf_slug.split("-")
+        if len(parts) >= 4:
+            ddf_version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
     type_code_map: dict = {}
-    for code_uid, codelist_table, code, decode, dataset_date in cur.fetchall():
+    for code_uid, codelist_table, code, codelist_code in cur.fetchall():
+        term = get_ddf_ct_term(codelist_code, code)
+        if not term:
+            continue
         type_code_map.setdefault(code_uid, ([], [], [], []))
         type_code_map[code_uid][0].append(code)
-        type_code_map[code_uid][1].append(decode)
+        type_code_map[code_uid][1].append(term.get("submission_value") or "")
         type_code_map[code_uid][2].append(codelist_table)
-        type_code_map[code_uid][3].append(dataset_date)
+        type_code_map[code_uid][3].append(ddf_version)
 
     # Pre-fetch code_association for env/contact codes (keyed by code_uid)
     cur.execute(
