@@ -1,6 +1,6 @@
 # Workflow for linking Biomedical Concept with Scheduled Activity Instance
 
-Assumes that the Activties and Scheduled Activity Instances have been created to form the SOA Matrix.
+Assumes that the Activities and Scheduled Activity Instances have been created to form the SOA Matrix.
 
 ![Activities with assigned biomedical concepts](../src/soa_builder/web/static/images/activities_w_bcs.png)
 
@@ -24,6 +24,9 @@ In the DSS (Data Set Specialization) column, the SDTM DSS values corresponding t
 ![Adding Data Set Specialization](../src/soa_builder/web/static/images/adding_dss.png)
 
 If more than one data set Specialization is associated with a Biomedical Concept, all options are listed in the dropdown.  This is shown in the image above for `Activity_18`, where there are three DSS available for the Biomedical Concept `Concomitant Therapy`, C-code C53630.
+
+**NOTE:** The assignment of Data Set Specializations is optional.  DSS data is not used in the generation of the USDM JSON file.
+
 
 ## Assign Biomedical Concept Surrogate to an Activity
 
