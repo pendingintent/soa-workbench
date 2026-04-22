@@ -256,7 +256,7 @@
     <th style="min-width: 70px;"></th>
     {% endfor %}
   </tr>
-  {% for a in activities %}
+  {% for a in activities_by_timeline.get(timeline_uid, []) %}
   <tr data-activity-id="{{ a.id }}">
     <td>{% if a.label %}{{ a.label }}{% else %}{{ a.name }}{% endif %}</td>
     {% set concepts_list = activity_concepts.get(a.id, []) %}

@@ -4563,6 +4563,25 @@ def ui_edit(request: Request, soa_id: int):
             instances_by_timeline[timeline_key] = []
         instances_by_timeline[timeline_key].append(inst)
 
+    # Activities per timeline: an activity is shown in timeline T's matrix
+    # if any matrix_cells row connects it to an instance whose
+    # member_of_timeline == T. The instance->timeline link (set on the
+    # study_timing page) is the authoritative criterion.
+    instance_timeline = {
+        inst["id"]: (inst.get("member_of_timeline") or "unassigned")
+        for inst in instances
+    }
+    activity_ids_by_timeline: dict = {tl: set() for tl in instances_by_timeline.keys()}
+    for c in cells:
+        tl = instance_timeline.get(c["instance_id"])
+        if tl is None or tl not in activity_ids_by_timeline:
+            continue
+        activity_ids_by_timeline[tl].add(c["activity_id"])
+    activities_by_timeline: dict = {
+        tl: [a for a in activities_page if a["id"] in ids]
+        for tl, ids in activity_ids_by_timeline.items()
+    }
+
     # Determine default timeline (main_timeline or first available)
     default_timeline = None
     for tl in timelines:
@@ -4641,6 +4660,7 @@ def ui_edit(request: Request, soa_id: int):
             "timings": timings,
             "timelines": timelines,
             "instances_by_timeline": instances_by_timeline,
+            "activities_by_timeline": activities_by_timeline,
             "default_timeline": default_timeline,
             "footnotes": footnotes,
             "superscript_map": superscript_map,
