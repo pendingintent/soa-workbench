@@ -267,6 +267,42 @@ class ConceptsUpdate(BaseModel):
     concept_codes: List[str]
 
 
+class ObjectiveCreate(BaseModel):
+    name: str
+    level: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    text: Optional[str] = None
+
+
+class ObjectiveUpdate(BaseModel):
+    name: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    text: Optional[str] = None
+    level: Optional[str] = None
+
+
+class EndpointCreate(BaseModel):
+    name: str
+    level: str
+    objective_uid: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    text: Optional[str] = None
+    purpose: Optional[str] = None
+
+
+class EndpointUpdate(BaseModel):
+    name: Optional[str] = None
+    objective_uid: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    text: Optional[str] = None
+    purpose: Optional[str] = None
+    level: Optional[str] = None
+
+
 class FreezeCreate(BaseModel):
     version_label: Optional[str] = None
 

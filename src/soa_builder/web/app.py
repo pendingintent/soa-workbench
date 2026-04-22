@@ -83,6 +83,10 @@ from .migrate_database import (
     _migrate_activity_concept_dss_add_display,
     _migrate_drop_protocol_terminology_tables,
     _migrate_drop_ddf_terminology_tables,
+    _migrate_add_objective_table,
+    _migrate_add_objective_audit_table,
+    _migrate_add_endpoint_table,
+    _migrate_add_endpoint_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -113,6 +117,8 @@ from .routers import (
 from .routers import (
     ddf_controlled_terminology as ddf_controlled_terminology_router,
 )
+from .routers import objectives as objectives_router
+from .routers import endpoints as endpoints_router
 from .audit import _record_element_audit
 
 
@@ -246,6 +252,10 @@ _migrate_drop_protocol_terminology_tables()
 _migrate_drop_ddf_terminology_tables()
 _migrate_add_activity_concept_dss_table()
 _migrate_activity_concept_dss_add_display()
+_migrate_add_objective_table()
+_migrate_add_objective_audit_table()
+_migrate_add_endpoint_table()
+_migrate_add_endpoint_audit_table()
 
 
 # Include routers
@@ -278,6 +288,10 @@ app.include_router(cdash_terminology_router.router)
 app.include_router(define_xml_terminology_router.router)
 app.include_router(protocol_controlled_terminology_router.router)
 app.include_router(ddf_controlled_terminology_router.router)
+app.include_router(objectives_router.router)
+app.include_router(objectives_router.ui_router)
+app.include_router(endpoints_router.router)
+app.include_router(endpoints_router.ui_router)
 
 
 def _record_visit_audit(
@@ -4623,6 +4637,70 @@ def ui_edit(request: Request, soa_id: int):
     schedule_timelines_options = get_schedule_timeline(soa_id)
     instance_options = get_scheduled_activity_instance(soa_id)
 
+    # Objectives + Endpoints with DDF level decode lookups
+    c188725_map = _get_ddf_ct_codelist_map("C188725")
+    c188726_map = _get_ddf_ct_codelist_map("C188726")
+    objective_level_options = sorted({v for v in c188725_map.values() if v})
+    endpoint_level_options = sorted({v for v in c188726_map.values() if v})
+    conn_obj = _connect()
+    cur_obj = conn_obj.cursor()
+    cur_obj.execute(
+        "SELECT code_uid, code FROM code_association "
+        "WHERE soa_id=? AND codelist_code IN ('C188725','C188726')",
+        (soa_id,),
+    )
+    level_code_to_sv: dict = {}
+    for code_uid, code_val in cur_obj.fetchall():
+        sv = c188725_map.get(code_val) or c188726_map.get(code_val) or ""
+        level_code_to_sv[code_uid] = sv
+    cur_obj.execute(
+        "SELECT id,objective_uid,name,label,description,text,"
+        "level_code_uid,order_index "
+        "FROM objective WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    objectives = [
+        {
+            "id": r[0],
+            "objective_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "description": r[4],
+            "text": r[5],
+            "level_code_uid": r[6],
+            "level": level_code_to_sv.get(r[6], ""),
+            "order_index": r[7],
+        }
+        for r in cur_obj.fetchall()
+    ]
+    cur_obj.execute(
+        "SELECT id,endpoint_uid,objective_uid,name,label,description,"
+        "text,purpose,level_code_uid,order_index "
+        "FROM endpoint WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    endpoints_by_objective: dict = {}
+    orphan_endpoints: list = []
+    for r in cur_obj.fetchall():
+        ep = {
+            "id": r[0],
+            "endpoint_uid": r[1],
+            "objective_uid": r[2],
+            "name": r[3],
+            "label": r[4],
+            "description": r[5],
+            "text": r[6],
+            "purpose": r[7],
+            "level_code_uid": r[8],
+            "level": level_code_to_sv.get(r[8], ""),
+            "order_index": r[9],
+        }
+        if ep["objective_uid"]:
+            endpoints_by_objective.setdefault(ep["objective_uid"], []).append(ep)
+        else:
+            orphan_endpoints.append(ep)
+    conn_obj.close()
+
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -4664,6 +4742,11 @@ def ui_edit(request: Request, soa_id: int):
             "default_timeline": default_timeline,
             "footnotes": footnotes,
             "superscript_map": superscript_map,
+            "objectives": objectives,
+            "endpoints_by_objective": endpoints_by_objective,
+            "orphan_endpoints": orphan_endpoints,
+            "objective_level_options": objective_level_options,
+            "endpoint_level_options": endpoint_level_options,
         },
     )
 
