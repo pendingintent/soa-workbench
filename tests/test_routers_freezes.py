@@ -226,6 +226,62 @@ def test_freeze_nonexistent_soa():
     assert resp.status_code == 404
 
 
+def test_ui_list_freezes_renders_table_desc():
+    """The dedicated freezes page lists versions newest-first."""
+    r = client.post("/soa", json={"name": "Freeze List Study"})
+    soa_id = r.json()["id"]
+
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "vA"})
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "vB"})
+
+    resp = client.get(f"/ui/soa/{soa_id}/freezes")
+    assert resp.status_code == 200
+    body = resp.text
+    assert "Frozen Versions" in body
+    # Newest (vB, created last ⇒ higher id) appears before vA in DESC order
+    assert body.index("vB") < body.index("vA")
+
+
+def test_ui_list_freezes_unknown_soa():
+    resp = client.get("/ui/soa/9999999/freezes")
+    assert resp.status_code == 404
+
+
+def test_ui_delete_freeze_removes_row():
+    r = client.post("/soa", json={"name": "Delete Freeze Study"})
+    soa_id = r.json()["id"]
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "vDel"})
+    freeze_id = _get_latest_freeze_id(soa_id)
+
+    resp = client.post(
+        f"/ui/soa/{soa_id}/freeze/{freeze_id}/delete", follow_redirects=False
+    )
+    assert resp.status_code == 200
+
+    # Confirm gone
+    assert client.get(f"/soa/{soa_id}/freeze/{freeze_id}").status_code == 404
+    list_resp = client.get(f"/ui/soa/{soa_id}/freezes")
+    assert "vDel" not in list_resp.text
+
+
+def test_ui_delete_freeze_unknown_id():
+    r = client.post("/soa", json={"name": "Delete Unknown Freeze"})
+    soa_id = r.json()["id"]
+    resp = client.post(f"/ui/soa/{soa_id}/freeze/999999/delete")
+    assert resp.status_code == 404
+
+
+def test_edit_page_no_longer_renders_freeze_bar():
+    """Regression: freeze controls were moved to /freezes; edit page must not
+    render the inline freeze bar."""
+    r = client.post("/soa", json={"name": "Edit Page Freeze Removal"})
+    soa_id = r.json()["id"]
+
+    resp = client.get(f"/ui/soa/{soa_id}/edit")
+    assert resp.status_code == 200
+    assert "freeze-bar" not in resp.text
+
+
 def test_get_freeze_wrong_soa():
     """Test accessing freeze from wrong SoA returns 404."""
     r1 = client.post("/soa", json={"name": "SoA 1"})

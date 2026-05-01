@@ -5,8 +5,19 @@ import os
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+
 from ..db import _connect
 from ..utils import soa_exists
+from ._freeze_helpers import (
+    _create_freeze,
+    _delete_freeze,
+    _diff_freezes_limited,
+    _get_freeze,
+    _list_freezes,
+    _record_rollback_audit,
+    _rollback_freeze,
+    _rollback_preview,
+)
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -15,10 +26,20 @@ router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.freezes")
 
 
-# Removed local _soa_exists; using shared utils.soa_exists
-
-
-# Dynamic helper imports inside endpoint bodies avoid circular import at module load.
+@router.get(
+    "/ui/soa/{soa_id}/freezes",
+    response_class=HTMLResponse,
+    name="ui_list_freezes",
+)
+def ui_list_freezes(request: Request, soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    freezes = _list_freezes(soa_id)
+    return templates.TemplateResponse(
+        request,
+        "freezes.html",
+        {"soa_id": soa_id, "freezes": freezes},
+    )
 
 
 @router.post("/ui/soa/{soa_id}/freeze", response_class=HTMLResponse)
@@ -26,20 +47,20 @@ def ui_freeze_soa(request: Request, soa_id: int, version_label: str = Form("")):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     try:
-        from ..app import _create_freeze  # type: ignore
-
-        _fid, _vlabel = _create_freeze(soa_id, version_label or None)
+        _create_freeze(soa_id, version_label or None)
     except HTTPException as he:
         if request.headers.get("HX-Request") == "true":
             return HTMLResponse(
-                f"<div class='error' style='color:#c62828;font-size:0.7em;'>Error: {he.detail}</div>"
+                f"<div class='error' style='color:#c62828;font-size:0.7em;'>"
+                f"Error: {he.detail}</div>"
             )
         return HTMLResponse(
-            f"<script>alert('Error: {he.detail}');window.location='/ui/soa/{soa_id}/edit';</script>"
+            f"<script>alert('Error: {he.detail}');"
+            f"window.location='/ui/soa/{soa_id}/freezes';</script>"
         )
     if request.headers.get("HX-Request") == "true":
-        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/freezes';</script>")
 
 
 @router.get("/soa/{soa_id}/freeze/{freeze_id}")
@@ -71,8 +92,6 @@ def get_freeze(soa_id: int, freeze_id: int):
 
 @router.get("/ui/soa/{soa_id}/freeze/{freeze_id}/view", response_class=HTMLResponse)
 def ui_freeze_view(request: Request, soa_id: int, freeze_id: int):
-    from ..app import _get_freeze  # type: ignore
-
     freeze = _get_freeze(soa_id, freeze_id)
     if not freeze:
         raise HTTPException(404, "Freeze not found")
@@ -85,8 +104,6 @@ def ui_freeze_view(request: Request, soa_id: int, freeze_id: int):
 
 @router.get("/ui/soa/{soa_id}/freeze/diff", response_class=HTMLResponse)
 def ui_freeze_diff(request: Request, soa_id: int, left: int, right: int, full: int = 0):
-    from ..app import _diff_freezes_limited  # type: ignore
-
     limit = None if full == 1 else 50
     diff = _diff_freezes_limited(soa_id, left, right, limit=limit)
     return templates.TemplateResponse(
@@ -100,8 +117,6 @@ def ui_freeze_diff(request: Request, soa_id: int, left: int, right: int, full: i
     "/ui/soa/{soa_id}/freeze/{freeze_id}/rollback", response_class=HTMLResponse
 )
 def ui_freeze_rollback(request: Request, soa_id: int, freeze_id: int):
-    from ..app import _record_rollback_audit, _rollback_freeze  # type: ignore
-
     result = _rollback_freeze(soa_id, freeze_id)
     _record_rollback_audit(
         soa_id,
@@ -115,16 +130,15 @@ def ui_freeze_rollback(request: Request, soa_id: int, freeze_id: int):
         },
     )
     if request.headers.get("HX-Request") == "true":
-        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/edit';</script>")
+        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/freezes';</script>")
 
 
 @router.get(
-    "/ui/soa/{soa_id}/freeze/{freeze_id}/rollback_preview", response_class=HTMLResponse
+    "/ui/soa/{soa_id}/freeze/{freeze_id}/rollback_preview",
+    response_class=HTMLResponse,
 )
 def ui_freeze_rollback_preview(request: Request, soa_id: int, freeze_id: int):
-    from ..app import _get_freeze, _rollback_preview  # type: ignore
-
     preview = _rollback_preview(soa_id, freeze_id)
     freeze = _get_freeze(soa_id, freeze_id)
     return templates.TemplateResponse(
@@ -139,10 +153,19 @@ def ui_freeze_rollback_preview(request: Request, soa_id: int, freeze_id: int):
     )
 
 
+@router.post("/ui/soa/{soa_id}/freeze/{freeze_id}/delete", response_class=HTMLResponse)
+def ui_freeze_delete(request: Request, soa_id: int, freeze_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    if not _delete_freeze(soa_id, freeze_id):
+        raise HTTPException(404, "Freeze not found")
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
+    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/freezes';</script>")
+
+
 @router.get("/soa/{soa_id}/freeze/diff.json")
 def get_freeze_diff_json(soa_id: int, left: int, right: int, full: int = 0):
-    from ..app import _diff_freezes_limited  # type: ignore
-
     limit = None if full == 1 else 1000
     diff = _diff_freezes_limited(soa_id, left, right, limit=limit)
     return JSONResponse(diff)

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Frozen Versions</h2>
+
+<div style="margin-bottom:12px;">
+  <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
+    &larr; Return to Edit Page
+  </a>
+</div>
+
+<div style="margin:4px 0 12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <form hx-post="/ui/soa/{{ soa_id }}/freeze" hx-target="#freeze-feedback" hx-swap="innerHTML" style="display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;">
+    <div style="display:flex;flex-direction:column;gap:2px;">
+      <label style="font-size:0.85em;font-weight:600;">Version label</label>
+      <input name="version_label" placeholder="(auto v1, v2, ...)" style="font-size:0.85em;padding:2px 4px;" />
+    </div>
+    <button type="submit" style="background:#6a1b9a;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.85em;">Freeze Current State</button>
+  </form>
+  <div id="freeze-feedback" style="font-size:0.75em;color:#c62828;"></div>
+</div>
+
+<table id="freezes-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
+  <tr style="background:#eee;">
+    <th title="Version label" style="text-align:left;padding:4px;">Version</th>
+    <th title="Date created (newest first)" style="text-align:left;padding:4px;">Created At</th>
+    <th title="View snapshot" style="text-align:left;padding:4px;">View</th>
+    <th title="Preview rollback" style="text-align:left;padding:4px;">Rollback Preview</th>
+    <th title="Snapshot JSON" style="text-align:left;padding:4px;">JSON</th>
+    <th title="Delete this frozen version" style="text-align:left;padding:4px;">Delete</th>
+  </tr>
+  {% for f in freezes %}
+  <tr data-freeze-id="{{ f.id }}">
+    <td style="padding:4px;white-space:nowrap;"><strong>{{ f.version_label }}</strong></td>
+    <td style="padding:4px;white-space:nowrap;">{{ f.created_at }}</td>
+    <td style="padding:4px;">
+      <button hx-get="/ui/soa/{{ soa_id }}/freeze/{{ f.id }}/view" hx-target="#modal-host" hx-swap="innerHTML" style="background:#455a64;color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:0.85em;">View</button>
+    </td>
+    <td style="padding:4px;">
+      <button hx-get="/ui/soa/{{ soa_id }}/freeze/{{ f.id }}/rollback_preview" hx-target="#modal-host" hx-swap="innerHTML" style="background:#c62828;color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:0.85em;">Rollback Preview</button>
+    </td>
+    <td style="padding:4px;">
+      <a href="/soa/{{ soa_id }}/freeze/{{ f.id }}" target="_blank" style="background:#37474f;color:#fff;text-decoration:none;padding:2px 8px;border-radius:3px;font-size:0.85em;">JSON</a>
+    </td>
+    <td style="padding:4px;">
+      <form method="post" action="/ui/soa/{{ soa_id }}/freeze/{{ f.id }}/delete" onsubmit="return confirm('Delete frozen version {{ f.version_label }}? This cannot be undone.');" style="display:inline;">
+        <button type="submit" style="background:#c62828;color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:0.85em;">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" style="padding:6px;color:#777;">No versions frozen yet.</td></tr>
+  {% endfor %}
+</table>
+
+{% if freezes and freezes|length >= 2 %}
+<hr style="margin:24px 0 12px;border-color:#e0e0e0;" />
+<h3 style="margin:0 0 8px;font-size:1em;color:#455a64;">Compare Versions</h3>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:0.85em;">
+  <label>Left:</label>
+  <select id="diff-left" name="left" style="font-size:0.85em;">
+    {% for f in freezes %}<option value="{{ f.id }}">{{ f.version_label }}</option>{% endfor %}
+  </select>
+  <label>Right:</label>
+  <select id="diff-right" name="right" style="font-size:0.85em;">
+    {% for f in freezes %}<option value="{{ f.id }}">{{ f.version_label }}</option>{% endfor %}
+  </select>
+  <button hx-get="/ui/soa/{{ soa_id }}/freeze/diff" hx-include="#diff-left,#diff-right" hx-target="#modal-host" hx-swap="innerHTML" style="background:#2e7d32;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.85em;">Compare</button>
+</div>
+{% endif %}
+
+<hr style="margin:24px 0 12px;border-color:#e0e0e0;" />
+<h3 style="margin:0 0 8px;font-size:1em;color:#455a64;">Audit Logs</h3>
+<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:0.85em;">
+  <button hx-get="/ui/soa/{{ soa_id }}/rollback_audit" hx-target="#modal-host" hx-swap="innerHTML" style="background:#37474f;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Rollback Audit Log</button>
+  <a href="/soa/{{ soa_id }}/rollback_audit/export/xlsx" style="background:#1976d2;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;">Rollback Audit XLSX</a>
+</div>
+
+<div id="modal-host"></div>
+{% endblock %}
