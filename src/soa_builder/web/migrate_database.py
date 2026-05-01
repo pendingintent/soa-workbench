@@ -1717,6 +1717,32 @@ def _migrate_activity_concept_dss_add_display():
         logger.warning("_migrate_activity_concept_dss_add_display failed: %s", e)
 
 
+def _migrate_activity_concept_dss_add_extension_attribute_uid():
+    """Add extension_attribute_uid column to activity_concept_dss.
+
+    Stores the immutable ExtensionAttribute_N identifier for each DSS
+    assignment so USDM exports produce stable IDs across runs.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_concept_dss)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "extension_attribute_uid" not in cols:
+            cur.execute(
+                "ALTER TABLE activity_concept_dss"
+                " ADD COLUMN extension_attribute_uid TEXT"
+            )
+            conn.commit()
+            logger.info("Added extension_attribute_uid column to activity_concept_dss")
+        conn.close()
+    except Exception as e:
+        logger.warning(
+            "_migrate_activity_concept_dss_add_extension_attribute_uid failed: %s",
+            e,
+        )
+
+
 def _migrate_drop_protocol_terminology_tables():
     """Drop the legacy protocol_terminology and protocol_terminology_audit tables.
 

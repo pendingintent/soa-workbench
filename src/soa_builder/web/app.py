@@ -81,6 +81,7 @@ from .migrate_database import (
     _migrate_activity_surrogate_add_concept_group_uid,
     _migrate_add_activity_concept_dss_table,
     _migrate_activity_concept_dss_add_display,
+    _migrate_activity_concept_dss_add_extension_attribute_uid,
     _migrate_drop_protocol_terminology_tables,
     _migrate_drop_ddf_terminology_tables,
     _migrate_add_objective_table,
@@ -252,6 +253,7 @@ _migrate_drop_protocol_terminology_tables()
 _migrate_drop_ddf_terminology_tables()
 _migrate_add_activity_concept_dss_table()
 _migrate_activity_concept_dss_add_display()
+_migrate_activity_concept_dss_add_extension_attribute_uid()
 _migrate_add_objective_table()
 _migrate_add_objective_audit_table()
 _migrate_add_endpoint_table()
