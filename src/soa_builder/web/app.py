@@ -4653,8 +4653,7 @@ def ui_edit(request: Request, soa_id: int):
     )
     level_code_to_sv: dict = {}
     for code_uid, code_val in cur_obj.fetchall():
-        sv = c188725_map.get(code_val) or c188726_map.get(code_val) or ""
-        level_code_to_sv[code_uid] = sv
+        level_code_to_sv[code_uid] = code_val or ""
     cur_obj.execute(
         "SELECT id,objective_uid,name,label,description,text,"
         "level_code_uid,order_index "
