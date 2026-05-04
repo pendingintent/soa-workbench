@@ -1,8 +1,9 @@
+import html
 import json
 import logging
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from ..audit import _record_endpoint_audit, _record_objective_audit
 from ..db import _connect
@@ -199,12 +200,22 @@ def update_objective(soa_id: int, objective_id: int, body: ObjectiveUpdate):
         raise HTTPException(404, "Objective not found")
     before = _row_to_dict(row)
 
-    new_name = body.name if body.name is not None else before["name"]
-    new_label = body.label if body.label is not None else before["label"]
-    new_desc = (
-        body.description if body.description is not None else before["description"]
+    if body.name is not None:
+        new_name = body.name.strip()
+        if not new_name:
+            conn.close()
+            raise HTTPException(400, "Objective name cannot be empty")
+    else:
+        new_name = before["name"]
+    new_label = (
+        (body.label.strip() or None) if body.label is not None else before["label"]
     )
-    new_text = body.text if body.text is not None else before["text"]
+    new_desc = (
+        (body.description.strip() or None)
+        if body.description is not None
+        else before["description"]
+    )
+    new_text = (body.text.strip() or None) if body.text is not None else before["text"]
 
     new_level_code_uid = before["level_code_uid"]
     if body.level is not None:
@@ -226,9 +237,9 @@ def update_objective(soa_id: int, objective_id: int, body: ObjectiveUpdate):
         "level_code_uid=? WHERE id=? AND soa_id=?",
         (
             new_name,
-            (new_label or None) if new_label is not None else None,
-            (new_desc or None) if new_desc is not None else None,
-            (new_text or None) if new_text is not None else None,
+            new_label,
+            new_desc,
+            new_text,
             new_level_code_uid,
             objective_id,
             soa_id,
@@ -354,7 +365,10 @@ def ui_create_objective(
     redirect_url = f"/ui/soa/{soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
-    return RedirectResponse(redirect_url, status_code=303)
+    safe_soa_id = html.escape(str(soa_id))
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{safe_soa_id}/edit';</script>"
+    )
 
 
 @ui_router.post(
@@ -387,7 +401,10 @@ def ui_update_objective(
     redirect_url = f"/ui/soa/{soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
-    return RedirectResponse(redirect_url, status_code=303)
+    safe_soa_id = html.escape(str(soa_id))
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{safe_soa_id}/edit';</script>"
+    )
 
 
 @ui_router.post(
@@ -405,4 +422,7 @@ def ui_delete_objective(
     redirect_url = f"/ui/soa/{soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
-    return RedirectResponse(redirect_url, status_code=303)
+    safe_soa_id = html.escape(str(soa_id))
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{safe_soa_id}/edit';</script>"
+    )

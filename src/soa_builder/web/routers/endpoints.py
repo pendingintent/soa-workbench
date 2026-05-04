@@ -228,13 +228,27 @@ def update_endpoint(soa_id: int, endpoint_id: int, body: EndpointUpdate):
             raise HTTPException(400, f"Objective {candidate!r} not found for this SOA")
         new_objective_uid = candidate
 
-    new_name = body.name if body.name is not None else before["name"]
-    new_label = body.label if body.label is not None else before["label"]
-    new_desc = (
-        body.description if body.description is not None else before["description"]
+    if body.name is not None:
+        new_name = body.name.strip()
+        if not new_name:
+            conn.close()
+            raise HTTPException(400, "Endpoint name cannot be empty")
+    else:
+        new_name = before["name"]
+    new_label = (
+        (body.label.strip() or None) if body.label is not None else before["label"]
     )
-    new_text = body.text if body.text is not None else before["text"]
-    new_purpose = body.purpose if body.purpose is not None else before["purpose"]
+    new_desc = (
+        (body.description.strip() or None)
+        if body.description is not None
+        else before["description"]
+    )
+    new_text = (body.text.strip() or None) if body.text is not None else before["text"]
+    new_purpose = (
+        (body.purpose.strip() or None)
+        if body.purpose is not None
+        else before["purpose"]
+    )
 
     new_level_code_uid = before["level_code_uid"]
     if body.level is not None:
@@ -257,10 +271,10 @@ def update_endpoint(soa_id: int, endpoint_id: int, body: EndpointUpdate):
         (
             new_objective_uid,
             new_name,
-            (new_label or None) if new_label is not None else None,
-            (new_desc or None) if new_desc is not None else None,
-            (new_text or None) if new_text is not None else None,
-            (new_purpose or None) if new_purpose is not None else None,
+            new_label,
+            new_desc,
+            new_text,
+            new_purpose,
             new_level_code_uid,
             endpoint_id,
             soa_id,
