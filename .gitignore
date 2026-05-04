@@ -51,6 +51,12 @@ Thumbs.db
 *.db-shm
 *.db-wal
 *.sqlite
+*.db.backup.*
+
+# Azure deployment
+*.publish-settings
+*.PublishSettings
+.azure/
 
 # Environment variables / secrets (add if created)
 .env
@@ -97,6 +103,7 @@ docs/~*
 files/~*
 output/*.xlsx
 output/*.svg
+output/*.json
 SOA Workbench Wishlist.docx
 NCT01750580_limited.json
 CLAUDE.md
