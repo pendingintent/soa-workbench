@@ -63,9 +63,7 @@ jobs:
               with:
                 azcliversion: 2.36.0
                 inlineScript: |
-                  az webapp stop --name ${{ secrets.AZURE_WEPAPP_NAME }} --resource-group cdisc-soa-workbench-rg
-
-
+                  az webapp stop --name ${{ secrets.AZURE_WEBAPP_NAME }} --resource-group cdisc-soa-workbench-rg
 
             - name: Deploy to Azure Web App
               uses: azure/webapps-deploy@v2
