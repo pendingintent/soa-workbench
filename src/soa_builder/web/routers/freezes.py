@@ -132,7 +132,7 @@ def ui_freeze_rollback(request: Request, soa_id: int, freeze_id: int):
     )
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/freezes';</script>")
+    return RedirectResponse(url=f"/ui/soa/{soa_id}/freezes", status_code=303)
 
 
 @router.get(
