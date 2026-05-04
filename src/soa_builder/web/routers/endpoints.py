@@ -353,7 +353,8 @@ def ui_create_endpoint(
             purpose=purpose,
         ),
     )
-    redirect_url = f"/ui/soa/{soa_id}/edit"
+    safe_soa_id = int(soa_id)
+    redirect_url = f"/ui/soa/{safe_soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
     return RedirectResponse(redirect_url, status_code=303)
@@ -390,7 +391,8 @@ def ui_update_endpoint(
             purpose=purpose,
         ),
     )
-    redirect_url = f"/ui/soa/{soa_id}/edit"
+    safe_soa_id = int(soa_id)
+    redirect_url = f"/ui/soa/{safe_soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
     return RedirectResponse(redirect_url, status_code=303)
@@ -408,7 +410,8 @@ def ui_delete_endpoint(
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     delete_endpoint(soa_id, endpoint_id)
-    redirect_url = f"/ui/soa/{soa_id}/edit"
+    safe_soa_id = int(soa_id)
+    redirect_url = f"/ui/soa/{safe_soa_id}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
     return RedirectResponse(redirect_url, status_code=303)
