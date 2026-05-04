@@ -1,3 +1,4 @@
+import html
 import json
 import logging
 import os
@@ -162,7 +163,10 @@ def ui_freeze_delete(request: Request, soa_id: int, freeze_id: int):
         raise HTTPException(404, "Freeze not found")
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
-    return HTMLResponse(f"<script>window.location='/ui/soa/{soa_id}/freezes';</script>")
+    safe_soa_id = html.escape(str(soa_id))
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{safe_soa_id}/freezes';</script>"
+    )
 
 
 @router.get("/soa/{soa_id}/freeze/diff.json")
