@@ -58,6 +58,10 @@ jobs:
               with:
                 submodules: recursive
 
+            - name: Azure login
+              uses: azure/login@v1
+              with:
+                creds: ${{ secrets.AZURE_CREDENTIALS}}
             - name: Stop Azure Web App
               uses: azure/cli@v1
               with:
