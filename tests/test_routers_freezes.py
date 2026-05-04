@@ -191,6 +191,83 @@ def test_ui_freeze_rollback():
     assert resp.status_code == 200
 
 
+def test_rollback_restores_objectives_endpoints_and_code_associations():
+    """Round-trip test for the wide rollback fix.
+
+    After rolling back, post-freeze objectives/endpoints must be gone
+    and pre-freeze objectives/endpoints (with their level_code_uid
+    references) must resolve to existing code_association rows.
+    """
+    from unittest.mock import patch
+
+    r = client.post("/soa", json={"name": "Rollback Wide Test"})
+    soa_id = r.json()["id"]
+
+    with (
+        patch(
+            "soa_builder.web.routers.objectives.get_latest_ddf_ct_href",
+            return_value="ddfct-2024-01-01",
+        ),
+        patch(
+            "soa_builder.web.routers.endpoints.get_latest_ddf_ct_href",
+            return_value="ddfct-2024-01-01",
+        ),
+    ):
+        obj = client.post(
+            f"/soa/{soa_id}/objectives",
+            json={"name": "Primary Obj", "level": "Primary Objective"},
+        )
+        assert obj.status_code in (200, 201), obj.text
+        obj_uid_pre = obj.json()["objective_uid"]
+        ep = client.post(
+            f"/soa/{soa_id}/endpoints",
+            json={
+                "name": "Primary EP",
+                "level": "Primary Endpoint",
+                "objective_uid": obj_uid_pre,
+            },
+        )
+        assert ep.status_code in (200, 201), ep.text
+
+        client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v1"})
+        freeze_id = _get_latest_freeze_id(soa_id)
+
+        client.post(
+            f"/soa/{soa_id}/objectives",
+            json={"name": "Secondary Obj", "level": "Secondary Objective"},
+        )
+
+        resp = client.post(f"/ui/soa/{soa_id}/freeze/{freeze_id}/rollback")
+        assert resp.status_code == 200
+
+    objs = client.get(f"/soa/{soa_id}/objectives").json()
+    assert len(objs) == 1
+    assert objs[0]["objective_uid"] == obj_uid_pre
+
+    eps = client.get(f"/soa/{soa_id}/endpoints").json()
+    assert len(eps) == 1
+
+    db_path = os.environ.get("SOA_BUILDER_DB")
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT level_code_uid FROM objective WHERE soa_id=?", (soa_id,))
+    obj_lc = cur.fetchone()[0]
+    cur.execute(
+        "SELECT 1 FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, obj_lc),
+    )
+    assert cur.fetchone() is not None, "objective level_code_uid dangles"
+
+    cur.execute("SELECT level_code_uid FROM endpoint WHERE soa_id=?", (soa_id,))
+    ep_lc = cur.fetchone()[0]
+    cur.execute(
+        "SELECT 1 FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, ep_lc),
+    )
+    assert cur.fetchone() is not None, "endpoint level_code_uid dangles"
+    conn.close()
+
+
 def test_freeze_with_visits():
     """Test freeze structure includes visits array."""
     r = client.post("/soa", json={"name": "Visits Freeze"})

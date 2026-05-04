@@ -21,6 +21,132 @@ from ..utils import (
 logger = logging.getLogger("soa_builder.web.routers._freeze_helpers")
 
 
+def _capture_code_associations(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "code_association", ("code_uid",)):
+        return []
+    cur.execute(
+        "SELECT code_uid, codelist_table, codelist_code, code"
+        " FROM code_association WHERE soa_id=?",
+        (soa_id,),
+    )
+    return [
+        {
+            "code_uid": r[0],
+            "codelist_table": r[1],
+            "codelist_code": r[2],
+            "code": r[3],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_arms(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "arm", ("id",)):
+        return []
+    cur.execute(
+        "SELECT id,name,label,description,type,data_origin_type,"
+        "order_index,arm_uid FROM arm WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    return [
+        {
+            "id": r[0],
+            "name": r[1],
+            "label": r[2],
+            "description": r[3],
+            "type": r[4],
+            "data_origin_type": r[5],
+            "order_index": r[6],
+            "arm_uid": r[7],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_timings(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "timing", ("id",)):
+        return []
+    cur.execute(
+        "SELECT id,timing_uid,name,label,description,type,value,value_label,"
+        "relative_to_from,relative_from_schedule_instance,"
+        "relative_to_schedule_instance,window_label,window_upper,"
+        "window_lower,order_index,member_of_timeline"
+        " FROM timing WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    return [
+        {
+            "id": r[0],
+            "timing_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "description": r[4],
+            "type": r[5],
+            "value": r[6],
+            "value_label": r[7],
+            "relative_to_from": r[8],
+            "relative_from_schedule_instance": r[9],
+            "relative_to_schedule_instance": r[10],
+            "window_label": r[11],
+            "window_upper": r[12],
+            "window_lower": r[13],
+            "order_index": r[14],
+            "member_of_timeline": r[15],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_objectives(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "objective", ("id",)):
+        return []
+    cur.execute(
+        "SELECT id,objective_uid,name,label,description,text,"
+        "level_code_uid,order_index"
+        " FROM objective WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    return [
+        {
+            "id": r[0],
+            "objective_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "description": r[4],
+            "text": r[5],
+            "level_code_uid": r[6],
+            "order_index": r[7],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_endpoints(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "endpoint", ("id",)):
+        return []
+    cur.execute(
+        "SELECT id,endpoint_uid,objective_uid,name,label,description,"
+        "text,purpose,level_code_uid,order_index"
+        " FROM endpoint WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    return [
+        {
+            "id": r[0],
+            "endpoint_uid": r[1],
+            "objective_uid": r[2],
+            "name": r[3],
+            "label": r[4],
+            "description": r[5],
+            "text": r[6],
+            "purpose": r[7],
+            "level_code_uid": r[8],
+            "order_index": r[9],
+        }
+        for r in cur.fetchall()
+    ]
+
+
 def _list_freezes(soa_id: int):
     conn = _connect()
     cur = conn.cursor()
@@ -91,7 +217,8 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
     conn2 = _connect()
     cur2 = conn2.cursor()
     cur2.execute(
-        "SELECT id,name,order_index,epoch_seq,epoch_label,epoch_description"
+        "SELECT id,name,order_index,epoch_seq,epoch_label,"
+        "epoch_description,type,epoch_uid"
         " FROM epoch WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
@@ -103,6 +230,8 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
             epoch_seq=r[3],
             epoch_label=r[4],
             epoch_description=r[5],
+            type=r[6],
+            epoch_uid=r[7],
         )
         for r in cur2.fetchall()
     ]
@@ -163,6 +292,11 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
             if cuid:
                 entry["uid"] = cuid
             concepts_map.setdefault(aid, []).append(entry)
+    code_associations = _capture_code_associations(cur, soa_id)
+    arms = _capture_arms(cur, soa_id)
+    timings = _capture_timings(cur, soa_id)
+    objectives = _capture_objectives(cur, soa_id)
+    endpoints = _capture_endpoints(cur, soa_id)
     snapshot = {
         "soa_id": soa_id,
         "soa_name": soa_name,
@@ -177,6 +311,11 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
         "activities": activities,
         "cells": cells,
         "activity_concepts": concepts_map,
+        "code_associations": code_associations,
+        "arms": arms,
+        "timings": timings,
+        "objectives": objectives,
+        "endpoints": endpoints,
     }
     snap_json = json.dumps(snapshot)
     cur.execute(
@@ -411,6 +550,12 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     cells = snap.get("cells", [])
     elements = snap.get("elements", [])
     concepts_map = snap.get("activity_concepts", {}) or {}
+    snap_epochs = snap.get("epochs", []) or []
+    snap_code_assocs = snap.get("code_associations", []) or []
+    snap_arms = snap.get("arms", []) or []
+    snap_timings = snap.get("timings", []) or []
+    snap_objectives = snap.get("objectives", []) or []
+    snap_endpoints = snap.get("endpoints", []) or []
     conn = _connect()
     cur = conn.cursor()
     cur.execute("DELETE FROM matrix_cells WHERE soa_id=?", (soa_id,))
@@ -422,10 +567,133 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     cur.execute("DELETE FROM biomedical_concept WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM alias_code WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM code WHERE soa_id=?", (soa_id,))
+    if _table_has_columns(cur, "objective", ("id",)):
+        cur.execute("DELETE FROM objective WHERE soa_id=?", (soa_id,))
+    if _table_has_columns(cur, "endpoint", ("id",)):
+        cur.execute("DELETE FROM endpoint WHERE soa_id=?", (soa_id,))
+    if _table_has_columns(cur, "timing", ("id",)):
+        cur.execute("DELETE FROM timing WHERE soa_id=?", (soa_id,))
+    if _table_has_columns(cur, "arm", ("id",)):
+        cur.execute("DELETE FROM arm WHERE soa_id=?", (soa_id,))
+    if _table_has_columns(cur, "epoch", ("id",)):
+        cur.execute("DELETE FROM epoch WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM code_association WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM activity WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM visit WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM element WHERE soa_id=?", (soa_id,))
+    for ca in snap_code_assocs:
+        cur.execute(
+            "INSERT INTO code_association"
+            " (soa_id, code_uid, codelist_table, codelist_code, code)"
+            " VALUES (?,?,?,?,?)",
+            (
+                soa_id,
+                ca.get("code_uid"),
+                ca.get("codelist_table"),
+                ca.get("codelist_code"),
+                ca.get("code"),
+            ),
+        )
+    if _table_has_columns(cur, "epoch", ("type", "epoch_uid")):
+        for ep in sorted(snap_epochs, key=lambda x: x.get("order_index") or 0):
+            cur.execute(
+                "INSERT INTO epoch"
+                " (soa_id,name,order_index,epoch_seq,epoch_label,"
+                "epoch_description,type,epoch_uid) VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    ep.get("name"),
+                    ep.get("order_index"),
+                    ep.get("epoch_seq"),
+                    ep.get("epoch_label"),
+                    ep.get("epoch_description"),
+                    ep.get("type"),
+                    ep.get("epoch_uid"),
+                ),
+            )
+    if _table_has_columns(cur, "arm", ("arm_uid",)):
+        for a in sorted(snap_arms, key=lambda x: x.get("order_index") or 0):
+            cur.execute(
+                "INSERT INTO arm"
+                " (soa_id,name,label,description,type,data_origin_type,"
+                "order_index,arm_uid) VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    a.get("name"),
+                    a.get("label"),
+                    a.get("description"),
+                    a.get("type"),
+                    a.get("data_origin_type"),
+                    a.get("order_index"),
+                    a.get("arm_uid"),
+                ),
+            )
+    if _table_has_columns(cur, "timing", ("timing_uid",)):
+        for t in sorted(snap_timings, key=lambda x: x.get("order_index") or 0):
+            cur.execute(
+                "INSERT INTO timing"
+                " (soa_id,timing_uid,name,label,description,type,value,"
+                "value_label,relative_to_from,"
+                "relative_from_schedule_instance,"
+                "relative_to_schedule_instance,window_label,window_upper,"
+                "window_lower,order_index,member_of_timeline)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    t.get("timing_uid"),
+                    t.get("name"),
+                    t.get("label"),
+                    t.get("description"),
+                    t.get("type"),
+                    t.get("value"),
+                    t.get("value_label"),
+                    t.get("relative_to_from"),
+                    t.get("relative_from_schedule_instance"),
+                    t.get("relative_to_schedule_instance"),
+                    t.get("window_label"),
+                    t.get("window_upper"),
+                    t.get("window_lower"),
+                    t.get("order_index"),
+                    t.get("member_of_timeline"),
+                ),
+            )
+    if _table_has_columns(cur, "objective", ("objective_uid",)):
+        for o in sorted(snap_objectives, key=lambda x: x.get("order_index") or 0):
+            cur.execute(
+                "INSERT INTO objective"
+                " (soa_id,objective_uid,name,label,description,text,"
+                "level_code_uid,order_index) VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    o.get("objective_uid"),
+                    o.get("name"),
+                    o.get("label"),
+                    o.get("description"),
+                    o.get("text"),
+                    o.get("level_code_uid"),
+                    o.get("order_index"),
+                ),
+            )
+    if _table_has_columns(cur, "endpoint", ("endpoint_uid",)):
+        for e in sorted(snap_endpoints, key=lambda x: x.get("order_index") or 0):
+            cur.execute(
+                "INSERT INTO endpoint"
+                " (soa_id,endpoint_uid,objective_uid,name,label,"
+                "description,text,purpose,level_code_uid,order_index)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    e.get("endpoint_uid"),
+                    e.get("objective_uid"),
+                    e.get("name"),
+                    e.get("label"),
+                    e.get("description"),
+                    e.get("text"),
+                    e.get("purpose"),
+                    e.get("level_code_uid"),
+                    e.get("order_index"),
+                ),
+            )
     visit_id_map = {}
     for v in sorted(visits, key=lambda x: x.get("order_index", 0)):
         cur.execute(
@@ -580,6 +848,12 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         "cells_restored": inserted_cells,
         "concept_mappings_restored": inserted_concepts,
         "elements_restored": elements_restored,
+        "epochs_restored": len(snap_epochs),
+        "arms_restored": len(snap_arms),
+        "timings_restored": len(snap_timings),
+        "objectives_restored": len(snap_objectives),
+        "endpoints_restored": len(snap_endpoints),
+        "code_associations_restored": len(snap_code_assocs),
     }
 
 
