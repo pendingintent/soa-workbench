@@ -4,7 +4,7 @@ import logging
 import os
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ..db import _connect
@@ -62,7 +62,10 @@ def ui_freeze_soa(request: Request, soa_id: int, version_label: str = Form("")):
         )
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
-    return RedirectResponse(url=f"/ui/soa/{soa_id}/freezes", status_code=303)
+    safe_soa_id = html.escape(str(soa_id))
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{safe_soa_id}/freezes';</script>"
+    )
 
 
 @router.get("/soa/{soa_id}/freeze/{freeze_id}")
@@ -133,7 +136,10 @@ def ui_freeze_rollback(request: Request, soa_id: int, freeze_id: int):
     )
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
-    return RedirectResponse(url=f"/ui/soa/{soa_id}/freezes", status_code=303)
+    safe_soa_id = html.escape(str(soa_id))
+    return HTMLResponse(
+        f"<script>window.location='/ui/soa/{safe_soa_id}/freezes';</script>"
+    )
 
 
 @router.get(
