@@ -12,7 +12,7 @@ NC='\033[0m' # No Color
 
 # Configuration - UPDATE THESE VALUES
 RESOURCE_GROUP="rg-soa-workbench-prod"
-STORAGE_ACCOUNT="stwbdata<uniqueid>"  # Replace <uniqueid> with your storage account suffix
+STORAGE_ACCOUNT="soaworkbenchsa"  # Replace <uniqueid> with your storage account suffix
 FILE_SHARE="soa-workbench-data"
 LOCAL_DB="soa_builder_web.db"
 

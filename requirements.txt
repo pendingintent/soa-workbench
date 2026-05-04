@@ -1,3 +1,6 @@
+# Install the soa_builder package itself (required for Azure deployment)
+-e .
+
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.12.1

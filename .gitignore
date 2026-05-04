@@ -49,7 +49,9 @@ Thumbs.db
 # SQLite / local DBs
 *.db
 *.db-shm
+*.db-shm.*
 *.db-wal
+*.db-wal.*
 *.sqlite
 *.db.backup.*
 
