@@ -55,8 +55,9 @@ def ui_freeze_soa(request: Request, soa_id: int, version_label: str = Form("")):
                 f"Error: {he.detail}</div>"
             )
         return HTMLResponse(
-            f"<script>alert('Error: {he.detail}');"
-            f"window.location='/ui/soa/{soa_id}/freezes';</script>"
+            f"<div class='error' style='color:#c62828;font-size:0.85em;'>"
+            f"Error: {he.detail}</div>",
+            headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
         )
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
