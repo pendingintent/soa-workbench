@@ -4000,6 +4000,16 @@ def ui_edit(request: Request, soa_id: int):
         if tl is None or tl not in activity_ids_by_timeline:
             continue
         activity_ids_by_timeline[tl].add(c["activity_id"])
+    scheduled_activity_ids = (
+        set().union(*activity_ids_by_timeline.values())
+        if activity_ids_by_timeline
+        else set()
+    )
+    unscheduled_activity_ids = {
+        a["id"] for a in activities_page if a["id"] not in scheduled_activity_ids
+    }
+    for tl in activity_ids_by_timeline:
+        activity_ids_by_timeline[tl] |= unscheduled_activity_ids
     activities_by_timeline: dict = {
         tl: [a for a in activities_page if a["id"] in ids]
         for tl, ids in activity_ids_by_timeline.items()
