@@ -394,6 +394,64 @@ def _get_code_tuple(soa_id: int, code_uid: str) -> Tuple[List[str], List[str]]:
     return code, code_system
 
 
+def _build_level_code(
+    soa_id: int, code_uid: Optional[str], kind: str
+) -> Dict[str, Any]:
+    """
+    Return a USDM Code-Output dict for an Objective/Endpoint level.
+
+    Falls back to an empty Code shell when the association is missing.
+    The submission value stored in code_association.code is reused for
+    both code and decode (the level codelists C188725/C188726 store the
+    submission value, not a C-code).
+    """
+    if not code_uid:
+        return {
+            "id": f"Code_{kind}Level_unknown",
+            "extensionAttributes": [],
+            "code": "",
+            "codeSystem": "",
+            "codeSystemVersion": "",
+            "decode": "",
+            "instanceType": "Code",
+        }
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT codelist_table, codelist_code, code "
+        "FROM code_association WHERE soa_id=? AND code_uid=? LIMIT 1",
+        (soa_id, code_uid),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return {
+            "id": code_uid,
+            "extensionAttributes": [],
+            "code": "",
+            "codeSystem": "",
+            "codeSystemVersion": "",
+            "decode": "",
+            "instanceType": "Code",
+        }
+    codelist_table, _codelist_code, code = row
+    version = ""
+    slug = (codelist_table or "").rstrip("/").split("/")[-1]
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+    return {
+        "id": code_uid,
+        "extensionAttributes": [],
+        "code": code or "",
+        "codeSystem": "http://www.cdisc.org",
+        "codeSystemVersion": version,
+        "decode": code or "",
+        "instanceType": "Code",
+    }
+
+
 # Helper functions for study timing
 def _load_generate_study_timings():
     """Return the timing builder from usdm.generate_study_timings (tries several names)."""

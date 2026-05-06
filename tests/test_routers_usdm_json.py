@@ -35,6 +35,8 @@ def test_ui_usdm_json_contains_all_components():
         "Timings",
         "Scheduled Activity Instances",
         "Study Cells",
+        "Objectives",
+        "Endpoints",
     ]:
         assert label in resp.text
 
@@ -55,6 +57,26 @@ def test_download_usdm_component_arms():
     assert "application/json" in resp.headers.get("content-type", "")
     assert "attachment" in resp.headers.get("content-disposition", "")
     assert "usdm_arms.json" in resp.headers.get("content-disposition", "")
+    assert isinstance(resp.json(), list)
+
+
+def test_download_usdm_component_objectives():
+    r = client.post("/soa", json={"name": "USDM Objectives Download Test"})
+    soa_id = r.json()["id"]
+    resp = client.get(f"/soa/{soa_id}/usdm_json/objectives")
+    assert resp.status_code == 200
+    assert "application/json" in resp.headers.get("content-type", "")
+    assert "usdm_objectives.json" in resp.headers.get("content-disposition", "")
+    assert isinstance(resp.json(), list)
+
+
+def test_download_usdm_component_endpoints():
+    r = client.post("/soa", json={"name": "USDM Endpoints Download Test"})
+    soa_id = r.json()["id"]
+    resp = client.get(f"/soa/{soa_id}/usdm_json/endpoints")
+    assert resp.status_code == 200
+    assert "application/json" in resp.headers.get("content-type", "")
+    assert "usdm_endpoints.json" in resp.headers.get("content-disposition", "")
     assert isinstance(resp.json(), list)
 
 
