@@ -4056,69 +4056,6 @@ def ui_edit(request: Request, soa_id: int):
     schedule_timelines_options = get_schedule_timeline(soa_id)
     instance_options = get_scheduled_activity_instance(soa_id)
 
-    # Objectives + Endpoints with DDF level decode lookups
-    c188725_map = _get_ddf_ct_codelist_map("C188725")
-    c188726_map = _get_ddf_ct_codelist_map("C188726")
-    objective_level_options = sorted({v for v in c188725_map.values() if v})
-    endpoint_level_options = sorted({v for v in c188726_map.values() if v})
-    conn_obj = _connect()
-    cur_obj = conn_obj.cursor()
-    cur_obj.execute(
-        "SELECT code_uid, code FROM code_association "
-        "WHERE soa_id=? AND codelist_code IN ('C188725','C188726')",
-        (soa_id,),
-    )
-    level_code_to_sv: dict = {}
-    for code_uid, code_val in cur_obj.fetchall():
-        level_code_to_sv[code_uid] = code_val or ""
-    cur_obj.execute(
-        "SELECT id,objective_uid,name,label,description,text,"
-        "level_code_uid,order_index "
-        "FROM objective WHERE soa_id=? ORDER BY order_index, id",
-        (soa_id,),
-    )
-    objectives = [
-        {
-            "id": r[0],
-            "objective_uid": r[1],
-            "name": r[2],
-            "label": r[3],
-            "description": r[4],
-            "text": r[5],
-            "level_code_uid": r[6],
-            "level": level_code_to_sv.get(r[6], ""),
-            "order_index": r[7],
-        }
-        for r in cur_obj.fetchall()
-    ]
-    cur_obj.execute(
-        "SELECT id,endpoint_uid,objective_uid,name,label,description,"
-        "text,purpose,level_code_uid,order_index "
-        "FROM endpoint WHERE soa_id=? ORDER BY order_index, id",
-        (soa_id,),
-    )
-    endpoints_by_objective: dict = {}
-    orphan_endpoints: list = []
-    for r in cur_obj.fetchall():
-        ep = {
-            "id": r[0],
-            "endpoint_uid": r[1],
-            "objective_uid": r[2],
-            "name": r[3],
-            "label": r[4],
-            "description": r[5],
-            "text": r[6],
-            "purpose": r[7],
-            "level_code_uid": r[8],
-            "level": level_code_to_sv.get(r[8], ""),
-            "order_index": r[9],
-        }
-        if ep["objective_uid"]:
-            endpoints_by_objective.setdefault(ep["objective_uid"], []).append(ep)
-        else:
-            orphan_endpoints.append(ep)
-    conn_obj.close()
-
     return templates.TemplateResponse(
         request,
         "edit.html",
@@ -4157,11 +4094,6 @@ def ui_edit(request: Request, soa_id: int):
             "default_timeline": default_timeline,
             "footnotes": footnotes,
             "superscript_map": superscript_map,
-            "objectives": objectives,
-            "endpoints_by_objective": endpoints_by_objective,
-            "orphan_endpoints": orphan_endpoints,
-            "objective_level_options": objective_level_options,
-            "endpoint_level_options": endpoint_level_options,
         },
     )
 

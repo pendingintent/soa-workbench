@@ -1,14 +1,17 @@
 import html
 import json
 import logging
+import os
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_endpoint_audit, _record_objective_audit
 from ..db import _connect
 from ..schemas import ObjectiveCreate, ObjectiveUpdate
 from ..utils import (
+    get_ddf_ct_codelist_map,
     get_latest_ddf_ct_href,
     get_next_code_uid,
     soa_exists,
@@ -17,6 +20,84 @@ from ..utils import (
 router = APIRouter(prefix="/soa/{soa_id}")
 ui_router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.objectives")
+templates = Jinja2Templates(
+    directory=os.path.join(os.path.dirname(__file__), "..", "templates")
+)
+
+
+def _load_objectives_context(soa_id: int) -> dict:
+    """Build template context for objectives + endpoints UI page."""
+    c188725_map = get_ddf_ct_codelist_map("C188725")
+    c188726_map = get_ddf_ct_codelist_map("C188726")
+    objective_level_options = sorted({v for v in c188725_map.values() if v})
+    endpoint_level_options = sorted({v for v in c188726_map.values() if v})
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT code_uid, code FROM code_association "
+        "WHERE soa_id=? AND codelist_code IN ('C188725','C188726')",
+        (soa_id,),
+    )
+    level_code_to_sv = {
+        code_uid: (code_val or "") for code_uid, code_val in cur.fetchall()
+    }
+    cur.execute(
+        "SELECT id,objective_uid,name,label,description,text,"
+        "level_code_uid,order_index "
+        "FROM objective WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    objectives = [
+        {
+            "id": r[0],
+            "objective_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "description": r[4],
+            "text": r[5],
+            "level_code_uid": r[6],
+            "level": level_code_to_sv.get(r[6], ""),
+            "order_index": r[7],
+        }
+        for r in cur.fetchall()
+    ]
+    cur.execute(
+        "SELECT id,endpoint_uid,objective_uid,name,label,description,"
+        "text,purpose,level_code_uid,order_index "
+        "FROM endpoint WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    endpoints_by_objective: dict = {}
+    orphan_endpoints: list = []
+    for r in cur.fetchall():
+        ep = {
+            "id": r[0],
+            "endpoint_uid": r[1],
+            "objective_uid": r[2],
+            "name": r[3],
+            "label": r[4],
+            "description": r[5],
+            "text": r[6],
+            "purpose": r[7],
+            "level_code_uid": r[8],
+            "level": level_code_to_sv.get(r[8], ""),
+            "order_index": r[9],
+        }
+        if ep["objective_uid"]:
+            endpoints_by_objective.setdefault(ep["objective_uid"], []).append(ep)
+        else:
+            orphan_endpoints.append(ep)
+    conn.close()
+
+    return {
+        "objectives": objectives,
+        "endpoints_by_objective": endpoints_by_objective,
+        "orphan_endpoints": orphan_endpoints,
+        "objective_level_options": objective_level_options,
+        "endpoint_level_options": endpoint_level_options,
+    }
+
 
 _OBJECTIVE_LEVEL_CODELIST = "C188725"
 
@@ -340,6 +421,32 @@ def delete_objective(soa_id: int, objective_id: int):
 # ---------------------------------------------------------------------------
 
 
+@ui_router.get(
+    "/ui/soa/{soa_id}/objectives",
+    response_class=HTMLResponse,
+    name="ui_list_objectives",
+)
+def ui_list_objectives(request: Request, soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name, study_id, study_label FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    context = {
+        "soa_id": soa_id,
+        "study_name": row[0] if row else "",
+        "study_id_value": row[1] if row else "",
+        "study_label": row[2] if row else "",
+        **_load_objectives_context(soa_id),
+    }
+    return templates.TemplateResponse(request, "objectives.html", context)
+
+
 @ui_router.post("/ui/soa/{soa_id}/objectives/create", response_class=HTMLResponse)
 def ui_create_objective(
     request: Request,
@@ -362,12 +469,12 @@ def ui_create_objective(
             text=text,
         ),
     )
-    redirect_url = f"/ui/soa/{soa_id}/edit"
+    redirect_url = f"/ui/soa/{soa_id}/objectives"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
     safe_soa_id = html.escape(str(soa_id))
     return HTMLResponse(
-        f"<script>window.location='/ui/soa/{safe_soa_id}/edit';</script>"
+        f"<script>window.location='/ui/soa/{safe_soa_id}/objectives';</script>"
     )
 
 
@@ -398,12 +505,12 @@ def ui_update_objective(
             text=text,
         ),
     )
-    redirect_url = f"/ui/soa/{soa_id}/edit"
+    redirect_url = f"/ui/soa/{soa_id}/objectives"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
     safe_soa_id = html.escape(str(soa_id))
     return HTMLResponse(
-        f"<script>window.location='/ui/soa/{safe_soa_id}/edit';</script>"
+        f"<script>window.location='/ui/soa/{safe_soa_id}/objectives';</script>"
     )
 
 
@@ -419,10 +526,10 @@ def ui_delete_objective(
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     delete_objective(soa_id, objective_id)
-    redirect_url = f"/ui/soa/{soa_id}/edit"
+    redirect_url = f"/ui/soa/{soa_id}/objectives"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
     safe_soa_id = html.escape(str(soa_id))
     return HTMLResponse(
-        f"<script>window.location='/ui/soa/{safe_soa_id}/edit';</script>"
+        f"<script>window.location='/ui/soa/{safe_soa_id}/objectives';</script>"
     )
