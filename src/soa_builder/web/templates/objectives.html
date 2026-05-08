@@ -3,236 +3,240 @@
 <h2>Objectives &amp; Endpoints for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        &larr; Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
-<h3 style="margin:18px 0 6px;font-size:1em;color:#455a64;">Objectives ({{ objectives|length }})</h3>
+<hr class="fz-section-divider" />
 
-<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">UID</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Label</th>
-        <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Text</th>
-        <th style="text-align:left;padding:4px;">Level</th>
-        <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-    </tr>
-    {% for obj in objectives %}
-    <tr>
-        <form method="post" action="/ui/soa/{{ soa_id }}/objectives/{{ obj.id }}/update">
-            <td style="padding:4px;white-space:nowrap;"><strong>{{ obj.objective_uid }}</strong></td>
-            <td style="padding:4px;"><input name="name" value="{{ obj.name }}" required /></td>
-            <td style="padding:4px;"><input name="label" value="{{ obj.label or '' }}" placeholder="Label" /></td>
-            <td style="padding:4px;"><input name="description" value="{{ obj.description or '' }}" placeholder="Description" /></td>
-            <td style="padding:4px;"><input name="text" value="{{ obj.text or '' }}" placeholder="Text" /></td>
-            <td style="padding:4px;">
-                <select name="level">
-                    <option value="">-- keep current --</option>
-                    {% for sv in objective_level_options %}
-                        <option value="{{ sv }}" {% if sv == obj.level %}selected{% endif %}>{{ sv }}</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td style="padding:4px;">
-                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </td>
-        </form>
-        <td style="padding:4px;">
-            <form method="post" action="/ui/soa/{{ soa_id }}/objectives/{{ obj.id }}/delete"
-                  onsubmit="return confirm('Delete {{ obj.objective_uid }}? Child endpoints will be orphaned.');">
-                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Delete</button>
-            </form>
-        </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="8" style="padding:6px;color:#777;">No objectives yet.</td></tr>
-    {% endfor %}
+<div class="fz-create-card">
+  <h3>Create Objective</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/objectives/create" class="fz-form-row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Objective name" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Text</label>
+      <input name="text" placeholder="Text (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Level <span class="am-required">*</span></label>
+      <select name="level" required class="fz-version-input">
+        <option value="" disabled selected>-- Select Level --</option>
+        {% for sv in objective_level_options %}
+        <option value="{{ sv }}">{{ sv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Create Objective</button>
+  </form>
+</div>
+
+<h3 class="fz-section-heading">Objectives ({{ objectives|length }})</h3>
+
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Text</th>
+    <th>Level</th>
+    <th>Save</th>
+    <th>Delete</th>
+  </tr>
+  {% for obj in objectives %}
+  <tr>
+    <form method="post" action="/ui/soa/{{ soa_id }}/objectives/{{ obj.id }}/update">
+      <td class="fz-td-version"><span class="obj-uid">{{ obj.objective_uid }}</span></td>
+      <td><input name="name" value="{{ obj.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ obj.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ obj.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td><input name="text" value="{{ obj.text or '' }}" placeholder="Text" class="am-input-compact" /></td>
+      <td>
+        <select name="level" class="am-select-compact">
+          <option value="">-- keep current --</option>
+          {% for sv in objective_level_options %}
+          <option value="{{ sv }}" {% if sv == obj.level %}selected{% endif %}>{{ sv }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
+    </form>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/objectives/{{ obj.id }}/delete"
+            onsubmit="return confirm('Delete {{ obj.objective_uid }}? Child endpoints will be orphaned.');"
+            class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="8">No objectives yet.</td></tr>
+  {% endfor %}
 </table>
 
-<h3 style="margin:24px 0 6px;font-size:1em;color:#455a64;">Endpoints ({{ endpoints_by_objective.values()|map('length')|sum }})</h3>
+<hr class="fz-section-divider" />
 
-<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">UID</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Label</th>
-        <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Text</th>
-        <th style="text-align:left;padding:4px;">Purpose</th>
-        <th style="text-align:left;padding:4px;">Parent Obj</th>
-        <th style="text-align:left;padding:4px;">Level</th>
-        <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-    </tr>
-    {% set ns = namespace(any=false) %}
-    {% for obj in objectives %}
-        {% set obj_endpoints = endpoints_by_objective.get(obj.objective_uid, []) %}
-        {% if obj_endpoints %}
-            {% set ns.any = true %}
-            <tr style="background:#f5f5f5;"><td colspan="10" style="padding:4px;font-weight:bold;color:#1976d2;">{{ obj.objective_uid }} &mdash; {{ obj.name }}</td></tr>
-            {% for ep in obj_endpoints %}
-            <tr>
-                <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/{{ ep.id }}/update">
-                    <td style="padding:4px;white-space:nowrap;"><strong>{{ ep.endpoint_uid }}</strong></td>
-                    <td style="padding:4px;"><input name="name" value="{{ ep.name }}" required /></td>
-                    <td style="padding:4px;"><input name="label" value="{{ ep.label or '' }}" placeholder="Label" /></td>
-                    <td style="padding:4px;"><input name="description" value="{{ ep.description or '' }}" placeholder="Description" /></td>
-                    <td style="padding:4px;"><input name="text" value="{{ ep.text or '' }}" placeholder="Text" /></td>
-                    <td style="padding:4px;"><input name="purpose" value="{{ ep.purpose or '' }}" placeholder="Purpose" /></td>
-                    <td style="padding:4px;">
-                        <select name="objective_uid">
-                            {% for o in objectives %}
-                                <option value="{{ o.objective_uid }}" {% if o.objective_uid == ep.objective_uid %}selected{% endif %}>{{ o.objective_uid }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                    <td style="padding:4px;">
-                        <select name="level">
-                            <option value="">-- keep current --</option>
-                            {% for sv in endpoint_level_options %}
-                                <option value="{{ sv }}" {% if sv == ep.level %}selected{% endif %}>{{ sv }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                    <td style="padding:4px;">
-                        <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-                    </td>
-                </form>
-                <td style="padding:4px;">
-                    <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/{{ ep.id }}/delete"
-                          onsubmit="return confirm('Delete {{ ep.endpoint_uid }}?');">
-                        <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        {% endif %}
-    {% endfor %}
-    {% if not ns.any %}
-        <tr><td colspan="10" style="padding:6px;color:#777;">No endpoints yet.</td></tr>
+<div class="fz-create-card">
+  <h3>Create Endpoint</h3>
+  {% if objectives|length == 0 %}
+  <p class="fz-no-data">Create an objective first &mdash; endpoints must be assigned to a parent objective.</p>
+  {% else %}
+  <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/create" class="fz-form-row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Endpoint name" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Text</label>
+      <input name="text" placeholder="Text (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Purpose</label>
+      <input name="purpose" placeholder="Purpose (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Parent Objective <span class="am-required">*</span></label>
+      <select name="objective_uid" required class="fz-version-input">
+        <option value="" disabled selected>-- Parent Objective --</option>
+        {% for o in objectives %}
+        <option value="{{ o.objective_uid }}">{{ o.objective_uid }} &mdash; {{ o.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Level <span class="am-required">*</span></label>
+      <select name="level" required class="fz-version-input">
+        <option value="" disabled selected>-- Select Level --</option>
+        {% for sv in endpoint_level_options %}
+        <option value="{{ sv }}">{{ sv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Create Endpoint</button>
+  </form>
+  {% endif %}
+</div>
+
+<h3 class="fz-section-heading" style="margin-top:24px;">Endpoints ({{ endpoints_by_objective.values()|map('length')|sum }})</h3>
+
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Text</th>
+    <th>Purpose</th>
+    <th>Parent Obj</th>
+    <th>Level</th>
+    <th>Save</th>
+    <th>Delete</th>
+  </tr>
+  {% set ns = namespace(any=false) %}
+  {% for obj in objectives %}
+    {% set obj_endpoints = endpoints_by_objective.get(obj.objective_uid, []) %}
+    {% if obj_endpoints %}
+      {% set ns.any = true %}
+      <tr class="obj-group-row">
+        <td colspan="10">{{ obj.objective_uid }} &mdash; {{ obj.name }}</td>
+      </tr>
+      {% for ep in obj_endpoints %}
+      <tr>
+        <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/{{ ep.id }}/update">
+          <td class="fz-td-version"><span class="obj-uid">{{ ep.endpoint_uid }}</span></td>
+          <td><input name="name" value="{{ ep.name }}" required class="am-input-compact" /></td>
+          <td><input name="label" value="{{ ep.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+          <td><input name="description" value="{{ ep.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+          <td><input name="text" value="{{ ep.text or '' }}" placeholder="Text" class="am-input-compact" /></td>
+          <td><input name="purpose" value="{{ ep.purpose or '' }}" placeholder="Purpose" class="am-input-compact" /></td>
+          <td>
+            <select name="objective_uid" class="am-select-compact">
+              {% for o in objectives %}
+              <option value="{{ o.objective_uid }}" {% if o.objective_uid == ep.objective_uid %}selected{% endif %}>{{ o.objective_uid }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td>
+            <select name="level" class="am-select-compact">
+              <option value="">-- keep current --</option>
+              {% for sv in endpoint_level_options %}
+              <option value="{{ sv }}" {% if sv == ep.level %}selected{% endif %}>{{ sv }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
+        </form>
+        <td>
+          <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/{{ ep.id }}/delete"
+                onsubmit="return confirm('Delete {{ ep.endpoint_uid }}?');"
+                class="fz-inline-form">
+            <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
     {% endif %}
+  {% endfor %}
+  {% if not ns.any %}
+  <tr class="fz-empty-row"><td colspan="10">No endpoints yet.</td></tr>
+  {% endif %}
 </table>
 
 {% if orphan_endpoints %}
-<h3 style="margin:24px 0 6px;font-size:1em;color:#b71c1c;">Unassigned Endpoints ({{ orphan_endpoints|length }})</h3>
-<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#ffebee;">
-        <th style="text-align:left;padding:4px;">UID</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Level</th>
-        <th style="text-align:left;padding:4px;">Reassign to</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-    </tr>
-    {% for ep in orphan_endpoints %}
-    <tr>
-        <td style="padding:4px;white-space:nowrap;"><strong>{{ ep.endpoint_uid }}</strong></td>
-        <td style="padding:4px;">{{ ep.name }}</td>
-        <td style="padding:4px;">{{ ep.level or '' }}</td>
-        <td style="padding:4px;">
-            <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/{{ ep.id }}/update" style="display:flex;gap:4px;">
-                <select name="objective_uid" required>
-                    <option value="">-- select objective --</option>
-                    {% for o in objectives %}
-                        <option value="{{ o.objective_uid }}">{{ o.objective_uid }}</option>
-                    {% endfor %}
-                </select>
-                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Reassign</button>
-            </form>
-        </td>
-        <td style="padding:4px;">
-            <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/{{ ep.id }}/delete"
-                  onsubmit="return confirm('Delete {{ ep.endpoint_uid }}?');">
-                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Delete</button>
-            </form>
-        </td>
-    </tr>
-    {% endfor %}
+<hr class="fz-section-divider" />
+<h3 class="fz-section-heading-danger">Unassigned Endpoints ({{ orphan_endpoints|length }})</h3>
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Level</th>
+    <th>Reassign to</th>
+    <th>Delete</th>
+  </tr>
+  {% for ep in orphan_endpoints %}
+  <tr class="obj-orphan-row">
+    <td class="fz-td-version"><span class="obj-uid">{{ ep.endpoint_uid }}</span></td>
+    <td>{{ ep.name }}</td>
+    <td>{{ ep.level or '' }}</td>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/{{ ep.id }}/update" class="fz-compare-row">
+        <select name="objective_uid" required class="am-select-compact">
+          <option value="">-- select objective --</option>
+          {% for o in objectives %}
+          <option value="{{ o.objective_uid }}">{{ o.objective_uid }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="am-btn am-btn-slate am-btn-sm">Reassign</button>
+      </form>
+    </td>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/{{ ep.id }}/delete"
+            onsubmit="return confirm('Delete {{ ep.endpoint_uid }}?');"
+            class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
 </table>
 {% endif %}
 
-<hr style="margin:24px 0 12px;border-color:#e0e0e0;" />
-<h3 style="margin:0 0 8px;font-size:1em;color:#455a64;">Create Objective</h3>
-<div style="margin:4px 0 12px 12px">
-    <form method="post" action="/ui/soa/{{ soa_id }}/objectives/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Name *</strong></label>
-            <input name="name" placeholder="Objective Name" required />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Label</strong></label>
-            <input name="label" placeholder="Label (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Description</strong></label>
-            <input name="description" placeholder="Description (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Text</strong></label>
-            <input name="text" placeholder="Text (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Level *</strong></label>
-            <select name="level" required>
-                <option value="" disabled selected>-- Select Level --</option>
-                {% for sv in objective_level_options %}
-                    <option value="{{ sv }}">{{ sv }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Objective</button>
-    </form>
-</div>
-
-<h3 style="margin:18px 0 8px;font-size:1em;color:#455a64;">Create Endpoint</h3>
-<div style="margin:4px 0 12px 12px">
-{% if objectives|length == 0 %}
-    <p style="font-style:italic;color:#b71c1c;">Create an objective first &mdash; endpoints must be assigned to a parent objective.</p>
-{% else %}
-    <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Name *</strong></label>
-            <input name="name" placeholder="Endpoint Name" required />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Label</strong></label>
-            <input name="label" placeholder="Label (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Description</strong></label>
-            <input name="description" placeholder="Description (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Text</strong></label>
-            <input name="text" placeholder="Text (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Purpose</strong></label>
-            <input name="purpose" placeholder="Purpose (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Parent Objective *</strong></label>
-            <select name="objective_uid" required>
-                <option value="" disabled selected>-- Parent Objective --</option>
-                {% for o in objectives %}
-                    <option value="{{ o.objective_uid }}">{{ o.objective_uid }} &mdash; {{ o.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Level *</strong></label>
-            <select name="level" required>
-                <option value="" disabled selected>-- Select Level --</option>
-                {% for sv in endpoint_level_options %}
-                    <option value="{{ sv }}">{{ sv }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Endpoint</button>
-    </form>
-{% endif %}
-</div>
 {% endblock %}

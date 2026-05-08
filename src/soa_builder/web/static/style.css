@@ -651,6 +651,77 @@ details.collapsible[open] { background:#fdfdfd; }
 }
 .fz-audit-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* ---- Objectives / Endpoints page ----------------------------- */
+.fz-section-heading-danger {
+  margin: 0 0 10px;
+  font-size: 0.78em;
+  font-weight: 700;
+  color: #b71c1c;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.obj-group-row td {
+  background: var(--am-surface);
+  font-size: 0.83em;
+  font-weight: 700;
+  color: var(--am-info);
+  padding: 5px 11px;
+  border-top: 2px solid var(--am-border-med);
+}
+.fz-table .am-input,
+.fz-table .am-select {
+  font-size: 0.82em;
+  padding: 3px 6px;
+}
+.fz-table .am-input-compact {
+  width: 100%;
+  font-size: 0.82em;
+  padding: 3px 6px;
+  border: 1px solid var(--am-border-med);
+  border-radius: var(--am-radius-sm);
+  background: #fff;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.fz-table .am-input-compact:focus {
+  outline: none;
+  border-color: var(--am-purple);
+  box-shadow: 0 0 0 2px rgba(106,27,154,0.1);
+}
+.fz-table .am-select-compact {
+  width: 100%;
+  font-size: 0.82em;
+  padding: 3px 6px;
+  border: 1px solid var(--am-border-med);
+  border-radius: var(--am-radius-sm);
+  background: #fff;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.obj-uid {
+  font-family: var(--am-mono);
+  font-size: 0.82em;
+  color: var(--am-purple);
+  background: var(--am-purple-light);
+  padding: 2px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.obj-orphan-row td { background: #fff8f8; }
+.fz-create-card h3 {
+  margin: 0 0 12px;
+  font-size: 0.78em;
+  font-weight: 700;
+  color: var(--am-text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.fz-no-data {
+  font-style: italic;
+  color: #b71c1c;
+  font-size: 0.84em;
+}
+
 /* ---- Impacts table header ------------------------------------ */
 .am-thead-row { background: var(--am-surface); }
 .am-data-table thead th {
