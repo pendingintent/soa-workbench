@@ -45,7 +45,7 @@ def populate_biomedical_concept_properties(soa_id: int) -> None:
     cur = conn.cursor()
     try:
         cur.execute(
-            "SELECT bc.biomedical_concept_uid, ac.concept_code"
+            "SELECT DISTINCT bc.biomedical_concept_uid, ac.concept_code"
             " FROM biomedical_concept bc"
             " INNER JOIN activity_concept ac"
             " ON bc.biomedical_concept_uid = ac.concept_uid"
