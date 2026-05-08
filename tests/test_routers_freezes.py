@@ -314,7 +314,7 @@ def test_ui_list_freezes_renders_table_desc():
     resp = client.get(f"/ui/soa/{soa_id}/freezes")
     assert resp.status_code == 200
     body = resp.text
-    assert "Frozen Versions" in body
+    assert "Snapshots" in body
     # Newest (vB, created last ⇒ higher id) appears before vA in DESC order
     assert body.index("vB") < body.index("vA")
 

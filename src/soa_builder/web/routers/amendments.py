@@ -425,7 +425,24 @@ def delete_amendment(soa_id: int, amendment_id: int):
         conn.close()
         raise HTTPException(404, "Amendment not found")
     amendment_uid = before["amendment_uid"]
-    # Cascade: delete sections -> changes -> impacts -> reasons -> amendment
+
+    # 1. Collect impact code_uids BEFORE deleting impacts
+    cur.execute(
+        "SELECT type_code_uid FROM study_amendment_impact "
+        "WHERE soa_id=? AND amendment_uid=?",
+        (soa_id, amendment_uid),
+    )
+    impact_code_uids = [row[0] for row in cur.fetchall()]
+
+    # 2. Collect reason code_uids BEFORE deleting reasons
+    cur.execute(
+        "SELECT code_uid FROM study_amendment_reason "
+        "WHERE soa_id=? AND amendment_uid=?",
+        (soa_id, amendment_uid),
+    )
+    reason_code_uids = [row[0] for row in cur.fetchall()]
+
+    # 3. Delete document_content_reference rows for all changes
     cur.execute(
         "SELECT change_uid FROM study_change WHERE soa_id=? AND amendment_uid=?",
         (soa_id, amendment_uid),
@@ -435,40 +452,40 @@ def delete_amendment(soa_id: int, amendment_id: int):
             "DELETE FROM document_content_reference WHERE soa_id=? AND change_uid=?",
             (soa_id, cu),
         )
+
+    # 4. Delete changes
     cur.execute(
         "DELETE FROM study_change WHERE soa_id=? AND amendment_uid=?",
         (soa_id, amendment_uid),
     )
+
+    # 5. Delete impacts
     cur.execute(
         "DELETE FROM study_amendment_impact WHERE soa_id=? AND amendment_uid=?",
         (soa_id, amendment_uid),
     )
-    # Delete code_association rows for reasons
-    cur.execute(
-        "SELECT code_uid FROM study_amendment_reason "
-        "WHERE soa_id=? AND amendment_uid=?",
-        (soa_id, amendment_uid),
-    )
-    for (cu,) in cur.fetchall():
+
+    # 6. Delete impact code_association rows
+    for cu in impact_code_uids:
         cur.execute(
             "DELETE FROM code_association WHERE soa_id=? AND code_uid=?",
             (soa_id, cu),
         )
+
+    # 7. Delete reasons
     cur.execute(
         "DELETE FROM study_amendment_reason WHERE soa_id=? AND amendment_uid=?",
         (soa_id, amendment_uid),
     )
-    # Delete code_association rows for impacts
-    cur.execute(
-        "SELECT type_code_uid FROM study_amendment_impact "
-        "WHERE soa_id=? AND amendment_uid=?",
-        (soa_id, amendment_uid),
-    )
-    for (cu,) in cur.fetchall():
+
+    # 8. Delete reason code_association rows
+    for cu in reason_code_uids:
         cur.execute(
             "DELETE FROM code_association WHERE soa_id=? AND code_uid=?",
             (soa_id, cu),
         )
+
+    # 9. Delete the amendment itself
     cur.execute(
         "DELETE FROM study_amendment WHERE id=? AND soa_id=?",
         (amendment_id, soa_id),

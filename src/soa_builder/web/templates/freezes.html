@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Frozen Versions</h2>
+<h2>Snapshots & Amendments</h2>
 
 <div style="margin-bottom:12px;">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
@@ -10,11 +10,11 @@
   <form hx-post="/ui/soa/{{ soa_id }}/freeze" hx-target="#freeze-feedback" hx-swap="innerHTML">
     <div class="fz-form-row">
       <div class="am-field">
-        <label class="am-field-label">Version label</label>
+        <label class="am-field-label">Snapshot label</label>
         <input name="version_label" placeholder="(auto v1, v2, ...)" class="fz-version-input" />
       </div>
       <label class="fz-amendment-toggle">
-        <input type="checkbox" name="is_amendment" value="1" id="is-amendment-cb"
+        <input type="checkbox" title="Check box if snapshot is an amendment" name="is_amendment"  value="1" id="is-amendment-cb"
           hx-get="/ui/soa/{{ soa_id }}/amendment/form_fields"
           hx-target="#amendment-fields-wrapper"
           hx-swap="innerHTML"
@@ -22,7 +22,7 @@
           onchange="if(!this.checked) document.getElementById('amendment-fields-wrapper').innerHTML='';" />
         Protocol amendment
       </label>
-      <button type="submit" class="am-btn am-btn-primary">Create Snapshot</button>
+      <button type="submit" class="am-btn am-btn-primary">Create</button>
     </div>
     <div id="amendment-fields-wrapper"></div>
   </form>
