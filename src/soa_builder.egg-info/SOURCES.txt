@@ -24,6 +24,7 @@ src/soa_builder/web/schemas.py
 src/soa_builder/web/utils.py
 src/soa_builder/web/routers/_freeze_helpers.py
 src/soa_builder/web/routers/activities.py
+src/soa_builder/web/routers/amendments.py
 src/soa_builder/web/routers/arms.py
 src/soa_builder/web/routers/audits.py
 src/soa_builder/web/routers/bc_surrogates.py
@@ -51,13 +52,16 @@ src/soa_builder/web/routers/timings.py
 src/soa_builder/web/routers/usdm_json.py
 src/soa_builder/web/routers/visits.py
 src/usdm/generate_activities.py
+src/usdm/generate_amendments.py
 src/usdm/generate_arms.py
 src/usdm/generate_bc_surrogates.py
 src/usdm/generate_biomedical_concept_properties.py
 src/usdm/generate_biomedical_concepts.py
 src/usdm/generate_elements.py
 src/usdm/generate_encounters.py
+src/usdm/generate_endpoints.py
 src/usdm/generate_extension_attributes.py
+src/usdm/generate_objectives.py
 src/usdm/generate_schedule_timelines.py
 src/usdm/generate_scheduled_activity_instances.py
 src/usdm/generate_scheduled_decision_instances.py
@@ -80,9 +84,12 @@ tests/test_epoch_reorder_audit_api.py
 tests/test_epoch_type_options.py
 tests/test_fetch_sdtm_specializations.py
 tests/test_generate_biomedical_concept_properties.py
+tests/test_generate_endpoints.py
 tests/test_generate_extension_attributes.py
+tests/test_generate_objectives.py
 tests/test_instances_audit.py
 tests/test_routers_activities.py
+tests/test_routers_amendments.py
 tests/test_routers_arms.py
 tests/test_routers_audits.py
 tests/test_routers_bc_surrogates.py
@@ -93,6 +100,7 @@ tests/test_routers_epochs.py
 tests/test_routers_freezes.py
 tests/test_routers_instances.py
 tests/test_routers_objectives.py
+tests/test_routers_objectives_ui.py
 tests/test_routers_rollback.py
 tests/test_routers_rules.py
 tests/test_routers_schedule_timelines.py
