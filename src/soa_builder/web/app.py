@@ -88,6 +88,16 @@ from .migrate_database import (
     _migrate_add_objective_audit_table,
     _migrate_add_endpoint_table,
     _migrate_add_endpoint_audit_table,
+    _migrate_add_study_amendment_table,
+    _migrate_add_study_amendment_audit_table,
+    _migrate_add_study_amendment_reason_table,
+    _migrate_add_study_amendment_reason_audit_table,
+    _migrate_add_study_amendment_impact_table,
+    _migrate_add_study_amendment_impact_audit_table,
+    _migrate_add_study_change_table,
+    _migrate_add_study_change_audit_table,
+    _migrate_add_document_content_reference_table,
+    _migrate_add_document_content_reference_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -126,8 +136,8 @@ from .routers import (
 )
 from .routers import objectives as objectives_router
 from .routers import endpoints as endpoints_router
+from .routers import amendments as amendments_router
 from .audit import _record_element_audit
-
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
 from .schemas import (
@@ -177,7 +187,7 @@ NORMALIZED_ROOT = os.environ.get("SOA_BUILDER_NORMALIZED_ROOT", "normalized")
 
 
 # Set server listen port
-HTTP_LISTEN_PORT = 8000
+HTTP_LISTEN_PORT = 8008
 HTTP_LISTEN_IP = "0.0.0.0"
 
 
@@ -264,6 +274,16 @@ _migrate_add_objective_table()
 _migrate_add_objective_audit_table()
 _migrate_add_endpoint_table()
 _migrate_add_endpoint_audit_table()
+_migrate_add_study_amendment_table()
+_migrate_add_study_amendment_audit_table()
+_migrate_add_study_amendment_reason_table()
+_migrate_add_study_amendment_reason_audit_table()
+_migrate_add_study_amendment_impact_table()
+_migrate_add_study_amendment_impact_audit_table()
+_migrate_add_study_change_table()
+_migrate_add_study_change_audit_table()
+_migrate_add_document_content_reference_table()
+_migrate_add_document_content_reference_audit_table()
 
 
 # Include routers
@@ -300,6 +320,8 @@ app.include_router(objectives_router.router)
 app.include_router(objectives_router.ui_router)
 app.include_router(endpoints_router.router)
 app.include_router(endpoints_router.ui_router)
+app.include_router(amendments_router.router)
+app.include_router(amendments_router.ui_router)
 
 
 def _record_visit_audit(

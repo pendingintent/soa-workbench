@@ -21,6 +21,7 @@ from usdm.generate_study_epochs import build_usdm_epochs
 from usdm.generate_biomedical_concepts import build_usdm_biomedical_concepts
 from usdm.generate_bc_surrogates import build_usdm_bc_surrogates
 from usdm.generate_objectives import build_usdm_objectives
+from usdm.generate_amendments import build_usdm_amendments
 
 logger = logging.getLogger("usdm.generate_usdm")
 
@@ -141,7 +142,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         ],
         "documentVersionIds": [],
         "dateValues": [],
-        "amendments": [],
+        "amendments": _safe("amendments", build_usdm_amendments, soa_id),
         "businessTherapeuticAreas": [],
         "biomedicalConcepts": build_usdm_biomedical_concepts(soa_id),
         "bcSurrogates": _safe("bcSurrogates", build_usdm_bc_surrogates, soa_id),

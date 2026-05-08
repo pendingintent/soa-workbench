@@ -1,0 +1,54 @@
+<div id="impacts-section">
+  <table class="am-data-table">
+    <thead>
+      <tr class="am-thead-row">
+        <th>Type</th>
+        <th>Description</th>
+        <th class="am-td-center">Substantial</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for i in impacts %}
+    <tr>
+      <td>{{ impact_terms.get(i.type_code, i.type_code) }}</td>
+      <td>{{ i.text }}</td>
+      <td class="am-td-center">
+        {% if i.is_substantial %}<span class="am-substantial-yes">Yes</span>{% else %}<span class="am-substantial-no">No</span>{% endif %}
+      </td>
+      <td class="am-td-right">
+        <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/impact/{{ i.id }}/delete"
+              hx-target="#impacts-section" hx-swap="outerHTML" class="am-inline-form">
+          <button type="submit" class="am-btn am-btn-danger am-btn-xs"
+            onclick="return confirm('Remove this impact?')">×</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="am-empty-row"><td colspan="4">No impacts added.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/impacts/add"
+        hx-target="#impacts-section" hx-swap="outerHTML"
+        class="am-add-form am-add-form-inline">
+    <div class="am-field">
+      <label class="am-field-label"><strong>Type</strong></label>
+      <select name="type_code" required class="am-select">
+        <option value="" disabled selected>— select —</option>
+        {% for code, sv in impact_terms.items()|sort(attribute='1') %}
+        <option value="{{ sv }}" data-code="{{ code }}">{{ sv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field am-field-grow">
+      <label class="am-field-label"><strong>Description</strong></label>
+      <input name="text" required class="am-input" placeholder="Impact description" />
+    </div>
+    <div class="am-checkbox-field">
+      <label class="am-field-label"><strong>Substantial?</strong></label>
+      <input type="checkbox" name="is_substantial" value="1" />
+    </div>
+    <button type="submit" class="am-btn am-btn-primary am-btn-sm am-btn-self-end">+ Add</button>
+  </form>
+</div>

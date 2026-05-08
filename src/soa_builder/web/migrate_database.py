@@ -1876,3 +1876,268 @@ def _migrate_add_endpoint_audit_table():
         logger.info("_migrate_add_endpoint_audit_table created endpoint_audit table")
     except Exception as e:
         logger.warning("_migrate_add_endpoint_audit_table failed: %s", e)
+
+
+def _migrate_add_study_amendment_table():
+    """Create study_amendment table for protocol amendment metadata."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_amendment (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                freeze_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                name TEXT NOT NULL,
+                number TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                label TEXT,
+                description TEXT,
+                UNIQUE(soa_id, amendment_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_amendment_table created study_amendment table")
+    except Exception as e:
+        logger.warning("_migrate_add_study_amendment_table failed: %s", e)
+
+
+def _migrate_add_study_amendment_audit_table():
+    """Create study_amendment_audit table for tracking amendment mutations."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_amendment_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_study_amendment_audit_table created "
+            "study_amendment_audit table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_study_amendment_audit_table failed: %s", e)
+
+
+def _migrate_add_study_amendment_reason_table():
+    """Create study_amendment_reason table for primary/secondary reasons."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_amendment_reason (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                reason_uid TEXT NOT NULL,
+                role TEXT NOT NULL,
+                code_uid TEXT NOT NULL,
+                other_reason TEXT,
+                UNIQUE(soa_id, reason_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_study_amendment_reason_table created "
+            "study_amendment_reason table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_study_amendment_reason_table failed: %s", e)
+
+
+def _migrate_add_study_amendment_reason_audit_table():
+    """Create study_amendment_reason_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_amendment_reason_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                reason_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_study_amendment_reason_audit_table created "
+            "study_amendment_reason_audit table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_study_amendment_reason_audit_table failed: %s", e)
+
+
+def _migrate_add_study_amendment_impact_table():
+    """Create study_amendment_impact table for amendment impacts."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_amendment_impact (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                impact_uid TEXT NOT NULL,
+                type_code_uid TEXT NOT NULL,
+                text TEXT NOT NULL,
+                is_substantial INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(soa_id, impact_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_study_amendment_impact_table created "
+            "study_amendment_impact table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_study_amendment_impact_table failed: %s", e)
+
+
+def _migrate_add_study_amendment_impact_audit_table():
+    """Create study_amendment_impact_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_amendment_impact_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                impact_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_study_amendment_impact_audit_table created "
+            "study_amendment_impact_audit table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_study_amendment_impact_audit_table failed: %s", e)
+
+
+def _migrate_add_study_change_table():
+    """Create study_change table for amendment changes."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_change (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                change_uid TEXT NOT NULL,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT,
+                summary TEXT NOT NULL,
+                rationale TEXT NOT NULL,
+                UNIQUE(soa_id, change_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_change_table created study_change table")
+    except Exception as e:
+        logger.warning("_migrate_add_study_change_table failed: %s", e)
+
+
+def _migrate_add_study_change_audit_table():
+    """Create study_change_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_change_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                change_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_study_change_audit_table created study_change_audit table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_study_change_audit_table failed: %s", e)
+
+
+def _migrate_add_document_content_reference_table():
+    """Create document_content_reference table for change sections."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS document_content_reference (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                change_uid TEXT NOT NULL,
+                ref_uid TEXT NOT NULL,
+                section_number TEXT NOT NULL,
+                section_title TEXT NOT NULL,
+                applies_to_id TEXT NOT NULL,
+                UNIQUE(soa_id, ref_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_document_content_reference_table created "
+            "document_content_reference table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_document_content_reference_table failed: %s", e)
+
+
+def _migrate_add_document_content_reference_audit_table():
+    """Create document_content_reference_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS document_content_reference_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                ref_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_document_content_reference_audit_table created "
+            "document_content_reference_audit table"
+        )
+    except Exception as e:
+        logger.warning(
+            "_migrate_add_document_content_reference_audit_table failed: %s",
+            e,
+        )

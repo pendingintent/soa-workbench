@@ -405,3 +405,60 @@ class FootnoteUpdate(BaseModel):
     description: Optional[str] = None
     text: Optional[str] = None
     dictionary_uid: Optional[str] = None
+
+
+class StudyAmendmentCreate(BaseModel):
+    name: str
+    number: str
+    summary: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    primary_reason_code: str
+    primary_reason_other: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _require_other_reason(self):
+        if self.primary_reason_code == "C17649" and not self.primary_reason_other:
+            raise ValueError(
+                "otherReason is required when primary reason code is C17649"
+            )
+        return self
+
+
+class StudyAmendmentUpdate(BaseModel):
+    name: Optional[str] = None
+    number: Optional[str] = None
+    summary: Optional[str] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+
+
+class StudyAmendmentReasonCreate(BaseModel):
+    code: str
+    other_reason: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _require_other(self):
+        if self.code == "C17649" and not self.other_reason:
+            raise ValueError("otherReason is required when reason code is C17649")
+        return self
+
+
+class StudyAmendmentImpactCreate(BaseModel):
+    type_code: str
+    text: str
+    is_substantial: bool = False
+
+
+class StudyChangeCreate(BaseModel):
+    name: str
+    summary: str
+    rationale: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+
+
+class DocumentContentReferenceCreate(BaseModel):
+    section_number: str
+    section_title: str
+    applies_to_id: str

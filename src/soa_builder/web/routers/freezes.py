@@ -19,6 +19,14 @@ from ._freeze_helpers import (
     _rollback_freeze,
     _rollback_preview,
 )
+from .amendments import (
+    _insert_code,
+    _next_amendment_uid,
+    _next_reason_uid,
+    _REASON_CODELIST,
+)
+from ..audit import _record_amendment_audit, _record_reason_audit
+from ..schemas import StudyAmendmentCreate
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -44,11 +52,23 @@ def ui_list_freezes(request: Request, soa_id: int):
 
 
 @router.post("/ui/soa/{soa_id}/freeze", response_class=HTMLResponse)
-def ui_freeze_soa(request: Request, soa_id: int, version_label: str = Form("")):
+def ui_freeze_soa(
+    request: Request,
+    soa_id: int,
+    version_label: str = Form(""),
+    is_amendment: str = Form(""),
+    amendment_name: str = Form(""),
+    amendment_number: str = Form(""),
+    amendment_summary: str = Form(""),
+    amendment_label: str = Form(""),
+    amendment_description: str = Form(""),
+    primary_reason_code: str = Form(""),
+    primary_reason_other: str = Form(""),
+):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     try:
-        _create_freeze(soa_id, version_label or None)
+        freeze_id, _ = _create_freeze(soa_id, version_label or None)
     except HTTPException as he:
         if request.headers.get("HX-Request") == "true":
             return HTMLResponse(
@@ -60,6 +80,91 @@ def ui_freeze_soa(request: Request, soa_id: int, version_label: str = Form("")):
             f"Error: {he.detail}</div>",
             headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
         )
+
+    if is_amendment:
+        try:
+            body = StudyAmendmentCreate(
+                name=amendment_name,
+                number=amendment_number,
+                summary=amendment_summary,
+                label=amendment_label or None,
+                description=amendment_description or None,
+                primary_reason_code=primary_reason_code,
+                primary_reason_other=primary_reason_other or None,
+            )
+        except Exception as exc:
+            err = html.escape(str(exc))
+            if request.headers.get("HX-Request") == "true":
+                return HTMLResponse(
+                    f"<div class='error' style='color:#c62828;"
+                    f"font-size:0.7em;'>Amendment error: {err}</div>"
+                )
+            return HTMLResponse(
+                f"<div class='error' style='color:#c62828;'>"
+                f"Amendment error: {err}</div>",
+                headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
+            )
+        try:
+            conn = _connect()
+            cur = conn.cursor()
+            amendment_uid = _next_amendment_uid(cur, soa_id)
+            reason_uid = _next_reason_uid(cur, soa_id)
+            code_uid = _insert_code(
+                cur, soa_id, body.primary_reason_code, _REASON_CODELIST
+            )
+            cur.execute(
+                "INSERT INTO study_amendment "
+                "(soa_id,freeze_id,amendment_uid,name,number,summary,"
+                "label,description) VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    freeze_id,
+                    amendment_uid,
+                    body.name,
+                    body.number,
+                    body.summary,
+                    body.label,
+                    body.description,
+                ),
+            )
+            amendment_id = cur.lastrowid
+            cur.execute(
+                "INSERT INTO study_amendment_reason "
+                "(soa_id,amendment_uid,reason_uid,role,code_uid,"
+                "other_reason) VALUES (?,?,?,?,?,?)",
+                (
+                    soa_id,
+                    amendment_uid,
+                    reason_uid,
+                    "primary",
+                    code_uid,
+                    body.primary_reason_other,
+                ),
+            )
+            reason_id = cur.lastrowid
+            conn.commit()
+            conn.close()
+            _record_amendment_audit(
+                soa_id,
+                "create",
+                amendment_id,
+                after={"amendment_uid": amendment_uid, "name": body.name},
+            )
+            _record_reason_audit(
+                soa_id,
+                "create",
+                reason_id,
+                after={
+                    "reason_uid": reason_uid,
+                    "role": "primary",
+                    "code": body.primary_reason_code,
+                },
+            )
+        except Exception as exc:
+            logger.exception(
+                "Amendment creation failed for freeze %s: %s", freeze_id, exc
+            )
+
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
     safe_soa_id = html.escape(str(soa_id))

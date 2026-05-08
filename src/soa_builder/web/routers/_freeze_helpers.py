@@ -151,11 +151,22 @@ def _list_freezes(soa_id: int):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, version_label, created_at FROM soa_freeze"
-        " WHERE soa_id=? ORDER BY id DESC",
+        "SELECT f.id, f.version_label, f.created_at, a.amendment_uid"
+        " FROM soa_freeze f"
+        " LEFT JOIN study_amendment a"
+        " ON a.freeze_id = f.id AND a.soa_id = f.soa_id"
+        " WHERE f.soa_id=? ORDER BY f.id DESC",
         (soa_id,),
     )
-    rows = [dict(id=r[0], version_label=r[1], created_at=r[2]) for r in cur.fetchall()]
+    rows = [
+        dict(
+            id=r[0],
+            version_label=r[1],
+            created_at=r[2],
+            amendment_uid=r[3],
+        )
+        for r in cur.fetchall()
+    ]
     conn.close()
     return rows
 

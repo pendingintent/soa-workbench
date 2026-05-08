@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""Build USDM StudyAmendment-Output objects for a SOA."""
+
+from typing import Any, Dict, List
+
+from soa_builder.web.db import _connect
+from soa_builder.web.utils import _nz
+
+
+def _code_obj(code_uid: str, row: tuple) -> Dict[str, Any]:
+    """Build a Code-Output dict from a code_association row tuple."""
+    if row is None:
+        return {
+            "id": code_uid or "Code_unknown",
+            "extensionAttributes": [],
+            "code": "",
+            "codeSystem": "",
+            "codeSystemVersion": "",
+            "decode": "",
+            "instanceType": "Code",
+        }
+    _, codelist_table, code = row
+    version = ""
+    slug = (codelist_table or "").rstrip("/").split("/")[-1]
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+    return {
+        "id": code_uid,
+        "extensionAttributes": [],
+        "code": code or "",
+        "codeSystem": "http://www.cdisc.org",
+        "codeSystemVersion": version,
+        "decode": code or "",
+        "instanceType": "Code",
+    }
+
+
+def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
+    """Build USDM StudyAmendment-Output objects for all amendments in a SOA."""
+    conn = _connect()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT id,amendment_uid,name,number,summary,label,description "
+        "FROM study_amendment WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    amendment_rows = cur.fetchall()
+    if not amendment_rows:
+        conn.close()
+        return []
+
+    amendment_uids = [r[1] for r in amendment_rows]
+    placeholders = ",".join("?" * len(amendment_uids))
+
+    cur.execute(
+        f"SELECT id,amendment_uid,reason_uid,role,code_uid,other_reason "
+        f"FROM study_amendment_reason "
+        f"WHERE soa_id=? AND amendment_uid IN ({placeholders}) ORDER BY id",
+        [soa_id, *amendment_uids],
+    )
+    reason_rows = cur.fetchall()
+
+    cur.execute(
+        f"SELECT id,amendment_uid,impact_uid,type_code_uid,text,is_substantial "
+        f"FROM study_amendment_impact "
+        f"WHERE soa_id=? AND amendment_uid IN ({placeholders}) ORDER BY id",
+        [soa_id, *amendment_uids],
+    )
+    impact_rows = cur.fetchall()
+
+    cur.execute(
+        f"SELECT id,amendment_uid,change_uid,name,label,description,"
+        f"summary,rationale "
+        f"FROM study_change "
+        f"WHERE soa_id=? AND amendment_uid IN ({placeholders}) ORDER BY id",
+        [soa_id, *amendment_uids],
+    )
+    change_rows = cur.fetchall()
+
+    change_uids = [r[2] for r in change_rows]
+    section_rows: list = []
+    if change_uids:
+        sec_ph = ",".join("?" * len(change_uids))
+        cur.execute(
+            f"SELECT id,change_uid,ref_uid,section_number,section_title,"
+            f"applies_to_id "
+            f"FROM document_content_reference "
+            f"WHERE soa_id=? AND change_uid IN ({sec_ph}) ORDER BY id",
+            [soa_id, *change_uids],
+        )
+        section_rows = cur.fetchall()
+
+    # Batch-fetch all code_association rows referenced by reasons and impacts
+    all_code_uids = [r[4] for r in reason_rows] + [r[3] for r in impact_rows]
+    code_map: Dict[str, tuple] = {}
+    if all_code_uids:
+        code_ph = ",".join("?" * len(all_code_uids))
+        cur.execute(
+            f"SELECT code_uid, codelist_table, code "
+            f"FROM code_association WHERE soa_id=? AND code_uid IN ({code_ph})",
+            [soa_id, *all_code_uids],
+        )
+        for row in cur.fetchall():
+            code_map[row[0]] = row
+
+    conn.close()
+
+    # Index by amendment_uid / change_uid
+    reasons_by_amendment: Dict[str, list] = {}
+    for r in reason_rows:
+        reasons_by_amendment.setdefault(r[1], []).append(r)
+
+    impacts_by_amendment: Dict[str, list] = {}
+    for r in impact_rows:
+        impacts_by_amendment.setdefault(r[1], []).append(r)
+
+    changes_by_amendment: Dict[str, list] = {}
+    for r in change_rows:
+        changes_by_amendment.setdefault(r[1], []).append(r)
+
+    sections_by_change: Dict[str, list] = {}
+    for s in section_rows:
+        sections_by_change.setdefault(s[1], []).append(s)
+
+    out: List[Dict[str, Any]] = []
+    for ar in amendment_rows:
+        (
+            _am_id,
+            amendment_uid,
+            name,
+            number,
+            summary,
+            label,
+            description,
+        ) = ar
+
+        primary_reason = None
+        secondary_reasons = []
+        for r in reasons_by_amendment.get(amendment_uid, []):
+            _rid, _auid, reason_uid, role, code_uid, other_reason = r
+            reason_obj = {
+                "id": reason_uid,
+                "extensionAttributes": [],
+                "code": _code_obj(code_uid, code_map.get(code_uid)),
+                "otherReason": _nz(other_reason),
+                "instanceType": "StudyAmendmentReason",
+            }
+            if role == "primary":
+                primary_reason = reason_obj
+            else:
+                secondary_reasons.append(reason_obj)
+
+        if primary_reason is None:
+            primary_reason = {
+                "id": f"{amendment_uid}_PrimaryReason",
+                "extensionAttributes": [],
+                "code": _code_obj("", None),
+                "otherReason": None,
+                "instanceType": "StudyAmendmentReason",
+            }
+
+        impacts = []
+        for i in impacts_by_amendment.get(amendment_uid, []):
+            _iid, _auid, impact_uid, type_code_uid, text, is_substantial = i
+            impacts.append(
+                {
+                    "id": impact_uid,
+                    "extensionAttributes": [],
+                    "notes": [],
+                    "type": _code_obj(type_code_uid, code_map.get(type_code_uid)),
+                    "text": text or "",
+                    "isSubstantial": bool(is_substantial),
+                    "instanceType": "StudyAmendmentImpact",
+                }
+            )
+
+        changes = []
+        for c in changes_by_amendment.get(amendment_uid, []):
+            (
+                _cid,
+                _auid,
+                change_uid,
+                c_name,
+                c_label,
+                c_description,
+                c_summary,
+                c_rationale,
+            ) = c
+            sections = [
+                {
+                    "id": s[2],
+                    "extensionAttributes": [],
+                    "sectionNumber": s[3] or "",
+                    "sectionTitle": s[4] or "",
+                    "appliesToId": s[5] or "",
+                    "instanceType": "DocumentContentReference",
+                }
+                for s in sections_by_change.get(change_uid, [])
+            ]
+            changes.append(
+                {
+                    "id": change_uid,
+                    "extensionAttributes": [],
+                    "name": c_name or "",
+                    "label": _nz(c_label),
+                    "description": _nz(c_description),
+                    "summary": c_summary or "",
+                    "rationale": c_rationale or "",
+                    "changedSections": sections,
+                    "instanceType": "StudyChange",
+                }
+            )
+
+        out.append(
+            {
+                "id": amendment_uid,
+                "extensionAttributes": [],
+                "notes": [],
+                "name": name or "",
+                "label": _nz(label),
+                "description": _nz(description),
+                "number": number or "",
+                "summary": summary or "",
+                "primaryReason": primary_reason,
+                "secondaryReasons": secondary_reasons,
+                "changes": changes,
+                "impacts": impacts,
+                "geographicScopes": [],
+                "enrollments": [],
+                "dateValues": [],
+                "instanceType": "StudyAmendment",
+            }
+        )
+    return out
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+    import logging
+    import sys
+
+    logger = logging.getLogger("usdm.generate_amendments")
+
+    parser = argparse.ArgumentParser(description="Export USDM amendments for a SOA.")
+    parser.add_argument("soa_id", type=int, help="SOA id to export")
+    parser.add_argument(
+        "-o", "--output", default="-", help="Output file path or '-' for stdout"
+    )
+    parser.add_argument("--indent", type=int, default=2, help="JSON indent")
+    args = parser.parse_args()
+
+    try:
+        amendments = build_usdm_amendments(args.soa_id)
+    except Exception:
+        logger.exception("Failed to build amendments for soa_id=%s", args.soa_id)
+        sys.exit(1)
+
+    payload = json.dumps(amendments, indent=args.indent)
+    if args.output in ("-", "/dev/stdout"):
+        sys.stdout.write(payload + "\n")
+    else:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(payload + "\n")
