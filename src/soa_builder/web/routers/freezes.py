@@ -67,23 +67,11 @@ def ui_freeze_soa(
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    try:
-        freeze_id, _ = _create_freeze(soa_id, version_label or None)
-    except HTTPException as he:
-        if request.headers.get("HX-Request") == "true":
-            return HTMLResponse(
-                f"<div class='error' style='color:#c62828;font-size:0.7em;'>"
-                f"Error: {he.detail}</div>"
-            )
-        return HTMLResponse(
-            f"<div class='error' style='color:#c62828;font-size:0.85em;'>"
-            f"Error: {he.detail}</div>",
-            headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
-        )
 
+    amendment_body = None
     if is_amendment:
         try:
-            body = StudyAmendmentCreate(
+            amendment_body = StudyAmendmentCreate(
                 name=amendment_name,
                 number=amendment_number,
                 summary=amendment_summary,
@@ -104,13 +92,30 @@ def ui_freeze_soa(
                 f"Amendment error: {err}</div>",
                 headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
             )
+
+    try:
+        freeze_id, _ = _create_freeze(soa_id, version_label or None)
+    except HTTPException as he:
+        err = html.escape(str(he.detail))
+        if request.headers.get("HX-Request") == "true":
+            return HTMLResponse(
+                f"<div class='error' style='color:#c62828;font-size:0.7em;'>"
+                f"Error: {err}</div>"
+            )
+        return HTMLResponse(
+            f"<div class='error' style='color:#c62828;font-size:0.85em;'>"
+            f"Error: {err}</div>",
+            headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
+        )
+
+    if amendment_body is not None:
         try:
             conn = _connect()
             cur = conn.cursor()
             amendment_uid = _next_amendment_uid(cur, soa_id)
             reason_uid = _next_reason_uid(cur, soa_id)
             code_uid = _insert_code(
-                cur, soa_id, body.primary_reason_code, _REASON_CODELIST
+                cur, soa_id, amendment_body.primary_reason_code, _REASON_CODELIST
             )
             cur.execute(
                 "INSERT INTO study_amendment "
@@ -120,11 +125,11 @@ def ui_freeze_soa(
                     soa_id,
                     freeze_id,
                     amendment_uid,
-                    body.name,
-                    body.number,
-                    body.summary,
-                    body.label,
-                    body.description,
+                    amendment_body.name,
+                    amendment_body.number,
+                    amendment_body.summary,
+                    amendment_body.label,
+                    amendment_body.description,
                 ),
             )
             amendment_id = cur.lastrowid
@@ -138,7 +143,7 @@ def ui_freeze_soa(
                     reason_uid,
                     "primary",
                     code_uid,
-                    body.primary_reason_other,
+                    amendment_body.primary_reason_other,
                 ),
             )
             reason_id = cur.lastrowid
@@ -148,7 +153,7 @@ def ui_freeze_soa(
                 soa_id,
                 "create",
                 amendment_id,
-                after={"amendment_uid": amendment_uid, "name": body.name},
+                after={"amendment_uid": amendment_uid, "name": amendment_body.name},
             )
             _record_reason_audit(
                 soa_id,
@@ -157,7 +162,7 @@ def ui_freeze_soa(
                 after={
                     "reason_uid": reason_uid,
                     "role": "primary",
-                    "code": body.primary_reason_code,
+                    "code": amendment_body.primary_reason_code,
                 },
             )
         except Exception as exc:
