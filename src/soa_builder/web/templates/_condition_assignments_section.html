@@ -1,164 +1,97 @@
-<h2>Conditions Assignments for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
-
 {% if not hide_return_link %}
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 {% endif %}
 
-<div style="margin-bottom: 2px;">
-    <form method="post" action="/ui/soa/{{ soa_id }}/condition_assignments/create" style="display: flex;flex-wrap: wrap;gap: 6px;align-items: flex-end;">
-        <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label><strong>Name *</strong></label>
-            <input name="name" placeholder="Condition Name" required />
-        </div>
-        <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label><strong>Label</strong></label>
-            <input name="label" placeholder="Label (optional)" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label><strong>Description</strong></label>
-            <input name="description" placeholder="Description (Optional)" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label><strong>Condition</strong></label>
-            <input name="condition" placeholder="Condition Text (Optional)" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label><strong>Associated Decision Instance</strong></label>
-            <select name="decision_instance_uid">
-                <option value="">-- Select Decision Instance --</option>
-                {% for name, instance_uid in (instance_options or {}).items() %}
-                <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label><strong>Target Instance</strong></label>
-            <select name="condition_target_uid">
-                <option value="">-- Select Target Instance --</option>
-                {% for name, instance_uid in (instance_options or {}).items() %}
-                <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Condition</button>
-    </form>
+<div class="fz-create-card fz-create-card-full">
+  <h3>Create Condition Assignment</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/condition_assignments/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Condition name" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Condition</label>
+      <input name="condition" placeholder="Condition text (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Associated Decision Instance</label>
+      <select name="decision_instance_uid" class="fz-version-input">
+        <option value="">-- Select Decision Instance --</option>
+        {% for name, instance_uid in (instance_options or {}).items() %}
+        <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Target Instance</label>
+      <select name="condition_target_uid" class="fz-version-input">
+        <option value="">-- Select Target Instance --</option>
+        {% for name, instance_uid in (instance_options or {}).items() %}
+        <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Create Condition</button>
+  </form>
 </div>
 
-<table style="width:100%;font-size:0.85em;border-collapse:collapse;margin-top:12px;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">ID</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Label</th>
-        <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Condition</th>
-        <th style="text-align:left;padding:4px;">Decision Instance</th>
-        <th style="text-align:left;padding:4px;">Target Instance</th>
-        <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-    </tr>
-    {% for c in conditions or [] %}
-    <tr data-condition-assignment-id="{{ c.id }}">
-        <form method="post" action="/ui/soa/{{ soa_id }}/condition_assignments/{{ c.id }}/update">
-            <td style="padding:4px;white-space:nowrap;"><strong>{{ c.condition_assignment_uid }}</strong></td>
-            <td style="padding:4px;"><input name="name" value="{{ c.name or '' }}" placeholder="Name" /></td>
-            <td style="padding:4px;"><input name="label" value="{{ c.label or '' }}" placeholder="Label" /></td>
-            <td style="padding:4px;"><input name="description" value="{{ c.description or '' }}" placeholder="Description" /></td>
-            <td style="padding:4px;"><input name="condition" value="{{ c.condition or '' }}" placeholder="Condition Text" /></td>
-            <td style="padding:4px;">
-                <select name="decision_instance_uid">
-                    <option value="">-- Select Decision Instance --</option>
-                    {% for name, instance_uid in (instance_options or {}).items() %}
-                    <option value="{{ instance_uid }}" {% if instance_uid == c.decision_instance_uid %}selected{% endif %}>{{ name }}: [{{ instance_uid }}]</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td style="padding:4px;">
-                <select name="condition_target_uid">
-                    <option value="">-- Select Target Instance --</option>
-                    {% for name, instance_uid in (instance_options or {}).items() %}
-                    <option value="{{ instance_uid }}" {% if instance_uid == c.condition_target_uid %}selected{% endif %}>{{ name }}: [{{ instance_uid }}]</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td style="padding:4px;">
-                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </td>
-        </form>
-        <td style="padding:4px;">
-            <form method="post" action="/ui/soa/{{ soa_id }}/condition_assignments/{{ c.id }}/delete">
-                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Delete</button>
-            </form>
-        </td>
-    </tr>
-    {% else %}
-    <tr>
-        <td colspan="9" style="padding:6px;color:#777;">No Conditions yet.</td>
-    </tr>
-    {% endfor %}
+<h3 class="fz-section-heading">Condition Assignments ({{ (conditions or [])|length }})</h3>
+
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Condition</th>
+    <th>Decision Instance</th>
+    <th>Target Instance</th>
+    <th>Save</th>
+    <th>Delete</th>
+  </tr>
+  {% for c in conditions or [] %}
+  <tr data-condition-assignment-id="{{ c.id }}">
+    <form method="post" action="/ui/soa/{{ soa_id }}/condition_assignments/{{ c.id }}/update">
+      <td class="fz-td-version"><span class="obj-uid">{{ c.condition_assignment_uid }}</span></td>
+      <td><input name="name" value="{{ c.name or '' }}" placeholder="Name" class="am-input-compact" /></td>
+      <td><input name="label" value="{{ c.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ c.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td><input name="condition" value="{{ c.condition or '' }}" placeholder="Condition text" class="am-input-compact" /></td>
+      <td>
+        <select name="decision_instance_uid" class="am-select-compact">
+          <option value="">-- Select Decision Instance --</option>
+          {% for name, instance_uid in (instance_options or {}).items() %}
+          <option value="{{ instance_uid }}" {% if instance_uid == c.decision_instance_uid %}selected{% endif %}>{{ name }}: [{{ instance_uid }}]</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td>
+        <select name="condition_target_uid" class="am-select-compact">
+          <option value="">-- Select Target Instance --</option>
+          {% for name, instance_uid in (instance_options or {}).items() %}
+          <option value="{{ instance_uid }}" {% if instance_uid == c.condition_target_uid %}selected{% endif %}>{{ name }}: [{{ instance_uid }}]</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
+    </form>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/condition_assignments/{{ c.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="9">No condition assignments yet.</td></tr>
+  {% endfor %}
 </table>
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var btn = document.getElementById('save-instance-order-btn');
-    if (btn) {
-        btn.addEventListener('click', function () {
-            var soaId = btn.getAttribute('data-soa-id');
-            saveInstanceOrder(soaId);
-        });
-    }
-});
-
-function moveInstanceRow(button, dir) {
-    var row = button.closest('tr');
-    if (!row) return;
-    var table = document.getElementById('instances-table');
-    if (!table) return;
-    var tbody = table.tBodies[0] || table;
-
-    if (dir < 0) {
-        var prev = row.previousElementSibling;
-        if (prev && prev.querySelector && prev.querySelector('td')) {
-            tbody.insertBefore(row, prev);
-        }
-    } else {
-        var next = row.nextElementSibling;
-        if (next) {
-            tbody.insertBefore(next, row);
-        }
-    }
-}
-
-function saveInstanceOrder(soaId) {
-    var rows = document.querySelectorAll('#instances-table tr[data-instance-id]');
-    var order = [];
-    for (var i = 0; i < rows.length; i++) {
-        var id = parseInt(rows[i].getAttribute('data-instance-id'), 10);
-        if (!isNaN(id)) {
-            order.push(id);
-        }
-    }
-
-    fetch('/soa/' + soaId + '/instances/reorder', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json;charset=UTF-8'
-        },
-        body: JSON.stringify({ order: order })
-    }).then(function (response) {
-        if (response.ok) {
-            window.location.reload();
-            return;
-        }
-        return response.text().then(function (text) {
-            alert('Reorder failed: ' + (text || ('HTTP ' + response.status)));
-        });
-    }).catch(function (error) {
-        alert('Reorder failed: ' + error.message);
-    });
-}
-</script>

@@ -3,209 +3,189 @@
 <h2>Encounters for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
-<div style="margin-bottom:12px">
-    <form method="post" action="/ui/soa/{{ soa_id }}/visits/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Name *</strong></label>
-            <input name="name" placeholder="Encounter Name" required />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Label</strong></label>
-            <input name="label" placeholder="Label (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Description</strong></label>
-            <input name="description" placeholder="Description (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Scheduled At Timing</strong></label>
-            <select name="scheduledAtId">
-                <option value="">-- Select Study Timing --</option>
-                {% for id,name in (timing_options or {}).items() %}
-                    <option value="{{ id }}">{{ name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Environmental Setting</strong></label>
-            {% if environmental_setting_options %}
-            <select name="environmentalSettings">
-                <option value="">-- Select Environmental Setting --</option>
-                    {% for option in environmental_setting_options %}
-                    <option value="{{ option.conceptId }}">
-                        {{ option.submissionValue }} ({{ option.conceptId }})
-                    </option>
-                    {% endfor %}
-            </select>
-            {% else %}
-            <select disabled>
-                <option>Environmental settings unavailable</option>
-            </select>
-            {% endif %}
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Contact Mode</strong></label>
-            {% if contact_mode_options %}
-            <select name="contactModes">
-                <option value="">-- Select Contact Mode --</option>
-                {% for option in contact_mode_options %}
-                <option value="{{ option.conceptId }}">
-                    {{ option.submissionValue }} ({{ option.conceptId }})
-                </option>
-                {% endfor %}
-            </select>
-            {% else %}
-            <select disabled>
-                <option>Contact Mode options unavailable</option>
-            </select>
-            {% endif %}
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Transition Start Rule</strong></label>
-            <select name="transitionStartRule">
-                <option value="">-- Select START Rule --</option>
-                {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
-                <option value="{{ transition_rule_uid }}">{{ name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Transition End Rule</strong></label>
-            <select name="transitionEndRule">
-                <option value="">-- Select END Rule --</option>
-                {% for name, transition_rule_uid  in (transition_rule_options or {}).items() %}
-                <option value="{{ transition_rule_uid }}">{{ name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Encounter</button>
+<hr class="fz-section-divider" />
+
+<div class="fz-create-card fz-create-card-full">
+  <h3>Create Encounter</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/visits/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Encounter name" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Scheduled At Timing</label>
+      <select name="scheduledAtId" class="fz-version-input">
+        <option value="">-- Select Study Timing --</option>
+        {% for id, name in (timing_options or {}).items() %}
+        <option value="{{ id }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Environmental Setting</label>
+      {% if environmental_setting_options %}
+      <select name="environmentalSettings" class="fz-version-input">
+        <option value="">-- Select Environmental Setting --</option>
+        {% for option in environmental_setting_options %}
+        <option value="{{ option.conceptId }}">{{ option.submissionValue }} ({{ option.conceptId }})</option>
+        {% endfor %}
+      </select>
+      {% else %}
+      <select disabled class="fz-version-input"><option>Unavailable</option></select>
+      {% endif %}
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Contact Mode</label>
+      {% if contact_mode_options %}
+      <select name="contactModes" class="fz-version-input">
+        <option value="">-- Select Contact Mode --</option>
+        {% for option in contact_mode_options %}
+        <option value="{{ option.conceptId }}">{{ option.submissionValue }} ({{ option.conceptId }})</option>
+        {% endfor %}
+      </select>
+      {% else %}
+      <select disabled class="fz-version-input"><option>Unavailable</option></select>
+      {% endif %}
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Transition Start Rule</label>
+      <select name="transitionStartRule" class="fz-version-input">
+        <option value="">-- Select START Rule --</option>
+        {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+        <option value="{{ transition_rule_uid }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Transition End Rule</label>
+      <select name="transitionEndRule" class="fz-version-input">
+        <option value="">-- Select END Rule --</option>
+        {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+        <option value="{{ transition_rule_uid }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Create Encounter</button>
+  </form>
+</div>
+
+<h3 class="fz-section-heading">Encounters ({{ encounters|length }})</h3>
+
+<table id="encounters-table" class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Order</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Scheduled at Timing</th>
+    <th>Type (C25716)</th>
+    <th>Environmental Setting (C127262)</th>
+    <th>Contact Mode (C171445)</th>
+    <th>Transition Start Rule</th>
+    <th>Transition End Rule</th>
+    <th>Save</th>
+    <th>Delete</th>
+    <th>
+      {% if encounters|length > 1 %}
+      <button type="button" id="save-encounter-order-btn" data-soa-id="{{ soa_id }}"
+              class="am-btn am-btn-info am-btn-sm">
+        Save Order
+      </button>
+      {% endif %}
+    </th>
+  </tr>
+  {% for e in encounters %}
+  <tr data-visit-id="{{ e.id }}">
+    <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/update">
+      <td class="fz-td-version"><span class="obj-uid">{{ e.encounter_uid }}</span></td>
+      <td class="fz-td-date">{{ e.order_index }}</td>
+      <td><input name="name" value="{{ e.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ e.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ e.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td>
+        <select name="scheduledAtId" class="am-select-compact">
+          <option value="">-- Select a Study Timing --</option>
+          {% for id, name in (timing_options or {}).items() %}
+          <option value="{{ id }}" {% if (e.scheduledAtId | string or '') == id | string %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td>{{ e.type_submission_value or e.type or "-" }} (C25716)</td>
+      <td>
+        {% if environmental_setting_options %}
+        {% set selected_env = (e.environmental_concept_id or e.environmentalSettings or '') | string %}
+        <select name="environmentalSettings" class="am-select-compact">
+          <option value="">-- Select Environmental Setting --</option>
+          {% for option in environmental_setting_options %}
+          {% set option_code = option.conceptId | string %}
+          <option value="{{ option_code }}" {% if selected_env == option_code %}selected{% endif %}>
+            {{ option.submissionValue }} ({{ option.conceptId }})
+          </option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <select disabled class="am-select-compact"><option>Unavailable</option></select>
+        {% endif %}
+      </td>
+      <td>
+        {% if contact_mode_options %}
+        {% set selected_cm_option = (e.contact_mode_concept_id or e.contactModes or '') | string %}
+        <select name="contactModes" class="am-select-compact">
+          <option value="">-- Select Contact Mode --</option>
+          {% for option in contact_mode_options %}
+          {% set option_code = option.conceptId | string %}
+          <option value="{{ option_code }}" {% if selected_cm_option == option_code %}selected{% endif %}>
+            {{ option.submissionValue }} ({{ option.conceptId }})
+          </option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <select disabled class="am-select-compact"><option>Unavailable</option></select>
+        {% endif %}
+      </td>
+      <td>
+        <select name="transitionStartRule" class="am-select-compact">
+          <option value="">-- Select START Rule --</option>
+          {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+          <option value="{{ transition_rule_uid }}" {% if (e.transitionStartRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td>
+        <select name="transitionEndRule" class="am-select-compact">
+          <option value="">-- Select END Rule --</option>
+          {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+          <option value="{{ transition_rule_uid }}" {% if (e.transitionEndRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
     </form>
-</div>
-
-
-
-<table id="encounters-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">id</th>
-        <th style="text-align:left;padding:4px;">Order</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Label</th>
-        <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Scheduled at Timing</th>
-        <th style="text-align:left;padding:4px;">Type (C188728)</th>
-        <th style="text-align:left;padding:4px;">Environmental Setting (C127262)</th>
-        <th style="text-align:left;padding:4px;">Contact Mode (C171445)</th>
-        <th style="text-align:left;padding:4px;">Transition Start Rule</th>
-        <th style="text-align:left;padding:4px;">Transition End Rule</th>
-        <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-        <th style="text-align:left;padding:4px;">
-            {% if encounters|length > 1 %}
-            <button type="button"
-                    id="save-encounter-order-btn"
-                    data-soa-id="{{ soa_id }}"
-                    style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
-                Save Order
-            </button>
-            {% endif %}
-        </th>
-    </tr>
-    {% for e in encounters %}
-    <tr data-visit-id="{{ e.id }}">
-        <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/update">
-            <td style="padding:4px;white-space:nowrap;"><strong>{{ e.encounter_uid }}</strong></td>
-            <td style="padding:4px;white-space:nowrap;"><strong>{{ e.order_index }}</strong></td>
-            <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
-            <td style="padding:4px;"><input name="label" value="{{ e.label or '' }}" placeholder="Label" /></td>
-            <td style="padding:4px;"><input name="description" value="{{ e.description or '' }}" placeholder="Description" /></td>
-            <td style="padding:4px;">
-                <select name="scheduledAtId">
-                    <option value="">-- Select a Study Timing --</option>
-                    {% for id,name in (timing_options or {}).items() %}
-                        <option value="{{ id }}" {% if (e.scheduledAtId | string  or '') == id | string %}selected{% endif %}>{{ name }}</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td style="padding:4px;">
-                {{ e.type_submission_value or e.type or "-" }} (C25716)
-            </td>
-            <td style="padding:4px;">
-            {% if environmental_setting_options %}
-                {% set selected_env = (e.environmental_concept_id or e.environmentalSettings or '') | string %}
-                <select name="environmentalSettings">
-                    <option value="">-- Select Environmental Setting --</option>
-                        {% for option in environmental_setting_options %}
-                        {% set option_code = option.conceptId | string %}
-                            <option value="{{ option_code }}" {% if selected_env == option_code %}selected{% endif %}>
-                            {{ option.submissionValue }} ({{ option.conceptId }})
-                        </option>
-                        {% endfor %}
-                </select>
-            {% else %}
-                <select disabled>
-                    <option>Environmental settings unavailable</option>
-                </select>
-            {% endif %}
-            </td>
-            <td style="padding:4px;">
-                {% if contact_mode_options %}
-                {% set selected_cm_option = (e.contact_mode_concept_id or e.contactModes or '') | string %}
-                <select name="contactModes">
-                    <option value="">-- Select Contact Mode --</option>
-                    {% for option in contact_mode_options %}
-                    {% set option_code = option.conceptId | string %}
-                    <option value="{{ option_code }}" {% if selected_cm_option == option_code %}selected{% endif %}>
-                        {{ option.submissionValue }} ({{ option.conceptId }})
-                    </option>
-                    {% endfor %}
-                </select>
-                {% else %}
-                <select disabled>
-                    <option>Contact Modes unavailable</option>
-                </select>
-                {% endif %}
-            </td>
-
-            <td style="padding:4px;">
-                <select name="transitionStartRule">
-                    <option value="">-- Select START Rule --</option>
-                    {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
-                        <option value="{{ transition_rule_uid }}" {% if (e.transitionStartRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td style="padding:4px;">
-                <select name="transitionEndRule">
-                    <option value="">-- Select END Rule --</option>
-                    {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
-                        <option value="{{ transition_rule_uid }}" {% if (e.transitionEndRule or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td style="padding:4px;">
-                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </td>
-        </form>
-        <td style="padding:4px;">
-            <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/delete">
-                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-                Delete
-                </button>
-            </form>
-        </td>
-        <td style="padding:4px;white-space:nowrap;">
-            <button type="button" onclick="moveEncounterRow(this, -1)">↑</button>
-            <button type="button" onclick="moveEncounterRow(this, 1)">↓</button>
-        </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="14" style="padding:6px;color:#777;">No encounters yet.</td></tr>
-    {% endfor %}
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/visits/{{ e.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+    <td>
+      <button type="button" onclick="moveEncounterRow(this, -1)" class="am-btn am-btn-slate am-btn-xs">↑</button>
+      <button type="button" onclick="moveEncounterRow(this, 1)" class="am-btn am-btn-slate am-btn-xs">↓</button>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="14">No encounters yet.</td></tr>
+  {% endfor %}
 </table>
 
 <script>

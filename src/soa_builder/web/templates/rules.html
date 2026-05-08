@@ -3,68 +3,65 @@
 <h2>Transition Rules for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
-<div style="margin-bottom:12px">
-    <form method="post" action="/ui/soa/{{ soa_id }}/rules/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;width:100%;">
-        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
-            <label><strong>Name *</strong></label>
-            <input name="name" placeholder="Rule Name" required style="width:100%;box-sizing:border-box;"/>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
-            <label><strong>Label</strong></label>
-            <input name="label" placeholder="Rule Label (optional)" style="width:100%;box-sizing:border-box;"/>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
-            <label><strong>Description</strong></label>
-            <input name="description" placeholder="Rule Description (optional)" style="width:100%;box-sizing:border-box;"/>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
-            <label><strong>Rule Text</strong></label>
-            <input name="text" placeholder="Rule Text (optional)" style="width:100%;box-sizing:border-box;"/>
-        </div>
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Transition Rule</button>
+<hr class="fz-section-divider" />
+
+<div class="fz-create-card fz-create-card-full">
+  <h3>Create Transition Rule</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/rules/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Rule name" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Rule Text</label>
+      <input name="text" placeholder="Rule text (optional)" class="fz-version-input" />
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Create Transition Rule</button>
+  </form>
+</div>
+
+<h3 class="fz-section-heading">Transition Rules ({{ rules|length }})</h3>
+
+<table id="rules-table" class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Text</th>
+    <th>Save</th>
+    <th>Delete</th>
+  </tr>
+  {% for r in rules %}
+  <tr>
+    <form method="post" action="/ui/soa/{{ soa_id }}/rules/{{ r.id }}/update">
+      <td class="fz-td-version"><span class="obj-uid">{{ r.transition_rule_uid }}</span></td>
+      <td><input name="name" value="{{ r.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ r.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ r.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td><input name="text" value="{{ r.text or '' }}" placeholder="Rule Text" class="am-input-compact" /></td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
     </form>
-</div>
-
-<table id="rules-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">id</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Label</th>
-        <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Text</th>
-        <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-    </tr>
-    {% for r in rules %}
-    <tr>
-        <form method="post" action="/ui/soa/{{ soa_id }}/rules/{{ r.id }}/update">
-            <td style="padding:4px;white-space:nowrap;"><strong>{{ r.transition_rule_uid }}</strong></td>
-            <td style="padding:4px;"><input name="name" value="{{ r.name }}" required style="width:100%;box-sizing:border-box;"/></td>
-            <td style="padding:4px;"><input name="label" value="{{ r.label or '' }}" placeholder="Label" style="width:100%;box-sizing:border-box;"/></td>
-            <td style="padding:4px;"><input name="description" value="{{ r.description or '' }}" placeholder="Description" style="width:100%;box-sizing:border-box;"/></td>
-            <td style="padding:4px;"><input name="text" value="{{ r.text or '' }}" placeholder="Rule Text" style="width:100%;box-sizing:border-box;"/></td>
-            <td style="padding:4px;">
-                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </td>
-        </form>
-        <td style="padding:4px;">
-        <form method="post" action="/ui/soa/{{ soa_id }}/rules/{{ r.id }}/delete">
-          <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-          Delete
-          </button>
-        </form>
-      </td>
-    </tr>
-    {% else %}
-    <tr>
-      <td colspan="7" style="padding:6px;color:#777;">No rules yet.</td>
-    </tr>
-    {% endfor %}
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/rules/{{ r.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="7">No rules yet.</td></tr>
+  {% endfor %}
 </table>
 
 {% endblock %}

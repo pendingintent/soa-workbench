@@ -1,31 +1,31 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Editing SoA for {% if study_label %}{{ study_label }}{% else %}{{ study_id }}{% endif %}</h2>
-<div class="study-meta" style="background:#f5f5f5;padding:8px 10px;border:1px solid #ddd;border-radius:4px;margin-bottom:12px;font-size:0.8em;">
-  <strong>Study Metadata</strong>
-  <form method="post" action="/ui/soa/{{ soa_id }}/update_meta" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px;margin-top:6px;align-items:start;">
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label for="study_id">Study ID *</label>
-      <input id="study_id" name="study_id" value="{{ study_id or '' }}" placeholder="Unique Study ID" required />
+<div class="study-meta-card">
+  <h3>Study Metadata</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/update_meta" class="am-grid-2">
+    <div class="am-field">
+      <label class="am-field-label" for="study_id">Study ID <span class="am-required">*</span></label>
+      <input id="study_id" name="study_id" value="{{ study_id or '' }}" placeholder="Unique Study ID" required class="am-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label for="study_label">Label</label>
-      <input id="study_label" name="study_label" value="{{ study_label or '' }}" placeholder="Short Label" />
+    <div class="am-field">
+      <label class="am-field-label" for="study_label">Label</label>
+      <input id="study_label" name="study_label" value="{{ study_label or '' }}" placeholder="Short Label" class="am-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;grid-column:1/-1;">
-      <label for="study_description">Description</label>
-      <textarea id="study_description" name="study_description" rows="3" placeholder="Study Description">{{ study_description or '' }}</textarea>
+    <div class="am-field am-field-span">
+      <label class="am-field-label" for="study_description">Description</label>
+      <textarea id="study_description" name="study_description" rows="3" placeholder="Study Description" class="am-textarea">{{ study_description or '' }}</textarea>
     </div>
-    <div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <button type="submit" style="background:#1976d2;color:#fff;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;">Update Metadata</button>
-      <small style="color:#555;">Study ID must be unique and cannot be cleared once set. Other fields may be left blank to clear.</small>
+    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button type="submit" class="am-btn am-btn-info">Update Metadata</button>
+      <small style="color:#555;">Study ID must be unique and cannot be cleared once set.</small>
     </div>
   </form>
 </div>
 <div id="modal-host"></div>
 <div class="concepts-global-refresh" style="margin:4px 0 12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-  <form hx-post="/ui/soa/{{ soa_id }}/concepts_refresh" style="display:inline;">
-    <button type="submit" style="background:#455a64;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.8em;">↻ Refresh Biomedical Concepts</button>
+  <form hx-post="/ui/soa/{{ soa_id }}/concepts_refresh" class="am-inline-form">
+    <button type="submit" class="am-btn am-btn-slate am-btn-sm">&#x21bb; Refresh Biomedical Concepts</button>
   </form>
   <div style="font-size:0.7em;color:#444;">
     Last fetch:
@@ -54,28 +54,26 @@
         <li class="drag-item" draggable="true" data-id="{{ a.id }}">
           <span class="ord">{{ a.order_index }}</span>. <strong>{{ a.name }}</strong>
           <span class="activity-actions">
-            <form method="post" action="/soa/{{ soa_id }}/activities/{{ a.id }}/update" style="display:inline;font-size:0.6em;">
+            <form method="post" action="/soa/{{ soa_id }}/activities/{{ a.id }}/update" class="am-inline-form" style="font-size:0.82em;display:inline-flex;gap:4px;align-items:center;">
               <input type="hidden" name="activity_id" value="{{ a.id }}" />
-              <input name="name" value="{{ a.name }}" placeholder="Name" style="width:110px;" />
-              <input name="label" value="{{ a.label or '' }}" placeholder="Label (opt)" style="width:100px;" />
-              <input name="description" value="{{ a.description or '' }}" placeholder="Desc (opt)" style="width:160px;" />
-              <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+              <input name="name" value="{{ a.name }}" placeholder="Name" class="am-input-compact" style="width:110px;" />
+              <input name="label" value="{{ a.label or '' }}" placeholder="Label (opt)" class="am-input-compact" style="width:100px;" />
+              <input name="description" value="{{ a.description or '' }}" placeholder="Desc (opt)" class="am-input-compact" style="width:160px;" />
+              <button type="submit" class="am-btn am-btn-slate am-btn-xs">Save</button>
             </form>
-            <form hx-post="/ui/soa/{{ soa_id }}/delete_activity" hx-confirm="Delete activity '{{ a.name }}' and its cells?" style="display:inline">
+            <form hx-post="/ui/soa/{{ soa_id }}/delete_activity" hx-confirm="Delete activity '{{ a.name }}' and its cells?" class="am-inline-form">
               <input type="hidden" name="activity_id" value="{{ a.id }}" />
-              <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-                Delete
-              </button>
+              <button type="submit" class="am-btn am-btn-danger am-btn-xs">Delete</button>
             </form>
           </span>
         </li>
         {% endfor %}
       </ul>
-      <form method="post" action="/soa/{{ soa_id }}/activities/add" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
-        <input name="name" placeholder="Activity Name" required style="flex:1;min-width:120px;" />
-        <input name="label" placeholder="Label (optional)" style="flex:1;min-width:110px;" />
-        <input name="description" placeholder="Description (optional)" style="flex:2;min-width:160px;" />
-        <button>Add Activity</button>
+      <form method="post" action="/soa/{{ soa_id }}/activities/add" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+        <div class="am-field"><label class="am-field-label">Name <span class="am-required">*</span></label><input name="name" placeholder="Activity name" required class="am-input-compact" /></div>
+        <div class="am-field"><label class="am-field-label">Label</label><input name="label" placeholder="Label (optional)" class="am-input-compact" /></div>
+        <div class="am-field"><label class="am-field-label">Description</label><input name="description" placeholder="Description (optional)" class="am-input-compact" /></div>
+        <button type="submit" class="am-btn am-btn-info am-btn-sm">Add Activity</button>
       </form>
     </details>
     
@@ -258,87 +256,68 @@
 {% endif %}
 <!-- Manage Footnotes -->
 <details id="footnotes-section" class="collapsible" style="margin-top:8px;">
-  <summary>Manage Footnotes</summary>
-  <div style="margin-top:8px;">
-    {% if footnotes %}
-    <table style="width:100%;border-collapse:collapse;font-size:0.85em;margin-bottom:8px;">
-      <thead><tr>
-        <th style="text-align:left;padding:2px 4px;" colspan="6">Footnotes</th>
-        <th></th>
-      </tr></thead>
-      <tbody>
-      {% for fn in footnotes %}
-      <tr>
-        <td colspan="6" style="padding:2px 4px;">
-          <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/update"
-                style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;">
-            <span style="white-space:nowrap;font-weight:bold;align-self:center;">{{ fn.footnote_uid }}</span>
-            <input name="name" value="{{ fn.name }}" required style="width:120px;" />
-            <input name="label" value="{{ fn.label or '' }}" style="width:120px;" />
-            <input name="description" value="{{ fn.description or '' }}" style="width:120px;" />
-            <textarea name="text" rows="3" style="width:340px;font-family:monospace;font-size:0.9em;">{{ fn.text or '' }}</textarea>
-            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;align-self:flex-end;">Save</button>
-          </form>
-        </td>
-        <td style="padding:2px 4px;">
-          <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/delete"
-                onsubmit="return confirm('Delete this footnote?');">
-            <button class="delete-btn">Delete</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
-    <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/create"
-          style="display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;margin-top:4px;">
-      <input name="name" placeholder="Name*" required style="width:120px;" />
-      <input name="label" placeholder="Label" style="width:120px;" />
-      <input name="description" placeholder="Description" style="width:120px;" />
-      <textarea name="text" placeholder="Text (XHTML)" rows="3" style="width:340px;font-family:monospace;font-size:0.9em;"></textarea>
-      <button class="small-btn" style="align-self:flex-end;">+ Add Footnote</button>
+  <summary>Manage Footnotes ({{ footnotes|length }})</summary>
+  {% for fn in footnotes %}
+  <div style="display:flex;align-items:flex-start;gap:8px;border-bottom:1px solid var(--am-border);padding:8px 0;">
+    <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/update"
+          class="fz-form-2row" style="flex:1;">
+      <div class="am-field">
+        <label class="am-field-label">UID</label>
+        <span class="obj-uid">{{ fn.footnote_uid }}</span>
+      </div>
+      <div class="am-field">
+        <label class="am-field-label">Name <span class="am-required">*</span></label>
+        <input name="name" value="{{ fn.name }}" required class="am-input-compact" />
+      </div>
+      <div class="am-field">
+        <label class="am-field-label">Label</label>
+        <input name="label" value="{{ fn.label or '' }}" class="am-input-compact" />
+      </div>
+      <div class="am-field">
+        <label class="am-field-label">Description</label>
+        <input name="description" value="{{ fn.description or '' }}" class="am-input-compact" />
+      </div>
+      <div class="am-field">
+        <label class="am-field-label">Text (XHTML)</label>
+        <textarea name="text" rows="3" style="font-family:monospace;font-size:0.9em;" class="am-textarea">{{ fn.text or '' }}</textarea>
+      </div>
+      <button type="submit" class="am-btn am-btn-slate am-btn-sm" style="grid-row:2;align-self:center;">Save</button>
+    </form>
+    <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/delete"
+          onsubmit="return confirm('Delete this footnote?');" class="fz-inline-form" style="padding-top:22px;">
+      <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+    </form>
+  </div>
+  {% endfor %}
+  <div style="padding-top:10px;">
+    <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/create" class="fz-form-2row">
+      <div class="am-field">
+        <label class="am-field-label">Name <span class="am-required">*</span></label>
+        <input name="name" placeholder="Name" required class="am-input-compact" />
+      </div>
+      <div class="am-field">
+        <label class="am-field-label">Label</label>
+        <input name="label" placeholder="Label" class="am-input-compact" />
+      </div>
+      <div class="am-field">
+        <label class="am-field-label">Description</label>
+        <input name="description" placeholder="Description" class="am-input-compact" />
+      </div>
+      <div class="am-field">
+        <label class="am-field-label">Text (XHTML)</label>
+        <textarea name="text" placeholder="Text (XHTML)" rows="3" style="font-family:monospace;font-size:0.9em;" class="am-textarea"></textarea>
+      </div>
+      <button type="submit" class="am-btn am-btn-info am-btn-sm" style="grid-row:2;align-self:center;">+ Add Footnote</button>
     </form>
   </div>
 </details>
 <!-- Export Excel Matrix for SoA -->
-<div class="export-buttons">
-  <a
-    id="export-xlsx-link"
-    class="btn"
-    data-base-href="/soa/{{ soa_id }}/export/xlsx"
-    href="/soa/{{ soa_id }}/export/xlsx"
-    title="Download Excel workbook"
-  >⬇ Excel Matrix</a>
+<div class="export-buttons" style="margin-top:8px;">
+  <a id="export-xlsx-link" class="am-btn am-btn-info"
+     data-base-href="/soa/{{ soa_id }}/export/xlsx"
+     href="/soa/{{ soa_id }}/export/xlsx"
+     title="Download Excel workbook">&#8595; Excel Matrix</a>
 </div>
-<!-- CSS styles -->
-<style>
-  .delete-btn { background:#c62828; color:#fff; border:none; padding:0 6px; cursor:pointer; }
-  .delete-btn:hover { background:#b71c1c; }
-  .sup-edit { font-size:0.65em; cursor:pointer; color:#bbb; margin-left:1px; vertical-align:super; }
-  .sup-edit:hover { color:#1976d2; }
-  .cell-editing { background:#fffde7 !important; }
-  .export-buttons { margin-top:8px; }
-  .export-buttons .btn { display:inline-block; margin-right:10px; background:#1976d2; color:#fff; padding:4px 10px; text-decoration:none; border-radius:3px; font-size:0.9em; }
-  .export-buttons .btn:hover { background:#125aa0; }
-  .small-btn { background:#2e7d32; color:#fff; border:none; padding:2px 8px; margin-top:4px; cursor:pointer; font-size:0.75em; }
-  .small-btn:hover { background:#1b5e20; }
-  /* Removed per-activity concept editor styles */
-  details.collapsible { border:1px solid #ddd; padding:6px 8px; border-radius:4px; background:#fafafa; }
-  details.collapsible summary { cursor:pointer; font-weight:600; }
-  details.collapsible[open] { background:#fdfdfd; }
-  .drag-list { list-style:none; margin:0; padding:0; }
-  .drag-item { padding:3px 4px; margin:2px 0; background:#fff; border:1px solid #e0e0e0; border-radius:3px; cursor:grab; display:flex; align-items:center; gap:4px; }
-  .drag-item.dragging { opacity:0.5; }
-  .drag-item.over { border-color:#1976d2; background:#e3f2fd; }
-  .drag-item form { margin-left:0; }
-  .activity-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
-  .transition-rule-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
-  .hint { font-weight:400; font-size:0.7em; color:#666; }
-  .timeline-selector {padding: 8px;background: #f9f9f9;border: 1px solid #ddd;border-radius: 4px;}
-  .timeline-btn:hover {opacity: 0.85;}
-  .timeline-btn.active {font-weight: 600;}
-</style>
 <script>
 // Timeline switching functionality
 function switchTimeline(timelineUid) {
@@ -398,8 +377,6 @@ function persistSection(sectionId){
 }
 persistSection('edit-instances-section');
 persistSection('activities-section');
-persistSection('study-cells-section');
-persistSection('transition-rules-section');
 
 // --- XLSX export link updates to include optional diff parameters ---
 function updateExportXlsxLink(){

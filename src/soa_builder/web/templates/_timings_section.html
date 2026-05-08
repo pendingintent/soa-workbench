@@ -1,186 +1,197 @@
-<h2 title="Timing definitions should be read as 'the &lt;Timing.relativeFromScheduledInstance&gt; node is &lt;Timing.value&gt; &lt;Timing.type of before or after&gt; the &lt;Timing.relativeToScheduledInstance&gt; node.'">Timings for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
-
 {% if not hide_return_link %}
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 {% endif %}
 
-<div style="margin-bottom:12px;">
-  <form method="post" action="/ui/soa/{{ soa_id }}/timings/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Name *</strong></label>
-      <input name="name" placeholder="Timing Name" required />
+<div class="fz-create-card fz-create-card-full">
+  <h3>Add Timing</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/timings/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Timing name" required class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Label</strong></label>
-      <input name="label" placeholder="Label (optional)" />
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Description</strong></label>
-      <input name="description" placeholder="Description (optional)" />
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Relative From Schedule Instance</strong></label>
-      <select name="relative_from_schedule_instance">
+    <div class="am-field">
+      <label class="am-field-label">Relative From Schedule Instance</label>
+      <select name="relative_from_schedule_instance" class="fz-version-input">
         <option value="">-- Select Activity Instance --</option>
         {% for name, instance_uid in (instance_options or {}).items() %}
-          <option value="{{ instance_uid }}">{{ name }}</option>
+        <option value="{{ instance_uid }}">{{ name }}</option>
         {% endfor %}
       </select>
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Value</strong></label>
-      <input name="value" placeholder="e.g. P7D (optional)" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P2W, PT8H, -P2D" />
+    <div class="am-field">
+      <label class="am-field-label">Value</label>
+      <input name="value" placeholder="e.g. P7D (optional)"
+             pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?"
+             title="ISO 8601 duration, e.g. P1D, P2W, PT8H, -P2D"
+             class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Value Label</strong></label>
-      <input name="value_label" placeholder="Value Label (optional)" />
+    <div class="am-field">
+      <label class="am-field-label">Value Label</label>
+      <input name="value_label" placeholder="Value label (optional)" class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Type</strong></label>
-      <select name="type_submission_value">
+    <div class="am-field">
+      <label class="am-field-label">Type</label>
+      <select name="type_submission_value" class="fz-version-input">
         <option value="">(none)</option>
         {% for sv in timing_type_options or [] %}
-          <option value="{{ sv }}">{{ sv }}</option>
+        <option value="{{ sv }}">{{ sv }}</option>
         {% endfor %}
       </select>
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Relative To Schedule Instance</strong></label>
-      <select name="relative_to_schedule_instance">
+    <div class="am-field">
+      <label class="am-field-label">Relative To Schedule Instance</label>
+      <select name="relative_to_schedule_instance" class="fz-version-input">
         <option value="">-- Select Activity Instance --</option>
         {% for name, instance_uid in (instance_options or {}).items() %}
-          <option value="{{ instance_uid }}">{{ name }}</option>
+        <option value="{{ instance_uid }}">{{ name }}</option>
         {% endfor %}
       </select>
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Window Lower</strong></label>
-      <input name="window_lower" placeholder="e.g. -P2D (optional)" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, -P2D, PT8H" />
+    <div class="am-field">
+      <label class="am-field-label">Window Lower</label>
+      <input name="window_lower" placeholder="e.g. -P2D (optional)"
+             pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?"
+             title="ISO 8601 duration, e.g. P1D, -P2D, PT8H"
+             class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Window Upper</strong></label>
-      <input name="window_upper" placeholder="e.g. P3D (optional)" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P3D, PT8H" />
+    <div class="am-field">
+      <label class="am-field-label">Window Upper</label>
+      <input name="window_upper" placeholder="e.g. P3D (optional)"
+             pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?"
+             title="ISO 8601 duration, e.g. P1D, P3D, PT8H"
+             class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Window Label</strong></label>
-      <input name="window_label" placeholder="Window (optional)" />
+    <div class="am-field">
+      <label class="am-field-label">Window Label</label>
+      <input name="window_label" placeholder="Window label (optional)" class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Member of Timeline</strong></label>
-      <select name="member_of_timeline">
+    <div class="am-field">
+      <label class="am-field-label">Member of Timeline</label>
+      <select name="member_of_timeline" class="fz-version-input">
         <option value="">-- Select Timeline --</option>
         {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
-          <option value="{{ schedule_timeline_uid }}">{{ name }}</option>
+        <option value="{{ schedule_timeline_uid }}">{{ name }}</option>
         {% endfor %}
       </select>
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Relative To/From</strong></label>
-      <select name="relative_to_from_submission_value">
+    <div class="am-field">
+      <label class="am-field-label">Relative To/From</label>
+      <select name="relative_to_from_submission_value" class="fz-version-input">
         <option value="">(none)</option>
         {% for sv in relative_to_from_options or [] %}
-          <option value="{{ sv }}">{{ sv }}</option>
+        <option value="{{ sv }}">{{ sv }}</option>
         {% endfor %}
       </select>
     </div>
-    <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Timing</button>
+    <button type="submit" class="am-btn am-btn-info">Add Timing</button>
   </form>
 </div>
 
-<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
-  <tr style="background:#eee;">
-    <th style="text-align:left;padding:4px;">id</th>
-    <th style="text-align:left;padding:4px;">Name</th>
-    <th style="text-align:left;padding:4px;">Label</th>
-    <th style="text-align:left;padding:4px;">Description</th>
-    <th style="text-align:left;padding:4px;">Rel From Instance</th>
-    <th style="text-align:left;padding:4px;">Value</th>
-    <th style="text-align:left;padding:4px;">Value Label</th>
-    <th style="text-align:left;padding:4px;">Type</th>
-    <th style="text-align:left;padding:4px;">Rel To Instance</th>
-    <th style="text-align:left;padding:4px;">Window Lower</th>
-    <th style="text-align:left;padding:4px;">Window Upper</th>
-    <th style="text-align:left;padding:4px;">Window Label</th>
-    <th style="text-align:left;padding:4px;">Member of Timeline</th>
-    <th style="text-align:left;padding:4px;">Rel To/From</th>
-    <th style="text-align:left;padding:4px;">Save</th>
-    <th style="text-align:left;padding:4px;">Delete</th>
+<h3 class="fz-section-heading" title="Timing definitions should be read as 'the Relative From instance node is Value Type the Relative To instance node.'">
+  Timings ({{ timings|length }})
+</h3>
+
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Rel From Instance</th>
+    <th>Value</th>
+    <th>Value Label</th>
+    <th>Type</th>
+    <th>Rel To Instance</th>
+    <th>Window Lower</th>
+    <th>Window Upper</th>
+    <th>Window Label</th>
+    <th>Member of Timeline</th>
+    <th>Rel To/From</th>
+    <th>Save</th>
+    <th>Delete</th>
   </tr>
   {% for t in timings %}
   <tr>
     <form method="post" action="/ui/soa/{{ soa_id }}/timings/{{ t.id }}/update">
-      <td style="padding:4px;white-space:nowrap;"><strong>{{ t.timing_uid }}</strong></td>
-      <td style="padding:4px;"><input name="name" value="{{ t.name }}" required /></td>
-      <td style="padding:4px;"><input name="label" value="{{ t.label or '' }}" placeholder="Label" /></td>
-      <td style="padding:4px;"><input name="description" value="{{ t.description or '' }}" placeholder="Description" /></td>
-      <td style="padding: 4px;">
-        <select name="relative_from_schedule_instance">
+      <td class="fz-td-version"><span class="obj-uid">{{ t.timing_uid }}</span></td>
+      <td><input name="name" value="{{ t.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ t.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ t.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td>
+        <select name="relative_from_schedule_instance" class="am-select-compact">
           <option value="">-- Select Activity Instance --</option>
           {% for name, instance_uid in (instance_options or {}).items() %}
-            <option value="{{ instance_uid }}" {% if t.relative_from_schedule_instance == instance_uid %}selected{% endif %}>{{ name }}</option>
+          <option value="{{ instance_uid }}" {% if t.relative_from_schedule_instance == instance_uid %}selected{% endif %}>{{ name }}</option>
           {% endfor %}
         </select>
       </td>
-      <td style="padding: 4px;"><input name="value" value="{{ t.value or '' }}" placeholder="e.g. P7D" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P2W, PT8H, -P2D" /></td>
-      <td style="padding: 4px;"><input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" /></td>
-      <td style="padding:4px;">
-        <select name="type_submission_value">
+      <td><input name="value" value="{{ t.value or '' }}" placeholder="e.g. P7D"
+                 pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?"
+                 title="ISO 8601 duration" class="am-input-compact" /></td>
+      <td><input name="value_label" value="{{ t.value_label or '' }}" placeholder="Value Label" class="am-input-compact" /></td>
+      <td>
+        <select name="type_submission_value" class="am-select-compact">
           <option value="">(none)</option>
           {% for sv in timing_type_options or [] %}
-            <option value="{{ sv }}" {% if t.type_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
+          <option value="{{ sv }}" {% if t.type_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
           {% endfor %}
         </select>
       </td>
-      <td style="padding: 4px;">
-        <select name="relative_to_schedule_instance">
+      <td>
+        <select name="relative_to_schedule_instance" class="am-select-compact">
           <option value="">-- Select Activity Instance --</option>
           {% for name, instance_uid in (instance_options or {}).items() %}
-            <option value="{{ instance_uid }}" {% if t.relative_to_schedule_instance == instance_uid %}selected{% endif %}>{{ name }}</option>
+          <option value="{{ instance_uid }}" {% if t.relative_to_schedule_instance == instance_uid %}selected{% endif %}>{{ name }}</option>
           {% endfor %}
         </select>
       </td>
-      <td style="padding: 4px;"><input name="window_lower" value="{{ t.window_lower or '' }}" placeholder="e.g. -P2D" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, -P2D, PT8H" /></td>
-      <td style="padding: 4px;"><input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="e.g. P3D" pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?" title="ISO 8601 duration, e.g. P1D, P3D, PT8H" /></td>
-      <td style="padding: 4px;"><input name="window_label" value="{{ t.window_label or '' }}" placeholder="Window Label" /></td>
-      <td style="padding: 4px;">
-        <select name="member_of_timeline">
+      <td><input name="window_lower" value="{{ t.window_lower or '' }}" placeholder="e.g. -P2D"
+                 pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?"
+                 title="ISO 8601 duration" class="am-input-compact" /></td>
+      <td><input name="window_upper" value="{{ t.window_upper or '' }}" placeholder="e.g. P3D"
+                 pattern="-?P-?(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?"
+                 title="ISO 8601 duration" class="am-input-compact" /></td>
+      <td><input name="window_label" value="{{ t.window_label or '' }}" placeholder="Window Label" class="am-input-compact" /></td>
+      <td>
+        <select name="member_of_timeline" class="am-select-compact">
           <option value="">-- Select Timeline --</option>
           {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
-            <option value="{{ schedule_timeline_uid }}" {% if (t.member_of_timeline or '') == schedule_timeline_uid %}selected{% endif %}>{{ name }}</option>
+          <option value="{{ schedule_timeline_uid }}" {% if (t.member_of_timeline or '') == schedule_timeline_uid %}selected{% endif %}>{{ name }}</option>
           {% endfor %}
         </select>
       </td>
-      <td style="padding: 4px;">
-        <select name="relative_to_from_submission_value">
+      <td>
+        <select name="relative_to_from_submission_value" class="am-select-compact">
           <option value="">(none)</option>
           {% for sv in relative_to_from_options or [] %}
-            <option value="{{ sv }}" {% if t.relative_to_from_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
+          <option value="{{ sv }}" {% if t.relative_to_from_submission_value == sv %}selected{% endif %}>{{ sv }}</option>
           {% endfor %}
         </select>
       </td>
-      <td style="padding:4px;">
-        <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-      </td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
     </form>
-    <td style="padding:4px;">
-      <form method="post" action="/ui/soa/{{ soa_id }}/timings/{{ t.id }}/delete">
-        <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-          Delete
-        </button>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/timings/{{ t.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
       </form>
     </td>
   </tr>
   {% else %}
-  <tr><td colspan="16" style="padding:6px;color:#777;">No timings yet.</td></tr>
+  <tr class="fz-empty-row"><td colspan="16">No timings yet.</td></tr>
   {% endfor %}
 </table>
 
 <script>
-// If any window field has a value, all three are required
 function enforceWindowGroup(form) {
   var wl = form.querySelector('[name="window_lower"]');
   var wu = form.querySelector('[name="window_upper"]');
@@ -189,13 +200,8 @@ function enforceWindowGroup(form) {
   var anyFilled = wl.value.trim() || wu.value.trim() || wlab.value.trim();
   var msg = anyFilled ? 'All three window fields (Lower, Upper, Label) are required when any is provided.' : '';
   [wl, wu, wlab].forEach(function(el) {
-    if (anyFilled && !el.value.trim()) {
-      el.setCustomValidity(msg);
-      el.required = true;
-    } else {
-      el.setCustomValidity('');
-      el.required = !!anyFilled;
-    }
+    if (anyFilled && !el.value.trim()) { el.setCustomValidity(msg); el.required = true; }
+    else { el.setCustomValidity(''); el.required = !!anyFilled; }
   });
 }
 document.querySelectorAll('form').forEach(function(form) {

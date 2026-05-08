@@ -1,37 +1,46 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Biomedical Concepts (<span id="conceptTotal">{{ count }}</span>)</h2>
-<p>This list is derived from the CDISC Library API. Each link points to the concept's API resource.</p>
-<div style="margin:0.5em 0 1em;">
-  <label for="conceptSearch"><strong>Search:</strong></label>
-  <input id="conceptSearch" type="text" placeholder="Filter concepts..." style="width:280px;" oninput="filterConcepts()" />
-  <span id="searchCount" style="margin-left:1em;color:#555;"></span>
+<p style="color:#555;font-size:0.9em;">Derived from the CDISC Library API. Each link points to the concept's API resource.</p>
+
+<div style="margin-bottom:12px;">
+  <a href="/" class="am-back-link">&larr; Home</a>
 </div>
+
+<hr class="fz-section-divider" />
+
+<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <div class="am-field">
+    <label class="am-field-label" for="conceptSearch">Search</label>
+    <input id="conceptSearch" type="text" placeholder="Filter concepts..."
+           class="fz-version-input" style="width:280px;" oninput="filterConcepts()" />
+  </div>
+  <span id="searchCount" style="font-size:0.84em;color:var(--am-text-mid);margin-top:18px;"></span>
+</div>
+
 {% if rows %}
-<table border="1" cellspacing="0" cellpadding="4" id="conceptsTable">
-  <thead>
-    <tr>
-      <th style="text-align:left;">Title</th>
-      <th style="text-align:left;">Code</th>
-      <th style="text-align:left;">Related DSS</th>
-    </tr>
-  </thead>
-  <tbody>
+<table class="fz-table" id="conceptsTable">
+  <tr class="fz-thead-row">
+    <th>Title</th>
+    <th>Code</th>
+    <th>Related DSS</th>
+  </tr>
   {% for r in rows %}
-    <tr>
-      <td>{{ r.title }}</td>
-      <td>{% if r.code %}<a href="/ui/concepts/{{ r.code }}">{{ r.code }}</a>{% else %}<em>n/a</em>{% endif %}</td>
-      <td>
-        {% if r.code %}
-          <a href="/ui/sdtm/specializations?code={{ r.code }}">Related DSS</a>
-        {% else %}
-          <em>n/a</em>
-        {% endif %}
-      </td>
-    </tr>
+  <tr>
+    <td>{{ r.title }}</td>
+    <td>{% if r.code %}<a href="/ui/concepts/{{ r.code }}" class="obj-uid">{{ r.code }}</a>{% else %}<em class="am-no-amendment">n/a</em>{% endif %}</td>
+    <td>
+      {% if r.code %}
+      <a href="/ui/sdtm/specializations?code={{ r.code }}" class="am-btn am-btn-slate am-btn-xs">Related DSS</a>
+      {% else %}<em class="am-no-amendment">n/a</em>{% endif %}
+    </td>
+  </tr>
   {% endfor %}
-  </tbody>
 </table>
+{% else %}
+<p class="fz-no-data">No biomedical concepts available (empty list).</p>
+{% endif %}
+
 <script>
 function filterConcepts(){
   const q = document.getElementById('conceptSearch').value.toLowerCase();
@@ -39,23 +48,11 @@ function filterConcepts(){
   let visible = 0;
   rows.forEach(tr => {
     const text = tr.innerText.toLowerCase();
-    if(!q || text.indexOf(q) !== -1){
-      tr.style.display='';
-      visible++;
-    } else {
-      tr.style.display='none';
-    }
+    if(!q || text.indexOf(q) !== -1){ tr.style.display=''; visible++; }
+    else { tr.style.display='none'; }
   });
   const sc = document.getElementById('searchCount');
-  if(q){
-    sc.textContent = visible + ' match' + (visible===1?'':'es');
-  } else {
-    sc.textContent = '';
-  }
+  sc.textContent = q ? visible + ' match' + (visible===1?'':'es') : '';
 }
 </script>
-{% else %}
-  <p><em>No biomedical concepts available (empty list).</em></p>
-{% endif %}
-<p><a href="/">Return Home</a></p>
 {% endblock %}

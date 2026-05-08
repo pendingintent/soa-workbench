@@ -108,9 +108,31 @@ button { cursor: pointer; }
 .export-buttons .btn:hover { background:#125aa0; }
 .small-btn { background:#2e7d32; color:#fff; border:none; padding:2px 8px; margin-top:4px; cursor:pointer; font-size:0.75em; }
 .small-btn:hover { background:#1b5e20; }
-details.collapsible { border:1px solid #ddd; padding:6px 8px; border-radius:4px; background:#fafafa; }
-details.collapsible summary { cursor:pointer; font-weight:600; }
-details.collapsible[open] { background:#fdfdfd; }
+details.collapsible {
+  border: 1px solid var(--am-border);
+  border-radius: var(--am-radius);
+  background: var(--am-white);
+  box-shadow: var(--am-shadow-sm);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+details.collapsible summary {
+  cursor: pointer;
+  font-size: 0.78em;
+  font-weight: 700;
+  color: var(--am-text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 10px 14px;
+  background: var(--am-surface);
+  border-bottom: 1px solid transparent;
+  list-style: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+details.collapsible summary::-webkit-details-marker { display: none; }
+details.collapsible[open] summary { border-bottom-color: var(--am-border); }
+details.collapsible > *:not(summary) { padding: 0 14px 12px; }
 .drag-list { list-style:none; margin:0; padding:0; }
 .drag-item { padding:3px 4px; margin:2px 0; background:#fff; border:1px solid #e0e0e0; border-radius:3px; cursor:grab; display:flex; align-items:center; gap:4px; }
 .drag-item.dragging { opacity:0.5; }
@@ -720,6 +742,151 @@ details.collapsible[open] { background:#fdfdfd; }
   font-style: italic;
   color: #b71c1c;
   font-size: 0.84em;
+}
+
+/* Full-width variant — use when a create card needs more than 700px */
+.fz-create-card-full { max-width: none; }
+
+/* ---- Edit page: study metadata card -------------------------- */
+.study-meta-card {
+  background: var(--am-white);
+  border: 1px solid var(--am-border);
+  border-left: 4px solid var(--am-info);
+  border-radius: var(--am-radius);
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--am-shadow-sm);
+}
+.study-meta-card h3 {
+  margin: 0 0 10px;
+  font-size: 0.78em;
+  font-weight: 700;
+  color: #1565c0;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* ---- Edit page: timeline selector ---------------------------- */
+.timeline-selector {
+  padding: 8px 10px;
+  background: var(--am-surface);
+  border: 1px solid var(--am-border);
+  border-radius: var(--am-radius);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.timeline-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--am-info);
+  border-radius: var(--am-radius-sm);
+  cursor: pointer;
+  background: var(--am-white);
+  color: var(--am-info);
+  font-size: 0.84em;
+  font-weight: 500;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.timeline-btn:hover { opacity: 0.85; }
+.timeline-btn.active { background: var(--am-info); color: #fff; font-weight: 700; }
+
+/* ---- Edit page: cell superscript edit icon ------------------- */
+.sup-edit { font-size:0.65em; cursor:pointer; color:#bbb; margin-left:1px; vertical-align:super; }
+.sup-edit:hover { color: var(--am-info); }
+.cell-editing { background:#fffde7 !important; }
+
+/* ---- Concepts cell: search + bulk select inputs -------------- */
+.concept-search-inline {
+  width: 200px;
+  padding: 2px 5px;
+  font-size: 0.82em;
+  border: 1px solid var(--am-border-med);
+  border-radius: var(--am-radius-sm);
+  font-family: inherit;
+}
+.concept-select-inline {
+  min-width: 200px;
+  font-size: 0.82em;
+  border: 1px solid var(--am-border-med);
+  border-radius: var(--am-radius-sm);
+  font-family: inherit;
+}
+
+/* ---- Concepts / DSS cell (activities matrix) ----------------- */
+.cell-add-select {
+  font-size: 0.8em;
+  width: 160px;
+  height: 22px;
+  padding: 1px 2px;
+  box-sizing: border-box;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+}
+.cell-add-btn {
+  font-size: 0.8em;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid #888;
+  border-radius: 3px;
+  background: #f5f5f5;
+  cursor: pointer;
+  line-height: 1;
+}
+.cell-add-btn:hover { background: #e0e0e0; }
+.concepts-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8em;
+  color: var(--am-info);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.concept-count-pill {
+  background: var(--am-info);
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  line-height: 1.4;
+  min-width: 18px;
+  text-align: center;
+}
+.concepts-arrow { margin-left: 4px; font-size: 0.75em; }
+
+/* Force a field to occupy its own full row inside fz-form-row */
+.am-field-full { flex-basis: 100%; }
+
+/* ---- 2-row aligned form (labels row + inputs row) ------------ */
+/* Use when a create card has many fields with varied label lengths.
+   Labels all appear in row 1; inputs all appear in row 2 — perfectly
+   aligned regardless of label text length or wrapping. */
+.fz-form-2row {
+  display: grid;
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+  gap: 4px 10px;
+  padding-bottom: 2px;
+  align-items: start;
+}
+/* Make .am-field transparent so label and input become direct grid items */
+.fz-form-2row .am-field { display: contents; }
+
+/* Labels sit in implicit row 1, inputs/selects in row 2 */
+.fz-form-2row .am-field-label {
+  align-self: end;
+  white-space: nowrap;
+}
+/* Button explicitly placed on row 2, aligned with the inputs */
+.fz-form-2row > .am-btn {
+  grid-row: 2;
+  align-self: center;
 }
 
 /* ---- Impacts table header ------------------------------------ */

@@ -8,16 +8,16 @@
   {% if edit %}
     <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML" style="margin:0;">
       <div style="margin-bottom:4px;">
-        <input type="text" class="concept-search-inline" placeholder="Filter concepts..." style="width:200px;padding:2px 4px;font-size:0.8em;" />
+        <input type="text" class="concept-search-inline" placeholder="Filter concepts..." />
       </div>
-      <select name="concept_codes" multiple size="6" class="concept-select-inline" style="min-width:200px;font-size:0.8em;">
+      <select name="concept_codes" multiple size="6" class="concept-select-inline">
         {% for c in concepts %}
           <option value="{{ c.code }}" {% if c.code in selected_codes %}selected{% endif %}>{{ c.title }}</option>
         {% endfor %}
       </select> 
       <div style="margin-top:4px;display:flex;gap:6px;">
-        <button type="submit" class="small-btn" style="font-size:0.8em;">Save</button>
-        <button type="button" class="refresh-btn" hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML" style="font-size:0.8em;">Cancel</button>
+        <button type="submit" class="am-btn am-btn-success am-btn-xs">Save</button>
+        <button type="button" class="am-btn am-btn-slate am-btn-xs" hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML">Cancel</button>
       </div>
     </form>
     <script>
@@ -173,11 +173,10 @@
       </form>
 
       <button type="button"
-              class="edit-concepts-btn"
+              class="edit-concepts-btn am-btn am-btn-slate am-btn-xs"
               hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell?edit=1"
               hx-target="#concepts-cell-{{ cell_id_suffix }}"
               hx-swap="outerHTML"
-              style="background:#455a64;color:#fff;border:none;padding:2px 5px;cursor:pointer;font-size:0.7em;border-radius:3px;"
               title="Bulk select concepts">
         Bulk
       </button>
@@ -193,7 +192,7 @@
             style="display:flex;align-items:center;gap:4px;margin:0;">
         <select name="surrogate_uid" class="cell-add-select" style="background:#fff8f0;">
           <option value="" disabled selected>Add surrogate...</option>
-          {% for s in _available_surrogates %}
+          {% for s in (_available_surrogates | sort(attribute='name')) %}
             {% if s.surrogate_uid not in _selected_sur_uids %}
               <option value="{{ s.surrogate_uid }}">{{ s.label or s.name }}</option>
             {% endif %}
@@ -211,7 +210,7 @@
             style="display:flex;align-items:center;gap:4px;margin:0;">
         <select name="concept_group_uid" class="cell-add-select" style="background:#f1f8e9;">
           <option value="" disabled selected>Add group...</option>
-          {% for g in _groups_list %}
+          {% for g in (_groups_list | sort(attribute='name')) %}
             {% if g.concept_group_uid not in _activity_group_uids %}
               <option value="{{ g.concept_group_uid }}">{{ g.label or g.name }}</option>
             {% endif %}
@@ -226,61 +225,6 @@
 {% endif %}
 
 </td>
-<style>
-.cell-add-select {
-  font-size: 0.8em;
-  width: 160px;
-  height: 22px;
-  padding: 1px 2px;
-  box-sizing: border-box;
-  border: 1px solid #bbb;
-  border-radius: 3px;
-}
-
-.cell-add-btn {
-  font-size: 0.8em;
-  height: 22px;
-  padding: 0 6px;
-  border: 1px solid #888;
-  border-radius: 3px;
-  background: #f5f5f5;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.cell-add-btn:hover {
-  background: #e0e0e0;
-}
-
-.concepts-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.8em;
-  color: #1976d2;
-  user-select: none;
-}
-
-.concept-count-pill {
-  background: #1976d2;
-  color: white;
-  font-size: 0.75em;
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 999px;
-  line-height: 1.4;
-  min-width: 18px;
-  text-align: center;
-}
-
-.concepts-arrow {
-  margin-left: 4px;
-  font-size: 0.75em;
-}
-</style>
-
 <script>
 function toggleConcepts(cellIdSuffix) {
   const content = document.getElementById("concepts-content-" + cellIdSuffix);

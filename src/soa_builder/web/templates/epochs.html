@@ -3,93 +3,89 @@
 <h2>Epochs for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
-<div style="margin-bottom:12px">
-    <form method="post" action="/ui/soa/{{ soa_id }}/epochs/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Name *</strong></label>
-            <input name="name" placeholder="Epoch Name" required />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Label</strong></label>
-            <input name="label" placeholder="Epoch Label (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Description</strong></label>
-            <input name="description" placeholder="Epoch Description (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Epoch Type</strong></label>
-            <select name="type">
-                <option value="">-- Select Epoch Type --</option>
-                {% for id, name in (epoch_type_options or {}).items() %}
-                <option value="{{ id }}">{{ name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Epoch</button>
+<hr class="fz-section-divider" />
+
+<div class="fz-create-card fz-create-card-full">
+  <h3>Create Epoch</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/epochs/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Epoch name" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Epoch Type</label>
+      <select name="type" class="fz-version-input">
+        <option value="">-- Select Epoch Type --</option>
+        {% for id, name in (epoch_type_options or {}).items() %}
+        <option value="{{ id }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Create Epoch</button>
+  </form>
+</div>
+
+<h3 class="fz-section-heading">Epochs ({{ epochs|length }})</h3>
+
+<table id="epochs-table" class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Order</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Type</th>
+    <th>Save</th>
+    <th>Delete</th>
+    <th>
+      <button type="button" id="save-epoch-order-btn" data-soa-id="{{ soa_id }}"
+              class="am-btn am-btn-info am-btn-sm">
+        Save Order
+      </button>
+    </th>
+  </tr>
+  {% for e in epochs %}
+  <tr data-epoch-id="{{ e.id }}">
+    <form method="post" action="/ui/soa/{{ soa_id }}/epochs/{{ e.id }}/update">
+      <td class="fz-td-version"><span class="obj-uid">{{ e.epoch_uid }}</span></td>
+      <td class="fz-td-date">{{ e.order_index }}</td>
+      <td><input name="name" value="{{ e.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ e.epoch_label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ e.epoch_description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td>
+        <select name="type" class="am-select-compact">
+          <option value="">-- Select Epoch Type --</option>
+          {% for id, name in (epoch_type_options or {}).items() %}
+          <option value="{{ id }}" {% if (e.type_concept_id | string or '') == (id | string) %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
     </form>
-</div>
-
-<table id="epochs-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">id</th>
-        <th style="text-align:left;padding:4px;">Order</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Label</th>
-        <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Type</th>
-        <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-        <th style="text-align:left;padding:4px;">
-            <button type="button"
-                    id="save-epoch-order-btn"
-                    data-soa-id="{{ soa_id }}"
-                    style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
-                Save Order
-            </button>
-        </th>
-    </tr>
-    {% for e in epochs %}
-    <tr data-epoch-id="{{ e.id }}">
-        <form method="post" action="/ui/soa/{{ soa_id }}/epochs/{{ e.id }}/update">
-            <td style="padding:4px;white-space:nowrap;"><strong>{{ e.epoch_uid }}</strong></td>
-            <td style="padding:4px;white-space:nowrap;"><strong>{{ e.order_index }}</strong></td>
-            <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
-            <td style="padding:4px;"><input name="label" value="{{ e.epoch_label or '' }}" placeholder="Label" /></td>
-            <td style="padding:4px;"><input name="description" value="{{ e.epoch_description or '' }}" placeholder="Description" /></td>
-            <td style="padding:4px;">
-                <select name="type">
-                    <option value="">-- Select Epoch Type --</option>
-                    {% for id, name in (epoch_type_options or {}).items() %}
-                        <option value="{{ id }}" {% if (e.type_concept_id | string or '') == (id | string) %}selected{% endif %}>{{ name }}</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td style="padding:4px;">
-                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </td>
-        </form>
-        <td style="padding:4px;">
-            <form method="post" action="/ui/soa/{{ soa_id }}/epochs/{{ e.id }}/delete">
-                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-                Delete
-                </button>
-            </form>
-        </td>
-        <td style="padding:4px;white-space:nowrap;">
-            <button type="button" onclick="moveEpochRow(this, -1)">↑</button>
-            <button type="button" onclick="moveEpochRow(this, 1)">↓</button>
-        </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="9" style="padding:6px;color:#777;">No epochs yet.</td></tr>
-
-    {% endfor %}
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/epochs/{{ e.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+    <td>
+      <button type="button" onclick="moveEpochRow(this, -1)" class="am-btn am-btn-slate am-btn-xs">↑</button>
+      <button type="button" onclick="moveEpochRow(this, 1)" class="am-btn am-btn-slate am-btn-xs">↓</button>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="9">No epochs yet.</td></tr>
+  {% endfor %}
 </table>
 
 <script>

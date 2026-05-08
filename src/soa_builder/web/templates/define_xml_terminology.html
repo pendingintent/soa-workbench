@@ -1,57 +1,84 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Define-XML Controlled Terminology{% if slug %} &mdash; {{ slug }}{% else %} &mdash; (unavailable){% endif %}</h2>
-{% if error %}<div style="padding:0.5em;background:#ffe0e0;border:1px solid #e53935;margin-bottom:0.75em;">Error: {{ error }}</div>{% endif %}
-<form method="get" action="/ui/define-xml/terminology" style="margin-bottom:0.5em;">
-  <input type="hidden" name="refresh" value="1" />
-  <button type="submit">Refresh from CDISC Library</button>
-</form>
-<form method="get" action="/ui/define-xml/terminology" style="margin-bottom:1em;">
-  <label>Search substring: <input type="text" name="search" value="{{ search }}" /></label>
-  <label style="margin-left:1em;">Code: <input type="text" name="code" value="{{ code }}" /></label>
-  <label style="margin-left:1em;">Codelist Name: <input type="text" name="codelist_name" value="{{ codelist_name }}" /></label>
-  <label style="margin-left:1em;">Codelist Code: <input type="text" name="codelist_code" value="{{ codelist_code }}" /></label>
-  <label style="margin-left:1em;">Limit: <input type="number" min="1" max="200" name="limit" value="{{ limit }}" style="width:5em;" /></label>
-  <input type="hidden" name="offset" value="0" />
-  <button type="submit">Apply</button>
-</form>
-<p><small>Total Rows: {{ total_count }} | Matched: {{ matched_count }} | Showing limit {{ limit }} offset {{ offset }}</small></p>
+
+<div style="margin-bottom:12px;">
+  <a href="/" class="am-back-link">&larr; Home</a>
+</div>
+
+{% if error %}
+<div style="padding:8px 12px;margin-bottom:12px;border:1px solid #c33;background:#fee;color:#900;font-size:0.85em;border-radius:4px;">
+  Error: {{ error }}
+</div>
+{% endif %}
+
+<hr class="fz-section-divider" />
+
+<div class="fz-create-card fz-create-card-full">
+  <h3>Filter</h3>
+  <form method="get" action="/ui/define-xml/terminology" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Search</label>
+      <input type="text" name="search" value="{{ search }}" class="fz-version-input" placeholder="Substring…" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Code</label>
+      <input type="text" name="code" value="{{ code }}" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Codelist Name</label>
+      <input type="text" name="codelist_name" value="{{ codelist_name }}" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Codelist Code</label>
+      <input type="text" name="codelist_code" value="{{ codelist_code }}" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Limit</label>
+      <input type="number" min="1" max="200" name="limit" value="{{ limit }}" class="fz-version-input" style="width:80px;" />
+    </div>
+    <input type="hidden" name="offset" value="0" />
+    <button type="submit" class="am-btn am-btn-info">Apply</button>
+  </form>
+  <div style="margin-top:8px;">
+    <form method="get" action="/ui/define-xml/terminology" class="am-inline-form">
+      <input type="hidden" name="refresh" value="1" />
+      <button type="submit" class="am-btn am-btn-slate am-btn-sm">&#x21bb; Refresh from CDISC Library</button>
+    </form>
+  </div>
+</div>
+
+<p style="font-size:0.82em;color:var(--am-text-mid);">
+  Total: {{ total_count }} | Matched: {{ matched_count }} | Showing limit {{ limit }} offset {{ offset }}
+</p>
+
 {% if rows %}
-<table border="1" cellspacing="0" cellpadding="4" style="font-size:0.85em;">
-  <thead>
-    <tr>
-      {% for col in columns %}
-        <th>{{ col }}</th>
-      {% endfor %}
-    </tr>
-  </thead>
-  <tbody>
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    {% for col in columns %}<th>{{ col }}</th>{% endfor %}
+  </tr>
   {% for r in rows %}
-    <tr>
-      {% for col in columns %}
-        <td>{{ r[col] }}</td>
-      {% endfor %}
-    </tr>
+  <tr>{% for col in columns %}<td>{{ r[col] }}</td>{% endfor %}</tr>
   {% endfor %}
-  </tbody>
 </table>
 {% else %}
-<p><em>No rows match current filters.</em></p>
+<p class="fz-no-data">No rows match current filters.</p>
 {% endif %}
+
 {% if matched_count > limit %}
-  <div style="margin-top:0.75em;">
-    {% set next_offset = offset + limit %}
-    {% if next_offset < matched_count %}
-      <form method="get" action="/ui/define-xml/terminology" style="display:inline;">
-        <input type="hidden" name="search" value="{{ search }}" />
-        <input type="hidden" name="code" value="{{ code }}" />
-        <input type="hidden" name="codelist_name" value="{{ codelist_name }}" />
-        <input type="hidden" name="codelist_code" value="{{ codelist_code }}" />
-        <input type="hidden" name="limit" value="{{ limit }}" />
-        <input type="hidden" name="offset" value="{{ next_offset }}" />
-        <button type="submit">Next Page &raquo;</button>
-      </form>
-    {% endif %}
-  </div>
+{% set next_offset = offset + limit %}
+{% if next_offset < matched_count %}
+<div style="margin-top:10px;">
+  <form method="get" action="/ui/define-xml/terminology" class="am-inline-form">
+    <input type="hidden" name="search" value="{{ search }}" />
+    <input type="hidden" name="code" value="{{ code }}" />
+    <input type="hidden" name="codelist_name" value="{{ codelist_name }}" />
+    <input type="hidden" name="codelist_code" value="{{ codelist_code }}" />
+    <input type="hidden" name="limit" value="{{ limit }}" />
+    <input type="hidden" name="offset" value="{{ next_offset }}" />
+    <button type="submit" class="am-btn am-btn-slate am-btn-sm">Next Page &raquo;</button>
+  </form>
+</div>
+{% endif %}
 {% endif %}
 {% endblock %}

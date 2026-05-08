@@ -8,9 +8,9 @@
 
 <hr class="fz-section-divider" />
 
-<div class="fz-create-card">
+<div class="fz-create-card fz-create-card-full">
   <h3>Create Objective</h3>
-  <form method="post" action="/ui/soa/{{ soa_id }}/objectives/create" class="fz-form-row">
+  <form method="post" action="/ui/soa/{{ soa_id }}/objectives/create" class="fz-form-2row">
     <div class="am-field">
       <label class="am-field-label">Name <span class="am-required">*</span></label>
       <input name="name" placeholder="Objective name" required class="fz-version-input" />
@@ -86,12 +86,12 @@
 
 <hr class="fz-section-divider" />
 
-<div class="fz-create-card">
+<div class="fz-create-card fz-create-card-full">
   <h3>Create Endpoint</h3>
   {% if objectives|length == 0 %}
   <p class="fz-no-data">Create an objective first &mdash; endpoints must be assigned to a parent objective.</p>
   {% else %}
-  <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/create" class="fz-form-row">
+  <form method="post" action="/ui/soa/{{ soa_id }}/endpoints/create" class="fz-form-2row">
     <div class="am-field">
       <label class="am-field-label">Name <span class="am-required">*</span></label>
       <input name="name" placeholder="Endpoint name" required class="fz-version-input" />
