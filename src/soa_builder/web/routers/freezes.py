@@ -164,6 +164,35 @@ def ui_freeze_soa(
             logger.exception(
                 "Amendment creation failed for freeze %s: %s", freeze_id, exc
             )
+            conn = locals().get("conn")
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    logger.exception(
+                        "Failed to close amendment DB connection for freeze %s",
+                        freeze_id,
+                    )
+            try:
+                _delete_freeze(soa_id, freeze_id)
+            except Exception:
+                logger.exception(
+                    "Failed to delete freeze %s after amendment creation error",
+                    freeze_id,
+                )
+            err = html.escape(str(exc))
+            if request.headers.get("HX-Request") == "true":
+                return HTMLResponse(
+                    f"<div class='error' style='color:#c62828;"
+                    f"font-size:0.7em;'>Amendment creation failed: {err}</div>",
+                    status_code=500,
+                )
+            return HTMLResponse(
+                f"<div class='error' style='color:#c62828;'>"
+                f"Amendment creation failed: {err}</div>",
+                status_code=500,
+                headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
+            )
 
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
