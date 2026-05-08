@@ -137,6 +137,17 @@ def test_update_endpoint(_obj_slug, _ep_slug):
     assert body["purpose"] == "Refined purpose"
     # level_code_uid unchanged when level not passed
     assert body["level_code_uid"] == ep["level_code_uid"]
+    # level resolved from code_association even when not in PATCH body
+    assert body["level"] == "Primary Endpoint"
+
+    resp2 = client.patch(
+        f"/soa/{soa_id}/endpoints/{ep['id']}",
+        json={"level": "Secondary Endpoint"},
+    )
+    assert resp2.status_code == 200
+    body2 = resp2.json()
+    assert body2["level"] == "Secondary Endpoint"
+    assert body2["level_code_uid"] == ep["level_code_uid"]
 
 
 @patch("soa_builder.web.routers.endpoints.get_latest_ddf_ct_href", return_value=None)

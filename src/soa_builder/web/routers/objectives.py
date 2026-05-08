@@ -312,6 +312,13 @@ def update_objective(soa_id: int, objective_id: int, body: ObjectiveUpdate):
             )
         else:
             new_level_code_uid = _insert_level_code(cur, soa_id, new_level)
+    else:
+        cur.execute(
+            "SELECT code FROM code_association WHERE soa_id=? AND code_uid=?",
+            (soa_id, before["level_code_uid"]),
+        )
+        lvl_row = cur.fetchone()
+        new_level = lvl_row[0] if lvl_row else None
 
     cur.execute(
         "UPDATE objective SET name=?, label=?, description=?, text=?, "
@@ -336,6 +343,7 @@ def update_objective(soa_id: int, objective_id: int, body: ObjectiveUpdate):
         "description": new_desc,
         "text": new_text,
         "level_code_uid": new_level_code_uid,
+        "level": new_level,
     }
     _record_objective_audit(soa_id, "update", objective_id, before=before, after=after)
     return JSONResponse(after)

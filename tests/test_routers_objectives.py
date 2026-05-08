@@ -130,6 +130,8 @@ def test_update_objective_swaps_level_code(_mock_slug):
     # code_uid is preserved across level changes; the submission value
     # on the existing code_association row is updated in place.
     assert body["level_code_uid"] == first_level_uid
+    # level resolved and returned when body.level is provided
+    assert body["level"] == "Secondary Objective"
 
     conn = _connect()
     cur = conn.cursor()
@@ -139,6 +141,14 @@ def test_update_objective_swaps_level_code(_mock_slug):
     )
     assert cur.fetchone()[0] == "Secondary Objective"
     conn.close()
+
+    # level resolved from code_association when body.level is absent
+    resp2 = client.patch(
+        f"/soa/{soa_id}/objectives/{obj_id}",
+        json={"name": "Renamed"},
+    )
+    assert resp2.status_code == 200
+    assert resp2.json()["level"] == "Secondary Objective"
 
 
 @patch("soa_builder.web.routers.objectives.get_latest_ddf_ct_href", return_value=None)
