@@ -20,10 +20,10 @@
         hx-target="#secondary-reasons-section" hx-swap="outerHTML"
         class="am-add-form">
     <select name="code" required class="am-select"
-      onchange="var o=this.options[this.selectedIndex];this.closest('form').querySelector('.other-reason-box').style.display=o.getAttribute('data-code')==='C17649'?'flex':'none';">
+      onchange="this.closest('form').querySelector('.other-reason-box').style.display=this.value==='C17649'?'flex':'none';">
       <option value="" disabled selected>— select reason —</option>
       {% for code, sv in reason_terms.items()|sort(attribute='1') %}
-      <option value="{{ sv }}" data-code="{{ code }}">{{ sv }}</option>
+      <option value="{{ code }}">{{ sv }}</option>
       {% endfor %}
     </select>
     <div class="other-reason-box am-field" style="display:none">

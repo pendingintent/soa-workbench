@@ -37,7 +37,7 @@
       <select name="type_code" required class="am-select">
         <option value="" disabled selected>— select —</option>
         {% for code, sv in impact_terms.items()|sort(attribute='1') %}
-        <option value="{{ sv }}" data-code="{{ code }}">{{ sv }}</option>
+        <option value="{{ code }}">{{ sv }}</option>
         {% endfor %}
       </select>
     </div>
