@@ -811,11 +811,18 @@ def ui_add_group_to_activity(
     from ..app import (
         _enrich_biomedical_concept_bg,
         _enrich_code_bg,
+        _populate_biomedical_concept_properties_bg,
     )
 
     for code in codes:
         background_tasks.add_task(_enrich_biomedical_concept_bg, code, soa_id)
         background_tasks.add_task(_enrich_code_bg, code, soa_id)
+        background_tasks.add_task(
+            _populate_biomedical_concept_properties_bg,
+            code,
+            None,
+            soa_id,
+        )
 
     from .bc_surrogates import _render_concepts_cell
 

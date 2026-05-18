@@ -8,12 +8,11 @@ from .usdm_utils import (
     _get_biomedical_concept_reference as _get_biomedical_concept_reference,
 )
 from .generate_biomedical_concept_properties import (
-    populate_biomedical_concept_properties,
     build_usdm_biomedical_concept_properties,
+    build_usdm_biomedical_concept_properties_for_soa as _ensure_bcp_populated,
 )
 from .generate_extension_attributes import (
     populate_extension_attributes,
-    build_usdm_extension_attributes,
 )
 
 
@@ -32,7 +31,7 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
         - notes?: CommentAnnotation-Output[]
         - instanceType: "BiomedicalConcept"
     """
-    populate_biomedical_concept_properties(soa_id)
+    _ensure_bcp_populated(soa_id)
     populate_extension_attributes(soa_id)
 
     conn = _connect()
@@ -87,7 +86,8 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
 
         biomedical_concept = {
             "id": id,
-            "extensionAttributes": build_usdm_extension_attributes(soa_id, id),
+            # "extensionAttributes": build_usdm_extension_attributes(soa_id, id),
+            "extensionAttributes": [],
             "name": name,
             "label": label,
             "synonyms": synonyms,

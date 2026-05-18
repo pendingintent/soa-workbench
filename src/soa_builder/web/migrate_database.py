@@ -2141,3 +2141,66 @@ def _migrate_add_document_content_reference_audit_table():
             "_migrate_add_document_content_reference_audit_table failed: %s",
             e,
         )
+
+
+def _migrate_clear_bcp_rows():
+    """Delete all BCP + ResponseCode rows and their orphaned code chains.
+
+    Removes rows created by the incorrect generic-BC-only populate path.
+    The startup backfill repopulates everything correctly via the SDTM
+    specialization index.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """DELETE FROM code WHERE code_uid IN (
+                SELECT ac.standard_code FROM alias_code ac
+                WHERE ac.alias_code_uid IN (
+                    SELECT code FROM biomedical_concept_property
+                    UNION ALL
+                    SELECT code FROM bcp_response_code
+                )
+            )"""
+        )
+        cur.execute(
+            """DELETE FROM alias_code WHERE alias_code_uid IN (
+                SELECT code FROM biomedical_concept_property
+                UNION ALL
+                SELECT code FROM bcp_response_code
+            )"""
+        )
+        cur.execute("DELETE FROM bcp_response_code")
+        cur.execute("DELETE FROM biomedical_concept_property")
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_clear_bcp_rows: cleared BCP rows for repopulation")
+    except Exception as e:
+        logger.warning("_migrate_clear_bcp_rows failed: %s", e)
+
+
+def _migrate_add_bcp_response_code_table():
+    """Create bcp_response_code table for ResponseCode entities."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS bcp_response_code (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                biomedical_concept_property_uid TEXT NOT NULL,
+                response_code_uid TEXT NOT NULL,
+                name TEXT,
+                label TEXT,
+                is_enabled INTEGER NOT NULL DEFAULT 1,
+                code TEXT,
+                UNIQUE(response_code_uid, soa_id)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_bcp_response_code_table created bcp_response_code table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_bcp_response_code_table failed: %s", e)

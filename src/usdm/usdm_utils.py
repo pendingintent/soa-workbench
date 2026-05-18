@@ -164,6 +164,60 @@ def _get_dss_response_codes(
     return _fetch_dss_variable_map(row[0]).get(variable_name, [])
 
 
+@functools.lru_cache(maxsize=1)
+def _get_latest_bc_package_version() -> str:
+    """Return the latest CDISC BC package date string (e.g. '2024-09-27').
+
+    Used as ``codeSystemVersion`` on BiomedicalConceptProperty codes.
+    Falls back to '' on any error.
+    """
+    url = URL_PREFIX + "mdr/bc/packages"
+    try:
+        resp = requests.get(url, headers=_build_api_headers(), timeout=15)
+        if resp.status_code != 200:
+            return ""
+        payload = resp.json() or {}
+    except (requests.RequestException, ValueError):
+        return ""
+
+    packages: list = []
+    if isinstance(payload, list):
+        packages = payload
+    elif isinstance(payload, dict):
+        packages = (
+            payload.get("_links", {}).get("packages")
+            or payload.get("packages")
+            or payload.get("_embedded", {}).get("packages")
+            or payload.get("items")
+            or []
+        )
+
+    latest_date = (0, 0, 0)
+    latest_version = ""
+    for pkg in packages:
+        if not isinstance(pkg, dict):
+            continue
+        href = (
+            pkg.get("href")
+            or (pkg.get("_links") or {}).get("self", {}).get("href", "")
+            or ""
+        )
+        # href like /mdr/bc/packages/bc2024-09-27
+        slug = href.rstrip("/").split("/")[-1]
+        # slug like bc2024-09-27
+        parts = slug.lstrip("bc").split("-")
+        if len(parts) == 3:
+            try:
+                date_tuple = (int(parts[0]), int(parts[1]), int(parts[2]))
+                version = "-".join(parts)
+                if date_tuple > latest_date:
+                    latest_date = date_tuple
+                    latest_version = version
+            except ValueError:
+                continue
+    return latest_version
+
+
 @functools.lru_cache(maxsize=256)
 def _get_biomedical_concept_data(concept_code: str) -> Dict[str, Any]:
     """Fetch the full CDISC Biomedical Concept API response. Cached per code."""
@@ -178,14 +232,108 @@ def _get_biomedical_concept_data(concept_code: str) -> Dict[str, Any]:
         return {}
 
 
+def _absolute_url(href: str) -> str:
+    if href.startswith("http"):
+        return href
+    return "https://api.library.cdisc.org/api/cosmos/v2" + href
+
+
+@functools.lru_cache(maxsize=1)
+def _get_sdtm_package_specialization_index() -> Dict[str, str]:
+    """Return {generic_bc_concept_code: sdtm_spec_full_url}.
+
+    Navigates the SDTM packages API:
+      GET /mdr/specializations/sdtm/packages
+        → latest package
+          → GET {pkg_href} → _links.datasetSpecializations[*]
+            → GET {spec_href} → _links.parentBiomedicalConcept.href
+              → concept_code = last path segment of that href
+
+    Cached for the process lifetime; built lazily on first use.
+    """
+    try:
+        resp = requests.get(
+            URL_PREFIX + "mdr/specializations/sdtm/packages",
+            headers=_build_api_headers(),
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            return {}
+        packages = resp.json().get("_links", {}).get("packages") or []
+        if not packages:
+            return {}
+
+        def _pkg_date(p: dict) -> tuple:
+            slug = p.get("href", "").rstrip("/").split("/")[-1]
+            parts = slug.replace("sdtmbc", "").split("-")
+            try:
+                return tuple(int(x) for x in parts[-3:])
+            except Exception:
+                return (0, 0, 0)
+
+        latest = max(packages, key=_pkg_date)
+        pkg_resp = requests.get(
+            _absolute_url(latest["href"]),
+            headers=_build_api_headers(),
+            timeout=15,
+        )
+        if pkg_resp.status_code != 200:
+            return {}
+        specs = pkg_resp.json().get("_links", {}).get("datasetSpecializations") or []
+
+        index: Dict[str, str] = {}
+        for spec in specs:
+            spec_href = spec.get("href", "")
+            if not spec_href:
+                continue
+            full_url = _absolute_url(spec_href)
+            sr = requests.get(full_url, headers=_build_api_headers(), timeout=15)
+            if sr.status_code != 200:
+                continue
+            parent_href = (
+                sr.json()
+                .get("_links", {})
+                .get("parentBiomedicalConcept", {})
+                .get("href", "")
+            )
+            if parent_href:
+                concept_code = parent_href.rstrip("/").split("/")[-1]
+                index[concept_code] = full_url
+        return index
+    except (requests.RequestException, ValueError) as e:
+        print(f"Error building SDTM specialization index: {e}")
+        return {}
+
+
+@functools.lru_cache(maxsize=256)
+def _get_sdtm_specialization_data(concept_code: str) -> Dict[str, Any]:
+    """Return the SDTM dataset specialization for a BC, or {} if none.
+
+    Uses the package-navigation index to find the spec URL, then fetches
+    the full specialization dict (which contains ``variables[]``).
+    """
+    spec_url = _get_sdtm_package_specialization_index().get(concept_code)
+    if not spec_url:
+        return {}
+    try:
+        resp = requests.get(spec_url, headers=_build_api_headers(), timeout=15)
+        if resp.status_code == 200:
+            return resp.json()
+    except (requests.RequestException, ValueError):
+        pass
+    return {}
+
+
 def _get_biomedical_concept_synonyms(concept_code: str) -> List[str]:
     """Return synonyms from the BC API response."""
     return _get_biomedical_concept_data(concept_code).get("synonyms", []) or []
 
 
 def _get_biomedical_concept_reference(concept_code: str) -> str:
-    """Return the root 'href' from the BC API response, or '' if unavailable."""
-    return _get_biomedical_concept_data(concept_code).get("href", "") or ""
+    """Return the CDISC Library self-link for a BC (e.g.
+    '/mdr/bc/biomedicalconcepts/C105585'), or '' if unavailable."""
+    data = _get_biomedical_concept_data(concept_code)
+    return (data.get("_links") or {}).get("self", {}).get("href", "") or ""
 
 
 # Helper for Activities

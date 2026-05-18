@@ -22,6 +22,7 @@ from typing import Any, List, Optional
 
 import pandas as pd
 import requests
+import threading as _threading
 from dotenv import load_dotenv
 from fastapi import (
     BackgroundTasks,
@@ -98,6 +99,8 @@ from .migrate_database import (
     _migrate_add_study_change_audit_table,
     _migrate_add_document_content_reference_table,
     _migrate_add_document_content_reference_audit_table,
+    _migrate_add_bcp_response_code_table,
+    _migrate_clear_bcp_rows,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -163,6 +166,10 @@ from .utils import (
     get_epoch_uid,
     get_schedule_timeline,
     get_scheduled_activity_instance,
+)
+
+from usdm.generate_biomedical_concept_properties import (
+    populate_biomedical_concept_properties_for_all_soas as _bcp_backfill,
 )
 
 
@@ -284,6 +291,12 @@ _migrate_add_study_change_table()
 _migrate_add_study_change_audit_table()
 _migrate_add_document_content_reference_table()
 _migrate_add_document_content_reference_audit_table()
+_migrate_add_bcp_response_code_table()
+_migrate_clear_bcp_rows()
+
+# Backfill BCP rows for any SOA that pre-dates eager population
+_t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")
+_t.start()
 
 
 # Include routers
@@ -2208,6 +2221,67 @@ def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
     finally:
         if conn:
             conn.close()
+
+
+def _populate_biomedical_concept_properties_bg(
+    concept_code: str, bc_uid: str, soa_id: int
+) -> None:
+    """Background task: populate BCP + ResponseCode rows for one BC.
+
+    Gated by SOA_EAGER_BCP_POPULATION env var; no-op when unset.
+    If ``bc_uid`` is None the uid is resolved from the DB.
+    """
+    import os as _os
+
+    if _os.environ.get("SOA_EAGER_BCP_POPULATION", "1").strip().lower() in (
+        "0",
+        "false",
+    ):
+        return
+    resolved_uid = bc_uid
+    if not resolved_uid:
+        try:
+            conn = _connect()
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT bc.biomedical_concept_uid"
+                " FROM biomedical_concept bc"
+                " INNER JOIN activity_concept ac"
+                " ON bc.biomedical_concept_uid = ac.concept_uid"
+                " AND bc.soa_id = ac.soa_id"
+                " WHERE bc.soa_id = ? AND ac.concept_code = ?"
+                " LIMIT 1",
+                (soa_id, concept_code),
+            )
+            row = cur.fetchone()
+            conn.close()
+            resolved_uid = row[0] if row else None
+        except Exception:
+            logger.exception(
+                "_populate_biomedical_concept_properties_bg:"
+                " uid lookup failed concept_code=%s soa_id=%s",
+                concept_code,
+                soa_id,
+            )
+            return
+    if not resolved_uid:
+        return
+    from usdm.generate_biomedical_concept_properties import (
+        populate_biomedical_concept_properties_for_bc,
+    )
+
+    try:
+        populate_biomedical_concept_properties_for_bc(
+            soa_id, resolved_uid, concept_code
+        )
+    except Exception:
+        logger.exception(
+            "_populate_biomedical_concept_properties_bg failed"
+            " concept_code=%s bc_uid=%s soa_id=%s",
+            concept_code,
+            bc_uid,
+            soa_id,
+        )
 
 
 def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
