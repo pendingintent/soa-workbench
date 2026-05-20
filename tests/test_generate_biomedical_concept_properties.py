@@ -12,36 +12,28 @@ from usdm.generate_biomedical_concept_properties import (
     populate_biomedical_concept_properties_for_bc,
 )
 
-
 SOA_ID = 9001
 BC_UID = "BiomedicalConcept_1"
 CONCEPT_CODE = "C25564"
+FAKE_DSS_HREF = "https://api.library.cdisc.org/api/cosmos/v2/mdr/specializations/sdtm/datasetspecializations/VS"
 
 MOCK_BC_API = {
+    "_links": {
+        "parentPackage": {"href": "/mdr/bc/packages/2024-09-27/biomedicalconcepts"}
+    },
     "href": "https://example/bc/C25564",
     "synonyms": ["Demo"],
     "dataElementConcepts": [
-        {
-            "conceptId": "C25347",
-            "shortName": "Height",
-            "dataType": "decimal",
-        },
-        {
-            "conceptId": "C25208",
-            "shortName": "Weight",
-            "dataType": "decimal",
-        },
-        {
-            "conceptId": "C49669",
-            "shortName": "Unit",
-            "dataType": "string",
-        },
+        {"conceptId": "C25347", "shortName": "Height", "dataType": "decimal"},
+        {"conceptId": "C25208", "shortName": "Weight", "dataType": "decimal"},
+        {"conceptId": "C49669", "shortName": "Unit", "dataType": "string"},
     ],
 }
 
 MOCK_BC_WITH_EXAMPLE_SET = {
-    "href": "https://example/bc/C66742",
-    "synonyms": [],
+    "_links": {
+        "parentPackage": {"href": "/mdr/bc/packages/2024-09-27/biomedicalconcepts"}
+    },
     "dataElementConcepts": [
         {
             "conceptId": "C25347",
@@ -53,34 +45,58 @@ MOCK_BC_WITH_EXAMPLE_SET = {
 }
 
 MOCK_SDTM_API = {
+    "_links": {
+        "parentPackage": {
+            "href": "/mdr/specializations/sdtm/packages/2024-09-27/datasetspecializations"
+        }
+    },
     "shortName": "VS",
     "variables": [
         {
             "name": "VSORRES",
             "dataType": "string",
+            "mandatoryValue": True,
             "dataElementConceptId": "C25347",
-            "valueList": [],
         },
         {
             "name": "VSORRESU",
             "dataType": "string",
+            "mandatoryValue": False,
             "dataElementConceptId": "C49669",
-            "valueList": ["C28253", "C48155"],
-            "codelist": {"conceptId": "C71620"},
+        },
+    ],
+}
+
+MOCK_SDTM_WITH_ASSIGNED_TERM = {
+    "_links": {
+        "parentPackage": {
+            "href": "/mdr/specializations/sdtm/packages/2024-09-27/datasetspecializations"
+        }
+    },
+    "shortName": "VS",
+    "variables": [
+        {
+            "name": "VSORRES",
+            "dataType": "string",
+            "mandatoryValue": True,
+            "dataElementConceptId": "C25347",
+        },
+        {
+            "name": "VSSTAT",
+            "dataType": "string",
+            "mandatoryValue": False,
+            "dataElementConceptId": "C25208",
+            "assignedTerm": {"conceptId": "C61585", "value": "NOT DONE"},
         },
     ],
 }
 
 
 def _seed_bc(soa_id=SOA_ID, bc_uid=BC_UID, concept_code=CONCEPT_CODE):
-    """Insert a single BC + activity_concept + alias_code + code chain."""
     conn = _connect()
     cur = conn.cursor()
     cur.execute("DELETE FROM bcp_response_code WHERE soa_id=?", (soa_id,))
-    cur.execute(
-        "DELETE FROM biomedical_concept_property WHERE soa_id=?",
-        (soa_id,),
-    )
+    cur.execute("DELETE FROM biomedical_concept_property WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM biomedical_concept WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM activity_concept WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM alias_code WHERE soa_id=?", (soa_id,))
@@ -89,14 +105,7 @@ def _seed_bc(soa_id=SOA_ID, bc_uid=BC_UID, concept_code=CONCEPT_CODE):
     cur.execute(
         "INSERT INTO code (code_uid, soa_id, code, code_system,"
         " code_system_version, decode) VALUES (?, ?, ?, ?, ?, ?)",
-        (
-            "Code_1",
-            soa_id,
-            concept_code,
-            "http://www.cdisc.org",
-            "v1",
-            "Vital Signs",
-        ),
+        ("Code_1", soa_id, concept_code, "http://www.cdisc.org", "v1", "Vital Signs"),
     )
     cur.execute(
         "INSERT INTO alias_code (alias_code_uid, soa_id, standard_code)"
@@ -111,8 +120,8 @@ def _seed_bc(soa_id=SOA_ID, bc_uid=BC_UID, concept_code=CONCEPT_CODE):
     )
     cur.execute(
         "INSERT INTO activity_concept"
-        " (soa_id, activity_uid, concept_uid, concept_code,"
-        " concept_title) VALUES (?, ?, ?, ?, ?)",
+        " (soa_id, activity_uid, concept_uid, concept_code, concept_title)"
+        " VALUES (?, ?, ?, ?, ?)",
         (soa_id, 1, bc_uid, concept_code, "Vital Signs"),
     )
     conn.commit()
@@ -120,7 +129,7 @@ def _seed_bc(soa_id=SOA_ID, bc_uid=BC_UID, concept_code=CONCEPT_CODE):
 
 
 # ---------------------------------------------------------------------------
-# Tests: populate_biomedical_concept_properties (SOA-wide, lazy path)
+# Generic path (no DSS associated)
 # ---------------------------------------------------------------------------
 
 
@@ -132,12 +141,8 @@ def test_populate_creates_property_rows_with_uids():
             return_value=MOCK_BC_API,
         ),
         patch(
-            "usdm.usdm_utils._get_sdtm_package_specialization_index",
-            return_value={},
-        ),
-        patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
         ),
     ):
         populate_biomedical_concept_properties(SOA_ID)
@@ -145,30 +150,25 @@ def test_populate_creates_property_rows_with_uids():
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT biomedical_concept_property_uid, name, datatype, code"
+        "SELECT biomedical_concept_property_uid, name, datatype"
         " FROM biomedical_concept_property"
-        " WHERE soa_id=? AND biomedical_concept_uid=?"
-        " ORDER BY id",
+        " WHERE soa_id=? AND biomedical_concept_uid=? ORDER BY id",
         (SOA_ID, BC_UID),
     )
     rows = cur.fetchall()
     conn.close()
 
     assert len(rows) == 3
-    bcp_uids = [r[0] for r in rows]
-    assert bcp_uids == [
+    assert [r[0] for r in rows] == [
         "BiomedicalConceptProperty_1",
         "BiomedicalConceptProperty_2",
         "BiomedicalConceptProperty_3",
     ]
     assert [r[1] for r in rows] == ["Height", "Weight", "Unit"]
     assert [r[2] for r in rows] == ["decimal", "decimal", "string"]
-    for _, _, _, alias in rows:
-        assert alias.startswith("AliasCode_")
-        assert int(alias.split("_")[1]) >= 2
 
 
-def test_populate_is_idempotent():
+def test_populate_delete_then_recreate_no_duplicates():
     _seed_bc()
     with (
         patch(
@@ -176,12 +176,8 @@ def test_populate_is_idempotent():
             return_value=MOCK_BC_API,
         ),
         patch(
-            "usdm.usdm_utils._get_sdtm_package_specialization_index",
-            return_value={},
-        ),
-        patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
         ),
     ):
         populate_biomedical_concept_properties(SOA_ID)
@@ -190,19 +186,13 @@ def test_populate_is_idempotent():
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT COUNT(*) FROM biomedical_concept_property WHERE soa_id=?",
-        (SOA_ID,),
+        "SELECT COUNT(*) FROM biomedical_concept_property WHERE soa_id=?", (SOA_ID,)
     )
     assert cur.fetchone()[0] == 3
     conn.close()
 
 
-# ---------------------------------------------------------------------------
-# Tests: populate_biomedical_concept_properties_for_bc (scoped, eager path)
-# ---------------------------------------------------------------------------
-
-
-def test_scoped_populate_creates_bcp_rows():
+def test_generic_path_decode_equals_shortname():
     _seed_bc()
     with (
         patch(
@@ -210,12 +200,8 @@ def test_scoped_populate_creates_bcp_rows():
             return_value=MOCK_BC_API,
         ),
         patch(
-            "usdm.usdm_utils._get_sdtm_package_specialization_index",
-            return_value={},
-        ),
-        patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
         ),
     ):
         populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
@@ -223,14 +209,18 @@ def test_scoped_populate_creates_bcp_rows():
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT COUNT(*) FROM biomedical_concept_property WHERE soa_id=?",
+        "SELECT c.decode FROM biomedical_concept_property bcp"
+        " JOIN alias_code ac ON bcp.code=ac.alias_code_uid AND bcp.soa_id=ac.soa_id"
+        " JOIN code c ON ac.standard_code=c.code_uid AND ac.soa_id=c.soa_id"
+        " WHERE bcp.soa_id=? ORDER BY bcp.id",
         (SOA_ID,),
     )
-    assert cur.fetchone()[0] == 3
+    decodes = [r[0] for r in cur.fetchall()]
     conn.close()
+    assert decodes == ["Height", "Weight", "Unit"]
 
 
-def test_scoped_populate_is_idempotent():
+def test_generic_path_code_system_version_from_parent_package():
     _seed_bc()
     with (
         patch(
@@ -238,28 +228,27 @@ def test_scoped_populate_is_idempotent():
             return_value=MOCK_BC_API,
         ),
         patch(
-            "usdm.usdm_utils._get_sdtm_package_specialization_index",
-            return_value={},
-        ),
-        patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
         ),
     ):
-        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
         populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
 
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT COUNT(*) FROM biomedical_concept_property WHERE soa_id=?",
+        "SELECT DISTINCT c.code_system_version FROM biomedical_concept_property bcp"
+        " JOIN alias_code ac ON bcp.code=ac.alias_code_uid AND bcp.soa_id=ac.soa_id"
+        " JOIN code c ON ac.standard_code=c.code_uid AND ac.soa_id=c.soa_id"
+        " WHERE bcp.soa_id=?",
         (SOA_ID,),
     )
-    assert cur.fetchone()[0] == 3
+    versions = [r[0] for r in cur.fetchall()]
     conn.close()
+    assert versions == ["2024-09-27"]
 
 
-def test_scoped_populate_creates_response_codes_from_example_set():
+def test_generic_path_no_response_codes():
     _seed_bc()
     with (
         patch(
@@ -267,28 +256,25 @@ def test_scoped_populate_creates_response_codes_from_example_set():
             return_value=MOCK_BC_WITH_EXAMPLE_SET,
         ),
         patch(
-            "usdm.usdm_utils._get_sdtm_package_specialization_index",
-            return_value={},
-        ),
-        patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
         ),
     ):
         populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
 
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT COUNT(*) FROM bcp_response_code WHERE soa_id=?",
-        (SOA_ID,),
-    )
-    count = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM bcp_response_code WHERE soa_id=?", (SOA_ID,))
+    assert cur.fetchone()[0] == 0
     conn.close()
-    assert count == 2
 
 
-def test_scoped_populate_no_response_codes_when_example_set_absent():
+# ---------------------------------------------------------------------------
+# SDTM path (DSS associated via activity_concept_dss)
+# ---------------------------------------------------------------------------
+
+
+def test_sdtm_path_uses_variable_names():
     _seed_bc()
     with (
         patch(
@@ -296,36 +282,11 @@ def test_scoped_populate_no_response_codes_when_example_set_absent():
             return_value=MOCK_BC_API,
         ),
         patch(
-            "usdm.usdm_utils._get_sdtm_package_specialization_index",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
         ),
         patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
-            return_value={},
-        ),
-    ):
-        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
-
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT COUNT(*) FROM bcp_response_code WHERE soa_id=?",
-        (SOA_ID,),
-    )
-    count = cur.fetchone()[0]
-    conn.close()
-    assert count == 0
-
-
-def test_sdtm_path_uses_variables_array():
-    _seed_bc()
-    with (
-        patch(
-            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
-            return_value=MOCK_BC_API,
-        ),
-        patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
             return_value=MOCK_SDTM_API,
         ),
     ):
@@ -338,20 +299,233 @@ def test_sdtm_path_uses_variables_array():
         (SOA_ID,),
     )
     names = [r[0] for r in cur.fetchall()]
+    conn.close()
+    assert names == ["VSORRES", "VSORRESU"]
 
+
+def test_sdtm_path_decode_is_dec_shortname():
+    _seed_bc()
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
+            return_value=MOCK_SDTM_API,
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    conn = _connect()
+    cur = conn.cursor()
     cur.execute(
-        "SELECT COUNT(*) FROM bcp_response_code WHERE soa_id=?",
+        "SELECT c.decode FROM biomedical_concept_property bcp"
+        " JOIN alias_code ac ON bcp.code=ac.alias_code_uid AND bcp.soa_id=ac.soa_id"
+        " JOIN code c ON ac.standard_code=c.code_uid AND ac.soa_id=c.soa_id"
+        " WHERE bcp.soa_id=? ORDER BY bcp.id",
         (SOA_ID,),
     )
-    rc_count = cur.fetchone()[0]
+    decodes = [r[0] for r in cur.fetchall()]
+    conn.close()
+    assert decodes == ["Height", "Unit"]
+
+
+def test_sdtm_mandatory_value_maps_to_is_required():
+    _seed_bc()
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
+            return_value=MOCK_SDTM_API,
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name, isRequired FROM biomedical_concept_property"
+        " WHERE soa_id=? ORDER BY id",
+        (SOA_ID,),
+    )
+    rows = {r[0]: r[1] for r in cur.fetchall()}
+    conn.close()
+    assert rows["VSORRES"] == 1
+    assert rows["VSORRESU"] == 0
+
+
+def test_sdtm_code_system_version_from_parent_package():
+    _seed_bc()
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
+            return_value=MOCK_SDTM_API,
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT DISTINCT c.code_system_version FROM biomedical_concept_property bcp"
+        " JOIN alias_code ac ON bcp.code=ac.alias_code_uid AND bcp.soa_id=ac.soa_id"
+        " JOIN code c ON ac.standard_code=c.code_uid AND ac.soa_id=c.soa_id"
+        " WHERE bcp.soa_id=?",
+        (SOA_ID,),
+    )
+    versions = [r[0] for r in cur.fetchall()]
+    conn.close()
+    assert versions == ["2024-09-27"]
+
+
+def test_sdtm_assigned_term_creates_response_code():
+    _seed_bc()
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
+            return_value=MOCK_SDTM_WITH_ASSIGNED_TERM,
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT rc.name, c.code, c.decode"
+        " FROM bcp_response_code rc"
+        " JOIN alias_code ac ON rc.code=ac.alias_code_uid AND rc.soa_id=ac.soa_id"
+        " JOIN code c ON ac.standard_code=c.code_uid AND ac.soa_id=c.soa_id"
+        " WHERE rc.soa_id=?",
+        (SOA_ID,),
+    )
+    rc_rows = cur.fetchall()
     conn.close()
 
-    assert names == ["VSORRES", "VSORRESU"]
-    assert rc_count == 2  # from VSORRESU.valueList
+    assert len(rc_rows) == 1
+    name, code, decode = rc_rows[0]
+    assert name == "NOT DONE"
+    assert code == "C61585"
+    assert decode == "NOT DONE"
+
+
+def test_sdtm_skip_variable_without_dec_match():
+    _seed_bc()
+    sdtm_with_unmatched = {
+        "_links": {
+            "parentPackage": {
+                "href": "/mdr/specializations/sdtm/packages/2024-09-27/datasetspecializations"
+            }
+        },
+        "variables": [
+            {"name": "VSORRES", "dataType": "string", "dataElementConceptId": "C99999"},
+            {
+                "name": "VSORRESU",
+                "dataType": "string",
+                "dataElementConceptId": "C25347",
+            },
+        ],
+    }
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
+            return_value=sdtm_with_unmatched,
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name FROM biomedical_concept_property WHERE soa_id=? ORDER BY id",
+        (SOA_ID,),
+    )
+    names = [r[0] for r in cur.fetchall()]
+    conn.close()
+    assert names == ["VSORRESU"]
+
+
+def test_sdtm_skip_variable_without_dec_id():
+    _seed_bc()
+    sdtm_no_dec_id = {
+        "_links": {
+            "parentPackage": {
+                "href": "/mdr/specializations/sdtm/packages/2024-09-27/datasetspecializations"
+            }
+        },
+        "variables": [
+            {"name": "VSORRES", "dataType": "string"},
+            {
+                "name": "VSORRESU",
+                "dataType": "string",
+                "dataElementConceptId": "C25347",
+            },
+        ],
+    }
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
+            return_value=sdtm_no_dec_id,
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name FROM biomedical_concept_property WHERE soa_id=? ORDER BY id",
+        (SOA_ID,),
+    )
+    names = [r[0] for r in cur.fetchall()]
+    conn.close()
+    assert names == ["VSORRESU"]
 
 
 # ---------------------------------------------------------------------------
-# Tests: build_usdm_biomedical_concept_properties (USDM output)
+# USDM output shape
 # ---------------------------------------------------------------------------
 
 
@@ -363,12 +537,8 @@ def test_build_returns_usdm_shape():
             return_value=MOCK_BC_API,
         ),
         patch(
-            "usdm.usdm_utils._get_sdtm_package_specialization_index",
-            return_value={},
-        ),
-        patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
         ),
     ):
         populate_biomedical_concept_properties(SOA_ID)
@@ -387,42 +557,44 @@ def test_build_returns_usdm_shape():
     assert p["extensionAttributes"] == []
     assert p["notes"] == []
 
-    code = p["code"]
-    assert code["instanceType"] == "AliasCode"
-    assert code["id"].startswith("AliasCode_")
-
-    sc = code["standardCode"]
-    assert sc["instanceType"] == "Code"
-    assert sc["id"].startswith("Code_")
+    sc = p["code"]["standardCode"]
     assert sc["code"] == "C25347"
     assert sc["codeSystem"] == "http://www.cdisc.org"
+    assert sc["codeSystemVersion"] == "2024-09-27"
     assert sc["decode"] == "Height"
 
 
-def test_build_includes_response_codes_when_present():
+def test_build_sdtm_includes_assigned_term_response_code():
     _seed_bc()
     with (
         patch(
             "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
-            return_value=MOCK_BC_WITH_EXAMPLE_SET,
+            return_value=MOCK_BC_API,
         ),
         patch(
-            "usdm.usdm_utils._get_sdtm_package_specialization_index",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
         ),
         patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
+            return_value=MOCK_SDTM_WITH_ASSIGNED_TERM,
         ),
     ):
         populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
 
     out = build_usdm_biomedical_concept_properties(SOA_ID, BC_UID)
-    assert len(out) == 1
-    rcs = out[0]["responseCodes"]
-    assert len(rcs) == 2
-    assert all(rc["instanceType"] == "ResponseCode" for rc in rcs)
-    assert all(rc["id"].startswith("ResponseCode_") for rc in rcs)
+    assert len(out) == 2
+
+    vsstat = next(p for p in out if p["name"] == "VSSTAT")
+    rcs = vsstat["responseCodes"]
+    assert len(rcs) == 1
+    rc = rcs[0]
+    assert rc["instanceType"] == "ResponseCode"
+    assert rc["name"] == "NOT DONE"
+    assert rc["code"]["code"] == "C61585"
+
+    vsorres = next(p for p in out if p["name"] == "VSORRES")
+    assert vsorres["responseCodes"] == []
 
 
 def test_build_usdm_for_soa_is_json_serialisable():
@@ -433,15 +605,10 @@ def test_build_usdm_for_soa_is_json_serialisable():
             return_value=MOCK_BC_API,
         ),
         patch(
-            "usdm.usdm_utils._get_sdtm_package_specialization_index",
-            return_value={},
-        ),
-        patch(
-            "usdm.generate_biomedical_concept_properties._get_sdtm_specialization_data",
-            return_value={},
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
         ),
     ):
-        # Pre-populate so the eager default finds rows
         populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
         out = build_usdm_biomedical_concept_properties_for_soa(SOA_ID)
 

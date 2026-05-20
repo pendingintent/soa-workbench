@@ -100,7 +100,6 @@ from .migrate_database import (
     _migrate_add_document_content_reference_table,
     _migrate_add_document_content_reference_audit_table,
     _migrate_add_bcp_response_code_table,
-    _migrate_clear_bcp_rows,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -292,7 +291,6 @@ _migrate_add_study_change_audit_table()
 _migrate_add_document_content_reference_table()
 _migrate_add_document_content_reference_audit_table()
 _migrate_add_bcp_response_code_table()
-_migrate_clear_bcp_rows()
 
 # Backfill BCP rows for any SOA that pre-dates eager population
 _t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")

@@ -24,9 +24,9 @@ from soa_builder.web.utils import (
     get_protocol_ct_term,
 )
 from .usdm_utils import (
+    _fetch_dss_spec,
     _get_biomedical_concept_data,
     _get_latest_bc_package_version,
-    _get_sdtm_specialization_data,
 )
 
 logger = logging.getLogger("usdm.generate_biomedical_concept_properties")
@@ -84,8 +84,18 @@ def _include_property(var_name: str) -> bool:
     return True
 
 
+def _version_from_package_href(href: str) -> str:
+    """Extract the YYYY-MM-DD date from any package href.
+
+    Works for both BC (/mdr/bc/packages/2025-09-23/biomedicalconcepts)
+    and SDTM (/mdr/specializations/sdtm/packages/2025-12-16/datasetspecializations).
+    """
+    m = re.search(r"(\d{4}-\d{2}-\d{2})", href or "")
+    return m.group(1) if m else ""
+
+
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Internal helpers kept for future ResponseCode (valueList) population
 # ---------------------------------------------------------------------------
 
 
@@ -120,13 +130,14 @@ def _upsert_response_codes(
     values: List[str],
     codelist_code: Optional[str],
 ) -> None:
-    """Insert bcp_response_code + alias_code + code rows for a BCP."""
+    """Insert bcp_response_code + alias_code + code rows for a BCP.
+
+    Reserved for future valueList ResponseCode population.
+    """
     for val in values:
         ncit_code, decode = _resolve_rc_code(val, codelist_code)
         if not ncit_code:
             continue
-
-        # Check if a response code with this ncit_code already exists
         cur.execute(
             "SELECT rc.response_code_uid"
             " FROM bcp_response_code rc"
@@ -142,7 +153,6 @@ def _upsert_response_codes(
         )
         if cur.fetchone():
             continue
-
         code_uid = get_next_code_uid(cur, soa_id)
         cur.execute(
             "INSERT INTO code"
@@ -161,96 +171,168 @@ def _upsert_response_codes(
         alias_uid = get_next_alias_code_uid(cur, soa_id)
         cur.execute(
             "INSERT INTO alias_code"
-            " (alias_code_uid, soa_id, standard_code)"
-            " VALUES (?, ?, ?)",
+            " (alias_code_uid, soa_id, standard_code) VALUES (?, ?, ?)",
             (alias_uid, soa_id, code_uid),
         )
         rc_uid = get_next_response_code_uid(cur, soa_id)
-        name = ncit_code
         cur.execute(
             "INSERT INTO bcp_response_code"
             " (soa_id, biomedical_concept_property_uid,"
             " response_code_uid, name, label, is_enabled, code)"
             " VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (soa_id, bcp_uid, rc_uid, name, "", 1, alias_uid),
+            (soa_id, bcp_uid, rc_uid, ncit_code, "", 1, alias_uid),
         )
 
 
-def _upsert_bcp(
+# ---------------------------------------------------------------------------
+# Internal DB write helpers
+# ---------------------------------------------------------------------------
+
+
+def _delete_bcp_rows(cur, soa_id: int, bc_uid: str) -> None:
+    """Delete all BCP + RC rows for one BC and their orphaned code chains."""
+    cur.execute(
+        "SELECT rc.code FROM bcp_response_code rc"
+        " WHERE rc.soa_id=? AND rc.biomedical_concept_property_uid IN"
+        " (SELECT biomedical_concept_property_uid FROM"
+        " biomedical_concept_property WHERE soa_id=? AND"
+        " biomedical_concept_uid=?)",
+        (soa_id, soa_id, bc_uid),
+    )
+    rc_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
+
+    cur.execute(
+        "SELECT code FROM biomedical_concept_property"
+        " WHERE soa_id=? AND biomedical_concept_uid=?",
+        (soa_id, bc_uid),
+    )
+    bcp_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
+
+    all_alias_uids = rc_alias_uids + bcp_alias_uids
+    if all_alias_uids:
+        ph = ",".join("?" * len(all_alias_uids))
+        cur.execute(
+            f"DELETE FROM code WHERE code_uid IN"
+            f" (SELECT standard_code FROM alias_code"
+            f" WHERE alias_code_uid IN ({ph}) AND soa_id=?)",
+            (*all_alias_uids, soa_id),
+        )
+        cur.execute(
+            f"DELETE FROM alias_code WHERE alias_code_uid IN ({ph}) AND soa_id=?",
+            (*all_alias_uids, soa_id),
+        )
+
+    cur.execute(
+        "DELETE FROM bcp_response_code WHERE soa_id=?"
+        " AND biomedical_concept_property_uid IN"
+        " (SELECT biomedical_concept_property_uid FROM"
+        " biomedical_concept_property WHERE soa_id=? AND"
+        " biomedical_concept_uid=?)",
+        (soa_id, soa_id, bc_uid),
+    )
+    cur.execute(
+        "DELETE FROM biomedical_concept_property"
+        " WHERE soa_id=? AND biomedical_concept_uid=?",
+        (soa_id, bc_uid),
+    )
+
+
+def _insert_bcp(
     cur,
     soa_id: int,
     bc_uid: str,
     ncit_code: str,
     name: str,
     datatype: str,
-    rc_values: List[str],
-    codelist_code: Optional[str],
-) -> None:
-    """Insert a BCP row + ResponseCode rows if not already present."""
-    if not ncit_code:
-        return
-
+    decode: str,
+    code_system_version: str,
+    is_required: bool,
+) -> str:
+    """Insert one BCP row and return its UID."""
+    code_uid = get_next_code_uid(cur, soa_id)
     cur.execute(
-        "SELECT bcp.biomedical_concept_property_uid"
-        " FROM biomedical_concept_property bcp"
-        " LEFT JOIN alias_code ac"
-        " ON bcp.code = ac.alias_code_uid AND bcp.soa_id = ac.soa_id"
-        " LEFT JOIN code c"
-        " ON ac.standard_code = c.code_uid AND ac.soa_id = c.soa_id"
-        " WHERE bcp.soa_id = ?"
-        " AND bcp.biomedical_concept_uid = ?"
-        " AND c.code = ?"
-        " LIMIT 1",
-        (soa_id, bc_uid, ncit_code),
+        "INSERT INTO code"
+        " (code_uid, soa_id, code, code_system, code_system_version, decode)"
+        " VALUES (?,?,?,?,?,?)",
+        (
+            code_uid,
+            soa_id,
+            ncit_code,
+            BCP_CODE_SYSTEM,
+            code_system_version,
+            decode,
+        ),
     )
-    row = cur.fetchone()
-    if row:
-        bcp_uid = row[0]
-    else:
-        code_uid = get_next_code_uid(cur, soa_id)
-        cur.execute(
-            "INSERT INTO code"
-            " (code_uid, soa_id, code, code_system,"
-            " code_system_version, decode)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                code_uid,
-                soa_id,
-                ncit_code,
-                BCP_CODE_SYSTEM,
-                _get_latest_bc_package_version(),
-                name,
-            ),
-        )
-        alias_uid = get_next_alias_code_uid(cur, soa_id)
-        cur.execute(
-            "INSERT INTO alias_code"
-            " (alias_code_uid, soa_id, standard_code)"
-            " VALUES (?, ?, ?)",
-            (alias_uid, soa_id, code_uid),
-        )
-        bcp_uid = get_next_biomedical_concept_property_uid(cur, soa_id)
-        cur.execute(
-            "INSERT INTO biomedical_concept_property"
-            " (soa_id, biomedical_concept_uid,"
-            " biomedical_concept_property_uid, name, label,"
-            " isRequired, isEnabled, datatype, code)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                soa_id,
-                bc_uid,
-                bcp_uid,
-                name,
-                name,
-                1,
-                1,
-                datatype,
-                alias_uid,
-            ),
-        )
+    alias_uid = get_next_alias_code_uid(cur, soa_id)
+    cur.execute(
+        "INSERT INTO alias_code (alias_code_uid, soa_id, standard_code) VALUES (?,?,?)",
+        (alias_uid, soa_id, code_uid),
+    )
+    bcp_uid = get_next_biomedical_concept_property_uid(cur, soa_id)
+    cur.execute(
+        "INSERT INTO biomedical_concept_property"
+        " (soa_id, biomedical_concept_uid, biomedical_concept_property_uid,"
+        " name, label, isRequired, isEnabled, datatype, code)"
+        " VALUES (?,?,?,?,?,?,?,?,?)",
+        (
+            soa_id,
+            bc_uid,
+            bcp_uid,
+            name,
+            name,
+            int(is_required),
+            1,
+            datatype,
+            alias_uid,
+        ),
+    )
+    return bcp_uid
 
-    if rc_values:
-        _upsert_response_codes(cur, soa_id, bcp_uid, rc_values, codelist_code)
+
+def _insert_assigned_term_rc(
+    cur,
+    soa_id: int,
+    bcp_uid: str,
+    concept_id: str,
+    value: str,
+    code_system_version: str,
+) -> None:
+    """Insert one ResponseCode from an SDTM variable's assignedTerm.
+
+    Idempotent: skips silently if a RC with the same concept_id already
+    exists for this BCP (guards against concurrent process writes during
+    hot reload).
+    """
+    cur.execute(
+        "SELECT rc.id FROM bcp_response_code rc"
+        " JOIN alias_code ac ON rc.code=ac.alias_code_uid AND rc.soa_id=ac.soa_id"
+        " JOIN code c ON ac.standard_code=c.code_uid AND ac.soa_id=c.soa_id"
+        " WHERE rc.soa_id=? AND rc.biomedical_concept_property_uid=?"
+        " AND c.code=? LIMIT 1",
+        (soa_id, bcp_uid, concept_id),
+    )
+    if cur.fetchone():
+        return
+    code_uid = get_next_code_uid(cur, soa_id)
+    cur.execute(
+        "INSERT INTO code"
+        " (code_uid, soa_id, code, code_system, code_system_version, decode)"
+        " VALUES (?,?,?,?,?,?)",
+        (code_uid, soa_id, concept_id, BCP_CODE_SYSTEM, code_system_version, value),
+    )
+    alias_uid = get_next_alias_code_uid(cur, soa_id)
+    cur.execute(
+        "INSERT INTO alias_code (alias_code_uid, soa_id, standard_code) VALUES (?,?,?)",
+        (alias_uid, soa_id, code_uid),
+    )
+    rc_uid = get_next_response_code_uid(cur, soa_id)
+    cur.execute(
+        "INSERT INTO bcp_response_code"
+        " (soa_id, biomedical_concept_property_uid, response_code_uid,"
+        " name, label, is_enabled, code)"
+        " VALUES (?,?,?,?,?,?,?)",
+        (soa_id, bcp_uid, rc_uid, value, value, 1, alias_uid),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -261,13 +343,19 @@ def _upsert_bcp(
 def populate_biomedical_concept_properties_for_bc(
     soa_id: int, bc_uid: str, concept_code: str
 ) -> None:
-    """Populate BCP + ResponseCode rows for one BC. Idempotent.
+    """Populate BCP + ResponseCode rows for one BC.
 
     Prefers the SDTM specialization ``variables[]`` when available;
     falls back to the generic BC ``dataElementConcepts[]``.
+
+    Always deletes existing rows for this BC before inserting, so the
+    function correctly handles DSS assignment changes.
     """
     data = _get_biomedical_concept_data(concept_code) or {}
-    sdtm = _get_sdtm_specialization_data(concept_code) or {}
+
+    # Look up the DSS href stored by the user via the UI (activity_concept_dss)
+    dss_href = _get_dss_href_for_bc(soa_id, bc_uid)
+    sdtm = _fetch_dss_spec(dss_href) if dss_href else {}
 
     # Build lookup: dataElementConceptId → DEC dict for code resolution
     decs = data.get("dataElementConcepts") or []
@@ -276,12 +364,34 @@ def populate_biomedical_concept_properties_for_bc(
     }
 
     with _soa_lock(soa_id):
-        _populate_bcp_locked(soa_id, bc_uid, decs, dec_by_id, sdtm)
+        _populate_bcp_locked(soa_id, bc_uid, data, decs, dec_by_id, sdtm)
+
+
+def _get_dss_href_for_bc(soa_id: int, bc_uid: str) -> str:
+    """Return the stored DSS href for a BC, or '' if none is associated."""
+    conn = _connect()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT acd.dss_href FROM activity_concept_dss acd"
+            " JOIN activity_concept ac"
+            " ON ac.soa_id = acd.soa_id"
+            " AND ac.activity_id = acd.activity_id"
+            " AND ac.concept_code = acd.concept_code"
+            " WHERE ac.concept_uid = ? AND acd.soa_id = ?"
+            " LIMIT 1",
+            (bc_uid, soa_id),
+        )
+        row = cur.fetchone()
+        return row[0] if row and row[0] else ""
+    finally:
+        conn.close()
 
 
 def _populate_bcp_locked(
     soa_id: int,
     bc_uid: str,
+    data: Dict,
     decs: List[Dict],
     dec_by_id: Dict[str, Dict],
     sdtm: Dict,
@@ -290,59 +400,66 @@ def _populate_bcp_locked(
     conn = _connect()
     cur = conn.cursor()
     try:
+        _delete_bcp_rows(cur, soa_id, bc_uid)
+
         if sdtm and sdtm.get("variables"):
+            pkg_href = sdtm.get("_links", {}).get("parentPackage", {}).get("href", "")
+            version = _version_from_package_href(pkg_href)
+
             for var in sdtm["variables"]:
-                var_name = var.get("name") or var.get("shortName") or ""
+                var_name = var.get("name") or ""
                 if not _include_property(var_name):
                     continue
-                datatype = var.get("dataType") or var.get("datatype") or ""
+                datatype = var.get("dataType") or ""
+                is_req = bool(var.get("mandatoryValue", True))
                 dec_id = var.get("dataElementConceptId")
                 dec = dec_by_id.get(dec_id) if dec_id else None
 
-                if dec:
-                    ncit_code = dec["conceptId"]
-                elif var.get("assignedTerm"):
-                    at = var["assignedTerm"]
-                    ncit_code = at.get("conceptId") or at.get("value") or ""
-                else:
-                    ncit_code = dec_id or ""
-
-                if not ncit_code:
+                if not dec_id or not dec:
                     continue
 
-                codelist_code = None
-                cl = var.get("codelist")
-                if isinstance(cl, dict):
-                    codelist_code = cl.get("conceptId")
-
-                rc_values = var.get("valueList") or []
-                _upsert_bcp(
+                bcp_uid_new = _insert_bcp(
                     cur,
                     soa_id,
                     bc_uid,
-                    ncit_code,
+                    dec["conceptId"],
                     var_name,
                     datatype,
-                    rc_values,
-                    codelist_code,
+                    dec["shortName"],
+                    version,
+                    is_req,
                 )
+
+                at = var.get("assignedTerm") or {}
+                if at.get("conceptId") and at.get("value"):
+                    _insert_assigned_term_rc(
+                        cur,
+                        soa_id,
+                        bcp_uid_new,
+                        at["conceptId"],
+                        at["value"],
+                        version,
+                    )
         else:
+            pkg_href = data.get("_links", {}).get("parentPackage", {}).get("href", "")
+            version = _version_from_package_href(pkg_href)
+
             for dec in decs:
                 ncit_code = dec.get("conceptId") or dec.get("ncitCode") or ""
                 short_name = dec.get("shortName") or ""
                 datatype = dec.get("dataType") or dec.get("datatype") or ""
                 if not ncit_code:
                     continue
-                rc_values = dec.get("exampleSet") or []
-                _upsert_bcp(
+                _insert_bcp(
                     cur,
                     soa_id,
                     bc_uid,
                     ncit_code,
                     short_name,
                     datatype,
-                    rc_values,
-                    None,
+                    short_name,
+                    version,
+                    True,
                 )
 
         conn.commit()
@@ -368,7 +485,6 @@ def populate_biomedical_concept_properties(soa_id: int) -> None:
 
     Delegates to ``populate_biomedical_concept_properties_for_bc`` per
     BC so both the eager and lazy paths share the same logic.
-    Idempotent.
     """
     conn = _connect()
     cur = conn.cursor()
@@ -401,9 +517,8 @@ def _build_response_codes(cur, soa_id: int, bcp_uid: str) -> List[Dict[str, Any]
     """Read bcp_response_code rows for a BCP and return USDM dicts."""
     cur.execute(
         "SELECT rc.response_code_uid, rc.name, rc.label,"
-        " rc.is_enabled, rc.code AS alias_uid,"
-        " c.code_uid, c.code, c.decode,"
-        " c.code_system, c.code_system_version"
+        " rc.is_enabled,"
+        " c.code_uid, c.code, c.decode, c.code_system_version"
         " FROM bcp_response_code rc"
         " LEFT JOIN alias_code ac"
         " ON rc.code = ac.alias_code_uid AND rc.soa_id = ac.soa_id"
@@ -420,11 +535,9 @@ def _build_response_codes(cur, soa_id: int, bcp_uid: str) -> List[Dict[str, Any]
         rc_name,
         rc_label,
         is_enabled,
-        alias_uid,
         code_uid,
         ncit_code,
         decode,
-        _,
         code_system_version,
     ) in cur.fetchall():
         code_dict = None
@@ -434,9 +547,7 @@ def _build_response_codes(cur, soa_id: int, bcp_uid: str) -> List[Dict[str, Any]
                 "extensionAttributes": [],
                 "code": ncit_code or "",
                 "codeSystem": BCP_CODE_SYSTEM,
-                "codeSystemVersion": (
-                    code_system_version or _get_latest_bc_package_version()
-                ),
+                "codeSystemVersion": code_system_version or "",
                 "decode": decode or "",
                 "instanceType": "Code",
             }
@@ -467,11 +578,9 @@ def build_usdm_biomedical_concept_properties(
             " c.decode, c.code_system, c.code_system_version"
             " FROM biomedical_concept_property bcp"
             " INNER JOIN alias_code ac"
-            " ON bcp.code = ac.alias_code_uid"
-            " AND bcp.soa_id = ac.soa_id"
+            " ON bcp.code = ac.alias_code_uid AND bcp.soa_id = ac.soa_id"
             " INNER JOIN code c"
-            " ON ac.standard_code = c.code_uid"
-            " AND ac.soa_id = c.soa_id"
+            " ON ac.standard_code = c.code_uid AND ac.soa_id = c.soa_id"
             " WHERE bcp.soa_id = ?"
             " AND bcp.biomedical_concept_uid = ?"
             " ORDER BY bcp.id",
@@ -515,9 +624,7 @@ def build_usdm_biomedical_concept_properties(
                             "extensionAttributes": [],
                             "code": ncit_code,
                             "codeSystem": BCP_CODE_SYSTEM,
-                            "codeSystemVersion": (
-                                code_system_version or _get_latest_bc_package_version()
-                            ),
+                            "codeSystemVersion": code_system_version or "",
                             "decode": decode,
                             "instanceType": "Code",
                         },
@@ -535,8 +642,7 @@ def build_usdm_biomedical_concept_properties(
 def populate_biomedical_concept_properties_for_all_soas() -> None:
     """Backfill BCP + ResponseCode rows for every BC in every SOA.
 
-    Called once at startup so existing SOAs gain property rows without
-    waiting for a USDM export. Idempotent.
+    Called once at startup. Idempotent (delete-then-insert per BC).
     """
     conn = _connect()
     cur = conn.cursor()
@@ -577,8 +683,7 @@ def build_usdm_biomedical_concept_properties_for_soa(
     try:
         cur.execute(
             "SELECT DISTINCT biomedical_concept_uid"
-            " FROM biomedical_concept"
-            " WHERE soa_id=? ORDER BY id",
+            " FROM biomedical_concept WHERE soa_id=? ORDER BY id",
             (soa_id,),
         )
         bc_uids = [r[0] for r in cur.fetchall()]

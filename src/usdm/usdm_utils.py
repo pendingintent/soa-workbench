@@ -5,9 +5,11 @@ import requests
 import logging
 from urllib.parse import urlparse
 from typing import List, Dict, Optional, Any, Tuple
+
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href
 
+logger = logging.getLogger("usdm.usdm_utils")
 URL_PREFIX = "https://api.library.cdisc.org/api/cosmos/v2/"
 
 
@@ -126,18 +128,34 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
 
 
 # Helper functions for populating biomedical concepts
-@functools.lru_cache(maxsize=128)
-def _fetch_dss_variable_map(dss_href: str) -> Dict[str, List[str]]:
-    """Fetch a DSS href once and return {variable_name: valueList}. Cached per href."""
+@functools.lru_cache(maxsize=256)
+def _fetch_dss_spec(dss_href: str) -> Dict[str, Any]:
+    """Fetch the full SDTM dataset specialization from a stored DSS href.
+
+    Returns the raw API response dict (which contains ``variables[]``,
+    ``_links.parentPackage``, etc.), or ``{}`` on any error.
+    Cached per href for the process lifetime.
+    """
+    if not dss_href:
+        return {}
     try:
         resp = requests.get(dss_href, headers=_build_api_headers(), timeout=15)
         if resp.status_code != 200:
+            logger.warning(
+                "_fetch_dss_spec: %s returned %s", dss_href, resp.status_code
+            )
             return {}
-        data = resp.json()
-        return {v["name"]: v.get("valueList", []) for v in data.get("variables", [])}
+        return resp.json()
     except (requests.RequestException, ValueError) as e:
-        print(f"Error fetching DSS variable map: {e}")
+        logger.warning("_fetch_dss_spec failed for %s: %s", dss_href, e)
         return {}
+
+
+@functools.lru_cache(maxsize=128)
+def _fetch_dss_variable_map(dss_href: str) -> Dict[str, List[str]]:
+    """Fetch a DSS href once and return {variable_name: valueList}. Cached per href."""
+    data = _fetch_dss_spec(dss_href)
+    return {v["name"]: v.get("valueList", []) for v in data.get("variables", [])}
 
 
 @functools.lru_cache(maxsize=256)
@@ -242,12 +260,9 @@ def _absolute_url(href: str) -> str:
 def _get_sdtm_package_specialization_index() -> Dict[str, str]:
     """Return {generic_bc_concept_code: sdtm_spec_full_url}.
 
-    Navigates the SDTM packages API:
-      GET /mdr/specializations/sdtm/packages
-        → latest package
-          → GET {pkg_href} → _links.datasetSpecializations[*]
-            → GET {spec_href} → _links.parentBiomedicalConcept.href
-              → concept_code = last path segment of that href
+    Iterates ALL SDTM packages (not just the latest) so every dataset
+    specialization is indexed, regardless of which package version it
+    first appeared in.  Matches the approach in cdisc_bc_library.py.
 
     Cached for the process lifetime; built lazily on first use.
     """
@@ -258,50 +273,66 @@ def _get_sdtm_package_specialization_index() -> Dict[str, str]:
             timeout=15,
         )
         if resp.status_code != 200:
+            logger.warning(
+                "_get_sdtm_package_specialization_index: packages request returned %s",
+                resp.status_code,
+            )
             return {}
         packages = resp.json().get("_links", {}).get("packages") or []
         if not packages:
+            logger.warning("_get_sdtm_package_specialization_index: no packages found")
             return {}
 
-        def _pkg_date(p: dict) -> tuple:
-            slug = p.get("href", "").rstrip("/").split("/")[-1]
-            parts = slug.replace("sdtmbc", "").split("-")
-            try:
-                return tuple(int(x) for x in parts[-3:])
-            except Exception:
-                return (0, 0, 0)
-
-        latest = max(packages, key=_pkg_date)
-        pkg_resp = requests.get(
-            _absolute_url(latest["href"]),
-            headers=_build_api_headers(),
-            timeout=15,
+        logger.info(
+            "_get_sdtm_package_specialization_index: building index"
+            " from %d SDTM packages",
+            len(packages),
         )
-        if pkg_resp.status_code != 200:
-            return {}
-        specs = pkg_resp.json().get("_links", {}).get("datasetSpecializations") or []
-
         index: Dict[str, str] = {}
-        for spec in specs:
-            spec_href = spec.get("href", "")
-            if not spec_href:
+        for pkg in packages:
+            pkg_href = pkg.get("href", "")
+            if not pkg_href:
                 continue
-            full_url = _absolute_url(spec_href)
-            sr = requests.get(full_url, headers=_build_api_headers(), timeout=15)
-            if sr.status_code != 200:
-                continue
-            parent_href = (
-                sr.json()
-                .get("_links", {})
-                .get("parentBiomedicalConcept", {})
-                .get("href", "")
+            pkg_resp = requests.get(
+                _absolute_url(pkg_href),
+                headers=_build_api_headers(),
+                timeout=15,
             )
-            if parent_href:
-                concept_code = parent_href.rstrip("/").split("/")[-1]
-                index[concept_code] = full_url
+            if pkg_resp.status_code != 200:
+                logger.warning(
+                    "_get_sdtm_package_specialization_index: package %s returned %s",
+                    pkg_href,
+                    pkg_resp.status_code,
+                )
+                continue
+            specs = (
+                pkg_resp.json().get("_links", {}).get("datasetSpecializations") or []
+            )
+            for spec in specs:
+                spec_href = spec.get("href", "")
+                if not spec_href:
+                    continue
+                full_url = _absolute_url(spec_href)
+                sr = requests.get(full_url, headers=_build_api_headers(), timeout=15)
+                if sr.status_code != 200:
+                    continue
+                parent_href = (
+                    sr.json()
+                    .get("_links", {})
+                    .get("parentBiomedicalConcept", {})
+                    .get("href", "")
+                )
+                if parent_href:
+                    concept_code = parent_href.rstrip("/").split("/")[-1]
+                    index[concept_code] = full_url
+
+        logger.info(
+            "_get_sdtm_package_specialization_index: indexed %d BCs",
+            len(index),
+        )
         return index
     except (requests.RequestException, ValueError) as e:
-        print(f"Error building SDTM specialization index: {e}")
+        logger.exception("_get_sdtm_package_specialization_index failed: %s", e)
         return {}
 
 
