@@ -410,7 +410,6 @@ def _populate_bcp_locked(
                 var_name = var.get("name") or ""
                 if not _include_property(var_name):
                     continue
-                datatype = var.get("dataType") or ""
                 is_req = bool(var.get("mandatoryValue", True))
                 dec_id = var.get("dataElementConceptId")
                 dec = dec_by_id.get(dec_id) if dec_id else None
@@ -418,6 +417,7 @@ def _populate_bcp_locked(
                 if not dec_id or not dec:
                     continue
 
+                datatype = dec.get("dataType") or dec.get("datatype") or ""
                 bcp_uid_new = _insert_bcp(
                     cur,
                     soa_id,
