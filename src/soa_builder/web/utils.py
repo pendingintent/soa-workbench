@@ -419,6 +419,70 @@ def get_next_code_uid(cur: Any, soa_id: int) -> str:
     return f"Code_{n}"
 
 
+def get_next_biomedical_concept_property_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique BiomedicalConceptProperty_N for the given SOA.
+
+    Assumes `cur` is a sqlite cursor within an open transaction.
+    """
+    cur.execute(
+        "SELECT biomedical_concept_property_uid FROM"
+        " biomedical_concept_property WHERE soa_id=?"
+        " AND biomedical_concept_property_uid LIKE"
+        " 'BiomedicalConceptProperty_%'",
+        (soa_id,),
+    )
+    existing = [x[0] for x in cur.fetchall() if x[0]]
+    n = 1
+    if existing:
+        try:
+            n = max(int(x.split("_")[1]) for x in existing) + 1
+        except Exception:
+            n = len(existing) + 1
+    return f"BiomedicalConceptProperty_{n}"
+
+
+def get_next_response_code_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique ResponseCode_N for the given SOA.
+
+    Assumes `cur` is a sqlite cursor within an open transaction.
+    """
+    cur.execute(
+        "SELECT response_code_uid FROM bcp_response_code"
+        " WHERE soa_id=?"
+        " AND response_code_uid LIKE 'ResponseCode_%'",
+        (soa_id,),
+    )
+    existing = [x[0] for x in cur.fetchall() if x[0]]
+    n = 1
+    if existing:
+        try:
+            n = max(int(x.split("_")[1]) for x in existing) + 1
+        except Exception:
+            n = len(existing) + 1
+    return f"ResponseCode_{n}"
+
+
+def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique ExtensionAttribute_N for the given SOA.
+
+    Assumes `cur` is a sqlite cursor within an open transaction.
+    """
+    cur.execute(
+        "SELECT extension_attribute_uid FROM activity_concept_dss"
+        " WHERE soa_id=?"
+        " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'",
+        (soa_id,),
+    )
+    existing = [x[0] for x in cur.fetchall() if x[0]]
+    n = 1
+    if existing:
+        try:
+            n = max(int(x.split("_")[1]) for x in existing) + 1
+        except Exception:
+            n = len(existing) + 1
+    return f"ExtensionAttribute_{n}"
+
+
 def get_next_concept_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique BiomedicalConcept_N for the given SOA.
 

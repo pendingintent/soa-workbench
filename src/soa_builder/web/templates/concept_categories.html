@@ -1,45 +1,49 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Biomedical Concept Categories (<span id="conceptTotal">{{ count }}</span>)</h2>
-<p>
-  This list is derived from the CDISC Library API. Each link points to the
-  category's API resource (which lists biomedical concepts in that category).
+<p style="color:#555;font-size:0.9em;">
+  Derived from the CDISC Library API. Each link lists biomedical concepts in that category.
 </p>
-<p>
-  <a href="/ui/concept_categories?force=1">Refresh Categories (bypass cache)</a>
-  {% if force %}<small style="color:#555;">Cache refreshed</small>{% endif %}
-</p>
-<div style="margin:0.5em 0 1em;">
-  <label for="categorySearch"><strong>Search:</strong></label>
-  <input id="categorySearch" type="text" placeholder="Filter categories..." style="width:280px;" oninput="filterCategories()" />
-  <span id="searchCount" style="margin-left:1em;color:#555;"></span>
+
+<div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+  <a href="/" class="am-back-link">&larr; Home</a>
+  <a href="/ui/concept_categories?force=1" class="am-btn am-btn-slate am-btn-sm">&#x21bb; Refresh</a>
+  {% if force %}<small style="color:var(--am-text-mid);">Cache refreshed</small>{% endif %}
+</div>
+
+<hr class="fz-section-divider" />
+
+<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <div class="am-field">
+    <label class="am-field-label" for="categorySearch">Search</label>
+    <input id="categorySearch" type="text" placeholder="Filter categories..."
+           class="fz-version-input" style="width:280px;" oninput="filterCategories()" />
+  </div>
+  <span id="searchCount" style="font-size:0.84em;color:var(--am-text-mid);margin-top:18px;"></span>
 </div>
 
 {% if rows %}
-<table border="1" cellspacing="0" cellpadding="4" id="categoriesTable">
-  <thead>
-      <th style="text-align:left;">Concepts</th>
-      <th style="text-align:left;">Name</th>
-      <th style="text-align:left;">Title</th>
-    </tr>
-  </thead>
-  <tbody>
+<table class="fz-table" id="categoriesTable">
+  <tr class="fz-thead-row">
+    <th>Name</th>
+    <th>Title</th>
+    <th>Concepts</th>
+  </tr>
   {% for r in rows %}
-    <tr>
-      <td>
-        {% if r.name %}
-          <!-- Pass raw name; backend will encode once to avoid double-encoding -->
-          <a href="/ui/concept_categories/view?name={{ r.name }}">View Concepts</a>
-        {% else %}
-          <em>n/a</em>
-        {% endif %}
-      </td>
-      <td>{{ r.name }}</td>
-      <td>{{ r.title }}</td>
-    </tr>
+  <tr>
+    <td>{{ r.name }}</td>
+    <td>{{ r.title }}</td>
+    <td>
+      {% if r.name %}
+      <a href="/ui/concept_categories/view?name={{ r.name }}" class="am-btn am-btn-info am-btn-xs">View Concepts</a>
+      {% else %}<em class="am-no-amendment">n/a</em>{% endif %}
+    </td>
+  </tr>
   {% endfor %}
-  </tbody>
 </table>
+{% else %}
+<p class="fz-no-data">No biomedical concept categories available (empty list).</p>
+{% endif %}
 
 <script>
 function filterCategories(){
@@ -48,24 +52,11 @@ function filterCategories(){
   let visible = 0;
   rows.forEach(tr => {
     const text = tr.innerText.toLowerCase();
-    if(!q || text.indexOf(q) !== -1){
-      tr.style.display = '';
-      visible++;
-    } else {
-      tr.style.display = 'none';
-    }
+    if(!q || text.indexOf(q) !== -1){ tr.style.display=''; visible++; }
+    else { tr.style.display='none'; }
   });
   const sc = document.getElementById('searchCount');
-  if(q){
-    sc.textContent = visible + ' match' + (visible === 1 ? '' : 'es');
-  } else {
-    sc.textContent = '';
-  }
+  sc.textContent = q ? visible + ' match' + (visible===1?'':'es') : '';
 }
 </script>
-{% else %}
-  <p><em>No biomedical concept categories available (empty list).</em></p>
-{% endif %}
-
-<p><a href="/">Return Home</a></p>
 {% endblock %}

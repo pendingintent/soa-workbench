@@ -1,154 +1,147 @@
-<h2>Scheduled Instances for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
-
 {% if not hide_return_link %}
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 {% endif %}
 
-    <div style="margin-bottom:2px;">
-    <form method="post" action="/ui/soa/{{ soa_id }}/instances/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-        <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label><strong>Name *</strong></label>
-            <input name="name" placeholder="Instance Name" required />
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Label</strong></label>
-            <input name="label" placeholder="Label (optional)" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Description</strong></label>
-            <input name="description" placeholder="Description (Optional)" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Next Instance (default condition)</strong></label>
-            <select name="default_condition_uid">
-                <option value="">-- Select Scheduled Instance --</option>
-                {% for name, instance_uid in (instance_options or {}).items() %}
-                    <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Epoch ID</strong></label>
-            <select name="epoch_uid">
-                <option value="">-- Select epoch --</option>
-                {% for name, epoch_uid in (epoch_options or {}).items() %}
-                    <option value="{{ epoch_uid }}">{{ name }}: [{{ epoch_uid }}]</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Timeline Exit ID</strong></label>
-            <input name="timeline_exit_id" placeholder="Timeline Exit ID" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Encounter</strong></label>
-            <select name="encounter_uid">
-                <option value="">-- Select encounter --</option>
-                {% for name, enc_uid in (encounter_options or {}).items() %}
-                    <option value="{{ enc_uid }}">{{ name }}: [{{ enc_uid }}]</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Member of Timeline</strong></label>
-            <select name="member_of_timeline">
-                <option value="">-- Select Timeline --</option>
-                {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
-                    <option value="{{ schedule_timeline_uid }}">{{ name }}: [{{ schedule_timeline_uid }}]</option>
-                {% endfor %}
-            </select>
-        </div>
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Instance</button>
-    </form>
+<div class="fz-create-card fz-create-card-full">
+  <h3>Add Scheduled Activity Instance</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/instances/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Instance name" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Next Instance (default condition)</label>
+      <select name="default_condition_uid" class="fz-version-input">
+        <option value="">-- Select Scheduled Instance --</option>
+        {% for name, instance_uid in (instance_options or {}).items() %}
+        <option value="{{ instance_uid }}">{{ name }}: [{{ instance_uid }}]</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Epoch</label>
+      <select name="epoch_uid" class="fz-version-input">
+        <option value="">-- Select Epoch --</option>
+        {% for name, epoch_uid in (epoch_options or {}).items() %}
+        <option value="{{ epoch_uid }}">{{ name }}: [{{ epoch_uid }}]</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Timeline Exit ID</label>
+      <input name="timeline_exit_id" placeholder="Timeline Exit ID (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Encounter</label>
+      <select name="encounter_uid" class="fz-version-input">
+        <option value="">-- Select Encounter --</option>
+        {% for name, enc_uid in (encounter_options or {}).items() %}
+        <option value="{{ enc_uid }}">{{ name }}: [{{ enc_uid }}]</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Member of Timeline</label>
+      <select name="member_of_timeline" class="fz-version-input">
+        <option value="">-- Select Timeline --</option>
+        {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
+        <option value="{{ schedule_timeline_uid }}">{{ name }}: [{{ schedule_timeline_uid }}]</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Add Instance</button>
+  </form>
 </div>
 
-<table id="instances-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">id</th>
-        <th style="text-align:left;padding:4px;">Order</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Label</th>
-        <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Next Instance (default condition)</th>
-        <th style="text-align:left;padding:4px;">Epoch</th>
-        <th style="text-align:left;padding:4px;">Timeline Exit ID</th>
-        <th style="text-align:left;padding:4px;">Encounter</th>
-        <th style="text-align:left;padding:4px;">Member of Timeline</th>
-        <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-        <th style="text-align:left;padding:4px;">
-            <button type="button"
-                    id="save-instance-order-btn"
-                    data-soa-id="{{ soa_id }}"
-                    style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
-                Save Order
-            </button>
-        </th>
-    </tr>
-    {% for i in instances or [] %}
+<h3 class="fz-section-heading">Scheduled Activity Instances ({{ (instances or [])|length }})</h3>
+
+<table id="instances-table" class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Order</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Next Instance (default condition)</th>
+    <th>Epoch</th>
+    <th>Timeline Exit ID</th>
+    <th>Encounter</th>
+    <th>Member of Timeline</th>
+    <th>Save</th>
+    <th>Delete</th>
+    <th>
+      <button type="button" id="save-instance-order-btn" data-soa-id="{{ soa_id }}"
+              class="am-btn am-btn-info am-btn-sm">
+        Save Order
+      </button>
+    </th>
+  </tr>
+  {% for i in instances or [] %}
   <tr data-instance-id="{{ i.id }}">
     <form method="post" action="/ui/soa/{{ soa_id }}/instances/{{ i.id }}/update">
-      <td style="padding:4px;white-space:nowrap;"><strong>{{ i.instance_uid }}</strong></td>
-      <td style="padding:4px;white-space:nowrap;"><strong>{{ i.order_index }}</strong></td>
-      <td style="padding:4px;"><input name="name" value="{{ i.name or '' }}" placeholder="Name" /></td>
-      <td style="padding:4px;"><input name="label" value="{{ i.label or '' }}" placeholder="Label" /></td>
-      <td style="padding:4px;"><input name="description" value="{{ i.description or '' }}" placeholder="Description" /></td>
-      <td style="padding:4px;">
-        <select name="default_condition_uid">
-            <option value="">-- Select Scheduled Instance --</option>
-              {% for name, instance_uid in (instance_options or {}).items() %}
-                <option value="{{ instance_uid }}" {% if (i.default_condition_uid or '') == instance_uid %}selected{% endif %}>{{ name }}</option>
-            {% endfor %}
+      <td class="fz-td-version"><span class="obj-uid">{{ i.instance_uid }}</span></td>
+      <td class="fz-td-date">{{ i.order_index }}</td>
+      <td><input name="name" value="{{ i.name or '' }}" placeholder="Name" class="am-input-compact" /></td>
+      <td><input name="label" value="{{ i.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ i.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td>
+        <select name="default_condition_uid" class="am-select-compact">
+          <option value="">-- Select Scheduled Instance --</option>
+          {% for name, instance_uid in (instance_options or {}).items() %}
+          <option value="{{ instance_uid }}" {% if (i.default_condition_uid or '') == instance_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
         </select>
       </td>
-      <td style="padding:4px;">
-        <select name="epoch_uid">
-            <option value="">-- Select Epoch --</option>
-            {% for name, epoch_uid in (epoch_options or {}).items() %}
-                <option value="{{ epoch_uid }}" {%if i.epoch_uid == epoch_uid %}selected{% endif %}>{{ name }}</option>
-            {% endfor %}
-        </select>
-    </td>
-      <td style="padding:4px;"><input name="timeline_exit_id" value="{{ i.timeline_exit_id or '' }}" placeholder="Timeline Exit ID" /></td>
-      <td style="padding:4px;">
-        <select name="encounter_uid">
-            <option value="">-- Select Encounter --</option>
-            {% for name, enc_uid in (encounter_options or {}).items() %}
-                <option value="{{ enc_uid }}" {% if i.encounter_uid == enc_uid %}selected{% endif %}>{{ name }}</option>
-            {% endfor %}
+      <td>
+        <select name="epoch_uid" class="am-select-compact">
+          <option value="">-- Select Epoch --</option>
+          {% for name, epoch_uid in (epoch_options or {}).items() %}
+          <option value="{{ epoch_uid }}" {% if i.epoch_uid == epoch_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
         </select>
       </td>
-      <td style="padding: 4px;">
-        <select name="member_of_timeline">
-            <option value="">-- Select Timeline --</option>
-            {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
-                <option value="{{ schedule_timeline_uid }}" {% if (i.member_of_timeline or '') == schedule_timeline_uid %}selected{% endif %}>{{ name }}</option>
-            {% endfor %}
+      <td><input name="timeline_exit_id" value="{{ i.timeline_exit_id or '' }}" placeholder="Timeline Exit ID" class="am-input-compact" /></td>
+      <td>
+        <select name="encounter_uid" class="am-select-compact">
+          <option value="">-- Select Encounter --</option>
+          {% for name, enc_uid in (encounter_options or {}).items() %}
+          <option value="{{ enc_uid }}" {% if i.encounter_uid == enc_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
         </select>
       </td>
-      <td style="padding:4px;">
-        <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
+      <td>
+        <select name="member_of_timeline" class="am-select-compact">
+          <option value="">-- Select Timeline --</option>
+          {% for name, schedule_timeline_uid in (schedule_timelines_options or {}).items() %}
+          <option value="{{ schedule_timeline_uid }}" {% if (i.member_of_timeline or '') == schedule_timeline_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
       </td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
     </form>
-    <td style="padding:4px;">
-      <form method="post" action="/ui/soa/{{ soa_id }}/instances/{{ i.id }}/delete">
-        <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-        Delete
-        </button>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/instances/{{ i.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
       </form>
     </td>
-    <td style="padding:4px;white-space:nowrap;">
-      <button type="button" onclick="moveInstanceRow(this, -1)">↑</button>
-      <button type="button" onclick="moveInstanceRow(this, 1)">↓</button>
+    <td>
+      <button type="button" onclick="moveInstanceRow(this, -1)" class="am-btn am-btn-slate am-btn-xs">↑</button>
+      <button type="button" onclick="moveInstanceRow(this, 1)" class="am-btn am-btn-slate am-btn-xs">↓</button>
     </td>
   </tr>
-    {% else %}
-    <tr><td colspan="13" style="padding:6px;color:#777;">No instances yet.</td></tr>
-    {% endfor %}
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="13">No instances yet.</td></tr>
+  {% endfor %}
 </table>
 
 <script>
@@ -168,17 +161,12 @@ function moveInstanceRow(button, dir) {
     var table = document.getElementById('instances-table');
     if (!table) return;
     var tbody = table.tBodies[0] || table;
-
     if (dir < 0) {
         var prev = row.previousElementSibling;
-        if (prev && prev.querySelector && prev.querySelector('td')) {
-            tbody.insertBefore(row, prev);
-        }
+        if (prev && prev.querySelector && prev.querySelector('td')) { tbody.insertBefore(row, prev); }
     } else {
         var next = row.nextElementSibling;
-        if (next) {
-            tbody.insertBefore(next, row);
-        }
+        if (next) { tbody.insertBefore(next, row); }
     }
 }
 
@@ -187,27 +175,15 @@ function saveInstanceOrder(soaId) {
     var order = [];
     for (var i = 0; i < rows.length; i++) {
         var id = parseInt(rows[i].getAttribute('data-instance-id'), 10);
-        if (!isNaN(id)) {
-            order.push(id);
-        }
+        if (!isNaN(id)) { order.push(id); }
     }
-
     fetch('/soa/' + soaId + '/instances/reorder', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json;charset=UTF-8'
-        },
+        headers: { 'Content-Type': 'application/json;charset=UTF-8' },
         body: JSON.stringify({ order: order })
-    }).then(function (response) {
-        if (response.ok) {
-            window.location.reload();
-            return;
-        }
-        return response.text().then(function (text) {
-            alert('Reorder failed: ' + (text || ('HTTP ' + response.status)));
-        });
-    }).catch(function (error) {
-        alert('Reorder failed: ' + error.message);
-    });
+    }).then(function (r) {
+        if (r.ok) { window.location.reload(); return; }
+        r.text().then(function (t) { alert('Reorder failed: ' + (t || ('HTTP ' + r.status))); });
+    }).catch(function (e) { alert('Reorder failed: ' + e.message); });
 }
 </script>

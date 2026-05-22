@@ -3,157 +3,157 @@
 <h2>Activities for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        &larr; Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
-<div style="margin:4px 0 12px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <form hx-post="/ui/soa/{{ soa_id }}/activities/concepts_refresh" style="display:inline;">
-        <button type="submit" style="background:#455a64;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.9em;">&#x21bb; Refresh Biomedical Concepts</button>
+<div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <form hx-post="/ui/soa/{{ soa_id }}/activities/concepts_refresh" class="am-inline-form">
+    <button type="submit" class="am-btn am-btn-slate">&#x21bb; Refresh Biomedical Concepts</button>
+  </form>
+  <small style="color:#555;">(forces remote re-fetch &amp; cache reset)</small>
+</div>
+
+<hr class="fz-section-divider" />
+
+<div class="fz-create-card fz-create-card-full">
+  <h3>Create Activity</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/activities/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Activity name" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Create Activity</button>
+  </form>
+</div>
+
+<details id="activities-section" open class="collapsible">
+<summary>Activities ({{ activities|length }})</summary>
+
+<table id="activities-table" class="fz-table">
+  <tr class="fz-thead-row">
+    <th title="Unique Activity ID">UID</th>
+    <th title="Activity Name">Name</th>
+    <th title="Activity Label">Label</th>
+    <th title="Activity Description">Description</th>
+    <th title="Save Changes">Save</th>
+    <th title="Biomedical Concepts">Concepts</th>
+    <th title="Data Set Specializations">DSS</th>
+    <th title="Delete Activity">Delete</th>
+    <th title="Save Order">
+      <button type="button" id="save-activity-order-btn" data-soa-id="{{ soa_id }}"
+              class="am-btn am-btn-info am-btn-sm">
+        Save Order
+      </button>
+    </th>
+  </tr>
+  {% for a in activities %}
+  <tr data-activity-id="{{ a.id }}">
+    <form method="post" action="/soa/{{ soa_id }}/activities/{{ a.id }}/update">
+      <td class="fz-td-version"><span class="obj-uid">{{ a.activity_uid }}</span></td>
+      <td><input name="name" value="{{ a.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ a.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ a.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
     </form>
-    <small style="color:#555;">(forces remote re-fetch &amp; cache reset)</small>
-</div>
-
-
-<div style="margin:4px 0 12px 12px">
-    <form method="post" action="/ui/soa/{{ soa_id }}/activities/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Name *</strong></label>
-            <input name="name" placeholder="Activity Name" required />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Label</strong></label>
-            <input name="label" placeholder="Label (optional)" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label><strong>Description</strong></label>
-            <input name="description" placeholder="Description (optional)" />
-        </div>
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Activity</button>
-    </form>
-</div>
-
-<table id="activities-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th title="Unique Activity ID" style="text-align:left;padding:4px;">ID</th>
-        <th title="Activity Name" style="text-align:left;padding:4px;">Name</th>
-        <th title="Activity Label" style="text-align:left;padding:4px;">Label</th>
-        <th title="Activity Description" style="text-align:left;padding:4px;">Description</th>
-        <th title="Save Changes" style="text-align:left;padding:4px;">Save</th>
-        <th title="Biomedical Concepts" style="text-align:left;padding:4px;">Concepts</th>
-        <th title="Data Set Specializations" style="text-align:left;padding:4px;">DSS</th>
-        <th title="Delete Activity" style="text-align:left;padding:4px;">Delete</th>
-        <th title="Save Order" style="text-align:left;padding:4px;">
-            <button type="button"
-                    id="save-activity-order-btn"
-                    data-soa-id="{{ soa_id }}"
-                    style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
-                Save Order
-            </button>
-        </th>
-    </tr>
-    {% for a in activities %}
-    <tr data-activity-id="{{ a.id }}">
-        <form method="post" action="/soa/{{ soa_id }}/activities/{{ a.id }}/update">
-            <td style="padding:4px;white-space:nowrap;"><strong>{{ a.activity_uid }}</strong></td>
-            <td style="padding:4px;"><input name="name" value="{{ a.name }}" required /></td>
-            <td style="padding:4px;"><input name="label" value="{{ a.label or '' }}" placeholder="Label" /></td>
-            <td style="padding:4px;"><input name="description" value="{{ a.description or '' }}" placeholder="Description" /></td>
-            <td style="padding:4px;">
-                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </td>
-        </form>
-        {% set concepts_list = activity_concepts.get(a.id, []) %}
-        {% set selected_list = concepts_list %}
-        {% set selected_codes = concepts_list | map(attribute='code') | list %}
-        {% set selected_surrogate_list = activity_surrogates.get(a.id, []) %}
-        {% set selected_surrogate_uids = selected_surrogate_list | map(attribute='surrogate_uid') | list %}
-        {% set activity_group_uids = concepts_list | selectattr('concept_group_uid', 'defined') | selectattr('concept_group_uid') | map(attribute='concept_group_uid') | unique | list %}
-        {% set activity_id = a.id %}
-        {% include 'concepts_cell.html' %}
-        {% set activity_id = a.id %}
-        {% include 'dss_cell.html' %}
-        <td style="padding:4px;">
-            <form method="post" action="/ui/soa/{{ soa_id }}/activities/{{ a.id }}/delete">
-                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-                Delete
-                </button>
-            </form>
-        </td>
-        <td style="padding:4px;white-space:nowrap;">
-            <button type="button" onclick="moveActivityRow(this, -1)">&uarr;</button>
-            <button type="button" onclick="moveActivityRow(this, 1)">&darr;</button>
-        </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="9" style="padding:6px;color:#777;">No activities yet.</td></tr>
-    {% endfor %}
+    {% set concepts_list = activity_concepts.get(a.id, []) %}
+    {% set selected_list = concepts_list %}
+    {% set selected_codes = concepts_list | map(attribute='code') | list %}
+    {% set selected_surrogate_list = activity_surrogates.get(a.id, []) %}
+    {% set selected_surrogate_uids = selected_surrogate_list | map(attribute='surrogate_uid') | list %}
+    {% set activity_group_uids = concepts_list | selectattr('concept_group_uid', 'defined') | selectattr('concept_group_uid') | map(attribute='concept_group_uid') | unique | list %}
+    {% set activity_id = a.id %}
+    {% include 'concepts_cell.html' %}
+    {% set activity_id = a.id %}
+    {% include 'dss_cell.html' %}
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/activities/{{ a.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+    <td>
+      <button type="button" onclick="moveActivityRow(this, -1)" class="am-btn am-btn-slate am-btn-xs">&uarr;</button>
+      <button type="button" onclick="moveActivityRow(this, 1)" class="am-btn am-btn-slate am-btn-xs">&darr;</button>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="9">No activities yet.</td></tr>
+  {% endfor %}
 </table>
 
-<hr style="margin:24px 0 12px;border-color:#e0e0e0;" />
-<h3 style="margin:0 0 8px;font-size:1em;color:#455a64;">Biomedical Concept Surrogates</h3>
+</details>
+
+<details id="surrogates-section" open class="collapsible">
+<summary>Biomedical Concept Surrogates ({{ surrogates|length }})</summary>
 <p style="font-size:0.85em;color:#666;margin:0 0 10px;">
   Add named placeholders for concepts not yet available in the CDISC Library.
   Once a CDISC Biomedical Concept is assigned, remove the surrogate.
 </p>
 
-<div style="margin:0 0 12px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-  <form method="post" action="/ui/soa/{{ soa_id }}/bc-surrogates/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label style="font-size:0.85em;font-weight:600;">Name *</label>
-      <input name="name" placeholder="e.g. TumorLongestDiameter" required style="font-size:0.85em;" />
+<div class="fz-create-card fz-create-card-full">
+  <h3>Add Surrogate</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/bc-surrogates/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="e.g. TumorLongestDiameter" required class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label style="font-size:0.85em;font-weight:600;">Label</label>
-      <input name="label" placeholder="Display label (optional)" style="font-size:0.85em;" />
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Display label (optional)" class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label style="font-size:0.85em;font-weight:600;">Description</label>
-      <input name="description" placeholder="Description (optional)" style="font-size:0.85em;" />
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label style="font-size:0.85em;font-weight:600;">Reference URL</label>
-      <input name="reference" placeholder="https://..." style="min-width:200px;font-size:0.85em;" />
+    <div class="am-field">
+      <label class="am-field-label">Reference URL</label>
+      <input name="reference" placeholder="https://..." class="fz-version-input" />
     </div>
-    <button style="background:#e65100;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.85em;">Add Surrogate</button>
+    <button type="submit" class="am-btn am-btn-info">Add Surrogate</button>
   </form>
 </div>
 
 {% if surrogates %}
-<table style="width:100%;font-size:0.85em;border-collapse:collapse;margin-bottom:16px;">
-  <tr style="background:#fff3e0;">
-    <th style="text-align:left;padding:4px;">UID</th>
-    <th style="text-align:left;padding:4px;">Name</th>
-    <th style="text-align:left;padding:4px;">Label</th>
-    <th style="text-align:left;padding:4px;">Description</th>
-    <th style="text-align:left;padding:4px;">Reference</th>
-    <th style="text-align:left;padding:4px;">Save</th>
-    <th style="text-align:left;padding:4px;">Delete</th>
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Reference</th>
+    <th>Save</th>
+    <th>Delete</th>
   </tr>
   {% for s in surrogates %}
   <tr>
     <form method="post" action="/ui/soa/{{ soa_id }}/bc-surrogates/{{ s.id }}/update">
-      <td style="padding:4px;white-space:nowrap;"><strong>{{ s.surrogate_uid }}</strong></td>
-      <td style="padding:4px;"><input name="name" value="{{ s.name }}" required style="font-size:0.85em;" /></td>
-      <td style="padding:4px;"><input name="label" value="{{ s.label or '' }}" placeholder="Label" style="font-size:0.85em;" /></td>
-      <td style="padding:4px;"><input name="description" value="{{ s.description or '' }}" placeholder="Description" style="font-size:0.85em;" /></td>
-      <td style="padding:4px;"><input name="reference" value="{{ s.reference or '' }}" placeholder="https://..." style="min-width:160px;font-size:0.85em;" /></td>
-      <td style="padding:4px;">
-        <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">Save</button>
-      </td>
+      <td class="fz-td-version"><span class="obj-uid">{{ s.surrogate_uid }}</span></td>
+      <td><input name="name" value="{{ s.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ s.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ s.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td><input name="reference" value="{{ s.reference or '' }}" placeholder="https://..." class="am-input-compact" /></td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
     </form>
-    <td style="padding:4px;">
-      <form method="post" action="/ui/soa/{{ soa_id }}/bc-surrogates/{{ s.id }}/delete">
-        <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">Delete</button>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/bc-surrogates/{{ s.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
       </form>
     </td>
   </tr>
   {% endfor %}
 </table>
 {% else %}
-<p style="font-size:0.85em;color:#888;">No surrogates defined yet.</p>
+<p class="fz-no-data">No surrogates defined yet.</p>
 {% endif %}
+
+</details>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -172,17 +172,12 @@ function moveActivityRow(button, dir) {
     var table = document.getElementById('activities-table');
     if (!table) return;
     var tbody = table.tBodies[0] || table;
-
     if (dir < 0) {
         var prev = row.previousElementSibling;
-        if (prev && prev.querySelector && prev.querySelector('td')) {
-            tbody.insertBefore(row, prev);
-        }
+        if (prev && prev.querySelector && prev.querySelector('td')) { tbody.insertBefore(row, prev); }
     } else {
         var next = row.nextElementSibling;
-        if (next) {
-            tbody.insertBefore(next, row);
-        }
+        if (next) { tbody.insertBefore(next, row); }
     }
 }
 
@@ -191,24 +186,30 @@ function saveActivityOrder(soaId) {
     var order = [];
     for (var i = 0; i < rows.length; i++) {
         var id = parseInt(rows[i].getAttribute('data-activity-id'), 10);
-        if (!isNaN(id)) {
-            order.push(id);
-        }
+        if (!isNaN(id)) { order.push(id); }
     }
-
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '/soa/' + soaId + '/activities/reorder');
     xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
     xhr.onreadystatechange = function () {
         if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                window.location.reload();
-            } else {
-                alert('Reorder failed: ' + xhr.responseText);
-            }
+            if (xhr.status >= 200 && xhr.status < 300) { window.location.reload(); }
+            else { alert('Reorder failed: ' + xhr.responseText); }
         }
     };
     xhr.send(JSON.stringify({ order: order }));
 }
+
+function persistSection(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('toggle', function () {
+        localStorage.setItem('soa_collapse_' + id, el.open ? '1' : '0');
+    });
+    var saved = localStorage.getItem('soa_collapse_' + id);
+    if (saved === '0') el.open = false;
+}
+persistSection('activities-section');
+persistSection('surrogates-section');
 </script>
 {% endblock %}

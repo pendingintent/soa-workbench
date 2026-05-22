@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Snapshots & Amendments</h2>
+
+<div style="margin-bottom:12px;">
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
+</div>
+
+<div class="fz-create-card">
+  <form hx-post="/ui/soa/{{ soa_id }}/freeze" hx-target="#freeze-feedback" hx-swap="innerHTML">
+    <div class="fz-form-row">
+      <div class="am-field">
+        <label class="am-field-label">Snapshot label</label>
+        <input name="version_label" placeholder="(auto v1, v2, ...)" class="fz-version-input" />
+      </div>
+      <label class="fz-amendment-toggle">
+        <input type="checkbox" title="Check box if snapshot is an amendment" name="is_amendment"  value="1" id="is-amendment-cb"
+          hx-get="/ui/soa/{{ soa_id }}/amendment/form_fields"
+          hx-target="#amendment-fields-wrapper"
+          hx-swap="innerHTML"
+          hx-trigger="change[this.checked]"
+          onchange="if(!this.checked) document.getElementById('amendment-fields-wrapper').innerHTML='';" />
+        Protocol amendment
+      </label>
+      <button type="submit" class="am-btn am-btn-primary">Create</button>
+    </div>
+    <div id="amendment-fields-wrapper"></div>
+  </form>
+  <div id="freeze-feedback" class="fz-feedback"></div>
+</div>
+
+<table id="freezes-table" class="fz-table">
+  <tr class="fz-thead-row">
+    <th title="Version label">Version</th>
+    <th title="Date created (newest first)">Created At</th>
+    <th title="Protocol amendment">Amendment</th>
+    <th title="View snapshot">View</th>
+    <th title="Preview rollback">Rollback Preview</th>
+    <th title="Snapshot JSON">JSON</th>
+    <th title="Delete this frozen version">Delete</th>
+  </tr>
+  {% for f in freezes %}
+  <tr data-freeze-id="{{ f.id }}">
+    <td class="fz-td-version">{{ f.version_label }}</td>
+    <td class="fz-td-date">{{ f.created_at }}</td>
+    <td>
+      {% if f.amendment_uid %}
+      <a href="/ui/soa/{{ soa_id }}/freeze/{{ f.id }}/amendment" class="am-edit-badge">Edit</a>
+      {% else %}
+      <span class="am-no-amendment">—</span>
+      {% endif %}
+    </td>
+    <td>
+      <button hx-get="/ui/soa/{{ soa_id }}/freeze/{{ f.id }}/view" hx-target="#modal-host" hx-swap="innerHTML" class="am-btn am-btn-slate am-btn-sm">View</button>
+    </td>
+    <td>
+      <button hx-get="/ui/soa/{{ soa_id }}/freeze/{{ f.id }}/rollback_preview" hx-target="#modal-host" hx-swap="innerHTML" class="am-btn am-btn-danger am-btn-sm">Rollback Preview</button>
+    </td>
+    <td>
+      <a href="/soa/{{ soa_id }}/freeze/{{ f.id }}" target="_blank" class="am-btn am-btn-slate am-btn-sm">JSON</a>
+    </td>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/freeze/{{ f.id }}/delete" onsubmit="return confirm('Delete frozen version {{ f.version_label }}? This cannot be undone.');" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="7">No versions frozen yet.</td></tr>
+  {% endfor %}
+</table>
+
+{% if freezes and freezes|length >= 2 %}
+<hr class="fz-section-divider" />
+<h3 class="fz-section-heading">Compare Versions</h3>
+<div class="fz-compare-row">
+  <label>Left:</label>
+  <select id="diff-left" name="left">
+    {% for f in freezes %}<option value="{{ f.id }}">{{ f.version_label }}</option>{% endfor %}
+  </select>
+  <label>Right:</label>
+  <select id="diff-right" name="right">
+    {% for f in freezes %}<option value="{{ f.id }}">{{ f.version_label }}</option>{% endfor %}
+  </select>
+  <button hx-get="/ui/soa/{{ soa_id }}/freeze/diff" hx-include="#diff-left,#diff-right" hx-target="#modal-host" hx-swap="innerHTML" class="am-btn am-btn-success">Compare</button>
+</div>
+{% endif %}
+
+<hr class="fz-section-divider" />
+<h3 class="fz-section-heading">Audit Logs</h3>
+<div class="fz-audit-row">
+  <button hx-get="/ui/soa/{{ soa_id }}/rollback_audit" hx-target="#modal-host" hx-swap="innerHTML" class="am-btn am-btn-slate">Rollback Audit Log</button>
+  <a href="/soa/{{ soa_id }}/rollback_audit/export/xlsx" class="am-btn am-btn-info">Rollback Audit XLSX</a>
+</div>
+
+<div id="modal-host"></div>
+{% endblock %}

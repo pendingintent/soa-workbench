@@ -3,101 +3,95 @@
 <h2>Elements for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
-<div style="margin-bottom:12px">
-  <form method="post" action="/ui/soa/{{ soa_id }}/elements/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-    <div style="display:flex;flex-direction:column;gap:2px;">
-        <label><strong>Name *</strong></label>
-        <input name="name" placeholder="Element Name" required />
+<hr class="fz-section-divider" />
+
+<div class="fz-create-card fz-create-card-full">
+  <h3>Create Element</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/elements/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Element name" required class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-        <label><strong>Label</strong></label>
-        <input name="label" placeholder="Element Label (optional)" />
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-        <label><strong>Description</strong></label>
-        <input name="description" placeholder="Element Description (optional)" />
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Transition Start Rule</strong></label>
-      <select name="testrl">
-          <option value="">-- Select START Rule --</option>
-          {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
-          <option value="{{ transition_rule_uid }}">{{ name }}</option>
-          {% endfor %}
+    <div class="am-field">
+      <label class="am-field-label">Transition Start Rule</label>
+      <select name="testrl" class="fz-version-input">
+        <option value="">-- Select START Rule --</option>
+        {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+        <option value="{{ transition_rule_uid }}">{{ name }}</option>
+        {% endfor %}
       </select>
     </div>
-    <div style="display:flex;flex-direction:column;gap:2px;">
-      <label><strong>Transition End Rule</strong></label>
-      <select name="teenrl">
-          <option value="">-- Select END Rule --</option>
-          {% for name, transition_rule_uid  in (transition_rule_options or {}).items() %}
-          <option value="{{ transition_rule_uid }}">{{ name }}</option>
-          {% endfor %}
+    <div class="am-field">
+      <label class="am-field-label">Transition End Rule</label>
+      <select name="teenrl" class="fz-version-input">
+        <option value="">-- Select END Rule --</option>
+        {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+        <option value="{{ transition_rule_uid }}">{{ name }}</option>
+        {% endfor %}
       </select>
     </div>
-    <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Create Element</button>
+    <button type="submit" class="am-btn am-btn-info">Create Element</button>
   </form>
 </div>
 
-<table id="elements-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">id</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Label</th>
-        <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Transition Start Rule</th>
-        <th style="text-align:left;padding:4px;">Transition End Rule</th>
-        <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-    </tr>
-    {% for e in elements %}
-    <tr>
-      <form method="post" action="/ui/soa/{{ soa_id }}/elements/{{ e.id }}/update">
-        <td style="padding:4px;white-space:nowrap;"><strong>{{ e.element_id }}</strong></td>
-          <td style="padding:4px;"><input name="name" value="{{ e.name }}" required /></td>
-          <td style="padding:4px;"><input name="label" value="{{ e.label or '' }}" placeholder="Label" /></td>
-          <td style="padding:4px;"><input name="description" value="{{ e.description or '' }}" placeholder="Description" /></td>
-          <td style="padding:4px;">
-            <select name="testrl">
-              <option value="">-- Select START Rule --</option>
-              {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
-                  <option value="{{ transition_rule_uid }}" {% if (e.testrl or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
-              {% endfor %}
-            </select>
-          </td>
-          <td style="padding:4px;">
-            <select name="teenrl">
-              <option value="">-- Select END Rule --</option>
-              {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
-                  <option value="{{ transition_rule_uid }}" {% if (e.teenrl or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
-              {% endfor %}
-            </select>
-          </td>
-          <td style="padding:4px;">
-            <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-          </td>
-      </form>
-      <td style="padding:4px;">
-        <form method="post" action="/ui/soa/{{ soa_id }}/elements/{{ e.id }}/delete">
-          <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-          Delete
-          </button>
-        </form>
+<h3 class="fz-section-heading">Elements ({{ elements|length }})</h3>
+
+<table id="elements-table" class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Transition Start Rule</th>
+    <th>Transition End Rule</th>
+    <th>Save</th>
+    <th>Delete</th>
+  </tr>
+  {% for e in elements %}
+  <tr>
+    <form method="post" action="/ui/soa/{{ soa_id }}/elements/{{ e.id }}/update">
+      <td class="fz-td-version"><span class="obj-uid">{{ e.element_id }}</span></td>
+      <td><input name="name" value="{{ e.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ e.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ e.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td>
+        <select name="testrl" class="am-select-compact">
+          <option value="">-- Select START Rule --</option>
+          {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+          <option value="{{ transition_rule_uid }}" {% if (e.testrl or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
       </td>
-    </tr>
-    {% else %}
-    <tr>
-      <td colspan="8" style="padding:6px;color:#777;">No elements yet.</td>
-    </tr>
-    {% endfor %}
+      <td>
+        <select name="teenrl" class="am-select-compact">
+          <option value="">-- Select END Rule --</option>
+          {% for name, transition_rule_uid in (transition_rule_options or {}).items() %}
+          <option value="{{ transition_rule_uid }}" {% if (e.teenrl or '') == transition_rule_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
+    </form>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/elements/{{ e.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="8">No elements yet.</td></tr>
+  {% endfor %}
 </table>
-
-
-
 
 {% endblock %}

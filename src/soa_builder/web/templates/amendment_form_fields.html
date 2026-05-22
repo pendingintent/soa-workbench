@@ -1,0 +1,41 @@
+<div id="amendment-inline-fields" class="am-inline-panel">
+  <h4 class="am-panel-title">Protocol Amendment Details</h4>
+  <div class="am-grid-2">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="amendment_name" required class="am-input" placeholder="Amendment name" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Number <span class="am-required">*</span></label>
+      <input name="amendment_number" required class="am-input" placeholder="e.g. 1" />
+    </div>
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Summary <span class="am-required">*</span></label>
+      <textarea name="amendment_summary" required rows="2" class="am-textarea"
+        placeholder="Brief summary of the amendment"></textarea>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="amendment_label" class="am-input" placeholder="Short label (optional)" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="amendment_description" class="am-input" placeholder="Description (optional)" />
+    </div>
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Primary Reason <span class="am-required">*</span></label>
+      <select name="primary_reason_code" required class="am-select"
+        onchange="document.getElementById('primary-other-row').style.display=this.value==='C17649'?'flex':'none';">
+        <option value="" disabled selected>— select reason —</option>
+        {% for code, sv in reason_terms.items()|sort(attribute='1') %}
+        <option value="{{ code }}">{{ sv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div id="primary-other-row" class="am-field am-field-span" style="display:none">
+      <label class="am-field-label">Other Reason <span class="am-required">*</span></label>
+      <input name="primary_reason_other" class="am-input" placeholder="Specify other reason" />
+    </div>
+  </div>
+  <p class="am-hint">Secondary reasons, changes, and impacts can be added after saving.</p>
+</div>

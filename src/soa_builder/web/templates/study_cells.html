@@ -2,82 +2,82 @@
 {% block content %}
 <h2>Study Cells for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
-<div style="margin-bottom: 12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
-</div>
-
 <div style="margin-bottom:12px;">
-    <form method="post" action="/ui/soa/{{ soa_id }}/study_cells/create" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;align-items:start;">
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label for="arm_uid"><strong>Arm</strong></label>
-            <select id="arm_uid" name="arm_uid" required>
-                {% for arm in arms %}
-                    {% if arm.arm_uid %}<option value="{{ arm.arm_uid }}">{{ arm.arm_uid }} — {{ arm.name }}</option>{% endif %}
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;">
-            <label for="epoch_uid"><strong>Epoch</strong></label>
-            <select id="epoch_uid" name="epoch_uid" required>
-                {% for e in epochs %}
-                    {% set val = e.epoch_uid or ('StudyEpoch_' ~ (e.epoch_seq or e.id)) %}
-                    <option value="{{ val }}">{{ val }} — {{ e.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:2px;grid-column:1/-1;">
-            <label for="element_uids"><strong>Elements</strong></label>
-            <select id="element_uids" name="element_uids" multiple size="6" required>
-                {% for el in elements %}
-                    {% if el.element_id %}<option value="{{ el.element_id }}">{{ el.element_id }} — {{ el.name }}</option>{% endif %}
-                {% endfor %}
-            </select>
-            <small>Select one or more elements (Cmd/Ctrl+Click).</small>
-        </div>
-        <div style="grid-column:1/-1;">
-            <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Study Cell(s)</button>
-        </div>
-    </form>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
-<table id="study-cells-table" style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">UID</th>
-        <th style="text-align:left;padding:4px;">Arm</th>
-        <th style="text-align:left;padding:4px;">Epoch</th>
-        <th style="text-align:left;padding:4px;">Element</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-        <th style="text-align:left;padding:4px;">
-            <button type="button"
-                    id="save-study-cell-order-btn"
-                    data-soa-id="{{ soa_id }}"
-                    style="background:#1976d2;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:0.85em;">
-                Save Order
-            </button>
-        </th>
-    </tr>
-    {% for sc in study_cells %}
-    <tr data-study-cell-id="{{ sc.id }}">
-        <td style="padding:4px;">{{ sc.study_cell_uid }}</td>
-        <td style="padding:4px;">{{ sc.arm_name or sc.arm_uid }}</td>
-        <td style="padding:4px;">{{ sc.epoch_name or sc.epoch_uid }}</td>
-        <td style="padding:4px;">{{ sc.element_name or sc.element_uid }}</td>
-        <td style="padding:4px;">
-            <form method="post" action="/ui/soa/{{ soa_id }}/study_cells/{{ sc.id }}/delete" style="display:inline;">
-                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Delete</button>
-            </form>
-        </td>
-        <td style="padding:4px;white-space:nowrap;">
-            <button type="button" onclick="moveStudyCellRow(this, -1)">↑</button>
-            <button type="button" onclick="moveStudyCellRow(this, 1)">↓</button>
-        </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="6" style="padding:6px;color:#777;">No study cells yet.</td></tr>
-    {% endfor %}
+<hr class="fz-section-divider" />
+
+<div class="fz-create-card fz-create-card-full">
+  <h3>Add Study Cell</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/study_cells/create" class="fz-form-row">
+    <div class="am-field">
+      <label class="am-field-label" for="arm_uid">Arm <span class="am-required">*</span></label>
+      <select id="arm_uid" name="arm_uid" required class="fz-version-input">
+        {% for arm in arms %}
+        {% if arm.arm_uid %}<option value="{{ arm.arm_uid }}">{{ arm.arm_uid }} — {{ arm.name }}</option>{% endif %}
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label" for="epoch_uid">Epoch <span class="am-required">*</span></label>
+      <select id="epoch_uid" name="epoch_uid" required class="fz-version-input">
+        {% for e in epochs %}
+        {% set val = e.epoch_uid or ('StudyEpoch_' ~ (e.epoch_seq or e.id)) %}
+        <option value="{{ val }}">{{ val }} — {{ e.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field am-field-full">
+      <label class="am-field-label" for="element_uids">Elements <span class="am-required">*</span></label>
+      <select id="element_uids" name="element_uids" multiple size="6" required class="fz-version-input">
+        {% for el in elements %}
+        {% if el.element_id %}<option value="{{ el.element_id }}">{{ el.element_id }} — {{ el.name }}</option>{% endif %}
+        {% endfor %}
+      </select>
+      <small class="am-hint">Select one or more elements (Cmd/Ctrl+Click).</small>
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Add Study Cell(s)</button>
+  </form>
+</div>
+
+<h3 class="fz-section-heading">Study Cells ({{ study_cells|length }})</h3>
+
+<table id="study-cells-table" class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Arm</th>
+    <th>Epoch</th>
+    <th>Element</th>
+    <th>Delete</th>
+    <th>
+      <button type="button" id="save-study-cell-order-btn" data-soa-id="{{ soa_id }}"
+              class="am-btn am-btn-info am-btn-sm">
+        Save Order
+      </button>
+    </th>
+  </tr>
+  {% for sc in study_cells %}
+  <tr data-study-cell-id="{{ sc.id }}">
+    <td class="fz-td-version"><span class="obj-uid">{{ sc.study_cell_uid }}</span></td>
+    <td>{{ sc.arm_name or sc.arm_uid }}</td>
+    <td>{{ sc.epoch_name or sc.epoch_uid }}</td>
+    <td>{{ sc.element_name or sc.element_uid }}</td>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/study_cells/{{ sc.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+    <td>
+      <button type="button" onclick="moveStudyCellRow(this, -1)" class="am-btn am-btn-slate am-btn-xs">↑</button>
+      <button type="button" onclick="moveStudyCellRow(this, 1)" class="am-btn am-btn-slate am-btn-xs">↓</button>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="6">No study cells yet.</td></tr>
+  {% endfor %}
 </table>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var btn = document.getElementById('save-study-cell-order-btn');

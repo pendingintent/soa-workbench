@@ -1,0 +1,34 @@
+<div id="secondary-reasons-section">
+  <table class="am-data-table">
+    {% for r in secondary_reasons %}
+    <tr>
+      <td>{{ reason_terms.get(r.code, r.code) }}</td>
+      <td class="am-td-muted">{{ r.other_reason or '' }}</td>
+      <td class="am-td-right">
+        <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/reason/{{ r.id }}/delete"
+              hx-target="#secondary-reasons-section" hx-swap="outerHTML" class="am-inline-form">
+          <button type="submit" class="am-btn am-btn-danger am-btn-xs"
+            onclick="return confirm('Remove this reason?')">×</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="am-empty-row"><td colspan="3">No secondary reasons added.</td></tr>
+    {% endfor %}
+  </table>
+  <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/reasons/add"
+        hx-target="#secondary-reasons-section" hx-swap="outerHTML"
+        class="am-add-form">
+    <select name="code" required class="am-select"
+      onchange="this.closest('form').querySelector('.other-reason-box').style.display=this.value==='C17649'?'flex':'none';">
+      <option value="" disabled selected>— select reason —</option>
+      {% for code, sv in reason_terms.items()|sort(attribute='1') %}
+      <option value="{{ code }}">{{ sv }}</option>
+      {% endfor %}
+    </select>
+    <div class="other-reason-box am-field" style="display:none">
+      <input name="other_reason" class="am-input" placeholder="Specify other reason" />
+    </div>
+    <button type="submit" class="am-btn am-btn-primary am-btn-sm">+ Add</button>
+  </form>
+</div>

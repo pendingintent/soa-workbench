@@ -5,9 +5,11 @@ import requests
 import logging
 from urllib.parse import urlparse
 from typing import List, Dict, Optional, Any, Tuple
+
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href
 
+logger = logging.getLogger("usdm.usdm_utils")
 URL_PREFIX = "https://api.library.cdisc.org/api/cosmos/v2/"
 
 
@@ -126,18 +128,34 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
 
 
 # Helper functions for populating biomedical concepts
-@functools.lru_cache(maxsize=128)
-def _fetch_dss_variable_map(dss_href: str) -> Dict[str, List[str]]:
-    """Fetch a DSS href once and return {variable_name: valueList}. Cached per href."""
+@functools.lru_cache(maxsize=256)
+def _fetch_dss_spec(dss_href: str) -> Dict[str, Any]:
+    """Fetch the full SDTM dataset specialization from a stored DSS href.
+
+    Returns the raw API response dict (which contains ``variables[]``,
+    ``_links.parentPackage``, etc.), or ``{}`` on any error.
+    Cached per href for the process lifetime.
+    """
+    if not dss_href:
+        return {}
     try:
         resp = requests.get(dss_href, headers=_build_api_headers(), timeout=15)
         if resp.status_code != 200:
+            logger.warning(
+                "_fetch_dss_spec: %s returned %s", dss_href, resp.status_code
+            )
             return {}
-        data = resp.json()
-        return {v["name"]: v.get("valueList", []) for v in data.get("variables", [])}
+        return resp.json()
     except (requests.RequestException, ValueError) as e:
-        print(f"Error fetching DSS variable map: {e}")
+        logger.warning("_fetch_dss_spec failed for %s: %s", dss_href, e)
         return {}
+
+
+@functools.lru_cache(maxsize=128)
+def _fetch_dss_variable_map(dss_href: str) -> Dict[str, List[str]]:
+    """Fetch a DSS href once and return {variable_name: valueList}. Cached per href."""
+    data = _fetch_dss_spec(dss_href)
+    return {v["name"]: v.get("valueList", []) for v in data.get("variables", [])}
 
 
 @functools.lru_cache(maxsize=256)
@@ -164,6 +182,60 @@ def _get_dss_response_codes(
     return _fetch_dss_variable_map(row[0]).get(variable_name, [])
 
 
+@functools.lru_cache(maxsize=1)
+def _get_latest_bc_package_version() -> str:
+    """Return the latest CDISC BC package date string (e.g. '2024-09-27').
+
+    Used as ``codeSystemVersion`` on BiomedicalConceptProperty codes.
+    Falls back to '' on any error.
+    """
+    url = URL_PREFIX + "mdr/bc/packages"
+    try:
+        resp = requests.get(url, headers=_build_api_headers(), timeout=15)
+        if resp.status_code != 200:
+            return ""
+        payload = resp.json() or {}
+    except (requests.RequestException, ValueError):
+        return ""
+
+    packages: list = []
+    if isinstance(payload, list):
+        packages = payload
+    elif isinstance(payload, dict):
+        packages = (
+            payload.get("_links", {}).get("packages")
+            or payload.get("packages")
+            or payload.get("_embedded", {}).get("packages")
+            or payload.get("items")
+            or []
+        )
+
+    latest_date = (0, 0, 0)
+    latest_version = ""
+    for pkg in packages:
+        if not isinstance(pkg, dict):
+            continue
+        href = (
+            pkg.get("href")
+            or (pkg.get("_links") or {}).get("self", {}).get("href", "")
+            or ""
+        )
+        # href like /mdr/bc/packages/bc2024-09-27
+        slug = href.rstrip("/").split("/")[-1]
+        # slug like bc2024-09-27
+        parts = slug.lstrip("bc").split("-")
+        if len(parts) == 3:
+            try:
+                date_tuple = (int(parts[0]), int(parts[1]), int(parts[2]))
+                version = "-".join(parts)
+                if date_tuple > latest_date:
+                    latest_date = date_tuple
+                    latest_version = version
+            except ValueError:
+                continue
+    return latest_version
+
+
 @functools.lru_cache(maxsize=256)
 def _get_biomedical_concept_data(concept_code: str) -> Dict[str, Any]:
     """Fetch the full CDISC Biomedical Concept API response. Cached per code."""
@@ -178,14 +250,121 @@ def _get_biomedical_concept_data(concept_code: str) -> Dict[str, Any]:
         return {}
 
 
+def _absolute_url(href: str) -> str:
+    if href.startswith("http"):
+        return href
+    return "https://api.library.cdisc.org/api/cosmos/v2" + href
+
+
+@functools.lru_cache(maxsize=1)
+def _get_sdtm_package_specialization_index() -> Dict[str, str]:
+    """Return {generic_bc_concept_code: sdtm_spec_full_url}.
+
+    Iterates ALL SDTM packages (not just the latest) so every dataset
+    specialization is indexed, regardless of which package version it
+    first appeared in.  Matches the approach in cdisc_bc_library.py.
+
+    Cached for the process lifetime; built lazily on first use.
+    """
+    try:
+        resp = requests.get(
+            URL_PREFIX + "mdr/specializations/sdtm/packages",
+            headers=_build_api_headers(),
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            logger.warning(
+                "_get_sdtm_package_specialization_index: packages request returned %s",
+                resp.status_code,
+            )
+            return {}
+        packages = resp.json().get("_links", {}).get("packages") or []
+        if not packages:
+            logger.warning("_get_sdtm_package_specialization_index: no packages found")
+            return {}
+
+        logger.info(
+            "_get_sdtm_package_specialization_index: building index"
+            " from %d SDTM packages",
+            len(packages),
+        )
+        index: Dict[str, str] = {}
+        for pkg in packages:
+            pkg_href = pkg.get("href", "")
+            if not pkg_href:
+                continue
+            pkg_resp = requests.get(
+                _absolute_url(pkg_href),
+                headers=_build_api_headers(),
+                timeout=15,
+            )
+            if pkg_resp.status_code != 200:
+                logger.warning(
+                    "_get_sdtm_package_specialization_index: package %s returned %s",
+                    pkg_href,
+                    pkg_resp.status_code,
+                )
+                continue
+            specs = (
+                pkg_resp.json().get("_links", {}).get("datasetSpecializations") or []
+            )
+            for spec in specs:
+                spec_href = spec.get("href", "")
+                if not spec_href:
+                    continue
+                full_url = _absolute_url(spec_href)
+                sr = requests.get(full_url, headers=_build_api_headers(), timeout=15)
+                if sr.status_code != 200:
+                    continue
+                parent_href = (
+                    sr.json()
+                    .get("_links", {})
+                    .get("parentBiomedicalConcept", {})
+                    .get("href", "")
+                )
+                if parent_href:
+                    concept_code = parent_href.rstrip("/").split("/")[-1]
+                    index[concept_code] = full_url
+
+        logger.info(
+            "_get_sdtm_package_specialization_index: indexed %d BCs",
+            len(index),
+        )
+        return index
+    except (requests.RequestException, ValueError) as e:
+        logger.exception("_get_sdtm_package_specialization_index failed: %s", e)
+        return {}
+
+
+@functools.lru_cache(maxsize=256)
+def _get_sdtm_specialization_data(concept_code: str) -> Dict[str, Any]:
+    """Return the SDTM dataset specialization for a BC, or {} if none.
+
+    Uses the package-navigation index to find the spec URL, then fetches
+    the full specialization dict (which contains ``variables[]``).
+    """
+    spec_url = _get_sdtm_package_specialization_index().get(concept_code)
+    if not spec_url:
+        return {}
+    try:
+        resp = requests.get(spec_url, headers=_build_api_headers(), timeout=15)
+        if resp.status_code == 200:
+            return resp.json()
+    except (requests.RequestException, ValueError):
+        pass
+    return {}
+
+
 def _get_biomedical_concept_synonyms(concept_code: str) -> List[str]:
     """Return synonyms from the BC API response."""
     return _get_biomedical_concept_data(concept_code).get("synonyms", []) or []
 
 
 def _get_biomedical_concept_reference(concept_code: str) -> str:
-    """Return the root 'href' from the BC API response, or '' if unavailable."""
-    return _get_biomedical_concept_data(concept_code).get("href", "") or ""
+    """Return the CDISC Library self-link for a BC (e.g.
+    '/mdr/bc/biomedicalconcepts/C105585'), or '' if unavailable."""
+    data = _get_biomedical_concept_data(concept_code)
+    return (data.get("_links") or {}).get("self", {}).get("href", "") or ""
 
 
 # Helper for Activities
@@ -392,6 +571,64 @@ def _get_code_tuple(soa_id: int, code_uid: str) -> Tuple[List[str], List[str]]:
     code = [r[1] for r in rows]
 
     return code, code_system
+
+
+def _build_level_code(
+    soa_id: int, code_uid: Optional[str], kind: str
+) -> Dict[str, Any]:
+    """
+    Return a USDM Code-Output dict for an Objective/Endpoint level.
+
+    Falls back to an empty Code shell when the association is missing.
+    The submission value stored in code_association.code is reused for
+    both code and decode (the level codelists C188725/C188726 store the
+    submission value, not a C-code).
+    """
+    if not code_uid:
+        return {
+            "id": f"Code_{kind}Level_unknown",
+            "extensionAttributes": [],
+            "code": "",
+            "codeSystem": "",
+            "codeSystemVersion": "",
+            "decode": "",
+            "instanceType": "Code",
+        }
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT codelist_table, codelist_code, code "
+        "FROM code_association WHERE soa_id=? AND code_uid=? LIMIT 1",
+        (soa_id, code_uid),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return {
+            "id": code_uid,
+            "extensionAttributes": [],
+            "code": "",
+            "codeSystem": "",
+            "codeSystemVersion": "",
+            "decode": "",
+            "instanceType": "Code",
+        }
+    codelist_table, _codelist_code, code = row
+    version = ""
+    slug = (codelist_table or "").rstrip("/").split("/")[-1]
+    if slug:
+        parts = slug.split("-")
+        if len(parts) >= 4:
+            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+    return {
+        "id": code_uid,
+        "extensionAttributes": [],
+        "code": code or "",
+        "codeSystem": "http://www.cdisc.org",
+        "codeSystemVersion": version,
+        "decode": code or "",
+        "instanceType": "Code",
+    }
 
 
 # Helper functions for study timing

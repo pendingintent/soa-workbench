@@ -49,8 +49,16 @@ Thumbs.db
 # SQLite / local DBs
 *.db
 *.db-shm
+*.db-shm.*
 *.db-wal
+*.db-wal.*
 *.sqlite
+*.db.backup.*
+
+# Azure deployment
+*.publish-settings
+*.PublishSettings
+.azure/
 
 # Environment variables / secrets (add if created)
 .env
@@ -97,6 +105,7 @@ docs/~*
 files/~*
 output/*.xlsx
 output/*.svg
+output/*.json
 SOA Workbench Wishlist.docx
 NCT01750580_limited.json
 CLAUDE.md
@@ -108,5 +117,6 @@ files/pilot_LZZT_narrative_2026MAR10.json
 .help
 files/NCT01797120.pdf
 .mcp.json
+docs/*.md
 
 # End of file

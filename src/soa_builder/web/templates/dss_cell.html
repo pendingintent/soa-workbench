@@ -37,24 +37,24 @@
                   hx-swap="innerHTML">
             <option value="" disabled selected>Select DSS...</option>
           </select>
-          <button type="submit" style="font-size:0.7em;flex-shrink:0;">+</button>
+          <button type="submit" class="cell-add-btn" style="flex-shrink:0;">+</button>
         </form>
 
-        <!-- Assigned DSS rows -->
+        <!-- Assigned DSS rows — one full-width row per specialisation -->
         {% for assigned in ac.assigned_dss %}
-          <div style="display:flex;align-items:center;gap:4px;margin:2px 0 2px 4px;font-size:0.8em;">
+          <div style="display:flex;align-items:center;gap:4px;margin:3px 0 3px 4px;
+                      background:#eef;border-radius:3px;padding:3px 6px;font-size:0.8em;">
             <span title="{{ assigned.dss_title }}"
-                  style="background:#eef;color:#224;padding:2px 5px;border-radius:3px;
-                         min-width:120px;max-width:120px;overflow:hidden;
-                         text-overflow:ellipsis;white-space:nowrap;">{{ assigned.dss_display }}</span>
+                  style="flex:1;overflow:hidden;text-overflow:ellipsis;
+                         white-space:nowrap;color:#224;">{{ assigned.dss_display }}</span>
+            <a href="/ui/soa/{{ soa_id }}/dss/detail?href={{ assigned.dss_href|urlencode }}&title={{ assigned.dss_title|urlencode }}"
+               style="font-size:0.85em;white-space:nowrap;color:#1565c0;">details</a>
             <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/dss/{{ assigned.id }}/delete"
                   hx-target="#dss-cell-{{ activity_id }}"
                   hx-swap="outerHTML"
-                  style="margin:0;display:inline;">
-              <button type="submit" style="font-size:0.7em;" title="Remove DSS">&minus;</button>
+                  style="margin:0;display:inline;flex-shrink:0;">
+              <button type="submit" class="cell-add-btn" title="Remove DSS">&minus;</button>
             </form>
-            <a href="/ui/soa/{{ soa_id }}/dss/detail?href={{ assigned.dss_href|urlencode }}&title={{ assigned.dss_title|urlencode }}"
-               style="font-size:0.7em;">properties</a>
           </div>
         {% endfor %}
         <hr style="border:none;border-top:1px solid #dde;margin:4px 0;">

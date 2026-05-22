@@ -1,3 +1,4 @@
+import html
 import json
 import logging
 
@@ -244,7 +245,8 @@ def ui_add_activity(
     redirect_url = f"/ui/soa/{int(soa_id)}/activities"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
-    return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
+    safe_redirect_url = html.escape(redirect_url)
+    return HTMLResponse(f"<script>window.location='{safe_redirect_url}';</script>")
 
 
 @router.patch("/activities/{activity_id}", response_class=JSONResponse)
@@ -343,7 +345,8 @@ def ui_update_activity(
     redirect_url = f"/ui/soa/{int(soa_id)}/activities"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
-    return HTMLResponse(f"<script>window.location='{redirect_url}';</script>")
+    safe_redirect_url = html.escape(redirect_url)
+    return HTMLResponse(f"<script>window.location='{safe_redirect_url}';</script>")
 
 
 @router.post("/activities/reorder", response_class=JSONResponse)
@@ -507,6 +510,7 @@ def set_activity_concepts(
         _enrich_biomedical_concept_bg,
         _enrich_code_bg,
         _cleanup_orphaned_concept_rows,
+        _populate_biomedical_concept_properties_bg,
     )
 
     inserted = 0
@@ -563,6 +567,12 @@ def set_activity_concepts(
         _upsert_biomedical_concept(cur, soa_id, concept_uid, title, ccode)
         background_tasks.add_task(_enrich_biomedical_concept_bg, ccode, soa_id)
         background_tasks.add_task(_enrich_code_bg, ccode, soa_id)
+        background_tasks.add_task(
+            _populate_biomedical_concept_properties_bg,
+            ccode,
+            concept_uid,
+            soa_id,
+        )
         inserted += 1
     _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
     conn.commit()

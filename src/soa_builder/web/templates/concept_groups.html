@@ -1,213 +1,205 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Biomedical Concept Groups</h2>
-<p style="color:#555;font-size:0.9em;">
+<p style="font-size:0.9em;color:var(--am-text-mid);">
   Groups are global (not SOA-specific) and can be assigned to activities in any SoA.
   Concepts added to a group via an activity assignment can be individually removed from
   that activity without affecting the group definition.
 </p>
 
-<!-- Create new group -->
-<details style="margin-bottom:1.5em;">
-  <summary style="cursor:pointer;font-weight:600;color:#1976d2;">+ New Group</summary>
-  <form action="/ui/concept-groups/create" method="post"
-        style="margin-top:0.75em;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;">
-    <div>
-      <label style="font-size:0.85em;display:block;">Name *</label>
-      <input type="text" name="name" required style="width:180px;" />
+<div style="margin-bottom:12px;">
+  <a href="/" class="am-back-link">&larr; Home</a>
+</div>
+
+<hr class="fz-section-divider" />
+
+<div class="fz-create-card fz-create-card-full">
+  <h3>New Group</h3>
+  <form action="/ui/concept-groups/create" method="post" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input type="text" name="name" required class="fz-version-input" />
     </div>
-    <div>
-      <label style="font-size:0.85em;display:block;">Label</label>
-      <input type="text" name="label" style="width:180px;" />
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input type="text" name="label" class="fz-version-input" />
     </div>
-    <div>
-      <label style="font-size:0.85em;display:block;">Description</label>
-      <input type="text" name="description" style="width:260px;" />
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input type="text" name="description" class="fz-version-input" />
     </div>
     {% if groups %}
-    <div>
-      <label style="font-size:0.85em;display:block;">Copy concepts from</label>
-      <select name="copy_from_group_id" style="width:200px;font-size:0.85em;">
+    <div class="am-field">
+      <label class="am-field-label">Copy concepts from</label>
+      <select name="copy_from_group_id" class="fz-version-input">
         <option value="">— none —</option>
         {% for g in groups %}
-          <option value="{{ g.id }}">{{ g.name }}{% if g.label %} ({{ g.label }}){% endif %}</option>
+        <option value="{{ g.id }}">{{ g.name }}{% if g.label %} ({{ g.label }}){% endif %}</option>
         {% endfor %}
       </select>
     </div>
     {% endif %}
-    <button type="submit" class="small-btn">Create</button>
+    <button type="submit" class="am-btn am-btn-info">Create Group</button>
   </form>
-</details>
+</div>
+
+<h3 class="fz-section-heading">Groups ({{ groups|length }})</h3>
 
 {% if not groups %}
-  <p style="color:#888;">No concept groups defined yet.</p>
+<p class="fz-no-data">No concept groups defined yet.</p>
 {% endif %}
 
 {% for g in groups %}
-<div style="border:1px solid #ccc;border-radius:5px;padding:1em;margin-bottom:1.2em;">
-  <div style="display:flex;align-items:baseline;gap:1em;flex-wrap:wrap;">
-    <strong style="font-size:1em;cursor:pointer;color:#1976d2;"
-            onclick="toggleGroupBody('body-{{ g.id }}', 'arrow-{{ g.id }}')"
-            title="Click to expand / collapse">
-      <span id="arrow-{{ g.id }}" style="font-size:0.75em;margin-right:4px;">▸</span>{{ g.name }}
-    </strong>
-    {% if g.label %}<span style="color:#555;font-size:0.85em;">{{ g.label }}</span>{% endif %}
-    <code style="font-size:0.75em;color:#888;">{{ g.concept_group_uid }}</code>
-    <span style="font-size:0.8em;color:#888;">{{ g.concepts | length }} concept(s)</span>
+<div class="am-change-card" style="margin-bottom:10px;">
+
+  <div class="am-change-summary" style="cursor:default;">
+    <span class="am-change-uid">{{ g.concept_group_uid }}</span>
+    <span class="am-change-name"
+          style="cursor:pointer;color:var(--am-info);"
+          onclick="toggleGroupBody('body-{{ g.id }}', 'arrow-{{ g.id }}')"
+          title="Click to expand / collapse">
+      <span id="arrow-{{ g.id }}" style="font-size:0.7em;margin-right:3px;">▸</span>{{ g.name }}
+      {% if g.label %}<span style="font-weight:400;color:var(--am-text-mid);font-size:0.9em;"> — {{ g.label }}</span>{% endif %}
+    </span>
+    <span style="font-size:0.8em;color:var(--am-text-muted);">{{ g.concepts|length }} concept(s)</span>
     <span style="margin-left:auto;display:flex;gap:6px;">
-      <!-- Edit group metadata -->
-      <button onclick="toggleEdit('edit-{{ g.id }}')"
-              style="font-size:0.8em;background:#455a64;color:#fff;border:none;padding:2px 8px;cursor:pointer;border-radius:3px;">
-        Edit
-      </button>
-      <!-- Delete group -->
-      <form action="/ui/concept-groups/{{ g.id }}/delete" method="post" style="margin:0;"
+      <button onclick="toggleEdit('edit-{{ g.id }}')" class="am-btn am-btn-slate am-btn-xs">Edit</button>
+      <form action="/ui/concept-groups/{{ g.id }}/delete" method="post" class="am-inline-form"
             onsubmit="return confirm('Delete group \'{{ g.name }}\'? This will also remove it from all activities.');">
-        <button type="submit"
-                style="font-size:0.8em;background:#c62828;color:#fff;border:none;padding:2px 8px;cursor:pointer;border-radius:3px;">
-          Delete
-        </button>
+        <button type="submit" class="am-btn am-btn-danger am-btn-xs">Delete</button>
       </form>
     </span>
   </div>
 
-  <!-- Collapsible body -->
-  <div id="body-{{ g.id }}" style="display:none;">
+  <div id="body-{{ g.id }}" style="display:none;padding:10px 14px;">
 
-  {% if g.description %}
-    <div style="color:#666;font-size:0.85em;margin-top:4px;">{{ g.description }}</div>
-  {% endif %}
+    {% if g.description %}
+    <p style="color:var(--am-text-mid);font-size:0.85em;margin:0 0 8px;">{{ g.description }}</p>
+    {% endif %}
 
-  <!-- Edit form (hidden by default) -->
-  <div id="edit-{{ g.id }}" style="display:none;margin-top:0.75em;border-top:1px solid #eee;padding-top:0.75em;">
-    <form action="/ui/concept-groups/{{ g.id }}/update" method="post"
-          style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;">
-      <div>
-        <label style="font-size:0.85em;display:block;">Name *</label>
-        <input type="text" name="name" value="{{ g.name }}" required style="width:180px;" />
-      </div>
-      <div>
-        <label style="font-size:0.85em;display:block;">Label</label>
-        <input type="text" name="label" value="{{ g.label or '' }}" style="width:180px;" />
-      </div>
-      <div>
-        <label style="font-size:0.85em;display:block;">Description</label>
-        <input type="text" name="description" value="{{ g.description or '' }}" style="width:260px;" />
-      </div>
-      <button type="submit" class="small-btn">Save</button>
-      <button type="button" onclick="toggleEdit('edit-{{ g.id }}')"
-              style="font-size:0.85em;background:#eee;border:1px solid #ccc;padding:2px 8px;cursor:pointer;border-radius:3px;">
-        Cancel
-      </button>
-    </form>
-  </div>
+    <!-- Edit form -->
+    <div id="edit-{{ g.id }}" style="display:none;margin-bottom:10px;border-bottom:1px solid var(--am-border);padding-bottom:10px;">
+      <form action="/ui/concept-groups/{{ g.id }}/update" method="post" class="fz-form-2row">
+        <div class="am-field">
+          <label class="am-field-label">Name <span class="am-required">*</span></label>
+          <input type="text" name="name" value="{{ g.name }}" required class="am-input-compact" />
+        </div>
+        <div class="am-field">
+          <label class="am-field-label">Label</label>
+          <input type="text" name="label" value="{{ g.label or '' }}" class="am-input-compact" />
+        </div>
+        <div class="am-field">
+          <label class="am-field-label">Description</label>
+          <input type="text" name="description" value="{{ g.description or '' }}" class="am-input-compact" />
+        </div>
+        <button type="submit" class="am-btn am-btn-slate am-btn-sm" style="grid-row:2;align-self:center;">Save</button>
+        <button type="button" onclick="toggleEdit('edit-{{ g.id }}')" class="am-btn am-btn-slate am-btn-sm" style="grid-row:2;align-self:center;">Cancel</button>
+      </form>
+    </div>
 
-  <!-- Member concepts list (alphabetical) -->
-  <div style="margin-top:0.75em;">
-    {% if g.concepts %}
+    <!-- Member concepts -->
+    <div style="margin-bottom:8px;">
+      <h5 class="am-sections-header">Concepts</h5>
+      {% if g.concepts %}
       <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px;">
         {% for c in g.concepts %}
-          <div style="display:flex;align-items:center;gap:4px;">
-            <span style="display:inline-flex;align-items:center;gap:4px;background:#e8f5e9;
-                         color:#1b5e20;padding:2px 10px;border-radius:999px;font-size:0.82em;">
-              <span title="{{ c.code }}">{{ c.title }}</span>
-              <form action="/ui/concept-groups/{{ g.id }}/concepts/remove" method="post" style="margin:0;">
-                <input type="hidden" name="concept_code" value="{{ c.code }}" />
-                <button type="submit"
-                        style="border:none;background:transparent;color:#c62828;font-weight:bold;
-                               cursor:pointer;padding:0;line-height:1;font-size:1em;"
-                        title="Remove from group">×</button>
-              </form>
-            </span>
+        <span style="display:inline-flex;align-items:center;gap:4px;background:#e8f5e9;
+                     color:#1b5e20;padding:2px 10px;border-radius:999px;font-size:0.82em;align-self:flex-start;">
+          <span title="{{ c.code }}">{{ c.title }}</span>
+          <form action="/ui/concept-groups/{{ g.id }}/concepts/remove" method="post" class="am-inline-form">
+            <input type="hidden" name="concept_code" value="{{ c.code }}" />
+            <button type="submit" style="border:none;background:transparent;color:#c62828;font-weight:bold;cursor:pointer;padding:0 2px;line-height:1;" title="Remove from group">×</button>
+          </form>
+        </span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="am-no-changes">No concepts assigned to this group.</p>
+      {% endif %}
+
+      <details class="am-add-change-panel" style="margin-top:4px;">
+        <summary class="am-add-change-summary">+ Add concept</summary>
+        <form action="/ui/concept-groups/{{ g.id }}/concepts/add" method="post"
+              style="padding:8px 14px 12px;display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="am-field">
+            <label class="am-field-label">Search</label>
+            <input type="text" id="concept-search-{{ g.id }}" placeholder="Search concepts..."
+                   class="am-input-compact" style="width:200px;"
+                   oninput="filterConceptSelect('{{ g.id }}', this.value)" />
           </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div style="color:#888;font-size:0.85em;margin-bottom:6px;">No concepts assigned to this group.</div>
-    {% endif %}
+          <div class="am-field">
+            <label class="am-field-label">Concept</label>
+            <select name="concept_code" id="concept-select-{{ g.id }}" class="am-select-compact" style="max-width:300px;">
+              <option value="" disabled selected>Select concept...</option>
+              {% for c in concepts %}
+              <option value="{{ c.code }}">{{ c.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="am-btn am-btn-info am-btn-sm">Add</button>
+        </form>
+      </details>
 
-    <!-- Add individual concept -->
-    <details style="margin-top:4px;">
-      <summary style="font-size:0.85em;cursor:pointer;color:#1976d2;">+ Add concept</summary>
-      <form action="/ui/concept-groups/{{ g.id }}/concepts/add" method="post"
-            style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <input type="text" id="concept-search-{{ g.id }}"
-               placeholder="Search concepts..."
-               style="width:200px;font-size:0.85em;padding:2px 4px;"
-               oninput="filterConceptSelect('{{ g.id }}', this.value)" />
-        <select name="concept_code" id="concept-select-{{ g.id }}"
-                style="font-size:0.85em;max-width:300px;">
-          <option value="" disabled selected>Select concept...</option>
-          {% for c in concepts %}
-            <option value="{{ c.code }}">{{ c.title }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="small-btn">Add</button>
-      </form>
-    </details>
+      {% if categories %}
+      <details class="am-add-change-panel" style="margin-top:4px;">
+        <summary class="am-add-change-summary">+ Add all from CDISC category</summary>
+        <form action="/ui/concept-groups/{{ g.id }}/concepts/add-category" method="post"
+              style="padding:8px 14px 12px;display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="am-field">
+            <label class="am-field-label">Category</label>
+            <select name="category" class="am-select-compact" style="max-width:300px;">
+              <option value="" disabled selected>Select category...</option>
+              {% for cat in categories %}
+              <option value="{{ cat.name }}">{{ cat.title or cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="am-btn am-btn-info am-btn-sm">Add All</button>
+        </form>
+      </details>
+      {% endif %}
+    </div>
 
-    <!-- Add from CDISC category -->
-    {% if categories %}
-    <details style="margin-top:4px;">
-      <summary style="font-size:0.85em;cursor:pointer;color:#1976d2;">
-        + Add all concepts from CDISC category
-      </summary>
-      <form action="/ui/concept-groups/{{ g.id }}/concepts/add-category" method="post"
-            style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <select name="category" style="font-size:0.85em;max-width:300px;">
-          <option value="" disabled selected>Select category...</option>
-          {% for cat in categories %}
-            <option value="{{ cat.name }}">{{ cat.title or cat.name }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="small-btn">Add All</button>
-      </form>
-    </details>
-    {% endif %}
-  </div>
-
-  <!-- Member surrogates -->
-  <div style="margin-top:0.75em;border-top:1px solid #eee;padding-top:0.75em;">
-    <div style="font-size:0.85em;font-weight:600;color:#4e342e;margin-bottom:4px;">BC Surrogates</div>
-    {% if g.surrogates %}
-      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
+    <!-- Member surrogates -->
+    <div style="border-top:1px solid var(--am-border);padding-top:8px;">
+      <h5 class="am-sections-header">BC Surrogates</h5>
+      {% if g.surrogates %}
+      <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px;">
         {% for s in g.surrogates %}
-          <span style="display:inline-flex;align-items:center;background:#fff3e0;color:#4e342e;
-                       padding:2px 8px;border-radius:999px;font-size:0.8em;gap:4px;">
-            <span title="SOA: {{ s.soa_name }} | {{ s.surrogate_uid }}">
-              [{{ s.soa_name }}] {{ s.label or s.name }}
-            </span>
-            <form action="/ui/concept-groups/{{ g.id }}/surrogates/remove" method="post" style="margin:0;">
-              <input type="hidden" name="surrogate_id" value="{{ s.id }}" />
-              <button type="submit"
-                      style="border:none;background:transparent;color:#c62828;font-weight:bold;
-                             cursor:pointer;padding:0;line-height:1;font-size:1em;"
-                      title="Remove surrogate from group">×</button>
-            </form>
-          </span>
+        <span style="display:inline-flex;align-items:center;background:#fff3e0;color:#4e342e;
+                     padding:2px 8px;border-radius:999px;font-size:0.8em;gap:4px;align-self:flex-start;">
+          <span title="SOA: {{ s.soa_name }} | {{ s.surrogate_uid }}">[{{ s.soa_name }}] {{ s.label or s.name }}</span>
+          <form action="/ui/concept-groups/{{ g.id }}/surrogates/remove" method="post" class="am-inline-form">
+            <input type="hidden" name="surrogate_id" value="{{ s.id }}" />
+            <button type="submit" style="border:none;background:transparent;color:#c62828;font-weight:bold;cursor:pointer;padding:0 2px;line-height:1;" title="Remove">×</button>
+          </form>
+        </span>
         {% endfor %}
       </div>
-    {% else %}
-      <div style="color:#888;font-size:0.85em;margin-bottom:6px;">No surrogates assigned to this group.</div>
-    {% endif %}
+      {% else %}
+      <p class="am-no-changes">No surrogates assigned to this group.</p>
+      {% endif %}
 
-    {% set _available_for_group = all_unassigned_surrogates if all_unassigned_surrogates is defined else [] %}
-    {% if _available_for_group %}
-    <details style="margin-top:4px;">
-      <summary style="font-size:0.85em;cursor:pointer;color:#1976d2;">+ Add surrogate</summary>
-      <form action="/ui/concept-groups/{{ g.id }}/surrogates/add" method="post"
-            style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <select name="surrogate_id" style="font-size:0.85em;max-width:340px;">
-          <option value="" disabled selected>Select surrogate...</option>
-          {% for s in _available_for_group %}
-            <option value="{{ s.id }}">[{{ s.soa_name }}] {{ s.label or s.name }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="small-btn">Add</button>
-      </form>
-    </details>
-    {% endif %}
-  </div>
+      {% set _available_for_group = all_unassigned_surrogates if all_unassigned_surrogates is defined else [] %}
+      {% if _available_for_group %}
+      <details class="am-add-change-panel" style="margin-top:4px;">
+        <summary class="am-add-change-summary">+ Add surrogate</summary>
+        <form action="/ui/concept-groups/{{ g.id }}/surrogates/add" method="post"
+              style="padding:8px 14px 12px;display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="am-field">
+            <label class="am-field-label">Surrogate</label>
+            <select name="surrogate_id" class="am-select-compact" style="max-width:340px;">
+              <option value="" disabled selected>Select surrogate...</option>
+              {% for s in _available_for_group %}
+              <option value="{{ s.id }}">[{{ s.soa_name }}] {{ s.label or s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="am-btn am-btn-info am-btn-sm">Add</button>
+        </form>
+      </details>
+      {% endif %}
+    </div>
 
   </div>{# end collapsible body #}
 </div>
@@ -222,12 +214,10 @@ function toggleGroupBody(bodyId, arrowId) {
   body.style.display = open ? 'none' : 'block';
   if (arrow) arrow.textContent = open ? '▸' : '▾';
 }
-
 function toggleEdit(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
-
 function filterConceptSelect(groupId, query) {
   const sel = document.getElementById('concept-select-' + groupId);
   if (!sel) return;

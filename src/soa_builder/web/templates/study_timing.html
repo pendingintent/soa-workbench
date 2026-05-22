@@ -3,12 +3,12 @@
 <h2>Study Timing for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
 {% set hide_return_link = true %}
+
+<hr class="fz-section-divider" />
 
 <details id="study-timing-schedule-timelines" open class="collapsible">
   <summary>Schedule Timelines</summary>
@@ -34,14 +34,6 @@
   <summary>Timings</summary>
   {% include '_timings_section.html' %}
 </details>
-
-
-
-<style>
-  details.collapsible { border:1px solid #ddd; padding:6px 8px; border-radius:4px; background:#fafafa; margin-bottom:12px; }
-  details.collapsible summary { cursor:pointer; font-weight:600; font-size:1.1em; }
-  details.collapsible[open] { background:#fdfdfd; }
-</style>
 
 <script>
 function persistSection(sectionId) {

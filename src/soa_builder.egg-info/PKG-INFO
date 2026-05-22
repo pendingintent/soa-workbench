@@ -15,191 +15,55 @@ Requires-Dist: openpyxl>=3.1.0
 Requires-Dist: reportlab>=4.0.0
 Requires-Dist: requests>=2.31.0
 Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: jinja2>=3.1.0
+Requires-Dist: python-multipart>=0.0.9
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
 Requires-Dist: ruff>=0.5.0; extra == "dev"
 Requires-Dist: black>=24.0.0; extra == "dev"
 Requires-Dist: detect-secrets>=1.4.0; extra == "dev"
+Requires-Dist: httpx>=0.27.0; extra == "dev"
 Dynamic: license-file
 
-# SoA Builder (Normalization, Expansion & Validation)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This workspace provides a Python package `soa_builder` with a CLI and APIs to:
+# SoA Workbench
 
-1. Normalize a wide Schedule of Activities (SoA) matrix into relational tables.
-2. Expand repeating schedule rules into projected calendar instances.
-3. Validate imaging (and future) activity intervals.
+This workspace provides a Python package `soa_builder` with APIs to create a Schedule of Activites for Clinical Studies.
 
-Legacy standalone scripts (`normalize_soa.py`, `validate_soa.py`) remain for reference; new work should use the CLI.
 
-## Source
-Input format: first column `Activity`, subsequent columns are visit/timepoint headers. Cells contain markers like `X`, `Optional`, `If indicated`, or repeating patterns (`Every 2 cycles`, `q12w`).
+## Cloning the repository
+This project now includes a submodule for USDM JSON validation with the USDM_API_v4.0.0.json schema.
 
-## Output Artifacts
-Running the script produces (in `--out-dir`):
-- `visits.csv` — One row per visit/timepoint with parsed window info, inferred category, repeat pattern.
-- `activities.csv` — Unique activities (one per original row).
-- `visit_activities.csv` — Junction table mapping activities to visits with status and flags.
-- `activity_categories.csv` — Heuristic classification of each activity (labs, imaging, dosing, admin, etc.).
-- `schedule_rules.csv` — Extracted repeating schedule logic from headers and cells (e.g., `q12w`, `Every 2 cycles`).
-- Optional: SQLite database (`--sqlite path`) containing all tables.
+In order to clone the repository with the new submodule, use the command:
 
-### visits.csv Columns
-- `visit_id`: Sequential numeric id.
-- `raw_header`: Original header text.
-- `visit_name`: Header stripped of parenthetical codes.
-- `visit_code`: Code extracted from parentheses (e.g., `C1D1`, `EOT`).
-- `sequence_index`: Positional order.
-- `window_lower` / `window_upper`: Parsed day offsets if available.
-- `repeat_pattern`: Detected repeating pattern (e.g., `every 2 cycles`).
-- `category`: Heuristic classification (screening, baseline, treatment, follow_up, eot).
+```bash
+> git clone --recurse-submodules https://github.com/pendingintent/soa-workbench.git
+```
 
-### activities.csv Columns
-- `activity_id`: Sequential id.
-- `activity_name`: Name from first column.
+Once the repository has been cloned locally, in order to ensure the submodule is up-to-date, use the commands:
+```bash
+> cd cdisc-json-validation
+> git pull
+# or use the command for updating all registered submodules
+> git submodule update --remote
+```
 
-### visit_activities.csv Columns
-- `id`: Junction id.
-- `visit_id`: FK to visits.
-- `activity_id`: FK to activities.
-- `status`: Raw cell content.
-- `required_flag`: 1 if cell starts with `X`.
-- `conditional_flag`: 1 if cell contains `Optional` or `If indicated`.
+This will ensure the submodule is always up-to-date.
 
-### activity_categories.csv Columns
-- `activity_id`: FK to activities.
-- `category`: Assigned heuristic category label.
-
-### schedule_rules.csv Columns
-- `rule_id`: Unique rule id.
-- `pattern`: Normalized repeating pattern token (e.g., `q12w`).
-- `description`: Human readable description of pattern source.
-- `source_type`: `header` or `cell` origin.
-- `activity_id`: Populated if pattern came from a cell (else null).
-- `visit_id`: Populated if pattern came from a header.
-- `raw_text`: Original text fragment containing the pattern.
 
 ## Installation
-
 Recommended: editable install for development.
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
+> python3 -m venv .venv
+> source .venv/bin/activate
+> pip install -r requirements.txt
+> pre-commit install
+> pre-commit run --all-files
 ```
 
-This installs the console script `soa-builder`.
-Example:
-```bash
-soa-builder normalize --input files/SoA_breast_cancer.csv --out-dir normalized
-soa-builder expand --normalized-dir normalized --start-date 2025-01-01 --json-out normalized/schedule_instances.json
-soa-builder validate --normalized-dir normalized
-```
-
-## CLI Usage
-
-The CLI exposes three subcommands: `normalize`, `expand`, `validate`.
-
-### Normalize
-```bash
-soa-builder normalize --input files/SoA_breast_cancer.csv --out-dir normalized --sqlite normalized/soa.db
-```
-Outputs written to `normalized/` (CSV and optional SQLite).
-
-### Expand Schedule Rules
-```bash
-soa-builder expand --normalized-dir normalized --start-date 2025-01-01 \
-	--cycle-length-days 21 --num-cycles 8 --followup-weeks 104 \
-	--json-out normalized/schedule_instances.json
-```
-Options:
-- `--filter-pattern PATTERN` (repeatable) to limit patterns (e.g. `--filter-pattern q12w`)
-- `--cycle-lengths 21,21,28` for heterogeneous cycle lengths
-- `--horizon-days DAYS` override default calculated horizon
-- `--max-occurrences N` cap per-rule expansions
-
-### Validate Imaging Intervals
-```bash
-soa-builder validate --normalized-dir normalized --expected-interval-weeks 6 --tolerance-days 4
-```
-Exit code non-zero indicates deviations; listed per interval.
-
-## Python API
-```python
-from soa_builder import normalize_soa, expand_schedule_rules, validate_imaging_schedule
-summary = normalize_oa('files/SoA_breast_cancer.csv', 'normalized')
-# Load rules/visits then expand (see cli implementation for loaders)
-```
-
-## Development & Testing
-Run unit tests:
-```bash
-pytest
-```
-
-## Roadmap
-- Additional validators (PK sampling, PRO schedule completeness)
-- Console script entry point publication via `pyproject.toml`
-- Enriched rule grammar (e.g. conditional frequency changes)
-- SDTM domain mapping utilities
- - Web application for interactive SoA authoring (FastAPI + HTMX) extended with biomedical concept browsing and stable activity UIDs
-
-## Assumptions & Heuristics
-- All non-first header columns are considered visits.
-- Windows parsed from patterns like `(-28 to -1d)`, `(±7d)`, `30±7d`.
-- Repeat patterns detected: `every 2 cycles`, `q12w`, `q3w`, `every 12 weeks`.
-- Additional conditional text retained in `status`.
-
-## Extending
-- Refine category taxonomy with controlled terminology (CDISC)
-- Richer recurrence parsing (e.g., bi-weekly then monthly transitions)
-- Endpoint linkage & CRF mapping tables
-- Additional validators (PK sampling alignment, PRO schedule completeness)
- - Web UI (React or HTMX) atop FastAPI backend for matrix editing
-
-## Web Application (Experimental)
-An initial FastAPI backend (`soa_builder.web.app`) allows creating an SoA interactively via REST:
-
-> Full, continuously updated endpoint reference (including Elements, freezes, audits, JSON CRUD and UI helpers) lives in `README_endpoints.md`. Consult that file for detailed request/response examples, curl snippets, and future enhancement notes.
-
-Endpoints:
-- POST /soa {"name": "Breast Cancer Phase 2"}
-- POST /soa/{id}/visits {"name": "C1D1", "raw_header": "Cycle 1 Day 1 (C1D1)"}
-- POST /soa/{id}/activities {"name": "Hematology"}
-- POST /soa/{id}/cells {"visit_id": 1, "activity_id": 1, "status": "X"}
-- GET  /soa/{id}/matrix  -> JSON matrix
-- GET  /soa/{id}/normalized -> Runs normalization pipeline; returns summary
- - DELETE /soa/{id}/visits/{visit_id} -> Remove a visit and all its cells; remaining visits reindexed
- - DELETE /soa/{id}/activities/{activity_id} -> Remove an activity and all its cells; remaining activities reindexed
- - POST /soa/{id}/activities/bulk {"names": ["Hematology", "Chemistry", "ECG"]} -> create multiple activities (skips duplicates & blanks)
- - POST /soa/{id}/matrix/import -> Ingest wide matrix JSON body
- - GET  /soa/{id}/export/xlsx -> Download current matrix as Excel workbook (sheet: SoA)
- - GET  /soa/{id}/export/pdf  -> Download current matrix as PDF table
-
-### Wide Matrix Import Format
-`POST /soa/{id}/matrix/import`
-```jsonc
-{
-	"visits": [
-		{"name": "C1D1", "raw_header": "Cycle 1 Day 1 (C1D1)"},
-		{"name": "C1D8"},
-		{"name": "C1D15"}
-	],
-	"activities": [
-		{"name": "Hematology", "statuses": ["X", "X", "O"]},
-		{"name": "Chemistry", "statuses": ["", "X", ""]},
-		{"name": "ECG", "statuses": ["O", "", "O"]}
-	],
-	"reset": true
-}
-```
-Rules:
-- `statuses` array length must equal number of `visits`.
-- Blank / empty status strings are ignored (no cell row created).
-- When `reset` is true existing visits, activities, and cells for the SoA are cleared first.
-- All inserts preserve provided order for indexing.
-
-Run server:
+## Start web server
 ```bash
 soa-builder-web  # starts uvicorn on 0.0.0.0:8000 with reload
 ```
@@ -208,26 +72,17 @@ Or manually:
 ```bash
 uvicorn soa_builder.web.app:app --reload --port 8000
 ```
-
-After populating data, retrieve normalized artifacts:
-```bash
-curl http://localhost:8000/soa/1/normalized
-```
-
 HTML UI:
 - Open http://localhost:8000/ in a browser.
-- Add visits and activities; click cells to toggle status (blank -> X -> blank). 'O' values are not surfaced in the UI; clearing removes the cell row.
-- Use "Generate Normalized Summary" link to produce artifacts.
- - Use export buttons (to be added) or hit endpoints directly for XLSX/PDF output.
- - Delete a visit or activity using the ✕ button next to its name (confirmation dialog). Deletion cascades to associated cells and automatically reorders remaining items.
- - (Upcoming) Bulk add activities and matrix import could be surfaced via a textarea or JSON upload panel.
- - View biomedical concepts via the "Concepts" navigation link (`GET /ui/concepts`): renders a table of concept codes, titles and API links (cached; force refresh per study using `POST /ui/soa/{id}/concepts_refresh`).
+- Create a new Schedule of Activities for a study or access an existing one.
+	- When a study is chosen, additional navigation links are available in the navigation menu that are unique to the Study context.
+	- More options and parameters for configuring the USDM classes are available through these navigation links.
+- Add Scheduled Activity instances (columns) and activities (rows) to create an SoA matrix on the edit page for a Study; click cells to toggle status (blank -> X -> blank). 'O' values are not surfaced in the UI; clearing removes the cell row.
+ - Use export buttons (to be added) for XLSX output of the Matrix.
+- View avialable biomedical concepts via the "Biomedical Concepts" navigation link to render a table of concept codes, titles and API links (cached; force refresh available).
+- View available data set specializations via the "SDTM Dataset Specializations" navigation link to render a table of specializations and API links to view associated concepts (cached; force refresh available). 
 
-Activity Identifiers:
-- Each activity now has a stable `activity_uid` (format `Activity_<n>` unique within a study) maintained during reorder using a two-phase temporary renaming to avoid uniqueness collisions.
-- Unique index `(soa_id, activity_uid)` enforces stability for exports, snapshots and audit trails.
- 
-Biomedical Concepts API Access:
+CDISC Library API Access:
 - The concepts list and detail pages call the CDISC Library API.
 - Set one (or both) of: `CDISC_SUBSCRIPTION_KEY`, `CDISC_API_KEY`.
 - The server will send all of these headers when possible:
@@ -237,11 +92,42 @@ Biomedical Concepts API Access:
 - If only one key is defined it is reused across header variants.
 - Directly opening the API URL in the browser will 401 because the browser does not attach the required headers; use the internal detail page or an API client (curl/Postman) with the headers above.
 
-Notes:
-- HTMX is loaded via CDN; no build step required.
-- For production, configure a persistent DB path via SOA_BUILDER_DB env variable.
+## Development & Testing
+Run unit tests:
+```bash
+pytest
+```
 
-Artifacts stored under `normalized/soa_{id}/`.
+### Test database
+- Tests run against a separate SQLite file to avoid touching your local/prod data.
+- Default path: `soa_builder_web_tests.db` in the repo root. Override with env var `SOA_BUILDER_DB`.
+- A pytest session fixture removes any stale test DB/WAL/SHM files at start to prevent I/O errors.
+- Manually clear the test DB before a run if needed:
+```bash
+rm -f soa_builder_web_tests.db soa_builder_web_tests.db-wal soa_builder_web_tests.db-shm
+```
 
-## License
-Internal use; extend as needed.
+> **Full API Documentation**: See `README_endpoints.md` for complete endpoint reference with curl examples, request/response schemas, and usage patterns.
+>
+> **Endpoint Catalog**: See `docs/api_endpoints.csv` for sortable/filterable list of all 165+ endpoints.
+
+## USDM Export
+Export USDM-compliant JSON for integration with external systems:
+```bash
+# Use the USDM generator scripts directly
+python -m usdm.generate_usdm 1 -o study_usdm.json
+python -m usdm.generate_activities 1 -o activities.json
+python -m usdm.generate_encounters 1 -o encounters.json
+python -m usdm.generate_study_epochs 1 -o epochs.json
+# See src/usdm/ for all generator scripts
+```
+
+---
+
+## Architecture Notes
+- **Database**: SQLite with WAL mode (production) or DELETE mode (tests)
+- **Test Isolation**: Tests use `soa_builder_web_tests.db` (set via `SOA_BUILDER_DB` env var)
+- **Production Config**: Set `SOA_BUILDER_DB` environment variable for persistent DB path
+- **USDM Generators**: Python scripts in `src/usdm/` transform database state → USDM JSON artifacts
+
+

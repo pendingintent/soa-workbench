@@ -1,107 +1,96 @@
-<h2>Schedule Timelines for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
-
 {% if not hide_return_link %}
 <div style="margin-bottom:12px;">
-    <a href="/ui/soa/{{ soa_id }}/edit" style="background:#455a64;color:#fff;text-decoration:none;padding:4px 10px;border-radius:4px;font-size:0.9em;display:inline-block;">
-        ← Return to Edit Page
-    </a>
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 {% endif %}
 
-<div style="margin-bottom:2px;">
-    <form method="post" action="/ui/soa/{{ soa_id }}/schedule_timelines/create" style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
-        <div style="display: flex;flex-direction: column;gap: 2px;">
-            <label><strong>Name *</strong></label>
-            <input name="name" placeholder="Schedule Timeline Name" required />
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Label</strong></label>
-            <input name="label" placeholder="Label (optional)" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Description</strong></label>
-            <input name="description" placeholder="Description (Optional)" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Main Timeline</strong></label>
-            <label style="display:flex;align-items: center;gap: 6px;">
-                <input type="checkbox" name="main_timeline" value="1" />
-                <span>Main timeline?</span>
-            </label>
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Entry Condition</strong></label>
-            <input name="entry_condition" placeholder="Entry Condition (Optional)" />
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Entry ID</strong></label>
-            <select name="entry_id">
-                <option value="">-- Select Activity Instance --</option>
-                {% for name, instance_uid in (instance_options or {}).items() %}
-                    <option value="{{ instance_uid }}">{{ name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div style="display: flex;flex-direction: column;gap:2px;">
-            <label><strong>Exit ID</strong></label>
-            <input name="exit_id" placeholder="Exit ID (Optional)" />
-        </div>
-        <button style="background:#1976d2;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;">Add Schedule Timeline</button>
-    </form>
+<div class="fz-create-card fz-create-card-full">
+  <h3>Add Schedule Timeline</h3>
+  <form method="post" action="/ui/soa/{{ soa_id }}/schedule_timelines/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" placeholder="Schedule Timeline name" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" placeholder="Label (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Description</label>
+      <input name="description" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Main Timeline</label>
+      <label class="fz-amendment-toggle">
+        <input type="checkbox" name="main_timeline" value="1" />
+        Main timeline?
+      </label>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Entry Condition</label>
+      <input name="entry_condition" placeholder="Entry condition (optional)" class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Entry ID</label>
+      <select name="entry_id" class="fz-version-input">
+        <option value="">-- Select Activity Instance --</option>
+        {% for name, instance_uid in (instance_options or {}).items() %}
+        <option value="{{ instance_uid }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Exit ID</label>
+      <input name="exit_id" placeholder="Exit ID (optional)" class="fz-version-input" />
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Add Schedule Timeline</button>
+  </form>
 </div>
 
+<h3 class="fz-section-heading">Schedule Timelines ({{ schedule_timelines|length }})</h3>
 
-<table style="width:100%;font-size:0.85em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-        <th style="text-align:left;padding:4px;">id</th>
-        <th style="text-align:left;padding:4px;">Name</th>
-        <th style="text-align:left;padding:4px;">Label</th>
-        <th style="text-align:left;padding:4px;">Description</th>
-        <th style="text-align:left;padding:4px;">Main Timeline</th>
-        <th style="text-align:left;padding:4px;">Entry Condition</th>
-        <th style="text-align:left;padding:4px;">Entry ID</th>
-        <th style="text-align:left;padding:4px;">Exit ID</th>
-        <th style="text-align:left;padding:4px;">Save</th>
-        <th style="text-align:left;padding:4px;">Delete</th>
-    </tr>
-    {% for st in schedule_timelines %}
-    <tr>
-        <form method="post" action="/ui/soa/{{ soa_id }}/schedule_timelines/{{ st.id }}/update">
-            <td style="padding:4px;white-space:nowrap;"><strong>{{ st.schedule_timeline_uid }}</strong></td>
-            <td style="padding:4px;"><input name="name" value="{{ st.name }}" required /></td>
-            <td style="padding:4px;"><input name="label" value="{{ st.label or '' }}" placeholder="Label" /></td>
-            <td style="padding:4px;"><input name="description" value="{{ st.description or '' }}" placeholder="Description" /></td>
-            <td style="padding:4px;">
-                <label style="display:flex;align-items:center;gap:6px;">
-                <input type="checkbox" name="main_timeline" value="1" {% if st.main_timeline %}checked{% endif %} />
-                <span>Main</span>
-                </label>
-            </td>
-            <td style="padding:4px;"><input name="entry_condition" value="{{ st.entry_condition or ''}}" placeholder="Entry Condition" /></td>
-            <td style="padding:4px;">
-                <select name="entry_id">
-                    <option value="">-- Select Activity Instance --</option>
-                    {% for name, instance_uid in (instance_options or {}).items() %}
-                        <option value="{{ instance_uid }}" {% if (st.entry_id or '') == instance_uid %}selected{% endif %}>{{ name }}</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td style="padding:4px;"><input name="exit_id" value="{{ st.exit_id or '' }}" placeholder="Exit ID" /></td>
-            <td style="padding:4px;">
-                <button style="background:#607d8b;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">Save</button>
-            </td>
-        </form>
-        <td style="padding:4px;">
-            <form method="post" action="/ui/soa/{{ soa_id }}/schedule_timelines/{{ st.id }}/delete">
-                <button style="background:#c62828;color:#fff;border:none;padding:2px 6px;border-radius:3px;cursor:pointer;">
-                    Delete
-                </button>
-            </form>
-        </td>
-    </tr>
-    {% else %}
-    <tr>
-        <td colspan="10" style="padding:6px;color:#777;">No schedule timelines yet.</td>
-    </tr>
-    {% endfor %}
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Description</th>
+    <th>Main Timeline</th>
+    <th>Entry Condition</th>
+    <th>Entry ID</th>
+    <th>Exit ID</th>
+    <th>Save</th>
+    <th>Delete</th>
+  </tr>
+  {% for st in schedule_timelines %}
+  <tr>
+    <form method="post" action="/ui/soa/{{ soa_id }}/schedule_timelines/{{ st.id }}/update">
+      <td class="fz-td-version"><span class="obj-uid">{{ st.schedule_timeline_uid }}</span></td>
+      <td><input name="name" value="{{ st.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ st.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td><input name="description" value="{{ st.description or '' }}" placeholder="Description" class="am-input-compact" /></td>
+      <td class="am-td-center">
+        <input type="checkbox" name="main_timeline" value="1" {% if st.main_timeline %}checked{% endif %} />
+      </td>
+      <td><input name="entry_condition" value="{{ st.entry_condition or '' }}" placeholder="Entry Condition" class="am-input-compact" /></td>
+      <td>
+        <select name="entry_id" class="am-select-compact">
+          <option value="">-- Select Activity Instance --</option>
+          {% for name, instance_uid in (instance_options or {}).items() %}
+          <option value="{{ instance_uid }}" {% if (st.entry_id or '') == instance_uid %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td><input name="exit_id" value="{{ st.exit_id or '' }}" placeholder="Exit ID" class="am-input-compact" /></td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
+    </form>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/schedule_timelines/{{ st.id }}/delete" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="10">No schedule timelines yet.</td></tr>
+  {% endfor %}
 </table>
