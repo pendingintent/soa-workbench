@@ -1,0 +1,29 @@
+region,subregion,region_numeric_code
+Africa,Africa,002
+Africa,North Africa,015
+Africa,Sub-Saharan Africa,202
+Africa,Eastern Africa,014
+Africa,Middle Africa,017
+Africa,Southern Africa,018
+Africa,Western Africa,011
+Americas,Americas,019
+Americas,Northern America,021
+Americas,Central America,013
+Americas,Caribbean,029
+Americas,South America,005
+Asia,Asia,142
+Asia,Central Asia,143
+Asia,Eastern Asia,030
+Asia,Southern Asia,034
+Asia,South-eastern Asia,035
+Asia,Western Asia,145
+Europe,Europe,150
+Europe,Eastern Europe,151
+Europe,Northern Europe,154
+Europe,Southern Europe,039
+Europe,Western Europe,155
+Oceania,Oceania,009
+Oceania,Melanesia,054
+Oceania,Micronesia,057
+Oceania,Polynesia,061
+Oceania,Australia,053

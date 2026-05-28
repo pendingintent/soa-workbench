@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime, timezone
+from typing import Dict, Optional
 
 from dotenv import load_dotenv
 
@@ -2403,3 +2404,99 @@ def _migrate_add_governance_date_geographic_scope_table():
             "_migrate_add_governance_date_geographic_scope_table failed: %s",
             e,
         )
+
+
+def _migrate_add_decode_to_code_association():
+    """Add decode TEXT column to code_association for human-readable term labels."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(code_association)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "decode" not in cols:
+            cur.execute("ALTER TABLE code_association ADD COLUMN decode TEXT")
+            conn.commit()
+            logger.info("_migrate_add_decode_to_code_association added decode column")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_add_decode_to_code_association failed: %s", e)
+
+
+def _migrate_remap_code_association_codes():
+    """Remap code_association rows where code was stored as submission_value text.
+
+    For codelists where the DDF CT now provides a proper conceptId (C-code),
+    look up each stored value in the {submission_value: code} map.  When the
+    stored value is found as a submission_value key and the mapped code differs,
+    update code to the C-code and set decode to the original submission_value.
+    Rows that already hold a C-code are not matched and are left unchanged.
+    """
+    try:
+        from soa_builder.web.utils import get_ddf_ct_codelist_map_by_submission
+
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT code_uid, soa_id, codelist_code, code "
+            "FROM code_association "
+            "WHERE codelist_code IS NOT NULL AND codelist_code != ''"
+        )
+        rows = cur.fetchall()
+        updated = 0
+        _sv_cache: Dict[str, Dict[str, str]] = {}
+        for code_uid, soa_id, codelist_code, stored_code in rows:
+            if not codelist_code or not stored_code:
+                continue
+            if codelist_code not in _sv_cache:
+                _sv_cache[codelist_code] = get_ddf_ct_codelist_map_by_submission(
+                    codelist_code
+                )
+            by_sv = _sv_cache[codelist_code]
+            actual_code = by_sv.get(stored_code)
+            if actual_code and actual_code != stored_code:
+                cur.execute(
+                    "UPDATE code_association SET code=?, decode=? "
+                    "WHERE code_uid=? AND soa_id=?",
+                    (actual_code, stored_code, code_uid, soa_id),
+                )
+                updated += 1
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_remap_code_association_codes remapped %d rows", updated)
+    except Exception as e:
+        logger.warning("_migrate_remap_code_association_codes failed: %s", e)
+
+
+def _migrate_backfill_code_association_decode():
+    """Populate decode for existing code_association rows via DDF CT lookup."""
+    try:
+        from soa_builder.web.utils import get_ddf_ct_term
+
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT code_uid, soa_id, codelist_code, code "
+            "FROM code_association "
+            "WHERE (decode IS NULL OR decode = '') "
+            "AND codelist_code IS NOT NULL AND codelist_code != ''"
+        )
+        rows = cur.fetchall()
+        updated = 0
+        for code_uid, soa_id, codelist_code, code in rows:
+            if not codelist_code or not code:
+                continue
+            term: Optional[dict] = get_ddf_ct_term(codelist_code, code)
+            decode = (term.get("submission_value") or code) if term else code
+            cur.execute(
+                "UPDATE code_association SET decode=? WHERE code_uid=? AND soa_id=?",
+                (decode, code_uid, soa_id),
+            )
+            updated += 1
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_backfill_code_association_decode backfilled %d rows",
+            updated,
+        )
+    except Exception as e:
+        logger.warning("_migrate_backfill_code_association_decode failed: %s", e)

@@ -593,16 +593,18 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     cur.execute("DELETE FROM visit WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM element WHERE soa_id=?", (soa_id,))
     for ca in snap_code_assocs:
+        stored_code = ca.get("code")
         cur.execute(
             "INSERT INTO code_association"
-            " (soa_id, code_uid, codelist_table, codelist_code, code)"
-            " VALUES (?,?,?,?,?)",
+            " (soa_id, code_uid, codelist_table, codelist_code, code, decode)"
+            " VALUES (?,?,?,?,?,?)",
             (
                 soa_id,
                 ca.get("code_uid"),
                 ca.get("codelist_table"),
                 ca.get("codelist_code"),
-                ca.get("code"),
+                stored_code,
+                ca.get("decode") or stored_code,
             ),
         )
     if _table_has_columns(cur, "epoch", ("type", "epoch_uid")):

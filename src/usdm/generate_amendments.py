@@ -8,7 +8,11 @@ from soa_builder.web.utils import _nz
 
 
 def _code_obj(code_uid: str, row: tuple) -> Dict[str, Any]:
-    """Build a Code-Output dict from a code_association row tuple."""
+    """Build a Code-Output dict from a code_association row tuple.
+
+    Row tuple: (code_uid, codelist_table, codelist_code, code, decode).
+    decode is stored in the DB; falls back to code if NULL.
+    """
     if row is None:
         return {
             "id": code_uid or "Code_unknown",
@@ -19,7 +23,7 @@ def _code_obj(code_uid: str, row: tuple) -> Dict[str, Any]:
             "decode": "",
             "instanceType": "Code",
         }
-    _, codelist_table, code = row
+    _, codelist_table, _codelist_code, code, decode = row
     version = ""
     slug = (codelist_table or "").rstrip("/").split("/")[-1]
     if slug:
@@ -32,7 +36,7 @@ def _code_obj(code_uid: str, row: tuple) -> Dict[str, Any]:
         "code": code or "",
         "codeSystem": "http://www.cdisc.org",
         "codeSystemVersion": version,
-        "decode": code or "",
+        "decode": decode or code or "",
         "instanceType": "Code",
     }
 
@@ -154,7 +158,7 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
     if all_code_uids:
         code_ph = ",".join("?" * len(all_code_uids))
         cur.execute(
-            f"SELECT code_uid, codelist_table, code "
+            f"SELECT code_uid, codelist_table, codelist_code, code, decode "
             f"FROM code_association WHERE soa_id=? AND code_uid IN ({code_ph})",
             [soa_id, *all_code_uids],
         )

@@ -35,6 +35,7 @@ _COMPONENTS = [
     ("study_cells", "Study Cells", "usdm_study_cells.json"),
     ("objectives", "Objectives", "usdm_objectives.json"),
     ("endpoints", "Endpoints", "usdm_endpoints.json"),
+    ("amendments", "Study Amendments", "usdm_amendments.json"),
 ]
 
 
@@ -99,6 +100,10 @@ def _build(component: str, soa_id: int):
         from usdm.generate_endpoints import build_usdm_endpoints
 
         return build_usdm_endpoints(soa_id)
+    if component == "amendments":
+        from usdm.generate_amendments import build_usdm_amendments
+
+        return build_usdm_amendments(soa_id)
     raise ValueError(f"Unknown component: {component}")
 
 
