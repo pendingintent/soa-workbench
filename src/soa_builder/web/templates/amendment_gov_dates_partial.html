@@ -1,0 +1,62 @@
+<div id="gov-dates-section">
+  <table class="am-data-table">
+    <thead>
+      <tr class="am-thead-row">
+        <th>Name</th>
+        <th>Type</th>
+        <th>Date</th>
+        <th>Scopes</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for d in gov_dates %}
+    <tr>
+      <td>{{ d.name }}</td>
+      <td>{{ gov_date_type_terms.get(d.type_code, d.type_code) }}</td>
+      <td>{{ d.date_value }}</td>
+      <td>{{ d.scope_uids|join(', ') or '—' }}</td>
+      <td class="am-td-right">
+        <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-date/{{ d.id }}/delete"
+              hx-target="#gov-dates-section" hx-swap="outerHTML" class="am-inline-form">
+          <button type="submit" class="am-btn am-btn-danger am-btn-xs"
+            onclick="return confirm('Remove this governance date?')">×</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="am-empty-row"><td colspan="5">No governance dates added.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-dates/add"
+        hx-target="#gov-dates-section" hx-swap="outerHTML"
+        class="am-add-form am-add-form-inline">
+    <div class="am-field">
+      <label class="am-field-label"><strong>Name</strong></label>
+      <input name="name" required class="am-input" placeholder="Date name" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label"><strong>Type</strong></label>
+      <select name="type_code" required class="am-select">
+        <option value="" disabled selected>— select —</option>
+        {% for code, sv in gov_date_type_terms.items()|sort(attribute='1') %}
+        <option value="{{ code }}">{{ sv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label"><strong>Date</strong></label>
+      <input name="date_value" type="date" required class="am-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label"><strong>Geographic Scopes</strong></label>
+      <select name="scope_uids" multiple class="am-select">
+        {% for s in geo_scopes %}
+        <option value="{{ s.scope_uid }}">{{ s.scope_uid }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="am-btn am-btn-primary am-btn-sm am-btn-self-end">+ Add</button>
+  </form>
+</div>

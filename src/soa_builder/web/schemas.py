@@ -462,3 +462,26 @@ class DocumentContentReferenceCreate(BaseModel):
     section_number: str
     section_title: str
     applies_to_id: str
+
+
+class GeographicScopeCreate(BaseModel):
+    type_code: str
+
+
+class SubjectEnrollmentCreate(BaseModel):
+    name: str
+    quantity_value: float
+    label: Optional[str] = None
+    description: Optional[str] = None
+    for_scope_uid: Optional[str] = None
+    for_study_cohort_id: Optional[str] = None
+    for_study_site_id: Optional[str] = None
+
+
+class GovernanceDateCreate(BaseModel):
+    name: str
+    type_code: str
+    date_value: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    scope_uids: List[str] = []

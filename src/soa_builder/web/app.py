@@ -100,6 +100,13 @@ from .migrate_database import (
     _migrate_add_document_content_reference_table,
     _migrate_add_document_content_reference_audit_table,
     _migrate_add_bcp_response_code_table,
+    _migrate_add_amendment_geographic_scope_table,
+    _migrate_add_amendment_geographic_scope_audit_table,
+    _migrate_add_amendment_subject_enrollment_table,
+    _migrate_add_amendment_subject_enrollment_audit_table,
+    _migrate_add_amendment_governance_date_table,
+    _migrate_add_amendment_governance_date_audit_table,
+    _migrate_add_governance_date_geographic_scope_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -291,6 +298,13 @@ _migrate_add_study_change_audit_table()
 _migrate_add_document_content_reference_table()
 _migrate_add_document_content_reference_audit_table()
 _migrate_add_bcp_response_code_table()
+_migrate_add_amendment_geographic_scope_table()
+_migrate_add_amendment_geographic_scope_audit_table()
+_migrate_add_amendment_subject_enrollment_table()
+_migrate_add_amendment_subject_enrollment_audit_table()
+_migrate_add_amendment_governance_date_table()
+_migrate_add_amendment_governance_date_audit_table()
+_migrate_add_governance_date_geographic_scope_table()
 
 # Backfill BCP rows for any SOA that pre-dates eager population
 _t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")

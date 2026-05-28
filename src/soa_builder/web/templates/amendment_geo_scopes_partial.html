@@ -1,0 +1,40 @@
+<div id="geo-scopes-section">
+  <table class="am-data-table">
+    <thead>
+      <tr class="am-thead-row">
+        <th>Type</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for s in geo_scopes %}
+    <tr>
+      <td>{{ geo_scope_type_terms.get(s.type_code, s.type_code) }}</td>
+      <td class="am-td-right">
+        <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/geographic-scope/{{ s.id }}/delete"
+              hx-target="#geo-scopes-section" hx-swap="outerHTML" class="am-inline-form">
+          <button type="submit" class="am-btn am-btn-danger am-btn-xs"
+            onclick="return confirm('Remove this geographic scope?')">×</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="am-empty-row"><td colspan="2">No geographic scopes added.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/geographic-scopes/add"
+        hx-target="#geo-scopes-section" hx-swap="outerHTML"
+        class="am-add-form am-add-form-inline">
+    <div class="am-field">
+      <label class="am-field-label"><strong>Type</strong></label>
+      <select name="type_code" required class="am-select">
+        <option value="" disabled selected>— select —</option>
+        {% for code, sv in geo_scope_type_terms.items()|sort(attribute='1') %}
+        <option value="{{ code }}">{{ sv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="am-btn am-btn-primary am-btn-sm am-btn-self-end">+ Add</button>
+  </form>
+</div>

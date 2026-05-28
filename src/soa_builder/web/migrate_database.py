@@ -2204,3 +2204,202 @@ def _migrate_add_bcp_response_code_table():
         )
     except Exception as e:
         logger.warning("_migrate_add_bcp_response_code_table failed: %s", e)
+
+
+def _migrate_add_amendment_geographic_scope_table():
+    """Create amendment_geographic_scope table for GeographicScope entities."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_geographic_scope (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                scope_uid TEXT NOT NULL,
+                type_code_uid TEXT NOT NULL,
+                UNIQUE(soa_id, scope_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_geographic_scope_table created "
+            "amendment_geographic_scope table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_amendment_geographic_scope_table failed: %s", e)
+
+
+def _migrate_add_amendment_geographic_scope_audit_table():
+    """Create amendment_geographic_scope_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_geographic_scope_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                scope_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_geographic_scope_audit_table created "
+            "amendment_geographic_scope_audit table"
+        )
+    except Exception as e:
+        logger.warning(
+            "_migrate_add_amendment_geographic_scope_audit_table failed: %s",
+            e,
+        )
+
+
+def _migrate_add_amendment_subject_enrollment_table():
+    """Create amendment_subject_enrollment table for SubjectEnrollment entities."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_subject_enrollment (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                enrollment_uid TEXT NOT NULL,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT,
+                quantity_value REAL NOT NULL,
+                quantity_unit_code_uid TEXT,
+                for_scope_uid TEXT,
+                for_study_cohort_id TEXT,
+                for_study_site_id TEXT,
+                UNIQUE(soa_id, enrollment_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_subject_enrollment_table created "
+            "amendment_subject_enrollment table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_amendment_subject_enrollment_table failed: %s", e)
+
+
+def _migrate_add_amendment_subject_enrollment_audit_table():
+    """Create amendment_subject_enrollment_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_subject_enrollment_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                enrollment_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_subject_enrollment_audit_table created "
+            "amendment_subject_enrollment_audit table"
+        )
+    except Exception as e:
+        logger.warning(
+            "_migrate_add_amendment_subject_enrollment_audit_table failed: %s",
+            e,
+        )
+
+
+def _migrate_add_amendment_governance_date_table():
+    """Create amendment_governance_date table for GovernanceDate entities."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_governance_date (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                date_uid TEXT NOT NULL,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT,
+                type_code_uid TEXT NOT NULL,
+                date_value TEXT NOT NULL,
+                UNIQUE(soa_id, date_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_governance_date_table created "
+            "amendment_governance_date table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_amendment_governance_date_table failed: %s", e)
+
+
+def _migrate_add_amendment_governance_date_audit_table():
+    """Create amendment_governance_date_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_governance_date_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                date_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_governance_date_audit_table created "
+            "amendment_governance_date_audit table"
+        )
+    except Exception as e:
+        logger.warning(
+            "_migrate_add_amendment_governance_date_audit_table failed: %s",
+            e,
+        )
+
+
+def _migrate_add_governance_date_geographic_scope_table():
+    """Create governance_date_geographic_scope junction table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS governance_date_geographic_scope (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                date_uid TEXT NOT NULL,
+                scope_uid TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_governance_date_geographic_scope_table created "
+            "governance_date_geographic_scope table"
+        )
+    except Exception as e:
+        logger.warning(
+            "_migrate_add_governance_date_geographic_scope_table failed: %s",
+            e,
+        )

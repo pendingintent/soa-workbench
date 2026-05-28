@@ -37,6 +37,18 @@ def _code_obj(code_uid: str, row: tuple) -> Dict[str, Any]:
     }
 
 
+def _geo_scope_obj(
+    scope_uid: str, type_code_uid: str, code_map: Dict[str, tuple]
+) -> Dict[str, Any]:
+    return {
+        "id": scope_uid,
+        "extensionAttributes": [],
+        "type": _code_obj(type_code_uid, code_map.get(type_code_uid)),
+        "code": None,
+        "instanceType": "GeographicScope",
+    }
+
+
 def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
     """Build USDM StudyAmendment-Output objects for all amendments in a SOA."""
     conn = _connect()
@@ -93,8 +105,51 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
         )
         section_rows = cur.fetchall()
 
-    # Batch-fetch all code_association rows referenced by reasons and impacts
-    all_code_uids = [r[4] for r in reason_rows] + [r[3] for r in impact_rows]
+    cur.execute(
+        f"SELECT id,amendment_uid,scope_uid,type_code_uid "
+        f"FROM amendment_geographic_scope "
+        f"WHERE soa_id=? AND amendment_uid IN ({placeholders}) ORDER BY id",
+        [soa_id, *amendment_uids],
+    )
+    scope_rows = cur.fetchall()
+
+    cur.execute(
+        f"SELECT id,amendment_uid,enrollment_uid,name,label,description,"
+        f"quantity_value,for_scope_uid,for_study_cohort_id,for_study_site_id "
+        f"FROM amendment_subject_enrollment "
+        f"WHERE soa_id=? AND amendment_uid IN ({placeholders}) ORDER BY id",
+        [soa_id, *amendment_uids],
+    )
+    enrollment_rows = cur.fetchall()
+
+    cur.execute(
+        f"SELECT id,amendment_uid,date_uid,name,label,description,"
+        f"type_code_uid,date_value "
+        f"FROM amendment_governance_date "
+        f"WHERE soa_id=? AND amendment_uid IN ({placeholders}) ORDER BY id",
+        [soa_id, *amendment_uids],
+    )
+    date_rows = cur.fetchall()
+
+    date_uids = [r[2] for r in date_rows]
+    date_scope_rows: list = []
+    if date_uids:
+        ds_ph = ",".join("?" * len(date_uids))
+        cur.execute(
+            f"SELECT id,date_uid,scope_uid "
+            f"FROM governance_date_geographic_scope "
+            f"WHERE soa_id=? AND date_uid IN ({ds_ph}) ORDER BY id",
+            [soa_id, *date_uids],
+        )
+        date_scope_rows = cur.fetchall()
+
+    # Batch-fetch all code_association rows
+    all_code_uids = (
+        [r[4] for r in reason_rows]
+        + [r[3] for r in impact_rows]
+        + [r[3] for r in scope_rows]
+        + [r[6] for r in date_rows]
+    )
     code_map: Dict[str, tuple] = {}
     if all_code_uids:
         code_ph = ",".join("?" * len(all_code_uids))
@@ -124,6 +179,24 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
     sections_by_change: Dict[str, list] = {}
     for s in section_rows:
         sections_by_change.setdefault(s[1], []).append(s)
+
+    scopes_by_amendment: Dict[str, list] = {}
+    for s in scope_rows:
+        scopes_by_amendment.setdefault(s[1], []).append(s)
+
+    scope_by_uid: Dict[str, tuple] = {s[2]: s for s in scope_rows}
+
+    enrollments_by_amendment: Dict[str, list] = {}
+    for e in enrollment_rows:
+        enrollments_by_amendment.setdefault(e[1], []).append(e)
+
+    dates_by_amendment: Dict[str, list] = {}
+    for d in date_rows:
+        dates_by_amendment.setdefault(d[1], []).append(d)
+
+    date_scopes_by_date: Dict[str, list] = {}
+    for ds in date_scope_rows:
+        date_scopes_by_date.setdefault(ds[1], []).append(ds[2])
 
     out: List[Dict[str, Any]] = []
     for ar in amendment_rows:
@@ -214,6 +287,81 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
                 }
             )
 
+        geo_scopes = [
+            _geo_scope_obj(s[2], s[3], code_map)
+            for s in scopes_by_amendment.get(amendment_uid, [])
+        ]
+
+        enrollments = []
+        for e in enrollments_by_amendment.get(amendment_uid, []):
+            (
+                _eid,
+                _auid,
+                enrollment_uid,
+                e_name,
+                e_label,
+                e_description,
+                qty_value,
+                for_scope_uid,
+                cohort_id,
+                site_id,
+            ) = e
+            for_scope = None
+            if for_scope_uid and for_scope_uid in scope_by_uid:
+                sr = scope_by_uid[for_scope_uid]
+                for_scope = _geo_scope_obj(sr[2], sr[3], code_map)
+            enrollments.append(
+                {
+                    "id": enrollment_uid,
+                    "extensionAttributes": [],
+                    "name": e_name or "",
+                    "label": _nz(e_label),
+                    "description": _nz(e_description),
+                    "quantity": {
+                        "id": f"{enrollment_uid}_Qty",
+                        "extensionAttributes": [],
+                        "value": qty_value,
+                        "unit": None,
+                        "instanceType": "Quantity",
+                    },
+                    "forGeographicScope": for_scope,
+                    "forStudyCohortId": _nz(cohort_id),
+                    "forStudySiteId": _nz(site_id),
+                    "instanceType": "SubjectEnrollment",
+                }
+            )
+
+        date_values = []
+        for d in dates_by_amendment.get(amendment_uid, []):
+            (
+                _did,
+                _auid,
+                date_uid,
+                d_name,
+                d_label,
+                d_description,
+                d_type_code_uid,
+                d_date_value,
+            ) = d
+            linked_scopes = [
+                _geo_scope_obj(s_uid, scope_by_uid[s_uid][3], code_map)
+                for s_uid in date_scopes_by_date.get(date_uid, [])
+                if s_uid in scope_by_uid
+            ]
+            date_values.append(
+                {
+                    "id": date_uid,
+                    "extensionAttributes": [],
+                    "name": d_name or "",
+                    "label": _nz(d_label),
+                    "description": _nz(d_description),
+                    "type": _code_obj(d_type_code_uid, code_map.get(d_type_code_uid)),
+                    "dateValue": d_date_value or "",
+                    "geographicScopes": linked_scopes,
+                    "instanceType": "GovernanceDate",
+                }
+            )
+
         out.append(
             {
                 "id": amendment_uid,
@@ -228,9 +376,9 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
                 "secondaryReasons": secondary_reasons,
                 "changes": changes,
                 "impacts": impacts,
-                "geographicScopes": [],
-                "enrollments": [],
-                "dateValues": [],
+                "geographicScopes": geo_scopes,
+                "enrollments": enrollments,
+                "dateValues": date_values,
                 "instanceType": "StudyAmendment",
             }
         )

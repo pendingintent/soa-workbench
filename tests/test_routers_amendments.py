@@ -577,3 +577,285 @@ def test_ui_freeze_without_amendment_checkbox():
 
     row = _db_query_one("SELECT id FROM study_amendment WHERE soa_id=?", (soa_id,))
     assert row is None
+
+
+# ---------------------------------------------------------------------------
+# Geographic scopes
+# ---------------------------------------------------------------------------
+
+
+@patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")
+def test_add_and_remove_geographic_scope(_mock):
+    soa_id = _new_soa("Amendment Geo Scope")
+    freeze_id = _freeze(soa_id, "v1")
+    am_resp = client.post(
+        f"/soa/{soa_id}/freeze/{freeze_id}/amendment",
+        json={"name": "X", "number": "1", "summary": "s", "primary_reason_code": "C1"},
+    )
+    amendment_id = am_resp.json()["id"]
+
+    add_resp = client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/geographic-scopes",
+        json={"type_code": "C99GS"},
+    )
+    assert add_resp.status_code == 201
+    scope_id = add_resp.json()["id"]
+    assert add_resp.json()["scope_uid"] == "GeographicScope_1"
+
+    row = _db_query_one(
+        "SELECT scope_uid FROM amendment_geographic_scope WHERE id=? AND soa_id=?",
+        (scope_id, soa_id),
+    )
+    assert row is not None
+    assert row[0] == "GeographicScope_1"
+
+    del_resp = client.delete(
+        f"/soa/{soa_id}/amendment/{amendment_id}/geographic-scope/{scope_id}"
+    )
+    assert del_resp.status_code == 204
+
+    gone = _db_query_one(
+        "SELECT id FROM amendment_geographic_scope WHERE id=?", (scope_id,)
+    )
+    assert gone is None
+
+
+@patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")
+def test_geographic_scope_appears_in_usdm_json(_mock):
+    from usdm.generate_amendments import build_usdm_amendments
+
+    soa_id = _new_soa("USDM Geo Scope")
+    freeze_id = _freeze(soa_id, "v1")
+    am_resp = client.post(
+        f"/soa/{soa_id}/freeze/{freeze_id}/amendment",
+        json={"name": "X", "number": "1", "summary": "s", "primary_reason_code": "C1"},
+    )
+    amendment_id = am_resp.json()["id"]
+    client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/geographic-scopes",
+        json={"type_code": "C99GS"},
+    )
+
+    amendments = build_usdm_amendments(soa_id)
+    assert len(amendments) == 1
+    scopes = amendments[0]["geographicScopes"]
+    assert len(scopes) == 1
+    assert scopes[0]["instanceType"] == "GeographicScope"
+    assert scopes[0]["id"] == "GeographicScope_1"
+    assert scopes[0]["type"]["code"] == "C99GS"
+    assert scopes[0]["code"] is None
+
+
+# ---------------------------------------------------------------------------
+# Subject enrollments
+# ---------------------------------------------------------------------------
+
+
+@patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")
+def test_add_and_remove_enrollment(_mock):
+    soa_id = _new_soa("Amendment Enrollment")
+    freeze_id = _freeze(soa_id, "v1")
+    am_resp = client.post(
+        f"/soa/{soa_id}/freeze/{freeze_id}/amendment",
+        json={"name": "X", "number": "1", "summary": "s", "primary_reason_code": "C1"},
+    )
+    amendment_id = am_resp.json()["id"]
+
+    add_resp = client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/enrollments",
+        json={"name": "Global Enrollment", "quantity_value": 120.0},
+    )
+    assert add_resp.status_code == 201
+    enrollment_id = add_resp.json()["id"]
+    assert add_resp.json()["enrollment_uid"] == "SubjectEnrollment_1"
+
+    del_resp = client.delete(
+        f"/soa/{soa_id}/amendment/{amendment_id}/enrollment/{enrollment_id}"
+    )
+    assert del_resp.status_code == 204
+
+    gone = _db_query_one(
+        "SELECT id FROM amendment_subject_enrollment WHERE id=?", (enrollment_id,)
+    )
+    assert gone is None
+
+
+@patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")
+def test_enrollment_with_scope_ref_appears_in_usdm_json(_mock):
+    from usdm.generate_amendments import build_usdm_amendments
+
+    soa_id = _new_soa("USDM Enrollment Scope")
+    freeze_id = _freeze(soa_id, "v1")
+    am_resp = client.post(
+        f"/soa/{soa_id}/freeze/{freeze_id}/amendment",
+        json={"name": "X", "number": "1", "summary": "s", "primary_reason_code": "C1"},
+    )
+    amendment_id = am_resp.json()["id"]
+
+    scope_resp = client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/geographic-scopes",
+        json={"type_code": "C99GS"},
+    )
+    scope_uid = scope_resp.json()["scope_uid"]
+
+    client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/enrollments",
+        json={
+            "name": "US Enrollment",
+            "quantity_value": 50.0,
+            "for_scope_uid": scope_uid,
+        },
+    )
+
+    amendments = build_usdm_amendments(soa_id)
+    enrollments = amendments[0]["enrollments"]
+    assert len(enrollments) == 1
+    e = enrollments[0]
+    assert e["instanceType"] == "SubjectEnrollment"
+    assert e["quantity"]["value"] == 50.0
+    assert e["quantity"]["unit"] is None
+    assert e["forGeographicScope"] is not None
+    assert e["forGeographicScope"]["id"] == scope_uid
+
+
+@patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")
+def test_enrollment_invalid_scope_uid_returns_400(_mock):
+    soa_id = _new_soa("Amendment Enrollment Bad Scope")
+    freeze_id = _freeze(soa_id, "v1")
+    am_resp = client.post(
+        f"/soa/{soa_id}/freeze/{freeze_id}/amendment",
+        json={"name": "X", "number": "1", "summary": "s", "primary_reason_code": "C1"},
+    )
+    amendment_id = am_resp.json()["id"]
+
+    resp = client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/enrollments",
+        json={
+            "name": "US Enrollment",
+            "quantity_value": 50.0,
+            "for_scope_uid": "GeographicScope_999",
+        },
+    )
+    assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Governance dates
+# ---------------------------------------------------------------------------
+
+
+@patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")
+def test_add_and_remove_governance_date(_mock):
+    soa_id = _new_soa("Amendment Gov Date")
+    freeze_id = _freeze(soa_id, "v1")
+    am_resp = client.post(
+        f"/soa/{soa_id}/freeze/{freeze_id}/amendment",
+        json={"name": "X", "number": "1", "summary": "s", "primary_reason_code": "C1"},
+    )
+    amendment_id = am_resp.json()["id"]
+
+    add_resp = client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/governance-dates",
+        json={
+            "name": "Approval Date",
+            "type_code": "C99GD",
+            "date_value": "2025-06-01",
+        },
+    )
+    assert add_resp.status_code == 201
+    date_id = add_resp.json()["id"]
+    assert add_resp.json()["date_uid"] == "GovernanceDate_1"
+
+    del_resp = client.delete(
+        f"/soa/{soa_id}/amendment/{amendment_id}/governance-date/{date_id}"
+    )
+    assert del_resp.status_code == 204
+
+    gone = _db_query_one(
+        "SELECT id FROM amendment_governance_date WHERE id=?", (date_id,)
+    )
+    assert gone is None
+
+
+@patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")
+def test_governance_date_with_scope_appears_in_usdm_json(_mock):
+    from usdm.generate_amendments import build_usdm_amendments
+
+    soa_id = _new_soa("USDM Gov Date Scope")
+    freeze_id = _freeze(soa_id, "v1")
+    am_resp = client.post(
+        f"/soa/{soa_id}/freeze/{freeze_id}/amendment",
+        json={"name": "X", "number": "1", "summary": "s", "primary_reason_code": "C1"},
+    )
+    amendment_id = am_resp.json()["id"]
+
+    scope_resp = client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/geographic-scopes",
+        json={"type_code": "C99GS"},
+    )
+    scope_uid = scope_resp.json()["scope_uid"]
+
+    client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/governance-dates",
+        json={
+            "name": "US Approval",
+            "type_code": "C99GD",
+            "date_value": "2025-06-01",
+            "scope_uids": [scope_uid],
+        },
+    )
+
+    amendments = build_usdm_amendments(soa_id)
+    dates = amendments[0]["dateValues"]
+    assert len(dates) == 1
+    d = dates[0]
+    assert d["instanceType"] == "GovernanceDate"
+    assert d["dateValue"] == "2025-06-01"
+    assert d["type"]["code"] == "C99GD"
+    assert len(d["geographicScopes"]) == 1
+    assert d["geographicScopes"][0]["id"] == scope_uid
+
+
+@patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")
+def test_delete_scope_cascades_to_gov_date_junction(_mock):
+    soa_id = _new_soa("Amendment Scope Cascade")
+    freeze_id = _freeze(soa_id, "v1")
+    am_resp = client.post(
+        f"/soa/{soa_id}/freeze/{freeze_id}/amendment",
+        json={"name": "X", "number": "1", "summary": "s", "primary_reason_code": "C1"},
+    )
+    amendment_id = am_resp.json()["id"]
+
+    scope_resp = client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/geographic-scopes",
+        json={"type_code": "C99GS"},
+    )
+    scope_id = scope_resp.json()["id"]
+    scope_uid = scope_resp.json()["scope_uid"]
+
+    date_resp = client.post(
+        f"/soa/{soa_id}/amendment/{amendment_id}/governance-dates",
+        json={
+            "name": "US Approval",
+            "type_code": "C99GD",
+            "date_value": "2025-06-01",
+            "scope_uids": [scope_uid],
+        },
+    )
+    date_uid = date_resp.json()["date_uid"]
+
+    junction_before = _db_query_one(
+        "SELECT id FROM governance_date_geographic_scope "
+        "WHERE soa_id=? AND date_uid=? AND scope_uid=?",
+        (soa_id, date_uid, scope_uid),
+    )
+    assert junction_before is not None
+
+    client.delete(f"/soa/{soa_id}/amendment/{amendment_id}/geographic-scope/{scope_id}")
+
+    junction_after = _db_query_one(
+        "SELECT id FROM governance_date_geographic_scope "
+        "WHERE soa_id=? AND date_uid=? AND scope_uid=?",
+        (soa_id, date_uid, scope_uid),
+    )
+    assert junction_after is None

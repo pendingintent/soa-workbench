@@ -4,7 +4,7 @@ import html
 import json
 import logging
 import os
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -13,6 +13,9 @@ from fastapi.templating import Jinja2Templates
 from ..audit import (
     _record_amendment_audit,
     _record_change_audit,
+    _record_enrollment_audit,
+    _record_geo_scope_audit,
+    _record_gov_date_audit,
     _record_impact_audit,
     _record_reason_audit,
     _record_ref_audit,
@@ -20,11 +23,14 @@ from ..audit import (
 from ..db import _connect
 from ..schemas import (
     DocumentContentReferenceCreate,
+    GeographicScopeCreate,
+    GovernanceDateCreate,
     StudyAmendmentCreate,
     StudyAmendmentImpactCreate,
     StudyAmendmentReasonCreate,
     StudyAmendmentUpdate,
     StudyChangeCreate,
+    SubjectEnrollmentCreate,
 )
 from ..utils import (
     get_ddf_ct_codelist_map,
@@ -42,6 +48,8 @@ templates = Jinja2Templates(
 
 _REASON_CODELIST = "C207415"
 _IMPACT_TYPE_CODELIST = "C215481"
+_GEO_SCOPE_TYPE_CODELIST = "C207412"
+_GOV_DATE_TYPE_CODELIST = "C207413"
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +127,36 @@ def _next_ref_uid(cur, soa_id: int) -> str:
         "document_content_reference",
         "ref_uid",
         "DocumentContentReference_",
+    )
+
+
+def _next_scope_uid(cur, soa_id: int) -> str:
+    return _next_uid(
+        cur,
+        soa_id,
+        "amendment_geographic_scope",
+        "scope_uid",
+        "GeographicScope_",
+    )
+
+
+def _next_enrollment_uid(cur, soa_id: int) -> str:
+    return _next_uid(
+        cur,
+        soa_id,
+        "amendment_subject_enrollment",
+        "enrollment_uid",
+        "SubjectEnrollment_",
+    )
+
+
+def _next_gov_date_uid(cur, soa_id: int) -> str:
+    return _next_uid(
+        cur,
+        soa_id,
+        "amendment_governance_date",
+        "date_uid",
+        "GovernanceDate_",
     )
 
 
@@ -257,12 +295,82 @@ def _load_amendment_data(soa_id: int, amendment_id: int) -> dict:
             }
         )
 
+    amendment_uid = amendment["amendment_uid"]
+
+    cur.execute(
+        "SELECT s.id, s.scope_uid, ca.code "
+        "FROM amendment_geographic_scope s "
+        "LEFT JOIN code_association ca ON ca.code_uid=s.type_code_uid "
+        "AND ca.soa_id=s.soa_id "
+        "WHERE s.soa_id=? AND s.amendment_uid=? ORDER BY s.id",
+        (soa_id, amendment_uid),
+    )
+    geo_scopes = [
+        {"id": r[0], "scope_uid": r[1], "type_code": r[2] or ""} for r in cur.fetchall()
+    ]
+
+    cur.execute(
+        "SELECT id, enrollment_uid, name, label, description, "
+        "quantity_value, for_scope_uid, for_study_cohort_id, for_study_site_id "
+        "FROM amendment_subject_enrollment "
+        "WHERE soa_id=? AND amendment_uid=? ORDER BY id",
+        (soa_id, amendment_uid),
+    )
+    enrollments = [
+        {
+            "id": r[0],
+            "enrollment_uid": r[1],
+            "name": r[2],
+            "label": r[3],
+            "description": r[4],
+            "quantity_value": r[5],
+            "for_scope_uid": r[6],
+            "for_study_cohort_id": r[7],
+            "for_study_site_id": r[8],
+        }
+        for r in cur.fetchall()
+    ]
+
+    cur.execute(
+        "SELECT d.id, d.date_uid, d.name, d.label, d.description, "
+        "d.date_value, ca.code "
+        "FROM amendment_governance_date d "
+        "LEFT JOIN code_association ca ON ca.code_uid=d.type_code_uid "
+        "AND ca.soa_id=d.soa_id "
+        "WHERE d.soa_id=? AND d.amendment_uid=? ORDER BY d.id",
+        (soa_id, amendment_uid),
+    )
+    gov_dates_rows = cur.fetchall()
+    gov_dates = []
+    for dr in gov_dates_rows:
+        cur.execute(
+            "SELECT scope_uid FROM governance_date_geographic_scope "
+            "WHERE soa_id=? AND date_uid=? ORDER BY id",
+            (soa_id, dr[1]),
+        )
+        linked_scope_uids = [row[0] for row in cur.fetchall()]
+        gov_dates.append(
+            {
+                "id": dr[0],
+                "date_uid": dr[1],
+                "name": dr[2],
+                "label": dr[3],
+                "description": dr[4],
+                "date_value": dr[5],
+                "type_code": dr[6] or "",
+                "scope_uids": linked_scope_uids,
+            }
+        )
+
     conn.close()
     return {
         "amendment": amendment,
         "secondary_reasons": [r for r in reasons if r["role"] == "secondary"],
         "impacts": impacts,
         "changes": changes,
+        "geo_scopes": geo_scopes,
+        "enrollments": enrollments,
+        "gov_dates": gov_dates,
         "soa_id": soa_id,
     }
 
@@ -274,6 +382,8 @@ def _load_amendment_context(soa_id: int, amendment_id: int) -> dict:
         return {}
     ctx["reason_terms"] = get_ddf_ct_codelist_map(_REASON_CODELIST)
     ctx["impact_terms"] = get_ddf_ct_codelist_map(_IMPACT_TYPE_CODELIST)
+    ctx["geo_scope_type_terms"] = get_ddf_ct_codelist_map(_GEO_SCOPE_TYPE_CODELIST)
+    ctx["gov_date_type_terms"] = get_ddf_ct_codelist_map(_GOV_DATE_TYPE_CODELIST)
     return ctx
 
 
@@ -793,6 +903,236 @@ def delete_section(soa_id: int, change_id: int, ref_id: int):
     conn.commit()
     conn.close()
     _record_ref_audit(soa_id, "delete", ref_id, before=before)
+
+
+@router.post(
+    "/soa/{soa_id}/amendment/{amendment_id}/geographic-scopes",
+    status_code=201,
+)
+def add_geographic_scope(soa_id: int, amendment_id: int, body: GeographicScopeCreate):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    am = _amendment_row(cur, soa_id, amendment_id)
+    if not am:
+        conn.close()
+        raise HTTPException(404, "Amendment not found")
+    scope_uid = _next_scope_uid(cur, soa_id)
+    type_code_uid = _insert_code(cur, soa_id, body.type_code, _GEO_SCOPE_TYPE_CODELIST)
+    cur.execute(
+        "INSERT INTO amendment_geographic_scope "
+        "(soa_id,amendment_uid,scope_uid,type_code_uid) VALUES (?,?,?,?)",
+        (soa_id, am["amendment_uid"], scope_uid, type_code_uid),
+    )
+    scope_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    _record_geo_scope_audit(soa_id, "create", scope_id, after={"scope_uid": scope_uid})
+    return JSONResponse({"id": scope_id, "scope_uid": scope_uid}, status_code=201)
+
+
+@router.delete(
+    "/soa/{soa_id}/amendment/{amendment_id}/geographic-scope/{scope_id}",
+    status_code=204,
+)
+def delete_geographic_scope(soa_id: int, amendment_id: int, scope_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,scope_uid,type_code_uid FROM amendment_geographic_scope "
+        "WHERE id=? AND soa_id=?",
+        (scope_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Geographic scope not found")
+    before = {"scope_uid": row[1]}
+    cur.execute(
+        "DELETE FROM governance_date_geographic_scope WHERE soa_id=? AND scope_uid=?",
+        (soa_id, row[1]),
+    )
+    cur.execute(
+        "DELETE FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, row[2]),
+    )
+    cur.execute(
+        "DELETE FROM amendment_geographic_scope WHERE id=? AND soa_id=?",
+        (scope_id, soa_id),
+    )
+    conn.commit()
+    conn.close()
+    _record_geo_scope_audit(soa_id, "delete", scope_id, before=before)
+
+
+@router.post(
+    "/soa/{soa_id}/amendment/{amendment_id}/enrollments",
+    status_code=201,
+)
+def add_enrollment(soa_id: int, amendment_id: int, body: SubjectEnrollmentCreate):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    am = _amendment_row(cur, soa_id, amendment_id)
+    if not am:
+        conn.close()
+        raise HTTPException(404, "Amendment not found")
+    if body.for_scope_uid:
+        cur.execute(
+            "SELECT id FROM amendment_geographic_scope "
+            "WHERE soa_id=? AND amendment_uid=? AND scope_uid=?",
+            (soa_id, am["amendment_uid"], body.for_scope_uid),
+        )
+        if not cur.fetchone():
+            conn.close()
+            raise HTTPException(400, "for_scope_uid not found on this amendment")
+    enrollment_uid = _next_enrollment_uid(cur, soa_id)
+    cur.execute(
+        "INSERT INTO amendment_subject_enrollment "
+        "(soa_id,amendment_uid,enrollment_uid,name,label,description,"
+        "quantity_value,for_scope_uid,for_study_cohort_id,for_study_site_id)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (
+            soa_id,
+            am["amendment_uid"],
+            enrollment_uid,
+            body.name,
+            body.label,
+            body.description,
+            body.quantity_value,
+            body.for_scope_uid,
+            body.for_study_cohort_id,
+            body.for_study_site_id,
+        ),
+    )
+    enrollment_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    _record_enrollment_audit(
+        soa_id,
+        "create",
+        enrollment_id,
+        after={"enrollment_uid": enrollment_uid, "name": body.name},
+    )
+    return JSONResponse(
+        {"id": enrollment_id, "enrollment_uid": enrollment_uid}, status_code=201
+    )
+
+
+@router.delete(
+    "/soa/{soa_id}/amendment/{amendment_id}/enrollment/{enrollment_id}",
+    status_code=204,
+)
+def delete_enrollment(soa_id: int, amendment_id: int, enrollment_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,enrollment_uid FROM amendment_subject_enrollment "
+        "WHERE id=? AND soa_id=?",
+        (enrollment_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Enrollment not found")
+    before = {"enrollment_uid": row[1]}
+    cur.execute(
+        "DELETE FROM amendment_subject_enrollment WHERE id=? AND soa_id=?",
+        (enrollment_id, soa_id),
+    )
+    conn.commit()
+    conn.close()
+    _record_enrollment_audit(soa_id, "delete", enrollment_id, before=before)
+
+
+@router.post(
+    "/soa/{soa_id}/amendment/{amendment_id}/governance-dates",
+    status_code=201,
+)
+def add_governance_date(soa_id: int, amendment_id: int, body: GovernanceDateCreate):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    am = _amendment_row(cur, soa_id, amendment_id)
+    if not am:
+        conn.close()
+        raise HTTPException(404, "Amendment not found")
+    date_uid = _next_gov_date_uid(cur, soa_id)
+    type_code_uid = _insert_code(cur, soa_id, body.type_code, _GOV_DATE_TYPE_CODELIST)
+    cur.execute(
+        "INSERT INTO amendment_governance_date "
+        "(soa_id,amendment_uid,date_uid,name,label,description,"
+        "type_code_uid,date_value) VALUES (?,?,?,?,?,?,?,?)",
+        (
+            soa_id,
+            am["amendment_uid"],
+            date_uid,
+            body.name,
+            body.label,
+            body.description,
+            type_code_uid,
+            body.date_value,
+        ),
+    )
+    date_id = cur.lastrowid
+    for scope_uid in body.scope_uids:
+        cur.execute(
+            "INSERT INTO governance_date_geographic_scope "
+            "(soa_id,date_uid,scope_uid) VALUES (?,?,?)",
+            (soa_id, date_uid, scope_uid),
+        )
+    conn.commit()
+    conn.close()
+    _record_gov_date_audit(
+        soa_id,
+        "create",
+        date_id,
+        after={"date_uid": date_uid, "name": body.name},
+    )
+    return JSONResponse({"id": date_id, "date_uid": date_uid}, status_code=201)
+
+
+@router.delete(
+    "/soa/{soa_id}/amendment/{amendment_id}/governance-date/{date_id}",
+    status_code=204,
+)
+def delete_governance_date(soa_id: int, amendment_id: int, date_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,date_uid,type_code_uid FROM amendment_governance_date "
+        "WHERE id=? AND soa_id=?",
+        (date_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Governance date not found")
+    before = {"date_uid": row[1]}
+    cur.execute(
+        "DELETE FROM governance_date_geographic_scope WHERE soa_id=? AND date_uid=?",
+        (soa_id, row[1]),
+    )
+    cur.execute(
+        "DELETE FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, row[2]),
+    )
+    cur.execute(
+        "DELETE FROM amendment_governance_date WHERE id=? AND soa_id=?",
+        (date_id, soa_id),
+    )
+    conn.commit()
+    conn.close()
+    _record_gov_date_audit(soa_id, "delete", date_id, before=before)
 
 
 # ---------------------------------------------------------------------------
@@ -1371,3 +1711,339 @@ def ui_delete_section(
     conn.close()
     _record_ref_audit(soa_id, "delete", ref_id, before=before)
     return _ui_changes_partial(request, soa_id, amendment_id)
+
+
+def _ui_geo_scopes_partial(
+    request: Request, soa_id: int, amendment_id: int
+) -> HTMLResponse:
+    ctx = _load_amendment_data(soa_id, amendment_id)
+    if not ctx:
+        raise HTTPException(404, "Amendment not found")
+    ctx["geo_scope_type_terms"] = get_ddf_ct_codelist_map(_GEO_SCOPE_TYPE_CODELIST)
+    return templates.TemplateResponse(
+        request,
+        "amendment_geo_scopes_partial.html",
+        ctx,
+    )
+
+
+def _ui_enrollments_partial(
+    request: Request, soa_id: int, amendment_id: int
+) -> HTMLResponse:
+    ctx = _load_amendment_data(soa_id, amendment_id)
+    if not ctx:
+        raise HTTPException(404, "Amendment not found")
+    return templates.TemplateResponse(
+        request,
+        "amendment_enrollments_partial.html",
+        ctx,
+    )
+
+
+def _ui_gov_dates_partial(
+    request: Request, soa_id: int, amendment_id: int
+) -> HTMLResponse:
+    ctx = _load_amendment_data(soa_id, amendment_id)
+    if not ctx:
+        raise HTTPException(404, "Amendment not found")
+    ctx["gov_date_type_terms"] = get_ddf_ct_codelist_map(_GOV_DATE_TYPE_CODELIST)
+    return templates.TemplateResponse(
+        request,
+        "amendment_gov_dates_partial.html",
+        ctx,
+    )
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/amendment/{amendment_id}/geographic-scopes/add",
+    response_class=HTMLResponse,
+)
+def ui_add_geographic_scope(
+    request: Request,
+    soa_id: int,
+    amendment_id: int,
+    type_code: str = Form(...),
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    am = _amendment_row(cur, soa_id, amendment_id)
+    if not am:
+        conn.close()
+        raise HTTPException(404, "Amendment not found")
+    scope_uid = _next_scope_uid(cur, soa_id)
+    type_code_uid = _insert_code(cur, soa_id, type_code, _GEO_SCOPE_TYPE_CODELIST)
+    cur.execute(
+        "INSERT INTO amendment_geographic_scope "
+        "(soa_id,amendment_uid,scope_uid,type_code_uid) VALUES (?,?,?,?)",
+        (soa_id, am["amendment_uid"], scope_uid, type_code_uid),
+    )
+    scope_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    _record_geo_scope_audit(soa_id, "create", scope_id, after={"scope_uid": scope_uid})
+    return _ui_geo_scopes_partial(request, soa_id, amendment_id)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/amendment/{amendment_id}/geographic-scope/{scope_id}/delete",
+    response_class=HTMLResponse,
+)
+def ui_delete_geographic_scope(
+    request: Request, soa_id: int, amendment_id: int, scope_id: int
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,scope_uid,type_code_uid FROM amendment_geographic_scope "
+        "WHERE id=? AND soa_id=?",
+        (scope_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Geographic scope not found")
+    before = {"scope_uid": row[1]}
+    cur.execute(
+        "DELETE FROM governance_date_geographic_scope WHERE soa_id=? AND scope_uid=?",
+        (soa_id, row[1]),
+    )
+    cur.execute(
+        "DELETE FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, row[2]),
+    )
+    cur.execute(
+        "DELETE FROM amendment_geographic_scope WHERE id=? AND soa_id=?",
+        (scope_id, soa_id),
+    )
+    conn.commit()
+    conn.close()
+    _record_geo_scope_audit(soa_id, "delete", scope_id, before=before)
+    return _ui_geo_scopes_partial(request, soa_id, amendment_id)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/amendment/{amendment_id}/enrollments/add",
+    response_class=HTMLResponse,
+)
+def ui_add_enrollment(
+    request: Request,
+    soa_id: int,
+    amendment_id: int,
+    name: str = Form(...),
+    quantity_value: float = Form(...),
+    label: str = Form(""),
+    description: str = Form(""),
+    for_scope_uid: str = Form(""),
+    for_study_cohort_id: str = Form(""),
+    for_study_site_id: str = Form(""),
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    try:
+        body = SubjectEnrollmentCreate(
+            name=name,
+            quantity_value=quantity_value,
+            label=label or None,
+            description=description or None,
+            for_scope_uid=for_scope_uid or None,
+            for_study_cohort_id=for_study_cohort_id or None,
+            for_study_site_id=for_study_site_id or None,
+        )
+    except Exception as exc:
+        return HTMLResponse(
+            f"<div style='color:#c62828;font-size:0.8em;'>"
+            f"Error: {html.escape(str(exc))}</div>"
+        )
+    conn = _connect()
+    cur = conn.cursor()
+    am = _amendment_row(cur, soa_id, amendment_id)
+    if not am:
+        conn.close()
+        raise HTTPException(404, "Amendment not found")
+    if body.for_scope_uid:
+        cur.execute(
+            "SELECT id FROM amendment_geographic_scope "
+            "WHERE soa_id=? AND amendment_uid=? AND scope_uid=?",
+            (soa_id, am["amendment_uid"], body.for_scope_uid),
+        )
+        if not cur.fetchone():
+            conn.close()
+            return HTMLResponse(
+                "<div style='color:#c62828;font-size:0.8em;'>"
+                "Error: scope not found on this amendment</div>"
+            )
+    enrollment_uid = _next_enrollment_uid(cur, soa_id)
+    cur.execute(
+        "INSERT INTO amendment_subject_enrollment "
+        "(soa_id,amendment_uid,enrollment_uid,name,label,description,"
+        "quantity_value,for_scope_uid,for_study_cohort_id,for_study_site_id)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (
+            soa_id,
+            am["amendment_uid"],
+            enrollment_uid,
+            body.name,
+            body.label,
+            body.description,
+            body.quantity_value,
+            body.for_scope_uid,
+            body.for_study_cohort_id,
+            body.for_study_site_id,
+        ),
+    )
+    enrollment_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    _record_enrollment_audit(
+        soa_id,
+        "create",
+        enrollment_id,
+        after={"enrollment_uid": enrollment_uid, "name": body.name},
+    )
+    return _ui_enrollments_partial(request, soa_id, amendment_id)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/amendment/{amendment_id}/enrollment/{enrollment_id}/delete",
+    response_class=HTMLResponse,
+)
+def ui_delete_enrollment(
+    request: Request, soa_id: int, amendment_id: int, enrollment_id: int
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,enrollment_uid FROM amendment_subject_enrollment "
+        "WHERE id=? AND soa_id=?",
+        (enrollment_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Enrollment not found")
+    before = {"enrollment_uid": row[1]}
+    cur.execute(
+        "DELETE FROM amendment_subject_enrollment WHERE id=? AND soa_id=?",
+        (enrollment_id, soa_id),
+    )
+    conn.commit()
+    conn.close()
+    _record_enrollment_audit(soa_id, "delete", enrollment_id, before=before)
+    return _ui_enrollments_partial(request, soa_id, amendment_id)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/amendment/{amendment_id}/governance-dates/add",
+    response_class=HTMLResponse,
+)
+def ui_add_governance_date(
+    request: Request,
+    soa_id: int,
+    amendment_id: int,
+    name: str = Form(...),
+    type_code: str = Form(...),
+    date_value: str = Form(...),
+    label: str = Form(""),
+    description: str = Form(""),
+    scope_uids: List[str] = Form(default=[]),
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    try:
+        body = GovernanceDateCreate(
+            name=name,
+            type_code=type_code,
+            date_value=date_value,
+            label=label or None,
+            description=description or None,
+            scope_uids=scope_uids,
+        )
+    except Exception as exc:
+        return HTMLResponse(
+            f"<div style='color:#c62828;font-size:0.8em;'>"
+            f"Error: {html.escape(str(exc))}</div>"
+        )
+    conn = _connect()
+    cur = conn.cursor()
+    am = _amendment_row(cur, soa_id, amendment_id)
+    if not am:
+        conn.close()
+        raise HTTPException(404, "Amendment not found")
+    date_uid = _next_gov_date_uid(cur, soa_id)
+    type_code_uid = _insert_code(cur, soa_id, body.type_code, _GOV_DATE_TYPE_CODELIST)
+    cur.execute(
+        "INSERT INTO amendment_governance_date "
+        "(soa_id,amendment_uid,date_uid,name,label,description,"
+        "type_code_uid,date_value) VALUES (?,?,?,?,?,?,?,?)",
+        (
+            soa_id,
+            am["amendment_uid"],
+            date_uid,
+            body.name,
+            body.label,
+            body.description,
+            type_code_uid,
+            body.date_value,
+        ),
+    )
+    date_id = cur.lastrowid
+    for s_uid in body.scope_uids:
+        cur.execute(
+            "INSERT INTO governance_date_geographic_scope "
+            "(soa_id,date_uid,scope_uid) VALUES (?,?,?)",
+            (soa_id, date_uid, s_uid),
+        )
+    conn.commit()
+    conn.close()
+    _record_gov_date_audit(
+        soa_id,
+        "create",
+        date_id,
+        after={"date_uid": date_uid, "name": body.name},
+    )
+    return _ui_gov_dates_partial(request, soa_id, amendment_id)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/amendment/{amendment_id}/governance-date/{date_id}/delete",
+    response_class=HTMLResponse,
+)
+def ui_delete_governance_date(
+    request: Request, soa_id: int, amendment_id: int, date_id: int
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id,date_uid,type_code_uid FROM amendment_governance_date "
+        "WHERE id=? AND soa_id=?",
+        (date_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Governance date not found")
+    before = {"date_uid": row[1]}
+    cur.execute(
+        "DELETE FROM governance_date_geographic_scope WHERE soa_id=? AND date_uid=?",
+        (soa_id, row[1]),
+    )
+    cur.execute(
+        "DELETE FROM code_association WHERE soa_id=? AND code_uid=?",
+        (soa_id, row[2]),
+    )
+    cur.execute(
+        "DELETE FROM amendment_governance_date WHERE id=? AND soa_id=?",
+        (date_id, soa_id),
+    )
+    conn.commit()
+    conn.close()
+    _record_gov_date_audit(soa_id, "delete", date_id, before=before)
+    return _ui_gov_dates_partial(request, soa_id, amendment_id)

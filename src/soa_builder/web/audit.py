@@ -618,3 +618,90 @@ def _record_ref_audit(
         conn.close()
     except Exception as e:
         logger.warning("Failed recording ref audit: %s", e)
+
+
+def _record_geo_scope_audit(
+    soa_id: int,
+    action: str,
+    scope_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO amendment_geographic_scope_audit"
+            " (soa_id, scope_id, action, before_json, after_json,"
+            " performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                scope_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording geo_scope audit: %s", e)
+
+
+def _record_enrollment_audit(
+    soa_id: int,
+    action: str,
+    enrollment_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO amendment_subject_enrollment_audit"
+            " (soa_id, enrollment_id, action, before_json, after_json,"
+            " performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                enrollment_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording enrollment audit: %s", e)
+
+
+def _record_gov_date_audit(
+    soa_id: int,
+    action: str,
+    date_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO amendment_governance_date_audit"
+            " (soa_id, date_id, action, before_json, after_json,"
+            " performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                date_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording gov_date audit: %s", e)

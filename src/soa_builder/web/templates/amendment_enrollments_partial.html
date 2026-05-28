@@ -1,0 +1,53 @@
+<div id="enrollments-section">
+  <table class="am-data-table">
+    <thead>
+      <tr class="am-thead-row">
+        <th>Name</th>
+        <th>Quantity</th>
+        <th>Geographic Scope</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for e in enrollments %}
+    <tr>
+      <td>{{ e.name }}</td>
+      <td>{{ e.quantity_value }}</td>
+      <td>{{ e.for_scope_uid or '—' }}</td>
+      <td class="am-td-right">
+        <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/enrollment/{{ e.id }}/delete"
+              hx-target="#enrollments-section" hx-swap="outerHTML" class="am-inline-form">
+          <button type="submit" class="am-btn am-btn-danger am-btn-xs"
+            onclick="return confirm('Remove this enrollment?')">×</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="am-empty-row"><td colspan="4">No enrollments added.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/enrollments/add"
+        hx-target="#enrollments-section" hx-swap="outerHTML"
+        class="am-add-form am-add-form-inline">
+    <div class="am-field">
+      <label class="am-field-label"><strong>Name</strong></label>
+      <input name="name" required class="am-input" placeholder="Enrollment name" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label"><strong>Quantity</strong></label>
+      <input name="quantity_value" type="number" step="any" required class="am-input"
+             placeholder="e.g. 100" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label"><strong>Geographic Scope</strong></label>
+      <select name="for_scope_uid" class="am-select">
+        <option value="">— none —</option>
+        {% for s in geo_scopes %}
+        <option value="{{ s.scope_uid }}">{{ s.scope_uid }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="am-btn am-btn-primary am-btn-sm am-btn-self-end">+ Add</button>
+  </form>
+</div>
