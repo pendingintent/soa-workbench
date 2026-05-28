@@ -110,6 +110,9 @@ from .migrate_database import (
     _migrate_add_decode_to_code_association,
     _migrate_remap_code_association_codes,
     _migrate_backfill_code_association_decode,
+    _migrate_create_country_codes_table,
+    _migrate_create_geographic_regions_table,
+    _migrate_add_location_code_uid_to_geo_scope,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -311,6 +314,9 @@ _migrate_add_governance_date_geographic_scope_table()
 _migrate_add_decode_to_code_association()
 _migrate_remap_code_association_codes()
 _migrate_backfill_code_association_decode()
+_migrate_create_country_codes_table()
+_migrate_create_geographic_regions_table()
+_migrate_add_location_code_uid_to_geo_scope()
 
 # Backfill BCP rows for any SOA that pre-dates eager population
 _t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")

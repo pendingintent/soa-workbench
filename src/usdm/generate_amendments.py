@@ -41,14 +41,45 @@ def _code_obj(code_uid: str, row: tuple) -> Dict[str, Any]:
     }
 
 
+def _alias_code_obj(location_code_uid: str, location_code_map: Dict[str, tuple]) -> Any:
+    """Build an AliasCode-Output dict wrapping a code table row, or None."""
+    row = location_code_map.get(location_code_uid)
+    if row is None:
+        return None
+    _uid, code, code_system, code_system_version, decode = row
+    n = location_code_uid.split("_", 1)[-1]
+    return {
+        "id": f"AliasCode_{n}",
+        "extensionAttributes": [],
+        "standardCode": {
+            "id": location_code_uid,
+            "extensionAttributes": [],
+            "code": code or "",
+            "codeSystem": code_system or "",
+            "codeSystemVersion": code_system_version or "",
+            "decode": decode or code or "",
+            "instanceType": "Code",
+        },
+        "standardCodeAliases": [],
+        "instanceType": "AliasCode",
+    }
+
+
 def _geo_scope_obj(
-    scope_uid: str, type_code_uid: str, code_map: Dict[str, tuple]
+    scope_uid: str,
+    type_code_uid: str,
+    code_map: Dict[str, tuple],
+    location_code_uid: str = None,
+    location_code_map: Dict[str, tuple] = None,
 ) -> Dict[str, Any]:
+    alias = None
+    if location_code_uid and location_code_map:
+        alias = _alias_code_obj(location_code_uid, location_code_map)
     return {
         "id": scope_uid,
         "extensionAttributes": [],
         "type": _code_obj(type_code_uid, code_map.get(type_code_uid)),
-        "code": None,
+        "code": alias,
         "instanceType": "GeographicScope",
     }
 
@@ -110,7 +141,7 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
         section_rows = cur.fetchall()
 
     cur.execute(
-        f"SELECT id,amendment_uid,scope_uid,type_code_uid "
+        f"SELECT id,amendment_uid,scope_uid,type_code_uid,location_code_uid "
         f"FROM amendment_geographic_scope "
         f"WHERE soa_id=? AND amendment_uid IN ({placeholders}) ORDER BY id",
         [soa_id, *amendment_uids],
@@ -164,6 +195,19 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
         )
         for row in cur.fetchall():
             code_map[row[0]] = row
+
+    # Batch-fetch location codes (country/region) from the code table
+    location_code_uids = [r[4] for r in scope_rows if r[4]]
+    location_code_map: Dict[str, tuple] = {}
+    if location_code_uids:
+        loc_ph = ",".join("?" * len(location_code_uids))
+        cur.execute(
+            f"SELECT code_uid, code, code_system, code_system_version, decode "
+            f"FROM code WHERE soa_id=? AND code_uid IN ({loc_ph})",
+            [soa_id, *location_code_uids],
+        )
+        for row in cur.fetchall():
+            location_code_map[row[0]] = row
 
     conn.close()
 
@@ -292,7 +336,7 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
             )
 
         geo_scopes = [
-            _geo_scope_obj(s[2], s[3], code_map)
+            _geo_scope_obj(s[2], s[3], code_map, s[4], location_code_map)
             for s in scopes_by_amendment.get(amendment_uid, [])
         ]
 
@@ -313,7 +357,9 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
             for_scope = None
             if for_scope_uid and for_scope_uid in scope_by_uid:
                 sr = scope_by_uid[for_scope_uid]
-                for_scope = _geo_scope_obj(sr[2], sr[3], code_map)
+                for_scope = _geo_scope_obj(
+                    sr[2], sr[3], code_map, sr[4], location_code_map
+                )
             enrollments.append(
                 {
                     "id": enrollment_uid,
@@ -348,7 +394,13 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
                 d_date_value,
             ) = d
             linked_scopes = [
-                _geo_scope_obj(s_uid, scope_by_uid[s_uid][3], code_map)
+                _geo_scope_obj(
+                    s_uid,
+                    scope_by_uid[s_uid][3],
+                    code_map,
+                    scope_by_uid[s_uid][4],
+                    location_code_map,
+                )
                 for s_uid in date_scopes_by_date.get(date_uid, [])
                 if s_uid in scope_by_uid
             ]

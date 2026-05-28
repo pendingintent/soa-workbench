@@ -3,6 +3,7 @@
     <tr class="fz-thead-row">
       <th>UID</th>
       <th>Type</th>
+      <th>Location</th>
       <th style="width:1%;white-space:nowrap;">Save</th>
       <th style="width:1%;white-space:nowrap;">Delete</th>
     </tr>
@@ -10,11 +11,23 @@
     <tr>
       <td class="fz-td-version"><span class="obj-uid">{{ s.scope_uid }}</span></td>
       <td>
-        <select name="type_code" required class="am-select-compact">
+        <select name="type_code" required class="am-select-compact"
+                hx-get="/ui/soa/{{ soa_id }}/geo-scope-location-options"
+                hx-trigger="change"
+                hx-target="#loc-options-{{ s.id }}">
           {% for code, sv in geo_scope_type_terms.items()|sort(attribute='1') %}
           <option value="{{ code }}" {% if s.type_code == code %}selected{% endif %}>{{ sv }}</option>
           {% endfor %}
         </select>
+      </td>
+      <td>
+        <div id="loc-options-{{ s.id }}">
+          {% if s.location_decode %}
+          <select name="location_value" class="am-select-compact">
+            <option value="{{ s.location_code }}" selected>{{ s.location_decode }}</option>
+          </select>
+          {% endif %}
+        </div>
       </td>
       <td style="width:1%;white-space:nowrap;">
         <button type="button" class="am-btn am-btn-slate am-btn-sm"
@@ -30,7 +43,7 @@
       </td>
     </tr>
     {% else %}
-    <tr class="fz-empty-row"><td colspan="4">No geographic scopes added.</td></tr>
+    <tr class="fz-empty-row"><td colspan="5">No geographic scopes added.</td></tr>
     {% endfor %}
   </table>
 
@@ -40,15 +53,33 @@
           hx-target="#geo-scopes-section" hx-swap="outerHTML"
           class="am-change-form-grid">
       <label>Type <span class="am-required">*</span></label>
-      <select name="type_code" required class="am-select">
+      <select name="type_code" required class="am-select"
+              hx-get="/ui/soa/{{ soa_id }}/geo-scope-location-options"
+              hx-trigger="change"
+              hx-target="#add-loc-options">
         <option value="" disabled selected>— select —</option>
         {% for code, sv in geo_scope_type_terms.items()|sort(attribute='1') %}
         <option value="{{ code }}">{{ sv }}</option>
         {% endfor %}
       </select>
+      <label id="add-loc-label" style="display:none;">Location</label>
+      <div id="add-loc-options"></div>
       <div class="am-form-actions">
         <button type="submit" class="am-btn am-btn-primary">Add Scope</button>
       </div>
     </form>
   </details>
 </div>
+
+<script>
+(function () {
+  var locDiv = document.getElementById('add-loc-options');
+  var locLabel = document.getElementById('add-loc-label');
+  if (locDiv) {
+    var obs = new MutationObserver(function () {
+      locLabel.style.display = locDiv.querySelector('select') ? '' : 'none';
+    });
+    obs.observe(locDiv, { childList: true, subtree: true });
+  }
+})();
+</script>

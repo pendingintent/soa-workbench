@@ -194,6 +194,96 @@ def _update_code_value(
 
 
 # ---------------------------------------------------------------------------
+# Geographic scope location helpers
+# ---------------------------------------------------------------------------
+
+_COUNTRY_SUBMISSION_VALUE = "Country"
+_REGION_SUBMISSION_VALUE = "Region"
+
+
+def _geo_scope_category(type_code: str) -> Optional[str]:
+    """Return 'country', 'region', or None for the given type C-code."""
+    terms = get_ddf_ct_codelist_map(_GEO_SCOPE_TYPE_CODELIST)
+    sv = terms.get(type_code, "")
+    if sv.lower() == _COUNTRY_SUBMISSION_VALUE.lower():
+        return "country"
+    if sv.lower() == _REGION_SUBMISSION_VALUE.lower():
+        return "region"
+    return None
+
+
+def _get_countries(cur) -> list:
+    cur.execute(
+        "SELECT country_name, country_numeric_code "
+        "FROM country_codes ORDER BY country_name"
+    )
+    return [{"name": r[0], "code": r[1]} for r in cur.fetchall()]
+
+
+def _get_regions(cur) -> list:
+    cur.execute(
+        "SELECT subregion, region_numeric_code "
+        "FROM geographic_regions ORDER BY subregion"
+    )
+    return [{"name": r[0], "code": r[1]} for r in cur.fetchall()]
+
+
+def _insert_location_code(
+    cur, soa_id: int, category: str, location_value: str
+) -> Optional[str]:
+    """Insert a code row for a country or region selection; return code_uid."""
+    if not location_value:
+        return None
+    if category == "country":
+        cur.execute(
+            "SELECT country_name FROM country_codes WHERE country_numeric_code=?",
+            (location_value,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        code_uid = get_next_code_uid(cur, soa_id)
+        cur.execute(
+            "INSERT INTO code "
+            "(soa_id,code_uid,code,decode,code_system,code_system_version)"
+            " VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                code_uid,
+                location_value,
+                row[0],
+                "ISO 3166 1 Numeric Code",
+                "2026",
+            ),
+        )
+        return code_uid
+    if category == "region":
+        cur.execute(
+            "SELECT subregion FROM geographic_regions WHERE region_numeric_code=?",
+            (location_value,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        code_uid = get_next_code_uid(cur, soa_id)
+        cur.execute(
+            "INSERT INTO code "
+            "(soa_id,code_uid,code,decode,code_system,code_system_version)"
+            " VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                code_uid,
+                location_value,
+                row[0],
+                "UN M49",
+                "2026",
+            ),
+        )
+        return code_uid
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Row helpers
 # ---------------------------------------------------------------------------
 
@@ -312,15 +402,26 @@ def _load_amendment_data(soa_id: int, amendment_id: int) -> dict:
     amendment_uid = amendment["amendment_uid"]
 
     cur.execute(
-        "SELECT s.id, s.scope_uid, ca.code "
+        "SELECT s.id, s.scope_uid, ca.code, s.location_code_uid, "
+        "c.code, c.decode "
         "FROM amendment_geographic_scope s "
-        "LEFT JOIN code_association ca ON ca.code_uid=s.type_code_uid "
-        "AND ca.soa_id=s.soa_id "
+        "LEFT JOIN code_association ca "
+        "ON ca.code_uid=s.type_code_uid AND ca.soa_id=s.soa_id "
+        "LEFT JOIN code c "
+        "ON c.code_uid=s.location_code_uid AND c.soa_id=s.soa_id "
         "WHERE s.soa_id=? AND s.amendment_uid=? ORDER BY s.id",
         (soa_id, amendment_uid),
     )
     geo_scopes = [
-        {"id": r[0], "scope_uid": r[1], "type_code": r[2] or ""} for r in cur.fetchall()
+        {
+            "id": r[0],
+            "scope_uid": r[1],
+            "type_code": r[2] or "",
+            "location_code_uid": r[3],
+            "location_code": r[4] or "",
+            "location_decode": r[5] or "",
+        }
+        for r in cur.fetchall()
     ]
 
     cur.execute(
@@ -1884,7 +1985,7 @@ def _ui_geo_scopes_partial(
 def _ui_geo_scopes_and_deps(
     request: Request, soa_id: int, amendment_id: int
 ) -> HTMLResponse:
-    """Geo-scopes primary response + OOB refresh of enrollment scope dropdown."""
+    """Geo-scopes primary + OOB refresh of enrollment and gov-dates dropdowns."""
     ctx = _load_amendment_data(soa_id, amendment_id)
     if not ctx:
         raise HTTPException(404, "Amendment not found")
@@ -1894,7 +1995,9 @@ def _ui_geo_scopes_and_deps(
     enroll_html = templates.get_template("amendment_enrollments_partial.html").render(
         ctx
     )
-    return HTMLResponse(geo_html + enroll_html)
+    ctx["gov_date_type_terms"] = get_ddf_ct_codelist_map(_GOV_DATE_TYPE_CODELIST)
+    gov_html = templates.get_template("amendment_gov_dates_partial.html").render(ctx)
+    return HTMLResponse(geo_html + enroll_html + gov_html)
 
 
 def _ui_enrollments_partial(
@@ -1924,6 +2027,30 @@ def _ui_gov_dates_partial(
     )
 
 
+@ui_router.get(
+    "/ui/soa/{soa_id}/geo-scope-location-options",
+    response_class=HTMLResponse,
+)
+def ui_geo_scope_location_options(
+    request: Request,
+    soa_id: int,
+    type_code: str = "",
+):
+    conn = _connect()
+    cur = conn.cursor()
+    category = _geo_scope_category(type_code)
+    ctx = {
+        "soa_id": soa_id,
+        "category": category,
+        "countries": _get_countries(cur) if category == "country" else [],
+        "regions": _get_regions(cur) if category == "region" else [],
+    }
+    conn.close()
+    return templates.TemplateResponse(
+        request, "amendment_geo_scope_location_options.html", ctx
+    )
+
+
 @ui_router.post(
     "/ui/soa/{soa_id}/amendment/{amendment_id}/geographic-scopes/add",
     response_class=HTMLResponse,
@@ -1933,6 +2060,7 @@ def ui_add_geographic_scope(
     soa_id: int,
     amendment_id: int,
     type_code: str = Form(...),
+    location_value: str = Form(""),
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -1950,6 +2078,13 @@ def ui_add_geographic_scope(
         (soa_id, am["amendment_uid"], scope_uid, type_code_uid),
     )
     scope_id = cur.lastrowid
+    category = _geo_scope_category(type_code)
+    location_code_uid = _insert_location_code(cur, soa_id, category, location_value)
+    if location_code_uid:
+        cur.execute(
+            "UPDATE amendment_geographic_scope SET location_code_uid=? WHERE id=?",
+            (location_code_uid, scope_id),
+        )
     conn.commit()
     conn.close()
     _record_geo_scope_audit(soa_id, "create", scope_id, after={"scope_uid": scope_uid})
@@ -1968,7 +2103,8 @@ def ui_delete_geographic_scope(
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,scope_uid,type_code_uid FROM amendment_geographic_scope "
+        "SELECT id,scope_uid,type_code_uid,location_code_uid "
+        "FROM amendment_geographic_scope "
         "WHERE id=? AND soa_id=?",
         (scope_id, soa_id),
     )
@@ -1985,6 +2121,11 @@ def ui_delete_geographic_scope(
         "DELETE FROM code_association WHERE soa_id=? AND code_uid=?",
         (soa_id, row[2]),
     )
+    if row[3]:
+        cur.execute(
+            "DELETE FROM code WHERE soa_id=? AND code_uid=?",
+            (soa_id, row[3]),
+        )
     cur.execute(
         "DELETE FROM amendment_geographic_scope WHERE id=? AND soa_id=?",
         (scope_id, soa_id),
@@ -2005,13 +2146,15 @@ def ui_update_geographic_scope(
     amendment_id: int,
     scope_id: int,
     type_code: str = Form(...),
+    location_value: str = Form(""),
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,scope_uid,type_code_uid FROM amendment_geographic_scope "
+        "SELECT id,scope_uid,type_code_uid,location_code_uid "
+        "FROM amendment_geographic_scope "
         "WHERE id=? AND soa_id=?",
         (scope_id, soa_id),
     )
@@ -2021,6 +2164,18 @@ def ui_update_geographic_scope(
         raise HTTPException(404, "Geographic scope not found")
     before = {"scope_uid": row[1]}
     _update_code_value(cur, soa_id, row[2], type_code, _GEO_SCOPE_TYPE_CODELIST)
+    old_location_uid = row[3]
+    category = _geo_scope_category(type_code)
+    if old_location_uid:
+        cur.execute(
+            "DELETE FROM code WHERE soa_id=? AND code_uid=?",
+            (soa_id, old_location_uid),
+        )
+    new_location_uid = _insert_location_code(cur, soa_id, category, location_value)
+    cur.execute(
+        "UPDATE amendment_geographic_scope SET location_code_uid=? WHERE id=?",
+        (new_location_uid, scope_id),
+    )
     conn.commit()
     conn.close()
     _record_geo_scope_audit(

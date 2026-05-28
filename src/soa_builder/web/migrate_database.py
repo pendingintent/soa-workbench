@@ -1,5 +1,7 @@
+import csv
 import logging
 import os
+import pathlib
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
@@ -2500,3 +2502,82 @@ def _migrate_backfill_code_association_decode():
         )
     except Exception as e:
         logger.warning("_migrate_backfill_code_association_decode failed: %s", e)
+
+
+_FILES_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "files"
+
+
+def _migrate_create_country_codes_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS country_codes ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "country_name TEXT NOT NULL,"
+            "country_numeric_code TEXT NOT NULL"
+            ")"
+        )
+        cur.execute("SELECT COUNT(*) FROM country_codes")
+        if cur.fetchone()[0] == 0:
+            csv_path = _FILES_DIR / "country_codes.csv"
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                rows = [(r["country_name"], r["country_numeric_code"]) for r in reader]
+            cur.executemany(
+                "INSERT INTO country_codes "
+                "(country_name,country_numeric_code) VALUES (?,?)",
+                rows,
+            )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_create_country_codes_table complete")
+    except Exception as e:
+        logger.warning("_migrate_create_country_codes_table failed: %s", e)
+
+
+def _migrate_create_geographic_regions_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS geographic_regions ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "region TEXT NOT NULL,"
+            "subregion TEXT NOT NULL,"
+            "region_numeric_code TEXT NOT NULL"
+            ")"
+        )
+        cur.execute("SELECT COUNT(*) FROM geographic_regions")
+        if cur.fetchone()[0] == 0:
+            csv_path = _FILES_DIR / "geographic_regions.csv"
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                rows = [
+                    (r["region"], r["subregion"], r["region_numeric_code"])
+                    for r in reader
+                ]
+            cur.executemany(
+                "INSERT INTO geographic_regions "
+                "(region,subregion,region_numeric_code) VALUES (?,?,?)",
+                rows,
+            )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_create_geographic_regions_table complete")
+    except Exception as e:
+        logger.warning("_migrate_create_geographic_regions_table failed: %s", e)
+
+
+def _migrate_add_location_code_uid_to_geo_scope():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "ALTER TABLE amendment_geographic_scope ADD COLUMN location_code_uid TEXT"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_location_code_uid_to_geo_scope added column")
+    except Exception as e:
+        logger.warning("_migrate_add_location_code_uid_to_geo_scope failed: %s", e)
