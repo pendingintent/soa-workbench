@@ -85,7 +85,7 @@ def populate_extension_attributes(soa_id: int) -> None:
         conn.close()
 
 
-def build_usdm_extension_attributes(
+def build_usdm_dss_extension_attributes(
     soa_id: int, biomedical_concept_uid: str
 ) -> List[Dict[str, Any]]:
     """Return one ExtensionAttribute dict per DSS row for the given BC.
