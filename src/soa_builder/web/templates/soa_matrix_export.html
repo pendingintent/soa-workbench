@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SoA Matrix — {{ study.study_label or study.name or soa_id }}</title>
+  <style>
+{{ css }}
+    /* Export-only overrides */
+    body { font-size: 0.82em; padding: 18px; }
+    .matrix td.cell { cursor: default; }
+    details > summary { cursor: pointer; }
+    .matrix-container { margin-bottom: 32px; }
+    @media print {
+      details { display: block; }
+      details > summary::marker { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <h2 style="margin-bottom:4px;">
+    SoA Matrix:
+    {{ study.study_label or study.name or ("SoA " ~ soa_id) }}
+  </h2>
+  {% if study.study_id %}
+  <p style="margin:0 0 4px 0;color:var(--am-text-mid);font-size:0.85em;">
+    Study ID: {{ study.study_id }}
+  </p>
+  {% endif %}
+  <p style="margin:0 0 16px 0;color:var(--am-text-muted);font-size:0.78em;">
+    Generated {{ generated_at }}
+  </p>
+
+  {% for tl in timelines %}
+  {% set tl_uid = tl.schedule_timeline_uid %}
+  {% set tl_instances = instances_by_tl.get(tl_uid, []) %}
+  {% if tl_instances %}
+  <div class="matrix-container">
+    <h3 style="margin-bottom:6px;">
+      {{ tl.name }}{% if tl.main_timeline %}
+      <span style="font-size:0.7em;color:var(--am-text-muted);font-weight:normal;">
+        (main timeline)
+      </span>{% endif %}
+    </h3>
+    <div style="overflow-x:auto;">
+    <table class="matrix" style="font-size:0.78em;">
+      <!-- Epoch row -->
+      <tr class="matrix-epoch-row">
+        <th></th>
+        <th style="text-align:right;font-size:0.50em;">Epoch:-&gt;</th>
+        {% set prev_epoch = namespace(value=None, count=0) %}
+        {% for inst in tl_instances %}
+          {% set cur_epoch = inst.epoch_label if inst.epoch_label else inst.epoch_name %}
+          {% if prev_epoch.value == cur_epoch %}
+            {% set prev_epoch.count = prev_epoch.count + 1 %}
+          {% else %}
+            {% if prev_epoch.value is not none %}
+              <th style="text-align:center;font-size:0.50em;"
+                  colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}</th>
+            {% endif %}
+            {% set prev_epoch.value = cur_epoch %}
+            {% set prev_epoch.count = 1 %}
+          {% endif %}
+          {% if loop.last %}
+            <th style="text-align:center;font-size:0.50em;"
+                colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}</th>
+          {% endif %}
+        {% endfor %}
+      </tr>
+      <!-- Encounter row -->
+      <tr class="matrix-encounter-row">
+        <th></th>
+        <th style="text-align:right;font-size:0.50em;">Encounter:-&gt;</th>
+        {% for inst in tl_instances %}
+        <th style="text-align:center;font-size:0.50em;">
+          {{ inst.encounter_label or inst.encounter_name or '' }}
+        </th>
+        {% endfor %}
+      </tr>
+      <!-- Instance row -->
+      <tr class="matrix-instance-row">
+        <th></th>
+        <th style="text-align:right;font-size:0.50em;">Instance:-&gt;</th>
+        {% for inst in tl_instances %}
+        <th style="min-width:70px;vertical-align:top;text-align:center;">
+          <div style="color:#1976d2;">{{ inst.label or inst.name }}</div>
+        </th>
+        {% endfor %}
+      </tr>
+      <!-- Study Day row -->
+      <tr class="matrix-study-day-row">
+        <th></th>
+        <th style="text-align:right;font-size:0.50em;">Study Day:-&gt;</th>
+        {% for inst in tl_instances %}
+        <th style="text-align:center;font-size:0.50em;">
+          {{ inst.study_day or '' }}
+        </th>
+        {% endfor %}
+      </tr>
+      <!-- Timing row -->
+      <tr class="matrix-timing-label-row">
+        <th></th>
+        <th style="text-align:right;font-size:0.50em;">Timing:-&gt;</th>
+        {% for inst in tl_instances %}
+        <th style="text-align:center;font-size:0.50em;">
+          {{ inst.timing_label or inst.timing_name or '' }}
+        </th>
+        {% endfor %}
+      </tr>
+      <!-- Visit Window row -->
+      <tr class="matrix-visit-window-row">
+        <th></th>
+        <th style="text-align:right;font-size:0.50em;">Visit Window:-&gt;</th>
+        {% for inst in tl_instances %}
+        <th style="text-align:center;font-size:0.50em;">
+          {{ inst.window_label or '' }}
+        </th>
+        {% endfor %}
+      </tr>
+      <!-- Column header row -->
+      <tr>
+        <th>Activity</th>
+        <th style="min-width:220px;">Concepts</th>
+        {% for inst in tl_instances %}
+        <th style="min-width:70px;"></th>
+        {% endfor %}
+      </tr>
+      <!-- Activity rows -->
+      {% for act in activities %}
+      <tr>
+        <td>{{ act.label or act.name }}</td>
+        <td>
+          {% set act_concepts = concepts_map.get(act.id, []) %}
+          {% set act_surrogates = surrogates_map.get(act.id, []) %}
+          {% if act_concepts or act_surrogates %}
+          <details>
+            <summary class="concept-count-pill"
+                     style="font-size:0.8em;list-style:none;cursor:pointer;
+                            display:inline-block;">
+              {{ act_concepts | length + act_surrogates | length }}
+              concept(s) &#9656;
+            </summary>
+            <ul style="margin:4px 0 0 8px;padding:0;list-style:none;">
+              {% for c in act_concepts %}
+              <li style="background:#eef;border-radius:3px;margin:2px 0;
+                         padding:2px 6px;font-size:0.8em;"
+                  title="{{ c.code }}">
+                {{ c.title }}
+                <span style="color:var(--am-text-muted);">({{ c.code }})</span>
+              </li>
+              {% endfor %}
+              {% for s in act_surrogates %}
+              <li style="background:#fff3e0;border-radius:3px;margin:2px 0;
+                         padding:2px 6px;font-size:0.8em;">
+                [S] {{ s.label or s.name }}
+                <span style="color:var(--am-text-muted);">
+                  ({{ s.surrogate_uid }})
+                </span>
+              </li>
+              {% endfor %}
+            </ul>
+          </details>
+          {% else %}
+          <span style="color:var(--am-text-muted);font-size:0.75em;">—</span>
+          {% endif %}
+        </td>
+        {% for inst in tl_instances %}
+        {% set status = cell_map.get((inst.id, act.id), '') %}
+        {% set sup = superscript_map.get((inst.id, act.id)) %}
+        <td class="cell" style="text-align:center;">
+          {{ status or '' }}{% if sup %}<sup>{{ sup }}</sup>{% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+
+  {% if footnotes %}
+  <div class="footnotes-display"
+       style="margin-top:18px;font-size:0.85em;
+              border-top:1px solid var(--am-border);padding-top:8px;">
+    <strong>Footnotes</strong>
+    {% for fn in footnotes %}
+    <div style="margin-top:4px;">
+      <strong>{{ fn.name }}</strong>: {{ fn.text | safe }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</body>
+</html>

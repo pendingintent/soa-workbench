@@ -312,11 +312,15 @@
   </div>
 </details>
 <!-- Export Excel Matrix for SoA -->
-<div class="export-buttons" style="margin-top:8px;">
+<div class="export-buttons" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
   <a id="export-xlsx-link" class="am-btn am-btn-info"
      data-base-href="/soa/{{ soa_id }}/export/xlsx"
      href="/soa/{{ soa_id }}/export/xlsx"
      title="Download Excel workbook">&#8595; Excel Matrix</a>
+  <a id="export-html-link"
+     href="/soa/{{ soa_id }}/export/html"
+     class="am-btn am-btn-slate"
+     title="Download self-contained interactive HTML matrix">&#8595; HTML Matrix</a>
 </div>
 <script>
 // Timeline switching functionality
@@ -353,6 +357,14 @@ function switchTimeline(timelineUid) {
   
   // Store selection in sessionStorage for persistence across page interactions
   sessionStorage.setItem('selectedTimeline_{{ soa_id }}', timelineUid);
+  _updateExportHtmlLink(timelineUid);
+}
+
+function _updateExportHtmlLink(timelineUid) {
+  const link = document.getElementById('export-html-link');
+  if (!link) return;
+  const base = '/soa/{{ soa_id }}/export/html';
+  link.setAttribute('href', timelineUid ? base + '?timeline=' + encodeURIComponent(timelineUid) : base);
 }
 
 // Restore timeline selection on page load
@@ -362,6 +374,10 @@ document.addEventListener('DOMContentLoaded', function() {
   if (savedTimeline) {
     console.log('Restoring saved timeline:', savedTimeline);
     switchTimeline(savedTimeline);
+  } else {
+    // Set the default timeline on the export link even without a sessionStorage value
+    const activeBtn = document.querySelector('.timeline-btn.active');
+    if (activeBtn) { _updateExportHtmlLink(activeBtn.dataset.timeline); }
   }
 });
 
