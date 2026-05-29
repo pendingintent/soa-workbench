@@ -8,11 +8,12 @@
 
 <hr class="fz-section-divider" />
 
-<table class="fz-table" style="max-width:520px;">
+<table class="fz-table" style="max-width:640px;">
   <tr class="fz-thead-row">
     <th>Domain</th>
     <th style="text-align:center;">JSON</th>
     <th style="text-align:center;">CSV</th>
+    <th style="text-align:center;">View</th>
   </tr>
   {% for key, label, json_file, csv_file in domains %}
   <tr>
@@ -27,8 +28,18 @@
         Download CSV
       </a>
     </td>
+    <td class="am-td-center">
+      <button class="am-btn am-btn-slate am-btn-sm"
+              hx-get="/ui/soa/{{ soa_id }}/tdd/{{ key }}/view"
+              hx-target="#tdd-preview"
+              hx-swap="outerHTML">
+        View
+      </button>
+    </td>
   </tr>
   {% endfor %}
 </table>
+
+<div id="tdd-preview"></div>
 
 {% endblock %}

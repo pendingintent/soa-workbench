@@ -5,6 +5,7 @@ import io
 import json
 import logging
 import os
+import re
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -50,6 +51,20 @@ _FIELDNAMES: dict[str, list[str]] = {
         "TVENRL",
     ],
 }
+
+
+_UNICODE_ESCAPE_RE = re.compile(r"\\u([0-9a-fA-F]{4})")
+
+
+def _decode_unicode_escapes(rows: list[dict]) -> list[dict]:
+    """Replace literal \\uXXXX sequences with their Unicode characters."""
+
+    def _fix(v):
+        if isinstance(v, str):
+            return _UNICODE_ESCAPE_RE.sub(lambda m: chr(int(m.group(1), 16)), v)
+        return v
+
+    return [{k: _fix(v) for k, v in row.items()} for row in rows]
 
 
 def _build(domain: str, soa_id: int) -> list[dict]:
@@ -99,6 +114,31 @@ def download_tdd_json(soa_id: int, domain: str):
         buf,
         media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/ui/soa/{soa_id}/tdd/{domain}/view", response_class=HTMLResponse)
+def ui_tdd_domain_view(request: Request, soa_id: int, domain: str):
+    """Return an HTML partial rendering domain rows in a styled table."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    valid_keys = {d[0] for d in _DOMAINS}
+    if domain not in valid_keys:
+        raise HTTPException(404, f"Unknown domain '{domain}'")
+    try:
+        rows = _decode_unicode_escapes(_build(domain, soa_id))
+    except Exception as exc:
+        logger.exception("Failed to build TDD domain %s for soa_id=%s", domain, soa_id)
+        raise HTTPException(500, f"Failed to generate {domain}: {exc}") from exc
+    return templates.TemplateResponse(
+        request,
+        "tdd_view_partial.html",
+        {
+            "soa_id": soa_id,
+            "domain": domain.upper(),
+            "fieldnames": _FIELDNAMES[domain],
+            "rows": rows,
+        },
     )
 
 

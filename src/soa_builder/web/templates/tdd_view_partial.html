@@ -1,0 +1,38 @@
+<div id="tdd-preview" style="margin-top:20px;">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+    <h3 style="margin:0;font-size:1em;color:var(--am-text);">
+      {{ domain }} &mdash; {{ rows|length }} record(s)
+    </h3>
+    <button onclick="document.getElementById('tdd-preview').outerHTML='<div id=\'tdd-preview\'></div>'"
+            class="am-btn am-btn-slate am-btn-xs"
+            style="margin-left:auto;">
+      Close
+    </button>
+  </div>
+  {% if rows %}
+  <div style="overflow-x:auto;">
+    <table class="am-data-table" style="font-size:0.78em;width:100%;">
+      <thead>
+        <tr>
+          {% for col in fieldnames %}
+          <th style="white-space:nowrap;">{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          {% for col in fieldnames %}
+          <td>{{ row.get(col, '') }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color:var(--am-text-muted);font-style:italic;font-size:0.85em;">
+    No records generated for this domain.
+  </p>
+  {% endif %}
+</div>
