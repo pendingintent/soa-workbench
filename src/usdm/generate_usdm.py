@@ -31,7 +31,7 @@ logger = logging.getLogger("usdm.generate_usdm")
 
 def _git_branch() -> str:
     try:
-        return (
+        branch = (
             subprocess.check_output(
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
                 stderr=subprocess.DEVNULL,
@@ -41,6 +41,13 @@ def _git_branch() -> str:
         )
     except Exception:
         return "unknown"
+    if branch.startswith("release-v-"):
+        version = branch[len("release-v-") :]
+        parts = version.split(".")
+        while len(parts) < 3:
+            parts.append("0")
+        return ".".join(parts[:3])
+    return branch
 
 
 def build_usdm(soa_id: int) -> Dict[str, Any]:
