@@ -1,0 +1,146 @@
+<div id="organizations-section">
+  <table class="fz-table">
+    <tr class="fz-thead-row">
+      <th>UID</th>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Identifier</th>
+      <th>Address</th>
+      <th></th>
+    </tr>
+    {% for o in organizations %}
+    <tr>
+      <td class="fz-td-version"><span class="obj-uid">{{ o.organization_uid }}</span></td>
+      <td>{{ o.name }}{% if o.label %} <span style="color:var(--am-text-muted);font-size:0.85em;">({{ o.label }})</span>{% endif %}</td>
+      <td class="fz-td-date">{{ o.type_decode or '—' }}</td>
+      <td class="fz-td-date">
+        {% if o.identifier_scheme %}{{ o.identifier_scheme }}: {% endif %}{{ o.identifier or '—' }}
+      </td>
+      <td class="fz-td-date">
+        {% if o.addr_city %}{{ o.addr_city }}{% if o.country_decode %}, {{ o.country_decode }}{% endif %}
+        {% elif o.country_decode %}{{ o.country_decode }}
+        {% else %}—{% endif %}
+      </td>
+      <td class="am-td-center">
+        <form hx-post="/ui/soa/{{ soa_id }}/organizations/{{ o.id }}/delete"
+              hx-target="#organizations-section"
+              hx-swap="outerHTML"
+              style="display:inline;">
+          <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="fz-empty-row"><td colspan="6">No organizations yet.</td></tr>
+    {% endfor %}
+  </table>
+
+  <hr style="margin:14px 0 10px;border:none;border-top:1px solid var(--am-border,#ddd);" />
+
+  <form hx-post="/ui/soa/{{ soa_id }}/organizations-add"
+        hx-target="#organizations-section"
+        hx-swap="outerHTML"
+        class="am-grid-2">
+
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" required class="am-input" placeholder="Organization name" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" class="am-input" placeholder="Short label (optional)" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Identifier Scheme</label>
+      <input name="identifier_scheme" class="am-input" placeholder="e.g. DUNS, ROR" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Identifier</label>
+      <input name="identifier" class="am-input" placeholder="Identifier value" />
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Type</label>
+      <select name="type_code" class="am-select"
+              onchange="updateOrgTypeDecode(this, 'org-type-decode-{{ soa_id }}')">
+        <option value="">— select type —</option>
+        {% for opt in org_type_options %}
+        <option value="{{ opt.code }}" data-decode="{{ opt.label | e }}">{{ opt.label }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="type_decode" id="org-type-decode-{{ soa_id }}" value="" />
+    </div>
+
+    <div class="am-field am-field-span" style="margin-top:6px;">
+      <span style="font-size:0.78em;font-weight:600;letter-spacing:.05em;
+                   color:var(--am-text-mid);text-transform:uppercase;">
+        Legal Address
+      </span>
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Address Text</label>
+      <textarea name="addr_text" rows="2" class="am-textarea"
+                placeholder="Full address as single text (optional)"></textarea>
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Address Lines</label>
+      <textarea name="addr_lines" rows="2" class="am-textarea"
+                placeholder="One address line per row (optional)"></textarea>
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">City</label>
+      <input name="addr_city" class="am-input" placeholder="City" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">District</label>
+      <input name="addr_district" class="am-input" placeholder="District / County" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">State / Province</label>
+      <input name="addr_state" class="am-input" placeholder="State or Province" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Postal Code</label>
+      <input name="addr_postal_code" class="am-input" placeholder="Postal / ZIP code" />
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Country</label>
+      <select name="addr_country_numeric" class="am-select"
+              onchange="updateOrgCountryName(this, 'org-country-name-{{ soa_id }}')">
+        <option value="">— select country —</option>
+        {% for c in countries_options %}
+        <option value="{{ c.code }}" data-name="{{ c.name | e }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="addr_country_name"
+             id="org-country-name-{{ soa_id }}" value="" />
+    </div>
+
+    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+      <button type="submit" class="am-btn am-btn-info am-btn-sm">
+        Add Organization
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+function updateOrgTypeDecode(sel, targetId) {
+  var opt = sel.options[sel.selectedIndex];
+  document.getElementById(targetId).value = opt.dataset.decode || '';
+}
+function updateOrgCountryName(sel, targetId) {
+  var opt = sel.options[sel.selectedIndex];
+  document.getElementById(targetId).value = opt.dataset.name || '';
+}
+</script>

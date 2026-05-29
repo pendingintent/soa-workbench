@@ -2581,3 +2581,57 @@ def _migrate_add_location_code_uid_to_geo_scope():
         logger.info("_migrate_add_location_code_uid_to_geo_scope added column")
     except Exception as e:
         logger.warning("_migrate_add_location_code_uid_to_geo_scope failed: %s", e)
+
+
+def _migrate_add_organization_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS organization ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "organization_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "identifier TEXT,"
+            "identifier_scheme TEXT,"
+            "type_code_uid TEXT,"
+            "addr_text TEXT,"
+            "addr_lines TEXT,"
+            "addr_city TEXT,"
+            "addr_district TEXT,"
+            "addr_state TEXT,"
+            "addr_postal_code TEXT,"
+            "addr_country_code_uid TEXT,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, organization_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_organization_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_organization_table failed: %s", e)
+
+
+def _migrate_add_organization_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS organization_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "org_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_organization_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_organization_audit_table failed: %s", e)

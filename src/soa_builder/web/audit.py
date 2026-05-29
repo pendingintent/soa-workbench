@@ -678,6 +678,35 @@ def _record_enrollment_audit(
         logger.warning("Failed recording enrollment audit: %s", e)
 
 
+def _record_organization_audit(
+    soa_id: int,
+    action: str,
+    org_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO organization_audit"
+            " (soa_id, org_id, action, before_json, after_json,"
+            " performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                org_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording organization audit: %s", e)
+
+
 def _record_gov_date_audit(
     soa_id: int,
     action: str,
