@@ -5888,6 +5888,104 @@ def ui_set_timing(
     )
 
 
+_SOA_CASCADE_TABLES = [
+    "matrix_cells",
+    "activity_concept",
+    "activity_concept_dss",
+    "activity_surrogate",
+    "activity_audit",
+    "activity",
+    "alias_code",
+    "amendment_geographic_scope",
+    "amendment_geographic_scope_audit",
+    "amendment_governance_date",
+    "amendment_governance_date_audit",
+    "amendment_subject_enrollment",
+    "amendment_subject_enrollment_audit",
+    "arm_audit",
+    "arm",
+    "bcp_response_code",
+    "biomedical_concept_property",
+    "biomedical_concept_surrogate_audit",
+    "biomedical_concept_surrogate",
+    "biomedical_concept_audit",
+    "biomedical_concept",
+    "code_association",
+    "code",
+    "condition_assignment",
+    "decision_instances",
+    "document_content_reference_audit",
+    "document_content_reference",
+    "element_audit",
+    "element",
+    "endpoint_audit",
+    "endpoint",
+    "epoch_audit",
+    "epoch",
+    "footnote_audit",
+    "footnote",
+    "governance_date_geographic_scope",
+    "instance_audit",
+    "instances",
+    "objective_audit",
+    "objective",
+    "reorder_audit",
+    "rollback_audit",
+    "schedule_timelines_audit",
+    "schedule_timelines",
+    "soa_freeze",
+    "study_amendment_impact_audit",
+    "study_amendment_impact",
+    "study_amendment_reason_audit",
+    "study_amendment_reason",
+    "study_amendment_audit",
+    "study_amendment",
+    "study_cell_audit",
+    "study_cell",
+    "study_change_audit",
+    "study_change",
+    "timing_audit",
+    "timing",
+    "transition_rule_audit",
+    "transition_rule",
+    "visit_audit",
+    "visit",
+]
+
+
+@app.post("/ui/soa/{soa_id}/delete", response_class=HTMLResponse)
+def ui_delete_soa(
+    request: Request,
+    soa_id: int,
+    confirm_study_id: str = Form(...),
+):
+    """Permanently delete a study and all its related records."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT study_id FROM soa WHERE id=?", (soa_id,))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(404, "SOA not found")
+
+    if row[0] != confirm_study_id:
+        raise HTTPException(
+            400,
+            f"Study ID '{confirm_study_id}' does not match.",
+        )
+
+    conn = _connect()
+    cur = conn.cursor()
+    for table in _SOA_CASCADE_TABLES:
+        cur.execute(f"DELETE FROM {table} WHERE soa_id=?", (soa_id,))
+    cur.execute("DELETE FROM soa WHERE id=?", (soa_id,))
+    conn.commit()
+    conn.close()
+
+    return HTMLResponse("<script>window.location='/';</script>")
+
+
 # UI endpoint for deleting an Activity
 @app.post("/ui/soa/{soa_id}/delete_activity", response_class=HTMLResponse)
 def ui_delete_activity(request: Request, soa_id: int, activity_id: int = Form(...)):
