@@ -113,6 +113,8 @@ from .migrate_database import (
     _migrate_create_country_codes_table,
     _migrate_create_geographic_regions_table,
     _migrate_add_location_code_uid_to_geo_scope,
+    _migrate_add_study_title_table,
+    _migrate_add_study_title_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -150,6 +152,7 @@ from .routers import (
     ddf_controlled_terminology as ddf_controlled_terminology_router,
 )
 from .routers import objectives as objectives_router
+from .routers import study_titles as study_titles_router
 from .routers import endpoints as endpoints_router
 from .routers import amendments as amendments_router
 from .audit import _record_element_audit
@@ -317,6 +320,8 @@ _migrate_backfill_code_association_decode()
 _migrate_create_country_codes_table()
 _migrate_create_geographic_regions_table()
 _migrate_add_location_code_uid_to_geo_scope()
+_migrate_add_study_title_table()
+_migrate_add_study_title_audit_table()
 
 # Backfill BCP rows for any SOA that pre-dates eager population
 _t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")
@@ -355,6 +360,7 @@ app.include_router(protocol_controlled_terminology_router.router)
 app.include_router(ddf_controlled_terminology_router.router)
 app.include_router(objectives_router.router)
 app.include_router(objectives_router.ui_router)
+app.include_router(study_titles_router.router)
 app.include_router(endpoints_router.router)
 app.include_router(endpoints_router.ui_router)
 app.include_router(amendments_router.router)
@@ -4155,6 +4161,14 @@ def ui_edit(request: Request, soa_id: int):
     # Precompute next Code_N if needed for UI defaults (currently not displayed)
     _ = _get_next_code_uid(cur_codes, soa_id)
     conn_codes.close()
+    # Study Titles for the metadata card
+    from .routers.study_titles import (
+        _get_title_type_options,
+        _list_titles,
+    )
+
+    study_titles = _list_titles(soa_id)
+    title_type_options = _get_title_type_options()
     # Load Protocol Terminology (C174222) options from CDISC Library
     from .utils import get_protocol_ct_codelist_map as _get_protocol_ct_codelist_map
 
@@ -4463,6 +4477,8 @@ def ui_edit(request: Request, soa_id: int):
             "default_timeline": default_timeline,
             "footnotes": footnotes,
             "superscript_map": superscript_map,
+            "study_titles": study_titles,
+            "title_type_options": title_type_options,
         },
     )
 

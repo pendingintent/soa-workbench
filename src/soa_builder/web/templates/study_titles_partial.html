@@ -1,0 +1,79 @@
+<div id="study-titles-section">
+  {% if study_titles %}
+  <ul style="list-style:none;margin:0 0 10px 0;padding:0;">
+    {% for t in study_titles %}
+    <li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;
+               background:var(--am-row-bg,#f8f8fa);border-radius:4px;
+               padding:6px 8px;border:1px solid var(--am-border,#ddd);">
+      <div style="flex:1;min-width:0;">
+        <span style="font-size:0.9em;color:var(--am-text);">{{ t.text }}</span>
+        {% if t.type_decode %}
+        <span style="font-size:0.78em;color:var(--am-text-muted);margin-left:6px;">
+          ({{ t.type_decode }})
+        </span>
+        {% endif %}
+      </div>
+      <form hx-post="/ui/soa/{{ soa_id }}/titles/{{ t.id }}/delete"
+            hx-target="#study-titles-section"
+            hx-swap="outerHTML"
+            style="flex-shrink:0;">
+        <button type="submit"
+                class="am-btn am-btn-danger am-btn-xs"
+                title="Remove title">
+          &times;
+        </button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <form hx-post="/ui/soa/{{ soa_id }}/titles-add"
+        hx-target="#study-titles-section"
+        hx-swap="outerHTML"
+        style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">
+    <div style="flex:2;min-width:160px;">
+      <label style="display:block;font-size:0.8em;color:var(--am-text-muted);
+                    margin-bottom:2px;">Text</label>
+      <input name="text"
+             class="am-input"
+             placeholder="Study title text"
+             style="width:100%;box-sizing:border-box;" />
+    </div>
+    <div style="flex:1;min-width:140px;">
+      <label style="display:block;font-size:0.8em;color:var(--am-text-muted);
+                    margin-bottom:2px;">Type</label>
+      <select name="type_code"
+              id="title-type-select-{{ soa_id }}"
+              class="am-input"
+              style="width:100%;box-sizing:border-box;"
+              onchange="updateTitleDecode(this, 'title-decode-{{ soa_id }}')">
+        <option value="">— select type —</option>
+        {% for opt in title_type_options %}
+        <option value="{{ opt.code }}" data-decode="{{ opt.label | e }}">
+          {{ opt.label }}
+        </option>
+        {% endfor %}
+      </select>
+      <input type="hidden"
+             name="type_decode"
+             id="title-decode-{{ soa_id }}"
+             value="" />
+    </div>
+    <div style="flex-shrink:0;padding-bottom:1px;">
+      <button type="submit"
+              class="am-btn am-btn-info am-btn-sm">
+        Add Title
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function updateTitleDecode(selectEl, decodeId) {
+    var selected = selectEl.options[selectEl.selectedIndex];
+    var decodeVal = selected ? (selected.getAttribute('data-decode') || '') : '';
+    var decodeInput = document.getElementById(decodeId);
+    if (decodeInput) decodeInput.value = decodeVal;
+  }
+</script>

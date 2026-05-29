@@ -2581,3 +2581,47 @@ def _migrate_add_location_code_uid_to_geo_scope():
         logger.info("_migrate_add_location_code_uid_to_geo_scope added column")
     except Exception as e:
         logger.warning("_migrate_add_location_code_uid_to_geo_scope failed: %s", e)
+
+
+def _migrate_add_study_title_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_title (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id          INTEGER NOT NULL,
+                study_title_uid TEXT NOT NULL,
+                text            TEXT NOT NULL,
+                type_code_uid   TEXT,
+                order_index     INTEGER,
+                UNIQUE(soa_id, study_title_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_title_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_title_table failed: %s", e)
+
+
+def _migrate_add_study_title_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_title_audit (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id       INTEGER NOT NULL,
+                title_id     INTEGER,
+                action       TEXT NOT NULL,
+                before_json  TEXT,
+                after_json   TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_title_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_title_audit_table failed: %s", e)

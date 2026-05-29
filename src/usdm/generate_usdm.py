@@ -22,6 +22,7 @@ from usdm.generate_biomedical_concepts import build_usdm_biomedical_concepts
 from usdm.generate_bc_surrogates import build_usdm_bc_surrogates
 from usdm.generate_objectives import build_usdm_objectives
 from usdm.generate_amendments import build_usdm_amendments
+from usdm.generate_study_titles import build_usdm_titles
 
 logger = logging.getLogger("usdm.generate_usdm")
 
@@ -123,23 +124,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         ],
         "referenceIdentifiers": [],
         "studyDesigns": [study_design],
-        "titles": [
-            {
-                "id": "StudyTitle_1",
-                "extensionAttributes": [],
-                "text": meta["study_label"] or meta["name"] or "",
-                "type": {
-                    "id": "Code_StudyTitleType",
-                    "extensionAttributes": [],
-                    "code": "C99905x2",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "",
-                    "decode": "Official Study Title",
-                    "instanceType": "Code",
-                },
-                "instanceType": "StudyTitle",
-            }
-        ],
+        "titles": build_usdm_titles(soa_id),
         "documentVersionIds": [],
         "dateValues": [],
         "amendments": _safe("amendments", build_usdm_amendments, soa_id),
