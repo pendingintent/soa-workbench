@@ -3317,6 +3317,178 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     )
 
 
+@app.get("/soa/{soa_id}/export/html", response_class=HTMLResponse)
+def export_html(soa_id: int, timeline: Optional[str] = None):
+    """Export SoA Matrix as a self-contained interactive HTML file.
+
+    If ``timeline`` is provided only that timeline is included;
+    otherwise all timelines are exported.
+    """
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    # Study metadata
+    conn_info = _connect()
+    cur_info = conn_info.cursor()
+    cur_info.execute(
+        "SELECT name, study_id, study_label, study_description FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    row_info = cur_info.fetchone()
+    conn_info.close()
+    if not row_info:
+        raise HTTPException(404, "SOA not found")
+    study = {
+        "name": row_info[0],
+        "study_id": row_info[1],
+        "study_label": row_info[2],
+        "study_description": row_info[3],
+    }
+
+    # Matrix data
+    _instances, activities, cells = _fetch_matrix(soa_id)
+    cell_map = {(c["instance_id"], c["activity_id"]): c.get("status") for c in cells}
+    superscript_map = {
+        (c["instance_id"], c["activity_id"]): c.get("superscript") for c in cells
+    }
+
+    # Enriched instances (epoch/encounter/timing labels)
+    enriched_instances = _fetch_enriched_instances(soa_id)
+
+    # Timelines
+    conn_tl = _connect()
+    cur_tl = conn_tl.cursor()
+    cur_tl.execute(
+        "SELECT schedule_timeline_uid,name,main_timeline "
+        "FROM schedule_timelines WHERE soa_id=? ORDER BY main_timeline DESC, name",
+        (soa_id,),
+    )
+    timelines = [
+        {
+            "schedule_timeline_uid": r[0],
+            "name": r[1],
+            "main_timeline": bool(r[2]),
+        }
+        for r in cur_tl.fetchall()
+    ]
+    conn_tl.close()
+
+    # Group enriched instances by timeline
+    instances_by_tl: dict = {}
+    for inst in enriched_instances:
+        key = inst.get("member_of_timeline") or "unassigned"
+        instances_by_tl.setdefault(key, []).append(inst)
+
+    # Add unassigned pseudo-timeline entry so the template can render it
+    if "unassigned" in instances_by_tl and not any(
+        t["schedule_timeline_uid"] == "unassigned" for t in timelines
+    ):
+        timelines.append(
+            {
+                "schedule_timeline_uid": "unassigned",
+                "name": "Unassigned",
+                "main_timeline": False,
+            }
+        )
+
+    # Restrict to the requested timeline when one is specified
+    if timeline:
+        timelines = [t for t in timelines if t["schedule_timeline_uid"] == timeline]
+        instances_by_tl = {k: v for k, v in instances_by_tl.items() if k == timeline}
+
+    # Concepts per activity
+    conn_c = _connect()
+    cur_c = conn_c.cursor()
+    has_soa_col = _table_has_columns(cur_c, "activity_concept", ("soa_id",))
+    if has_soa_col:
+        cur_c.execute(
+            "SELECT activity_id, concept_code, concept_title "
+            "FROM activity_concept WHERE soa_id=?",
+            (soa_id,),
+        )
+    else:
+        cur_c.execute(
+            "SELECT ac.activity_id, ac.concept_code, ac.concept_title "
+            "FROM activity_concept ac "
+            "JOIN activity a ON ac.activity_id = a.id WHERE a.soa_id=?",
+            (soa_id,),
+        )
+    concepts_map: dict = {}
+    for aid, code, title in cur_c.fetchall():
+        concepts_map.setdefault(aid, []).append({"code": code, "title": title or code})
+    conn_c.close()
+
+    # Surrogates per activity
+    conn_s = _connect()
+    cur_s = conn_s.cursor()
+    cur_s.execute(
+        "SELECT a.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN activity a "
+        "  ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "JOIN biomedical_concept_surrogate bcs "
+        "  ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=?",
+        (soa_id,),
+    )
+    surrogates_map: dict = {}
+    for aid, sur_uid, sur_name, sur_label in cur_s.fetchall():
+        surrogates_map.setdefault(aid, []).append(
+            {"surrogate_uid": sur_uid, "name": sur_name, "label": sur_label}
+        )
+    conn_s.close()
+
+    # Footnotes
+    conn_fn = _connect()
+    cur_fn = conn_fn.cursor()
+    cur_fn.execute(
+        "SELECT id,footnote_uid,name,label,text FROM footnote "
+        "WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    footnotes = [
+        {"id": r[0], "footnote_uid": r[1], "name": r[2], "label": r[3], "text": r[4]}
+        for r in cur_fn.fetchall()
+    ]
+    conn_fn.close()
+
+    # Embedded stylesheet
+    css_path = os.path.join(STATIC_DIR, "style.css")
+    try:
+        with open(css_path, encoding="utf-8") as _f:
+            css_content = _f.read()
+    except OSError:
+        css_content = ""
+
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    safe_study = _re.sub(r"[^A-Za-z0-9._-]+", "-", study.get("study_id") or str(soa_id))
+    filename = f"soa_{safe_study}_matrix.html"
+
+    # We need a dummy Request object for TemplateResponse; build an inline render
+    # using Jinja2 directly to avoid needing a real request.
+    env = templates.env
+    tmpl = env.get_template("soa_matrix_export.html")
+    html_content = tmpl.render(
+        soa_id=soa_id,
+        study=study,
+        timelines=timelines,
+        instances_by_tl=instances_by_tl,
+        activities=activities,
+        cell_map=cell_map,
+        superscript_map=superscript_map,
+        footnotes=footnotes,
+        concepts_map=concepts_map,
+        surrogates_map=surrogates_map,
+        css=css_content,
+        generated_at=generated_at,
+    )
+
+    return HTMLResponse(
+        content=html_content,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # API endpoint for exporting the Matrix as PDF (Deprecated)
 @app.get("/soa/{soa_id}/export/pdf")
 def export_pdf(soa_id: int):
