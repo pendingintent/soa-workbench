@@ -2627,6 +2627,108 @@ def _migrate_add_study_title_audit_table():
         logger.warning("_migrate_add_study_title_audit_table failed: %s", e)
 
 
+def _migrate_repair_broken_bc_code_chains():
+    """Repair biomedical_concept rows whose alias_code exists but code is missing.
+
+    When code rows are deleted without cascading to their alias_code references,
+    the INNER JOIN in build_usdm_biomedical_concepts silently excludes those BCs
+    from USDM output. This migration re-creates the missing code rows using the
+    concept_code from activity_concept and repoints biomedical_concept.code to
+    a fresh alias_code/code pair. The now-orphaned old alias_code row is left in
+    place (harmless) since the BC no longer references it.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT bc.id, bc.soa_id, bc.biomedical_concept_uid, ac.concept_code
+            FROM biomedical_concept bc
+            INNER JOIN alias_code a
+                    ON a.alias_code_uid = bc.code AND a.soa_id = bc.soa_id
+            LEFT  JOIN code c
+                    ON c.code_uid = a.standard_code AND c.soa_id = a.soa_id
+            LEFT  JOIN activity_concept ac
+                    ON ac.concept_uid = bc.biomedical_concept_uid
+                   AND ac.soa_id = bc.soa_id
+            WHERE c.code_uid IS NULL
+            """
+        )
+        rows = cur.fetchall()
+        if not rows:
+            conn.close()
+            return
+
+        repaired = 0
+        for bc_id, soa_id, bc_uid, concept_code in rows:
+            if not concept_code:
+                continue
+
+            # get-or-create code row for this concept_code
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code=?",
+                (soa_id, concept_code),
+            )
+            row = cur.fetchone()
+            if row:
+                code_uid = row[0]
+            else:
+                cur.execute(
+                    "SELECT code_uid FROM code"
+                    " WHERE soa_id=? AND code_uid LIKE 'Code_%'"
+                    " UNION SELECT code_uid FROM code_association"
+                    " WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                    (soa_id, soa_id),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = max((int(x.split("_")[1]) for x in existing), default=0) + 1
+                code_uid = f"Code_{n}"
+                cur.execute(
+                    "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
+                    (soa_id, code_uid, concept_code),
+                )
+
+            # get-or-create alias_code row pointing to that code
+            cur.execute(
+                "SELECT alias_code_uid FROM alias_code"
+                " WHERE soa_id=? AND standard_code=?",
+                (soa_id, code_uid),
+            )
+            row = cur.fetchone()
+            if row:
+                alias_uid = row[0]
+            else:
+                cur.execute(
+                    "SELECT alias_code_uid FROM alias_code"
+                    " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+                    (soa_id,),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = max((int(x.split("_")[1]) for x in existing), default=0) + 1
+                alias_uid = f"AliasCode_{n}"
+                cur.execute(
+                    "INSERT INTO alias_code"
+                    " (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
+                    (soa_id, alias_uid, code_uid),
+                )
+
+            cur.execute(
+                "UPDATE biomedical_concept SET code=? WHERE id=?",
+                (alias_uid, bc_id),
+            )
+            repaired += 1
+
+        conn.commit()
+        conn.close()
+        if repaired:
+            logger.info(
+                "_migrate_repair_broken_bc_code_chains: repaired %d BCs",
+                repaired,
+            )
+    except Exception as e:
+        logger.warning("_migrate_repair_broken_bc_code_chains failed: %s", e)
+
+
 def _migrate_add_organization_table():
     try:
         conn = _connect()

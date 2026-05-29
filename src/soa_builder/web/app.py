@@ -113,6 +113,7 @@ from .migrate_database import (
     _migrate_create_country_codes_table,
     _migrate_create_geographic_regions_table,
     _migrate_add_location_code_uid_to_geo_scope,
+    _migrate_repair_broken_bc_code_chains,
     _migrate_add_study_title_table,
     _migrate_add_study_title_audit_table,
     _migrate_add_organization_table,
@@ -328,6 +329,7 @@ _migrate_backfill_code_association_decode()
 _migrate_create_country_codes_table()
 _migrate_create_geographic_regions_table()
 _migrate_add_location_code_uid_to_geo_scope()
+_migrate_repair_broken_bc_code_chains()
 _migrate_add_study_title_table()
 _migrate_add_study_title_audit_table()
 _migrate_add_organization_table()
