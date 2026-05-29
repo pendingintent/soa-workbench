@@ -6,6 +6,7 @@ Produces a Study-Output → StudyVersion-Output → InterventionalStudyDesign-Ou
 hierarchy, populating sub-entities from the existing per-entity generators.
 """
 
+import subprocess
 from typing import List, Dict, Any
 import logging
 from .usdm_utils import _get_soa_metadata
@@ -26,6 +27,20 @@ from usdm.generate_study_titles import build_usdm_titles
 from usdm.generate_organizations import build_usdm_organizations
 
 logger = logging.getLogger("usdm.generate_usdm")
+
+
+def _git_branch() -> str:
+    try:
+        return (
+            subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
+    except Exception:
+        return "unknown"
 
 
 def build_usdm(soa_id: int) -> Dict[str, Any]:
@@ -152,7 +167,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "study": study,
         "usdmVersion": "4.0",
         "systemName": "SOA Workbench",
-        "systemVersion": "1.0.0",
+        "systemVersion": _git_branch(),
     }
 
 
