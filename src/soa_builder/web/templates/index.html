@@ -39,6 +39,7 @@
     <th>Created</th>
     <th>Actions</th>
     <th>Audits</th>
+    <th>Delete</th>
   </tr>
   {% for s in soas %}
   <tr>
@@ -51,8 +52,106 @@
     <td class="fz-td-date">{{ s.created_at }}</td>
     <td><a href="/ui/soa/{{ s.id }}/edit" class="am-btn am-btn-slate am-btn-sm">Edit</a></td>
     <td><a href="/ui/soa/{{ s.id }}/audits" class="am-btn am-btn-slate am-btn-sm">Audits</a></td>
+    <td>
+      <button class="am-btn am-btn-danger am-btn-sm"
+              data-soa-id="{{ s.id }}"
+              data-name="{{ s.name | e }}"
+              data-study-id="{{ s.study_id | e }}"
+              onclick="confirmDeleteSoa(this)">
+        Delete
+      </button>
+    </td>
   </tr>
   {% endfor %}
 </table>
+
+<!-- Delete SOA modal -->
+<div id="delete-soa-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+            z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--am-card-bg,#fff);border-radius:8px;
+              padding:28px 32px;max-width:440px;width:90%;
+              box-shadow:0 4px 24px rgba(0,0,0,.25);">
+    <h3 style="margin:0 0 6px;color:var(--am-danger,#c0392b);">
+      Delete Study
+    </h3>
+    <p id="delete-modal-desc"
+       style="margin:0 0 16px;font-size:0.9em;color:var(--am-text);">
+    </p>
+    <label style="display:block;font-size:0.85em;margin-bottom:4px;">
+      Type the Study ID to confirm:
+    </label>
+    <input id="delete-confirm-input"
+           class="fz-version-input"
+           style="width:100%;box-sizing:border-box;margin-bottom:16px;"
+           placeholder=""
+           oninput="checkDeleteInput()" />
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="am-btn am-btn-slate am-btn-sm"
+              onclick="closeDeleteModal()">Cancel</button>
+      <form id="delete-soa-form" method="post" style="display:inline;">
+        <input type="hidden" name="confirm_study_id"
+               id="delete-hidden-study-id" />
+        <button id="delete-confirm-btn"
+                type="submit"
+                class="am-btn am-btn-danger am-btn-sm"
+                disabled>
+          Confirm Delete
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  var _deleteSoaId = null;
+  var _deleteStudyId = null;
+
+  function confirmDeleteSoa(btn) {
+    var soaId = btn.dataset.soaId;
+    var name = btn.dataset.name;
+    var studyId = btn.dataset.studyId;
+    if (!window.confirm(
+      'Delete study "' + name + '"?\nThis action cannot be undone.'
+    )) return;
+    _deleteSoaId = soaId;
+    _deleteStudyId = studyId;
+    document.getElementById('delete-modal-desc').textContent =
+      'Study: ' + name + ' (' + studyId + ')';
+    document.getElementById('delete-confirm-input').value = '';
+    document.getElementById('delete-confirm-input').placeholder = studyId;
+    document.getElementById('delete-hidden-study-id').value = '';
+    document.getElementById('delete-confirm-btn').disabled = true;
+    document.getElementById('delete-soa-form').action =
+      '/ui/soa/' + soaId + '/delete';
+    var modal = document.getElementById('delete-soa-modal');
+    modal.style.display = 'flex';
+    document.getElementById('delete-confirm-input').focus();
+  }
+
+  function checkDeleteInput() {
+    var val = document.getElementById('delete-confirm-input').value;
+    var btn = document.getElementById('delete-confirm-btn');
+    var hiddenInput = document.getElementById('delete-hidden-study-id');
+    if (val === _deleteStudyId) {
+      hiddenInput.value = val;
+      btn.disabled = false;
+    } else {
+      hiddenInput.value = '';
+      btn.disabled = true;
+    }
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('delete-soa-modal').style.display = 'none';
+    _deleteSoaId = null;
+    _deleteStudyId = null;
+  }
+
+  document.getElementById('delete-soa-modal')
+    .addEventListener('click', function(e) {
+      if (e.target === this) closeDeleteModal();
+    });
+</script>
 
 {% endblock %}
