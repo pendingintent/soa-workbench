@@ -115,6 +115,8 @@ from .migrate_database import (
     _migrate_add_location_code_uid_to_geo_scope,
     _migrate_add_study_title_table,
     _migrate_add_study_title_audit_table,
+    _migrate_add_organization_table,
+    _migrate_add_organization_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -155,6 +157,12 @@ from .routers import objectives as objectives_router
 from .routers import study_titles as study_titles_router
 from .routers import endpoints as endpoints_router
 from .routers import amendments as amendments_router
+from .routers import organizations as organizations_router
+from .routers.organizations import (
+    _get_org_type_options,
+    _get_countries_options,
+    _list_organizations,
+)
 from .audit import _record_element_audit
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
@@ -322,6 +330,8 @@ _migrate_create_geographic_regions_table()
 _migrate_add_location_code_uid_to_geo_scope()
 _migrate_add_study_title_table()
 _migrate_add_study_title_audit_table()
+_migrate_add_organization_table()
+_migrate_add_organization_audit_table()
 
 # Backfill BCP rows for any SOA that pre-dates eager population
 _t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")
@@ -365,6 +375,8 @@ app.include_router(endpoints_router.router)
 app.include_router(endpoints_router.ui_router)
 app.include_router(amendments_router.router)
 app.include_router(amendments_router.ui_router)
+app.include_router(organizations_router.router)
+app.include_router(organizations_router.ui_router)
 
 
 def _record_visit_audit(
@@ -4479,6 +4491,9 @@ def ui_edit(request: Request, soa_id: int):
             "superscript_map": superscript_map,
             "study_titles": study_titles,
             "title_type_options": title_type_options,
+            "organizations": _list_organizations(soa_id),
+            "org_type_options": _get_org_type_options(),
+            "countries_options": _get_countries_options(),
         },
     )
 
