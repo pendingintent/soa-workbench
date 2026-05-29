@@ -388,6 +388,29 @@ def _get_dss_href_for_bc(soa_id: int, bc_uid: str) -> str:
         conn.close()
 
 
+def _has_insertable_data(
+    decs: List[Dict],
+    dec_by_id: Dict[str, Dict],
+    sdtm: Dict,
+) -> bool:
+    """Return True only if populate would actually insert at least one BCP.
+
+    Prevents delete-then-no-insert data loss when API calls return empty.
+    """
+    if sdtm and sdtm.get("variables") and dec_by_id:
+        # SDTM path requires both DSS variables AND DEC lookup to be non-empty
+        for var in sdtm["variables"]:
+            var_name = var.get("name") or ""
+            if not _include_property(var_name):
+                continue
+            dec_id = var.get("dataElementConceptId")
+            if dec_id and dec_by_id.get(dec_id):
+                return True
+        return False
+    # Generic DEC path
+    return any((dec.get("conceptId") or dec.get("ncitCode")) for dec in decs)
+
+
 def _populate_bcp_locked(
     soa_id: int,
     bc_uid: str,
@@ -397,6 +420,15 @@ def _populate_bcp_locked(
     sdtm: Dict,
 ) -> None:
     """Execute the DB writes for one BC under the SOA lock."""
+    if not _has_insertable_data(decs, dec_by_id, sdtm):
+        logger.warning(
+            "No insertable BCP data for soa_id=%s bc_uid=%s — "
+            "skipping populate to preserve existing rows",
+            soa_id,
+            bc_uid,
+        )
+        return
+
     conn = _connect()
     cur = conn.cursor()
     try:
