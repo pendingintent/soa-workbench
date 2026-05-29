@@ -147,6 +147,270 @@ def _capture_endpoints(cur, soa_id: int) -> list:
     ]
 
 
+def _capture_encounters_full(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "visit", ("id",)):
+        return []
+    base_cols = "id,name,label,description,order_index,encounter_uid,type"
+    extra_cols = []
+    for col in (
+        "environmentalSettings",
+        "contactModes",
+        "transitionStartRule",
+        "transitionEndRule",
+        "scheduledAtId",
+    ):
+        if _table_has_columns(cur, "visit", (col,)):
+            extra_cols.append(col)
+    select = base_cols
+    if extra_cols:
+        select += "," + ",".join(extra_cols)
+    cur.execute(
+        f"SELECT {select} FROM visit WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    col_names = [
+        "id",
+        "name",
+        "label",
+        "description",
+        "order_index",
+        "encounter_uid",
+        "type",
+    ] + extra_cols
+    return [dict(zip(col_names, r)) for r in cur.fetchall()]
+
+
+def _capture_study_cells(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "study_cell", ("study_cell_uid",)):
+        return []
+    cur.execute(
+        "SELECT study_cell_uid,arm_uid,epoch_uid,order_index"
+        " FROM study_cell WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    return [
+        {
+            "study_cell_uid": r[0],
+            "arm_uid": r[1],
+            "epoch_uid": r[2],
+            "order_index": r[3],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_schedule_timelines(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "schedule_timelines", ("schedule_timeline_uid",)):
+        return []
+    cur.execute(
+        "SELECT schedule_timeline_uid,name,label,description,"
+        "main_timeline,entry_condition,entry_id,exit_id"
+        " FROM schedule_timelines WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    return [
+        {
+            "schedule_timeline_uid": r[0],
+            "name": r[1],
+            "label": r[2],
+            "description": r[3],
+            "main_timeline": r[4],
+            "entry_condition": r[5],
+            "entry_id": r[6],
+            "exit_id": r[7],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_instances(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "instances", ("instance_uid",)):
+        return []
+    cur.execute(
+        "SELECT instance_uid,name,label,description,epoch_uid,"
+        "timeline_id,encounter_uid,member_of_timeline"
+        " FROM instances WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    return [
+        {
+            "instance_uid": r[0],
+            "name": r[1],
+            "label": r[2],
+            "description": r[3],
+            "epoch_uid": r[4],
+            "timeline_id": r[5],
+            "encounter_uid": r[6],
+            "member_of_timeline": r[7],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_decision_instances(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "decision_instances", ("instance_uid",)):
+        return []
+    cur.execute(
+        "SELECT instance_uid,name,label,description,epoch_uid,"
+        "member_of_timeline"
+        " FROM decision_instances WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    return [
+        {
+            "instance_uid": r[0],
+            "name": r[1],
+            "label": r[2],
+            "description": r[3],
+            "epoch_uid": r[4],
+            "member_of_timeline": r[5],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_bc_surrogates(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "biomedical_concept_surrogate", ("surrogate_uid",)):
+        return []
+    cur.execute(
+        "SELECT surrogate_uid,name,label,description,reference"
+        " FROM biomedical_concept_surrogate WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    return [
+        {
+            "surrogate_uid": r[0],
+            "name": r[1],
+            "label": r[2],
+            "description": r[3],
+            "reference": r[4],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_biomedical_concepts(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "biomedical_concept", ("biomedical_concept_uid",)):
+        return []
+    cur.execute(
+        "SELECT biomedical_concept_uid,name,label,code"
+        " FROM biomedical_concept WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    return [
+        {
+            "biomedical_concept_uid": r[0],
+            "name": r[1],
+            "label": r[2],
+            "code": r[3],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_bc_properties(cur, soa_id: int) -> list:
+    if not _table_has_columns(
+        cur,
+        "biomedical_concept_property",
+        ("biomedical_concept_property_uid",),
+    ):
+        return []
+    cur.execute(
+        "SELECT biomedical_concept_property_uid,name,label,"
+        "isRequired,isEnabled,datatype"
+        " FROM biomedical_concept_property WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    return [
+        {
+            "biomedical_concept_property_uid": r[0],
+            "name": r[1],
+            "label": r[2],
+            "isRequired": r[3],
+            "isEnabled": r[4],
+            "datatype": r[5],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_amendments(cur, soa_id: int) -> list:
+    if not _table_has_columns(cur, "study_amendment", ("amendment_uid",)):
+        return []
+    cur.execute(
+        "SELECT amendment_uid,name,number,summary,label,description"
+        " FROM study_amendment WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    return [
+        {
+            "amendment_uid": r[0],
+            "name": r[1],
+            "number": r[2],
+            "summary": r[3],
+            "label": r[4],
+            "description": r[5],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _capture_extension_attributes(cur, soa_id: int) -> list:
+    if not _table_has_columns(
+        cur, "activity_concept_dss", ("extension_attribute_uid",)
+    ):
+        return []
+    cur.execute(
+        "SELECT extension_attribute_uid,concept_code,dss_href,"
+        "dss_domain,dss_display"
+        " FROM activity_concept_dss WHERE soa_id=?"
+        " AND extension_attribute_uid IS NOT NULL ORDER BY id",
+        (soa_id,),
+    )
+    return [
+        {
+            "extension_attribute_uid": r[0],
+            "concept_code": r[1],
+            "dss_href": r[2],
+            "dss_domain": r[3],
+            "dss_display": r[4],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def _diff_entity_list(
+    l_list: list,
+    r_list: list,
+    uid_key: str,
+    display_fields: list = None,
+) -> tuple:
+    """Return (added, removed, changed) for two lists of entity dicts.
+
+    uid_key identifies the entity across snapshots.
+    display_fields limits which fields are checked for changes.
+    """
+    l_map = {
+        e[uid_key]: e for e in (l_list or []) if isinstance(e, dict) and e.get(uid_key)
+    }
+    r_map = {
+        e[uid_key]: e for e in (r_list or []) if isinstance(e, dict) and e.get(uid_key)
+    }
+    added = [r_map[k] for k in r_map.keys() - l_map.keys()]
+    removed = [l_map[k] for k in l_map.keys() - r_map.keys()]
+    changed = []
+    for k in r_map.keys() & l_map.keys():
+        fields = display_fields or list(set(l_map[k].keys()) | set(r_map[k].keys()))
+        field_diffs = {
+            f: {"old": l_map[k].get(f), "new": r_map[k].get(f)}
+            for f in fields
+            if l_map[k].get(f) != r_map[k].get(f)
+        }
+        if field_diffs:
+            changed.append({"uid": k, "changes": field_diffs})
+    return added, removed, changed
+
+
 def _list_freezes(soa_id: int):
     conn = _connect()
     cur = conn.cursor()
@@ -308,6 +572,16 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
     timings = _capture_timings(cur, soa_id)
     objectives = _capture_objectives(cur, soa_id)
     endpoints = _capture_endpoints(cur, soa_id)
+    encounters_full = _capture_encounters_full(cur, soa_id)
+    study_cells = _capture_study_cells(cur, soa_id)
+    schedule_timelines = _capture_schedule_timelines(cur, soa_id)
+    instances = _capture_instances(cur, soa_id)
+    decision_instances = _capture_decision_instances(cur, soa_id)
+    bc_surrogates = _capture_bc_surrogates(cur, soa_id)
+    biomedical_concepts = _capture_biomedical_concepts(cur, soa_id)
+    bc_properties = _capture_bc_properties(cur, soa_id)
+    amendments = _capture_amendments(cur, soa_id)
+    extension_attributes = _capture_extension_attributes(cur, soa_id)
     snapshot = {
         "soa_id": soa_id,
         "soa_name": soa_name,
@@ -327,6 +601,16 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
         "timings": timings,
         "objectives": objectives,
         "endpoints": endpoints,
+        "encounters_full": encounters_full,
+        "study_cells": study_cells,
+        "schedule_timelines": schedule_timelines,
+        "instances": instances,
+        "decision_instances": decision_instances,
+        "bc_surrogates": bc_surrogates,
+        "biomedical_concepts": biomedical_concepts,
+        "bc_properties": bc_properties,
+        "amendments": amendments,
+        "extension_attributes": extension_attributes,
     }
     snap_json = json.dumps(snapshot)
     cur.execute(
@@ -483,6 +767,101 @@ def _diff_freezes_limited(
                 }
             )
 
+    # --- Per-entity diffs for all USDM entity classes ---
+    _ENTITY_SPECS = [
+        (
+            "epochs",
+            "epoch_uid",
+            ["name", "epoch_label", "epoch_description", "type"],
+        ),
+        (
+            "arms",
+            "arm_uid",
+            ["name", "label", "description", "type"],
+        ),
+        (
+            "elements",
+            "name",
+            ["label", "description", "testrl", "teenrl"],
+        ),
+        (
+            "timings",
+            "timing_uid",
+            ["name", "value", "window_lower", "window_upper", "type"],
+        ),
+        (
+            "objectives",
+            "objective_uid",
+            ["text", "level_code_uid"],
+        ),
+        (
+            "endpoints",
+            "endpoint_uid",
+            ["text", "objective_uid", "level_code_uid"],
+        ),
+        (
+            "encounters_full",
+            "encounter_uid",
+            ["name", "label", "type", "contactModes"],
+        ),
+        (
+            "study_cells",
+            "study_cell_uid",
+            ["arm_uid", "epoch_uid"],
+        ),
+        (
+            "schedule_timelines",
+            "schedule_timeline_uid",
+            ["name", "main_timeline", "entry_condition"],
+        ),
+        (
+            "instances",
+            "instance_uid",
+            ["name", "epoch_uid", "encounter_uid", "member_of_timeline"],
+        ),
+        (
+            "decision_instances",
+            "instance_uid",
+            ["name", "epoch_uid", "member_of_timeline"],
+        ),
+        (
+            "bc_surrogates",
+            "surrogate_uid",
+            ["name", "label", "reference"],
+        ),
+        (
+            "biomedical_concepts",
+            "biomedical_concept_uid",
+            ["name", "label", "code"],
+        ),
+        (
+            "bc_properties",
+            "biomedical_concept_property_uid",
+            ["name", "isRequired", "isEnabled", "datatype"],
+        ),
+        (
+            "amendments",
+            "amendment_uid",
+            ["name", "number", "summary"],
+        ),
+        (
+            "extension_attributes",
+            "extension_attribute_uid",
+            ["dss_href", "dss_domain", "dss_display"],
+        ),
+    ]
+
+    entity_diffs_all = {}
+    for snap_key, uid_key, fields in _ENTITY_SPECS:
+        l_ents = l_snap.get(snap_key, []) or []
+        r_ents = r_snap.get(snap_key, []) or []
+        ea, er, ec = _diff_entity_list(l_ents, r_ents, uid_key, fields)
+        entity_diffs_all[snap_key] = {
+            "added": ea,
+            "removed": er,
+            "changed": ec,
+        }
+
     def _truncate(lst):
         if limit and limit > 0 and len(lst) > limit:
             return lst[:limit], True
@@ -496,6 +875,28 @@ def _diff_freezes_limited(
     cells_removed, cells_removed_trunc = _truncate(cells_removed_all)
     cells_changed, cells_changed_trunc = _truncate(cells_changed_all)
     concept_changes, concept_changes_trunc = _truncate(concept_changes_all)
+
+    entity_diffs = {}
+    entity_meta = {}
+    for snap_key, _uid_key, _fields in _ENTITY_SPECS:
+        raw = entity_diffs_all[snap_key]
+        ea, ea_trunc = _truncate(raw["added"])
+        er, er_trunc = _truncate(raw["removed"])
+        ec, ec_trunc = _truncate(raw["changed"])
+        entity_diffs[snap_key] = {
+            "added": ea,
+            "removed": er,
+            "changed": ec,
+        }
+        entity_meta[snap_key] = {
+            "added_total": len(raw["added"]),
+            "removed_total": len(raw["removed"]),
+            "changed_total": len(raw["changed"]),
+            "added_truncated": ea_trunc,
+            "removed_truncated": er_trunc,
+            "changed_truncated": ec_trunc,
+        }
+
     meta = {
         "limit": limit,
         "visits": {
@@ -522,6 +923,7 @@ def _diff_freezes_limited(
             "changes_total": len(concept_changes_all),
             "changes_truncated": concept_changes_trunc,
         },
+        "entities": entity_meta,
     }
     return {
         "left": {
@@ -542,6 +944,7 @@ def _diff_freezes_limited(
             "changed": cells_changed,
         },
         "concepts": concept_changes,
+        "entities": entity_diffs,
         "meta": meta,
     }
 

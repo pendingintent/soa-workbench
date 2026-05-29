@@ -3133,6 +3133,83 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
         if concept_diff_df is not None:
             concept_diff_df.to_excel(writer, index=False, sheet_name="ConceptDiff")
 
+        if left and right:
+            try:
+                entity_diff_rows = []
+                _ent_diff = _diff_freezes_limited(soa_id, left, right, limit=None)
+                for ent_key, ent_data in _ent_diff.get("entities", {}).items():
+                    for e in ent_data.get("added", []):
+                        uid_val = (
+                            e.get("name")
+                            or e.get("amendment_uid")
+                            or e.get("study_cell_uid")
+                            or e.get("schedule_timeline_uid")
+                            or e.get("instance_uid")
+                            or e.get("surrogate_uid")
+                            or e.get("biomedical_concept_uid")
+                            or e.get("biomedical_concept_property_uid")
+                            or e.get("extension_attribute_uid")
+                            or e.get("epoch_uid")
+                            or e.get("arm_uid")
+                            or e.get("timing_uid")
+                            or e.get("objective_uid")
+                            or e.get("endpoint_uid")
+                            or e.get("encounter_uid")
+                            or ""
+                        )
+                        entity_diff_rows.append([ent_key, uid_val, "added", "", "", ""])
+                    for e in ent_data.get("removed", []):
+                        uid_val = (
+                            e.get("name")
+                            or e.get("amendment_uid")
+                            or e.get("study_cell_uid")
+                            or e.get("schedule_timeline_uid")
+                            or e.get("instance_uid")
+                            or e.get("surrogate_uid")
+                            or e.get("biomedical_concept_uid")
+                            or e.get("biomedical_concept_property_uid")
+                            or e.get("extension_attribute_uid")
+                            or e.get("epoch_uid")
+                            or e.get("arm_uid")
+                            or e.get("timing_uid")
+                            or e.get("objective_uid")
+                            or e.get("endpoint_uid")
+                            or e.get("encounter_uid")
+                            or ""
+                        )
+                        entity_diff_rows.append(
+                            [ent_key, uid_val, "removed", "", "", ""]
+                        )
+                    for e in ent_data.get("changed", []):
+                        uid_val = e.get("uid", "")
+                        for field, vals in (e.get("changes", {})).items():
+                            entity_diff_rows.append(
+                                [
+                                    ent_key,
+                                    uid_val,
+                                    "changed",
+                                    field,
+                                    str(vals.get("old", "")),
+                                    str(vals.get("new", "")),
+                                ]
+                            )
+                entity_diff_df = pd.DataFrame(
+                    entity_diff_rows,
+                    columns=[
+                        "EntityType",
+                        "UID",
+                        "ChangeType",
+                        "FieldName",
+                        "LeftValue",
+                        "RightValue",
+                    ],
+                )
+                entity_diff_df.to_excel(writer, index=False, sheet_name="EntityDiff")
+            except Exception as _e:
+                pd.DataFrame([[str(_e)]], columns=["EntityDiffError"]).to_excel(
+                    writer, index=False, sheet_name="EntityDiff"
+                )
+
         # Create a worksheet for each timeline
         if timelines:
             for timeline in timelines:
