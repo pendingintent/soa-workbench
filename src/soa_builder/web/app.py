@@ -159,6 +159,7 @@ from .routers import study_titles as study_titles_router
 from .routers import endpoints as endpoints_router
 from .routers import amendments as amendments_router
 from .routers import organizations as organizations_router
+from .routers import soa_bundle as soa_bundle_router
 from .routers.organizations import (
     _get_org_type_options,
     _get_countries_options,
@@ -379,6 +380,8 @@ app.include_router(amendments_router.router)
 app.include_router(amendments_router.ui_router)
 app.include_router(organizations_router.router)
 app.include_router(organizations_router.ui_router)
+app.include_router(soa_bundle_router.router)
+app.include_router(soa_bundle_router.ui_router)
 
 
 def _record_visit_audit(
@@ -5995,14 +5998,22 @@ def ui_delete_soa(
     """Permanently delete a study and all its related records."""
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT study_id FROM soa WHERE id=?", (soa_id,))
+    cur.execute("SELECT study_id, name FROM soa WHERE id=?", (soa_id,))
     row = cur.fetchone()
     conn.close()
 
     if not row:
         raise HTTPException(404, "SOA not found")
 
-    if row[0] != confirm_study_id:
+    study_id_db, name_db = row[0], row[1]
+    # Studies without a study_id (e.g. imported bundles) confirm by name
+    if study_id_db is None:
+        if confirm_study_id != name_db:
+            raise HTTPException(
+                400,
+                f"Study name '{confirm_study_id}' does not match.",
+            )
+    elif study_id_db != confirm_study_id:
         raise HTTPException(
             400,
             f"Study ID '{confirm_study_id}' does not match.",
