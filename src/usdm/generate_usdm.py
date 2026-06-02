@@ -25,6 +25,7 @@ from usdm.generate_objectives import build_usdm_objectives
 from usdm.generate_amendments import build_usdm_amendments
 from usdm.generate_study_titles import build_usdm_titles
 from usdm.generate_organizations import build_usdm_organizations
+from usdm.generate_roles import build_usdm_roles
 
 logger = logging.getLogger("usdm.generate_usdm")
 
@@ -152,6 +153,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "dateValues": [],
         "amendments": _safe("amendments", build_usdm_amendments, soa_id),
         "organizations": _safe("organizations", build_usdm_organizations, soa_id),
+        "roles": _safe("roles", build_usdm_roles, soa_id),
         "businessTherapeuticAreas": [],
         "biomedicalConcepts": build_usdm_biomedical_concepts(soa_id),
         "bcSurrogates": _safe("bcSurrogates", build_usdm_bc_surrogates, soa_id),

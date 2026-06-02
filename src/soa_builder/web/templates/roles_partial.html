@@ -1,0 +1,102 @@
+<div id="roles-section">
+  <table class="fz-table">
+    <tr class="fz-thead-row">
+      <th>UID</th>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Organizations</th>
+      <th>Masking</th>
+      <th></th>
+    </tr>
+    {% for r in roles %}
+    <tr>
+      <td class="fz-td-version"><span class="obj-uid">{{ r.role_uid }}</span></td>
+      <td>{{ r.name }}{% if r.label %} <span style="color:var(--am-text-muted);font-size:0.85em;">({{ r.label }})</span>{% endif %}</td>
+      <td class="fz-td-date">{{ r.type_decode or '—' }}</td>
+      <td class="fz-td-date">{{ r.org_names or '—' }}</td>
+      <td class="fz-td-date">{{ 'Yes' if r.masking else '—' }}</td>
+      <td class="am-td-center">
+        <form hx-post="/ui/soa/{{ soa_id }}/roles/{{ r.id }}/delete"
+              hx-target="#roles-section"
+              hx-swap="outerHTML"
+              style="display:inline;">
+          <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="fz-empty-row"><td colspan="6">No roles yet.</td></tr>
+    {% endfor %}
+  </table>
+
+  <hr style="margin:14px 0 10px;border:none;border-top:1px solid var(--am-border,#ddd);" />
+
+  <form hx-post="/ui/soa/{{ soa_id }}/roles-add"
+        hx-target="#roles-section"
+        hx-swap="outerHTML"
+        class="am-grid-2">
+
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" required class="am-input" placeholder="Role name" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" class="am-input" placeholder="Short label (optional)" />
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Description</label>
+      <textarea name="description" rows="2" class="am-textarea"
+                placeholder="Description (optional)"></textarea>
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Type</label>
+      <select name="role_type_code" class="am-select"
+              onchange="updateRoleTypeDecode(this, 'role-type-decode-{{ soa_id }}')">
+        <option value="">— select type —</option>
+        {% for opt in role_type_options %}
+        <option value="{{ opt.code }}" data-decode="{{ opt.label | e }}">{{ opt.label }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="role_type_decode"
+             id="role-type-decode-{{ soa_id }}" value="" />
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Organizations</label>
+      <select name="organization_ids" multiple size="4" class="am-select">
+        {% for o in organizations %}
+        <option value="{{ o.organization_uid }}">
+          {{ o.name }}{% if o.label %} ({{ o.label }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      <small style="color:var(--am-text-mid);">Hold Ctrl / Cmd to select multiple</small>
+    </div>
+
+    <div class="am-field am-field-span">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" name="masking" value="on" />
+        <span class="am-field-label" style="margin:0;">
+          Masking applied (role is blinded)
+        </span>
+      </label>
+    </div>
+
+    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+      <button type="submit" class="am-btn am-btn-info am-btn-sm">
+        Add Role
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+function updateRoleTypeDecode(sel, targetId) {
+  var opt = sel.options[sel.selectedIndex];
+  document.getElementById(targetId).value = opt.dataset.decode || '';
+}
+</script>

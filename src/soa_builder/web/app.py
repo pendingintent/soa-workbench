@@ -118,6 +118,8 @@ from .migrate_database import (
     _migrate_add_study_title_audit_table,
     _migrate_add_organization_table,
     _migrate_add_organization_audit_table,
+    _migrate_add_role_table,
+    _migrate_add_role_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -159,12 +161,14 @@ from .routers import study_titles as study_titles_router
 from .routers import endpoints as endpoints_router
 from .routers import amendments as amendments_router
 from .routers import organizations as organizations_router
+from .routers import roles as roles_router
 from .routers import soa_bundle as soa_bundle_router
 from .routers.organizations import (
     _get_org_type_options,
     _get_countries_options,
     _list_organizations,
 )
+from .routers.roles import _get_role_type_options, _list_roles
 from .audit import _record_element_audit
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
@@ -335,6 +339,8 @@ _migrate_add_study_title_table()
 _migrate_add_study_title_audit_table()
 _migrate_add_organization_table()
 _migrate_add_organization_audit_table()
+_migrate_add_role_table()
+_migrate_add_role_audit_table()
 
 # Backfill BCP rows for any SOA that pre-dates eager population
 _t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")
@@ -380,6 +386,8 @@ app.include_router(amendments_router.router)
 app.include_router(amendments_router.ui_router)
 app.include_router(organizations_router.router)
 app.include_router(organizations_router.ui_router)
+app.include_router(roles_router.router)
+app.include_router(roles_router.ui_router)
 app.include_router(soa_bundle_router.router)
 app.include_router(soa_bundle_router.ui_router)
 
@@ -4499,6 +4507,8 @@ def ui_edit(request: Request, soa_id: int):
             "organizations": _list_organizations(soa_id),
             "org_type_options": _get_org_type_options(),
             "countries_options": _get_countries_options(),
+            "roles": _list_roles(soa_id),
+            "role_type_options": _get_role_type_options(),
         },
     )
 

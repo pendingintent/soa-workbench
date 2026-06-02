@@ -2781,3 +2781,51 @@ def _migrate_add_organization_audit_table():
         logger.info("_migrate_add_organization_audit_table complete")
     except Exception as e:
         logger.warning("_migrate_add_organization_audit_table failed: %s", e)
+
+
+def _migrate_add_role_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS role ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "role_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "code_uid TEXT,"
+            "organization_ids TEXT,"
+            "masking INTEGER NOT NULL DEFAULT 0,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, role_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_role_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_role_table failed: %s", e)
+
+
+def _migrate_add_role_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS role_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "role_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_role_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_role_audit_table failed: %s", e)

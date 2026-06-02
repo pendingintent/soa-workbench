@@ -707,6 +707,35 @@ def _record_organization_audit(
         logger.warning("Failed recording organization audit: %s", e)
 
 
+def _record_role_audit(
+    soa_id: int,
+    action: str,
+    role_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO role_audit"
+            " (soa_id, role_id, action, before_json, after_json,"
+            " performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                role_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording role audit: %s", e)
+
+
 def _record_gov_date_audit(
     soa_id: int,
     action: str,
