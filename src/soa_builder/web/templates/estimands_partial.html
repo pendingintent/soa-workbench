@@ -1,0 +1,208 @@
+<div id="estimands-container">
+
+{% if not estimands %}
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th><th>Name</th><th>Population Summary</th>
+    <th>Variables of Interest</th><th>Interventions</th><th></th>
+  </tr>
+  <tr class="fz-empty-row"><td colspan="6">No estimands yet.</td></tr>
+</table>
+{% else %}
+
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Population Summary</th>
+    <th>Variables of Interest</th>
+    <th>Interventions</th>
+    <th></th>
+  </tr>
+  {% for est in estimands %}
+  <tr>
+    <td><span class="obj-uid">{{ est.estimand_uid }}</span></td>
+    <td>
+      {{ est.name }}
+      {% if est.label %}<div style="color:var(--am-text-muted);font-size:0.85em;">{{ est.label }}</div>{% endif %}
+    </td>
+    <td>{{ est.population_summary or '—' }}</td>
+    <td>
+      {% if est.variable_names %}
+        {{ est.variable_names | join(', ') }}
+      {% else %}
+        <span style="color:var(--am-text-muted);">—</span>
+      {% endif %}
+    </td>
+    <td>
+      {% if est.intervention_names %}
+        {{ est.intervention_names | join(', ') }}
+      {% else %}
+        <span style="color:var(--am-text-muted);">—</span>
+      {% endif %}
+    </td>
+    <td>
+      <form hx-post="/ui/soa/{{ soa_id }}/estimands/{{ est.id }}/delete"
+            hx-target="#estimands-container" hx-swap="outerHTML"
+            style="display:inline;">
+        <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
+      </form>
+    </td>
+  </tr>
+
+  {# ── Variables of Interest (Endpoints) subsection ── #}
+  <tr>
+    <td colspan="6" style="padding:0 12px 4px 24px;background:var(--am-surface);">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0 4px;">
+        <strong style="font-size:0.85em;color:var(--am-text-mid);">Variables of Interest</strong>
+        {% for uid in est.variable_uids %}
+        <span style="display:inline-flex;align-items:center;gap:4px;
+                     background:#e8f5e9;border-radius:4px;padding:2px 6px;font-size:0.82em;">
+          {{ est.variable_names[loop.index0] }}
+          <form hx-post="/ui/soa/{{ soa_id }}/estimands/{{ est.id }}/variables/{{ uid }}/delete"
+                hx-target="#estimands-container" hx-swap="outerHTML"
+                style="display:inline;margin:0;">
+            <button type="submit"
+                    style="background:none;border:none;cursor:pointer;
+                           color:var(--am-danger);padding:0 2px;font-size:0.9em;">&times;</button>
+          </form>
+        </span>
+        {% endfor %}
+        {# Add variable form — only show unlinked endpoints #}
+        {% set linked_vars = est.variable_uids %}
+        {% set unlinked_eps = [] %}
+        {% for ep in available_endpoints %}
+          {% if ep.endpoint_uid not in linked_vars %}
+            {% set _ = unlinked_eps.append(ep) %}
+          {% endif %}
+        {% endfor %}
+        {% if unlinked_eps %}
+        <form hx-post="/ui/soa/{{ soa_id }}/estimands/{{ est.id }}/variables-add"
+              hx-target="#estimands-container" hx-swap="outerHTML"
+              style="display:inline-flex;align-items:center;gap:4px;">
+          <select name="endpoint_uid" class="am-select" style="font-size:0.85em;padding:2px 6px;">
+            <option value="">— link endpoint —</option>
+            {% for ep in unlinked_eps %}
+            <option value="{{ ep.endpoint_uid }}">{{ ep.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="am-btn am-btn-info am-btn-xs">Link</button>
+        </form>
+        {% endif %}
+      </div>
+    </td>
+  </tr>
+
+  {# ── Linked Interventions subsection ── #}
+  <tr>
+    <td colspan="6" style="padding:0 12px 4px 24px;background:var(--am-surface);">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0;">
+        <strong style="font-size:0.85em;color:var(--am-text-mid);">Linked Interventions</strong>
+        {% for uid in est.intervention_uids %}
+        <span style="display:inline-flex;align-items:center;gap:4px;
+                     background:#e8eaf6;border-radius:4px;padding:2px 6px;font-size:0.82em;">
+          {{ est.intervention_names[loop.index0] }}
+          <form hx-post="/ui/soa/{{ soa_id }}/estimands/{{ est.id }}/interventions/{{ uid }}/delete"
+                hx-target="#estimands-container" hx-swap="outerHTML"
+                style="display:inline;margin:0;">
+            <button type="submit"
+                    style="background:none;border:none;cursor:pointer;
+                           color:var(--am-danger);padding:0 2px;font-size:0.9em;">&times;</button>
+          </form>
+        </span>
+        {% endfor %}
+        {% set linked_ints = est.intervention_uids %}
+        {% set unlinked_ints = [] %}
+        {% for av in available_interventions %}
+          {% if av.intervention_uid not in linked_ints %}
+            {% set _ = unlinked_ints.append(av) %}
+          {% endif %}
+        {% endfor %}
+        {% if unlinked_ints %}
+        <form hx-post="/ui/soa/{{ soa_id }}/estimands/{{ est.id }}/interventions-add"
+              hx-target="#estimands-container" hx-swap="outerHTML"
+              style="display:inline-flex;align-items:center;gap:4px;">
+          <select name="intervention_uid" class="am-select" style="font-size:0.85em;padding:2px 6px;">
+            <option value="">— link intervention —</option>
+            {% for av in unlinked_ints %}
+            <option value="{{ av.intervention_uid }}">{{ av.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="am-btn am-btn-info am-btn-xs">Link</button>
+        </form>
+        {% endif %}
+      </div>
+    </td>
+  </tr>
+
+  {# ── Intercurrent Events subsection ── #}
+  <tr>
+    <td colspan="6" style="padding:0 12px 12px 24px;background:var(--am-surface);">
+      <strong style="font-size:0.85em;color:var(--am-text-mid);">
+        Intercurrent Events ({{ est.intercurrent_events | length }})
+      </strong>
+
+      <form hx-post="/ui/soa/{{ soa_id }}/estimands/{{ est.id }}/intercurrent-events-add"
+            hx-target="#estimands-container" hx-swap="outerHTML"
+            class="am-grid-2" style="margin-top:6px;">
+        <div class="am-field">
+          <label class="am-field-label">Name <span class="am-required">*</span></label>
+          <input name="name" required class="am-input am-input-compact"
+                 placeholder="Event name" />
+        </div>
+        <div class="am-field">
+          <label class="am-field-label">Label</label>
+          <input name="label" class="am-input am-input-compact" placeholder="Label (optional)" />
+        </div>
+        <div class="am-field">
+          <label class="am-field-label">Text</label>
+          <input name="text" class="am-input am-input-compact" placeholder="Event text" />
+        </div>
+        <div class="am-field">
+          <label class="am-field-label">Strategy</label>
+          <input name="strategy" class="am-input am-input-compact" placeholder="Handling strategy" />
+        </div>
+        <div class="am-field am-field-span">
+          <label class="am-field-label">Description</label>
+          <input name="description" class="am-input am-input-compact"
+                 placeholder="Description (optional)" />
+        </div>
+        <div class="am-field-span" style="display:flex;gap:8px;">
+          <button type="submit" class="am-btn am-btn-info am-btn-xs">Add Event</button>
+        </div>
+      </form>
+
+      {% if est.intercurrent_events %}
+      <table class="fz-table" style="margin-top:6px;">
+        <tr class="fz-thead-row">
+          <th>UID</th><th>Name</th><th>Text</th><th>Strategy</th><th></th>
+        </tr>
+        {% for ice in est.intercurrent_events %}
+        <tr>
+          <td><span class="obj-uid" style="font-size:0.78em;">{{ ice.event_uid }}</span></td>
+          <td>{{ ice.name }}
+            {% if ice.label %}
+              <div style="color:var(--am-text-muted);font-size:0.82em;">{{ ice.label }}</div>
+            {% endif %}
+          </td>
+          <td style="font-size:0.88em;">{{ ice.text or '—' }}</td>
+          <td style="font-size:0.88em;">{{ ice.strategy or '—' }}</td>
+          <td>
+            <form hx-post="/ui/soa/{{ soa_id }}/estimands/{{ est.id }}/intercurrent-events/{{ ice.id }}/delete"
+                  hx-target="#estimands-container" hx-swap="outerHTML"
+                  style="display:inline;">
+              <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+    </td>
+  </tr>
+
+  {% endfor %}
+</table>
+{% endif %}
+
+</div>

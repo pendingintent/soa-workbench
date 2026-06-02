@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2 class="am-page-title">Estimands</h2>
+{% if study_label %}
+<p style="color:var(--am-text-mid);margin-bottom:8px;">{{ study_label }}</p>
+{% endif %}
+
+<div style="margin-bottom:12px;">
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
+</div>
+
+<hr class="fz-section-divider" />
+
+<div class="study-meta-card">
+  <h3>Add Estimand</h3>
+  <form hx-post="/ui/soa/{{ soa_id }}/estimands-add"
+        hx-target="#estimands-container"
+        hx-swap="outerHTML"
+        class="am-grid-2">
+
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" required class="am-input" placeholder="Estimand name" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" class="am-input" placeholder="Short label (optional)" />
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Description</label>
+      <textarea name="description" rows="2" class="am-textarea"
+                placeholder="Description (optional)"></textarea>
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Population Summary</label>
+      <textarea name="population_summary" rows="2" class="am-textarea"
+                placeholder="Summary of analysis population"></textarea>
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Variables of Interest (Endpoints)</label>
+      <select name="variable_uids" multiple class="am-select"
+              style="min-height:80px;">
+        {% for ep in available_endpoints %}
+        <option value="{{ ep.endpoint_uid }}">
+          {{ ep.name }} ({{ ep.endpoint_uid }})
+        </option>
+        {% endfor %}
+      </select>
+      <div style="font-size:0.8em;color:var(--am-text-muted);margin-top:2px;">
+        Hold Ctrl / Cmd to select multiple
+      </div>
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Linked Interventions</label>
+      <select name="intervention_uids" multiple class="am-select"
+              style="min-height:80px;">
+        {% for av in available_interventions %}
+        <option value="{{ av.intervention_uid }}">
+          {{ av.name }} ({{ av.intervention_uid }})
+        </option>
+        {% endfor %}
+      </select>
+      <div style="font-size:0.8em;color:var(--am-text-muted);margin-top:2px;">
+        Hold Ctrl / Cmd to select multiple
+      </div>
+    </div>
+
+    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+      <button type="submit" class="am-btn am-btn-info">Add Estimand</button>
+    </div>
+
+  </form>
+</div>
+
+<h3 class="fz-section-heading">Estimands ({{ estimands|length }})</h3>
+
+{% include "estimands_partial.html" %}
+
+{% endblock %}

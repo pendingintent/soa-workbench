@@ -821,3 +821,32 @@ def _record_study_intervention_audit(
         conn.close()
     except Exception as e:
         logger.warning("Failed recording study_intervention audit: %s", e)
+
+
+def _record_estimand_audit(
+    soa_id: int,
+    action: str,
+    estimand_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO estimand_audit"
+            " (soa_id, estimand_id, action, before_json, after_json,"
+            " performed_at) VALUES (?,?,?,?,?,?)",
+            (
+                soa_id,
+                estimand_id,
+                action,
+                json.dumps(before) if before else None,
+                json.dumps(after) if after else None,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed recording estimand audit: %s", e)

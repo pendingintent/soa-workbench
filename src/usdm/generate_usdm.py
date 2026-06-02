@@ -27,6 +27,7 @@ from usdm.generate_study_titles import build_usdm_titles
 from usdm.generate_organizations import build_usdm_organizations
 from usdm.generate_roles import build_usdm_roles
 from usdm.generate_study_interventions import build_usdm_study_interventions
+from usdm.generate_estimands import build_usdm_estimands
 
 logger = logging.getLogger("usdm.generate_usdm")
 
@@ -76,6 +77,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
     study_interventions = _safe(
         "studyInterventions", build_usdm_study_interventions, soa_id
     )
+    estimands = _safe("estimands", build_usdm_estimands, soa_id)
 
     study_design = {
         "id": "InterventionalStudyDesign_1",
@@ -94,7 +96,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "rationale": "",
         "epochs": _safe("epochs", build_usdm_epochs, soa_id),
         "elements": _safe("elements", build_usdm_elements, soa_id),
-        "estimands": [],
+        "estimands": estimands,
         "indications": [],
         "studyInterventionIds": [i["id"] for i in study_interventions],
         "objectives": _safe("objectives", build_usdm_objectives, soa_id),

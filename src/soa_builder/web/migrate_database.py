@@ -2899,3 +2899,116 @@ def _migrate_add_study_intervention_audit_table():
         logger.info("_migrate_add_study_intervention_audit_table complete")
     except Exception as e:
         logger.warning("_migrate_add_study_intervention_audit_table failed: %s", e)
+
+
+def _migrate_add_estimand_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS estimand ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "population_summary TEXT,"
+            "variable_of_interest_uid TEXT,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, estimand_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_estimand_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_estimand_table failed: %s", e)
+
+
+def _migrate_add_estimand_intervention_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS estimand_intervention ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_id INTEGER NOT NULL,"
+            "intervention_uid TEXT NOT NULL,"
+            "order_index INTEGER"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_estimand_intervention_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_estimand_intervention_table failed: %s", e)
+
+
+def _migrate_add_intercurrent_event_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS intercurrent_event ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_id INTEGER NOT NULL,"
+            "event_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "text TEXT,"
+            "strategy TEXT,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, event_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_intercurrent_event_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_intercurrent_event_table failed: %s", e)
+
+
+def _migrate_add_estimand_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS estimand_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_estimand_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_estimand_audit_table failed: %s", e)
+
+
+def _migrate_add_estimand_variable_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS estimand_variable ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_id INTEGER NOT NULL,"
+            "endpoint_uid TEXT NOT NULL,"
+            "order_index INTEGER"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_estimand_variable_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_estimand_variable_table failed: %s", e)

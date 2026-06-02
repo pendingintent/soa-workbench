@@ -427,6 +427,58 @@ def get_next_quantity_uid(cur: Any, soa_id: int) -> str:
     return f"Quantity_{max_n + 1}"
 
 
+def get_next_intercurrent_event_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique IntercurrentEvent_N for the given SOA.
+
+    Scans both the live intercurrent_event table and estimand_audit
+    JSON so deleted UIDs are never reused. Assumes `cur` is a sqlite
+    cursor within an open transaction.
+    """
+    max_n = 0
+    try:
+        cur.execute(
+            "SELECT event_uid FROM intercurrent_event"
+            " WHERE soa_id=? AND event_uid LIKE 'IntercurrentEvent_%'",
+            (soa_id,),
+        )
+        for (uid,) in cur.fetchall():
+            try:
+                n = int(uid.split("_")[-1])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                pass
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            "SELECT before_json, after_json FROM estimand_audit WHERE soa_id=?",
+            (soa_id,),
+        )
+        import json as _json
+
+        for before_raw, after_raw in cur.fetchall():
+            for raw in (before_raw, after_raw):
+                if not raw:
+                    continue
+                try:
+                    data = _json.loads(raw)
+                    ices = data.get("intercurrent_events") or []
+                    for ice in ices:
+                        uid = ice.get("event_uid", "")
+                        if isinstance(uid, str) and uid.startswith(
+                            "IntercurrentEvent_"
+                        ):
+                            n = int(uid.split("_")[-1])
+                            if n > max_n:
+                                max_n = n
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return f"IntercurrentEvent_{max_n + 1}"
+
+
 # Helper function to generate new alias_code_uid value
 def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique AliasCode_ for the given SOA.
