@@ -66,10 +66,10 @@ def _next_org_uid(cur, soa_id: int) -> str:
 
 
 def _get_org_type_options() -> list:
-    """Return [{code, label}] for DDF CT codelist C215480."""
+    """Return [{code, label}] for DDF CT codelist C215480, alpha sorted."""
     payload = get_ddf_ct_rows()
     rows = payload.get("rows") or []
-    return [
+    options = [
         {
             "code": r["code"],
             "label": (
@@ -79,6 +79,7 @@ def _get_org_type_options() -> list:
         for r in rows
         if r.get("codelist_code") == _ORG_TYPE_CODELIST and r.get("code")
     ]
+    return sorted(options, key=lambda o: o["label"].lower())
 
 
 def _get_countries_options() -> list:

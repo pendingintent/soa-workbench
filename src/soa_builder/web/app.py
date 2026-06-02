@@ -120,6 +120,9 @@ from .migrate_database import (
     _migrate_add_organization_audit_table,
     _migrate_add_role_table,
     _migrate_add_role_audit_table,
+    _migrate_add_study_intervention_table,
+    _migrate_add_study_intervention_code_table,
+    _migrate_add_study_intervention_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -162,6 +165,7 @@ from .routers import endpoints as endpoints_router
 from .routers import amendments as amendments_router
 from .routers import organizations as organizations_router
 from .routers import roles as roles_router
+from .routers import study_interventions as study_interventions_router
 from .routers import soa_bundle as soa_bundle_router
 from .routers.organizations import (
     _get_org_type_options,
@@ -341,6 +345,9 @@ _migrate_add_organization_table()
 _migrate_add_organization_audit_table()
 _migrate_add_role_table()
 _migrate_add_role_audit_table()
+_migrate_add_study_intervention_table()
+_migrate_add_study_intervention_code_table()
+_migrate_add_study_intervention_audit_table()
 
 # Backfill BCP rows for any SOA that pre-dates eager population
 _t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")
@@ -388,6 +395,8 @@ app.include_router(organizations_router.router)
 app.include_router(organizations_router.ui_router)
 app.include_router(roles_router.router)
 app.include_router(roles_router.ui_router)
+app.include_router(study_interventions_router.router)
+app.include_router(study_interventions_router.ui_router)
 app.include_router(soa_bundle_router.router)
 app.include_router(soa_bundle_router.ui_router)
 

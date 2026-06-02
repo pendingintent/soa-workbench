@@ -26,6 +26,7 @@ from usdm.generate_amendments import build_usdm_amendments
 from usdm.generate_study_titles import build_usdm_titles
 from usdm.generate_organizations import build_usdm_organizations
 from usdm.generate_roles import build_usdm_roles
+from usdm.generate_study_interventions import build_usdm_study_interventions
 
 logger = logging.getLogger("usdm.generate_usdm")
 
@@ -72,6 +73,10 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
             )
             return []
 
+    study_interventions = _safe(
+        "studyInterventions", build_usdm_study_interventions, soa_id
+    )
+
     study_design = {
         "id": "InterventionalStudyDesign_1",
         "extensionAttributes": [],
@@ -91,7 +96,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "elements": _safe("elements", build_usdm_elements, soa_id),
         "estimands": [],
         "indications": [],
-        "studyInterventionIds": [],
+        "studyInterventionIds": [i["id"] for i in study_interventions],
         "objectives": _safe("objectives", build_usdm_objectives, soa_id),
         "population": {
             "id": "StudyDesignPopulation_1",
@@ -154,6 +159,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "amendments": _safe("amendments", build_usdm_amendments, soa_id),
         "organizations": _safe("organizations", build_usdm_organizations, soa_id),
         "roles": _safe("roles", build_usdm_roles, soa_id),
+        "studyInterventions": study_interventions,
         "businessTherapeuticAreas": [],
         "biomedicalConcepts": build_usdm_biomedical_concepts(soa_id),
         "bcSurrogates": _safe("bcSurrogates", build_usdm_bc_surrogates, soa_id),

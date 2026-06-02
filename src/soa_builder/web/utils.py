@@ -378,6 +378,55 @@ def get_epoch_parent_package_href_cached() -> str | None:
     return str(val) if val else None
 
 
+# Helper function to generate new quantity_uid value
+def get_next_quantity_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique Quantity_N for the given SOA.
+
+    Scans both the live study_intervention table and audit JSON so
+    deleted UIDs are never reused. Assumes `cur` is a sqlite cursor
+    within an open transaction.
+    """
+    max_n = 0
+    try:
+        cur.execute(
+            "SELECT mrd_quantity_uid FROM study_intervention"
+            " WHERE soa_id=? AND mrd_quantity_uid LIKE 'Quantity_%'",
+            (soa_id,),
+        )
+        for (uid,) in cur.fetchall():
+            try:
+                n = int(uid.split("_")[-1])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                pass
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            "SELECT before_json, after_json FROM study_intervention_audit"
+            " WHERE soa_id=?",
+            (soa_id,),
+        )
+        import json as _json
+
+        for before_raw, after_raw in cur.fetchall():
+            for raw in (before_raw, after_raw):
+                if not raw:
+                    continue
+                try:
+                    uid = _json.loads(raw).get("mrd_quantity_uid", "")
+                    if isinstance(uid, str) and uid.startswith("Quantity_"):
+                        n = int(uid.split("_")[-1])
+                        if n > max_n:
+                            max_n = n
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return f"Quantity_{max_n + 1}"
+
+
 # Helper function to generate new alias_code_uid value
 def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique AliasCode_ for the given SOA.
