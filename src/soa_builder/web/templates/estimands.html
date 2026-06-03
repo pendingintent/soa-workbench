@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<h2 class="am-page-title">Estimands</h2>
+<h2 class="am-page-title">Estimands & Indications</h2>
 {% if study_label %}
 <p style="color:var(--am-text-mid);margin-bottom:8px;">{{ study_label }}</p>
 {% endif %}
@@ -11,6 +11,10 @@
 </div>
 
 <hr class="fz-section-divider" />
+
+<h3 class="fz-section-heading">Estimands ({{ estimands|length }})</h3>
+
+{% include "estimands_partial.html" %}
 
 <div class="study-meta-card">
   <h3>Add Estimand</h3>
@@ -78,8 +82,52 @@
   </form>
 </div>
 
-<h3 class="fz-section-heading">Estimands ({{ estimands|length }})</h3>
+<hr class="fz-section-divider" />
 
-{% include "estimands_partial.html" %}
+<h3 class="fz-section-heading">Indications ({{ indications|length }})</h3>
+
+{% include "indications_partial.html" %}
+
+<hr class="fz-section-divider" />
+
+<div class="study-meta-card">
+  <h3>Add Indication</h3>
+  <form hx-post="/ui/soa/{{ soa_id }}/indications-add"
+        hx-target="#indications-container"
+        hx-swap="outerHTML"
+        class="am-grid-2">
+
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" required class="am-input" placeholder="Indication name" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" class="am-input" placeholder="Short label (optional)" />
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Description</label>
+      <textarea name="description" rows="2" class="am-textarea"
+                placeholder="Description (optional)"></textarea>
+    </div>
+
+    <div class="am-field am-field-span"
+         style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" name="is_rare_disease" value="1"
+             id="is_rare_disease_cb" />
+      <label for="is_rare_disease_cb" class="am-field-label"
+             style="margin-bottom:0;">Is Rare Disease</label>
+    </div>
+
+    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+      <button type="submit" class="am-btn am-btn-info">Add Indication</button>
+    </div>
+
+  </form>
+</div>
+
+
 
 {% endblock %}

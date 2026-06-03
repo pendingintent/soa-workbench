@@ -3012,3 +3012,69 @@ def _migrate_add_estimand_variable_table():
         logger.info("_migrate_add_estimand_variable_table complete")
     except Exception as e:
         logger.warning("_migrate_add_estimand_variable_table failed: %s", e)
+
+
+def _migrate_add_indication_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS indication ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "indication_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "is_rare_disease INTEGER NOT NULL DEFAULT 0,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, indication_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_indication_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_indication_table failed: %s", e)
+
+
+def _migrate_add_indication_code_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS indication_code ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "indication_id INTEGER NOT NULL,"
+            "code_uid TEXT NOT NULL,"
+            "order_index INTEGER"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_indication_code_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_indication_code_table failed: %s", e)
+
+
+def _migrate_add_indication_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS indication_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "indication_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_indication_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_indication_audit_table failed: %s", e)

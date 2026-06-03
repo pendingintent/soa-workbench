@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from ..audit import _record_estimand_audit
 from ..db import _connect
 from ..utils import get_next_intercurrent_event_uid, soa_exists
+from .indications import _list_indications
 
 router = APIRouter(prefix="/soa/{soa_id}")
 ui_router = APIRouter()
@@ -591,6 +592,7 @@ def ui_list_estimands(request: Request, soa_id: int):
     estimands = _list_estimands(soa_id)
     available_interventions = _list_available_interventions(soa_id)
     available_endpoints = _list_available_endpoints(soa_id)
+    indications = _list_indications(soa_id)
     return templates.TemplateResponse(
         request,
         "estimands.html",
@@ -601,6 +603,7 @@ def ui_list_estimands(request: Request, soa_id: int):
             "estimands": estimands,
             "available_interventions": available_interventions,
             "available_endpoints": available_endpoints,
+            "indications": indications,
         },
     )
 
