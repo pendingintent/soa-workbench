@@ -3,25 +3,81 @@
     <tr class="fz-thead-row">
       <th>UID</th>
       <th>Name</th>
+      <th>Label</th>
       <th>Type</th>
+      <th>ID Scheme</th>
       <th>Identifier</th>
-      <th>Address</th>
+      <th>City</th>
+      <th>State</th>
+      <th>Postal</th>
+      <th>Country</th>
       <th></th>
     </tr>
     {% for o in organizations %}
     <tr>
       <td class="fz-td-version"><span class="obj-uid">{{ o.organization_uid }}</span></td>
-      <td>{{ o.name }}{% if o.label %} <span style="color:var(--am-text-muted);font-size:0.85em;">({{ o.label }})</span>{% endif %}</td>
-      <td class="fz-td-date">{{ o.type_decode or '—' }}</td>
-      <td class="fz-td-date">
-        {% if o.identifier_scheme %}{{ o.identifier_scheme }}: {% endif %}{{ o.identifier or '—' }}
+      <td>
+        <input name="name" value="{{ o.name }}" required
+               class="am-input-compact" style="width:120px;" />
       </td>
-      <td class="fz-td-date">
-        {% if o.addr_city %}{{ o.addr_city }}{% if o.country_decode %}, {{ o.country_decode }}{% endif %}
-        {% elif o.country_decode %}{{ o.country_decode }}
-        {% else %}—{% endif %}
+      <td>
+        <input name="label" value="{{ o.label or '' }}" placeholder="Label"
+               class="am-input-compact" style="width:80px;" />
       </td>
-      <td class="am-td-center">
+      <td>
+        <select name="type_code" class="am-select-compact"
+                onchange="syncOrgTypeDecode(this)">
+          <option value="">— none —</option>
+          {% for opt in org_type_options %}
+          <option value="{{ opt.code }}" data-decode="{{ opt.label | e }}"
+            {% if opt.code == o.type_code_value %}selected{% endif %}>
+            {{ opt.label }}
+          </option>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="type_decode"
+               value="{{ o.type_decode or '' }}" />
+      </td>
+      <td>
+        <input name="identifier_scheme" value="{{ o.identifier_scheme or '' }}"
+               placeholder="Scheme" class="am-input-compact" style="width:65px;" />
+      </td>
+      <td>
+        <input name="identifier" value="{{ o.identifier or '' }}"
+               placeholder="ID" class="am-input-compact" style="width:80px;" />
+      </td>
+      <td>
+        <input name="addr_city" value="{{ o.addr_city or '' }}"
+               placeholder="City" class="am-input-compact" style="width:80px;" />
+      </td>
+      <td>
+        <input name="addr_state" value="{{ o.addr_state or '' }}"
+               placeholder="State" class="am-input-compact" style="width:55px;" />
+      </td>
+      <td>
+        <input name="addr_postal_code" value="{{ o.addr_postal_code or '' }}"
+               placeholder="ZIP" class="am-input-compact" style="width:60px;" />
+      </td>
+      <td>
+        <select name="addr_country_numeric" class="am-select-compact"
+                onchange="syncOrgCountryName(this)">
+          <option value="">— none —</option>
+          {% for c in countries_options %}
+          <option value="{{ c.code }}" data-name="{{ c.name | e }}"
+            {% if c.code == o.country_numeric %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="addr_country_name"
+               value="{{ o.country_decode or '' }}" />
+      </td>
+      <td class="am-td-center" style="white-space:nowrap;">
+        <button type="button" class="am-btn am-btn-slate am-btn-xs"
+                hx-post="/ui/soa/{{ soa_id }}/organizations/{{ o.id }}/update"
+                hx-target="#organizations-section"
+                hx-swap="outerHTML"
+                hx-include="closest tr">Save</button>
         <form hx-post="/ui/soa/{{ soa_id }}/organizations/{{ o.id }}/delete"
               hx-target="#organizations-section"
               hx-swap="outerHTML"
@@ -31,7 +87,7 @@
       </td>
     </tr>
     {% else %}
-    <tr class="fz-empty-row"><td colspan="6">No organizations yet.</td></tr>
+    <tr class="fz-empty-row"><td colspan="11">No organizations yet.</td></tr>
     {% endfor %}
   </table>
 
@@ -142,5 +198,16 @@ function updateOrgTypeDecode(sel, targetId) {
 function updateOrgCountryName(sel, targetId) {
   var opt = sel.options[sel.selectedIndex];
   document.getElementById(targetId).value = opt.dataset.name || '';
+}
+/* Inline-row variants: update the adjacent hidden input */
+function syncOrgTypeDecode(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var hidden = sel.parentElement.querySelector('input[name="type_decode"]');
+  if (hidden) hidden.value = opt.dataset.decode || '';
+}
+function syncOrgCountryName(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var hidden = sel.parentElement.querySelector('input[name="addr_country_name"]');
+  if (hidden) hidden.value = opt.dataset.name || '';
 }
 </script>

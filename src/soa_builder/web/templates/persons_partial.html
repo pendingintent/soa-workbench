@@ -1,0 +1,147 @@
+<div id="persons-section"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <table class="fz-table">
+    <tr class="fz-thead-row">
+      <th>UID</th>
+      <th>Name</th>
+      <th>Job Title</th>
+      <th>Text</th>
+      <th>Family Name</th>
+      <th>Given Names</th>
+      <th>Prefixes</th>
+      <th>Suffixes</th>
+      <th>Organization</th>
+      <th></th>
+    </tr>
+    {% for p in persons %}
+    <tr>
+      <td class="fz-td-version"><span class="obj-uid">{{ p.person_name_uid }}</span></td>
+      <td>
+        <input name="name" value="{{ p.name }}" required
+               class="am-input-compact" style="width:110px;" />
+      </td>
+      <td>
+        <input name="job_title" value="{{ p.job_title or '' }}"
+               placeholder="Job title" class="am-input-compact" style="width:120px;" />
+      </td>
+      <td>
+        <input name="text" value="{{ p.text or '' }}" placeholder="Text"
+               class="am-input-compact" style="width:120px;" />
+      </td>
+      <td>
+        <input name="family_name" value="{{ p.family_name or '' }}"
+               placeholder="Family name" class="am-input-compact" style="width:90px;" />
+      </td>
+      <td>
+        <input name="given_names"
+               value="{{ p.given_names | join(', ') if p.given_names else '' }}"
+               placeholder="Given names" class="am-input-compact" style="width:90px;" />
+      </td>
+      <td>
+        <input name="prefixes"
+               value="{{ p.prefixes | join(', ') if p.prefixes else '' }}"
+               placeholder="e.g. Dr" class="am-input-compact" style="width:55px;" />
+      </td>
+      <td>
+        <input name="suffixes"
+               value="{{ p.suffixes | join(', ') if p.suffixes else '' }}"
+               placeholder="e.g. MD" class="am-input-compact" style="width:55px;" />
+      </td>
+      <td>
+        <select name="organization_uid" class="am-select-compact">
+          <option value="">— None —</option>
+          {% for o in organizations %}
+          <option value="{{ o.organization_uid }}"
+            {% if o.organization_uid == p.organization_uid %}selected{% endif %}>
+            {{ o.name }}{% if o.label %} ({{ o.label }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </td>
+      <td class="am-td-center" style="white-space:nowrap;">
+        <button type="button" class="am-btn am-btn-slate am-btn-xs"
+                hx-post="/ui/soa/{{ soa_id }}/persons/{{ p.id }}/update"
+                hx-target="#persons-section"
+                hx-swap="outerHTML"
+                hx-include="closest tr">Save</button>
+        <form hx-post="/ui/soa/{{ soa_id }}/persons/{{ p.id }}/delete"
+              hx-target="#persons-section"
+              hx-swap="outerHTML"
+              style="display:inline;">
+          <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="fz-empty-row"><td colspan="10">No person names yet.</td></tr>
+    {% endfor %}
+  </table>
+
+  <hr style="margin:14px 0 10px;border:none;border-top:1px solid var(--am-border,#ddd);" />
+
+  <form hx-post="/ui/soa/{{ soa_id }}/persons-add"
+        hx-target="#persons-section"
+        hx-swap="outerHTML"
+        class="am-grid-2">
+
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" required class="am-input"
+             placeholder="Display name (e.g. Noah Kornblum)" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Job Title
+        <span class="am-required" title="Required for USDM AssignedPerson">*</span>
+      </label>
+      <input name="job_title" class="am-input"
+             placeholder="e.g. Study Chair, Medical Monitor" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Text</label>
+      <input name="text" class="am-input"
+             placeholder="Full name as text (optional)" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Family Name</label>
+      <input name="family_name" class="am-input" placeholder="Family / last name" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Given Names</label>
+      <input name="given_names" class="am-input"
+             placeholder="Given names, comma-separated" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Prefixes</label>
+      <input name="prefixes" class="am-input"
+             placeholder="e.g. Dr, Prof" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Suffixes</label>
+      <input name="suffixes" class="am-input"
+             placeholder="e.g. MD, PhD" />
+    </div>
+
+    <div class="am-field">
+      <label class="am-field-label">Organization</label>
+      <select name="organization_uid" class="am-select">
+        <option value="">— None —</option>
+        {% for o in organizations %}
+        <option value="{{ o.organization_uid }}">
+          {{ o.name }}{% if o.label %} ({{ o.label }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+      <button type="submit" class="am-btn am-btn-info am-btn-sm">
+        Add Person Name
+      </button>
+    </div>
+  </form>
+</div>

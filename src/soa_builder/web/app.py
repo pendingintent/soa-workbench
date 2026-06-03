@@ -39,6 +39,7 @@ from fastapi.templating import Jinja2Templates
 from ..normalization import normalize_soa
 from .initialize_database import _connect, _init_db
 from .db import DB_PATH as _DB_PATH
+
 from .migrate_database import (
     _drop_unused_override_table,
     _migrate_activity_add_uid,
@@ -131,6 +132,11 @@ from .migrate_database import (
     _migrate_add_indication_table,
     _migrate_add_indication_code_table,
     _migrate_add_indication_audit_table,
+    _migrate_add_person_table,
+    _migrate_add_person_audit_table,
+    _migrate_add_role_person_table,
+    _migrate_add_person_name_fields,
+    _migrate_person_drop_job_title_notnull,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -176,6 +182,7 @@ from .routers import roles as roles_router
 from .routers import study_interventions as study_interventions_router
 from .routers import estimands as estimands_router
 from .routers import indications as indications_router
+from .routers import persons as persons_router
 from .routers import soa_bundle as soa_bundle_router
 from .routers.organizations import (
     _get_org_type_options,
@@ -366,6 +373,11 @@ _migrate_add_estimand_variable_table()
 _migrate_add_indication_table()
 _migrate_add_indication_code_table()
 _migrate_add_indication_audit_table()
+_migrate_add_person_table()
+_migrate_add_person_audit_table()
+_migrate_add_role_person_table()
+_migrate_person_drop_job_title_notnull()
+_migrate_add_person_name_fields()
 
 # Backfill BCP rows for any SOA that pre-dates eager population
 _t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")
@@ -419,6 +431,8 @@ app.include_router(estimands_router.router)
 app.include_router(estimands_router.ui_router)
 app.include_router(indications_router.router)
 app.include_router(indications_router.ui_router)
+app.include_router(persons_router.router)
+app.include_router(persons_router.ui_router)
 app.include_router(soa_bundle_router.router)
 app.include_router(soa_bundle_router.ui_router)
 

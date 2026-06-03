@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2 class="am-page-title">Organizations, Roles &amp; Persons</h2>
+{% if study_label %}
+<p style="color:var(--am-text-mid);margin-bottom:8px;">{{ study_label }}</p>
+{% endif %}
+
+<div style="margin-bottom:12px;">
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
+</div>
+
+<hr class="fz-section-divider" />
+
+<div class="study-meta-card">
+  <h3>Organizations</h3>
+  {% include "organizations_partial.html" %}
+</div>
+
+<div class="study-meta-card" style="margin-top:16px;">
+  <h3>Roles</h3>
+  {% include "roles_partial.html" %}
+</div>
+
+<div class="study-meta-card" style="margin-top:16px;">
+  <h3>Persons</h3>
+  {% include "persons_partial.html" %}
+</div>
+
+{% endblock %}

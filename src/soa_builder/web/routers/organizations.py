@@ -102,10 +102,10 @@ def _list_organizations(soa_id: int) -> list:
     cur.execute(
         "SELECT o.id, o.organization_uid, o.name, o.label, "
         "o.identifier, o.identifier_scheme, o.type_code_uid, "
-        "c.decode AS type_decode, "
+        "c.decode AS type_decode, c.code AS type_code_value, "
         "o.addr_text, o.addr_lines, o.addr_city, o.addr_district, "
         "o.addr_state, o.addr_postal_code, o.addr_country_code_uid, "
-        "cc.decode AS country_decode "
+        "cc.decode AS country_decode, cc.code AS country_numeric "
         "FROM organization o "
         "LEFT JOIN code c "
         "ON c.code_uid = o.type_code_uid AND c.soa_id = o.soa_id "
@@ -124,14 +124,16 @@ def _list_organizations(soa_id: int) -> list:
             "identifier_scheme": r[5],
             "type_code_uid": r[6],
             "type_decode": r[7] or "",
-            "addr_text": r[8],
-            "addr_lines": json.loads(r[9]) if r[9] else [],
-            "addr_city": r[10],
-            "addr_district": r[11],
-            "addr_state": r[12],
-            "addr_postal_code": r[13],
-            "addr_country_code_uid": r[14],
-            "country_decode": r[15] or "",
+            "type_code_value": r[8] or "",
+            "addr_text": r[9],
+            "addr_lines": json.loads(r[10]) if r[10] else [],
+            "addr_city": r[11],
+            "addr_district": r[12],
+            "addr_state": r[13],
+            "addr_postal_code": r[14],
+            "addr_country_code_uid": r[15],
+            "country_decode": r[16] or "",
+            "country_numeric": r[17] or "",
         }
         for r in cur.fetchall()
     ]
@@ -361,17 +363,23 @@ def delete_organization(soa_id: int, org_id: int):
 
 
 def _partial_response(request: Request, soa_id: int) -> HTMLResponse:
+    from .roles import _get_role_type_options, _list_roles
+    from .persons import _list_persons
+
     organizations = _list_organizations(soa_id)
-    org_type_options = _get_org_type_options()
-    countries_options = _get_countries_options()
+    roles = _list_roles(soa_id)
+    persons = _list_persons(soa_id)
     return templates.TemplateResponse(
         request,
-        "organizations_partial.html",
+        "organizations_oob_response.html",
         {
             "soa_id": soa_id,
             "organizations": organizations,
-            "org_type_options": org_type_options,
-            "countries_options": countries_options,
+            "org_type_options": _get_org_type_options(),
+            "countries_options": _get_countries_options(),
+            "roles": roles,
+            "role_type_options": _get_role_type_options(),
+            "persons": persons,
         },
     )
 
@@ -518,4 +526,99 @@ def ui_organizations_delete(
     conn.commit()
     conn.close()
     _record_organization_audit(soa_id, "delete", oid, before=before)
+    return _partial_response(request, soa_id)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/organizations/{org_id}/update",
+    response_class=HTMLResponse,
+)
+def ui_organizations_update(
+    request: Request,
+    soa_id: int,
+    org_id: int,
+    name: str = Form(""),
+    label: str = Form(""),
+    identifier_scheme: str = Form(""),
+    identifier: str = Form(""),
+    type_code: str = Form(""),
+    type_decode: str = Form(""),
+    addr_city: str = Form(""),
+    addr_district: str = Form(""),
+    addr_state: str = Form(""),
+    addr_postal_code: str = Form(""),
+    addr_country_numeric: str = Form(""),
+    addr_country_name: str = Form(""),
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    name = name.strip()
+    if not name:
+        raise HTTPException(400, "name is required")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, organization_uid, name, type_code_uid,"
+        " addr_country_code_uid"
+        " FROM organization WHERE id=? AND soa_id=?",
+        (org_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Organization not found")
+    (oid, org_uid, old_name, old_type_uid, old_country_uid) = row
+    before = {"organization_uid": org_uid, "name": old_name}
+
+    # Replace type code record
+    _delete_code(cur, soa_id, old_type_uid)
+    new_type_uid = None
+    if type_code.strip():
+        version = _ddf_ct_version()
+        new_type_uid = _insert_type_code(
+            cur, soa_id, type_code.strip(), type_decode.strip(), version
+        )
+
+    # Replace country code record
+    _delete_code(cur, soa_id, old_country_uid)
+    new_country_uid = None
+    if addr_country_numeric.strip():
+        new_country_uid = _insert_country_code(
+            cur,
+            soa_id,
+            addr_country_numeric.strip(),
+            addr_country_name.strip(),
+        )
+
+    cur.execute(
+        "UPDATE organization SET name=?, label=?,"
+        " identifier=?, identifier_scheme=?,"
+        " type_code_uid=?,"
+        " addr_city=?, addr_district=?, addr_state=?,"
+        " addr_postal_code=?, addr_country_code_uid=?"
+        " WHERE id=? AND soa_id=?",
+        (
+            name,
+            label.strip() or None,
+            identifier.strip() or None,
+            identifier_scheme.strip() or None,
+            new_type_uid,
+            addr_city.strip() or None,
+            addr_district.strip() or None,
+            addr_state.strip() or None,
+            addr_postal_code.strip() or None,
+            new_country_uid,
+            org_id,
+            soa_id,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    _record_organization_audit(
+        soa_id,
+        "update",
+        oid,
+        before=before,
+        after={"organization_uid": org_uid, "name": name},
+    )
     return _partial_response(request, soa_id)

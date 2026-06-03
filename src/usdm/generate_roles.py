@@ -53,11 +53,76 @@ def _build_role(soa_id: int, row) -> Dict[str, Any]:
         "code": _read_code(soa_id, code_uid),
         "organizationIds": org_ids,
         "appliesToIds": [],
-        "assignedPersons": [],
+        "assignedPersons": _read_assigned_persons(soa_id, role_uid),
         "masking": masking_obj,
         "notes": [],
         "instanceType": "StudyRole",
     }
+
+
+def _read_assigned_persons(soa_id: int, role_uid: str) -> List[Dict[str, Any]]:
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id FROM role WHERE soa_id=? AND role_uid=? LIMIT 1",
+        (soa_id, role_uid),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return []
+    role_id = row[0]
+    cur.execute(
+        "SELECT p.person_uid, p.person_name_uid, p.name, p.job_title,"
+        " p.text, p.family_name, p.given_names,"
+        " p.prefixes, p.suffixes, p.organization_uid"
+        " FROM role_person rp"
+        " JOIN person p ON p.id = rp.person_id AND p.soa_id = rp.soa_id"
+        " WHERE rp.soa_id=? AND rp.role_id=?"
+        " ORDER BY p.order_index, p.id",
+        (soa_id, role_id),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    result = []
+    for (
+        person_uid,
+        person_name_uid,
+        name,
+        job_title,
+        text,
+        family_name,
+        given_names_raw,
+        prefixes_raw,
+        suffixes_raw,
+        org_uid,
+    ) in rows:
+        given = json.loads(given_names_raw) if given_names_raw else []
+        prefixes = json.loads(prefixes_raw) if prefixes_raw else []
+        suffixes = json.loads(suffixes_raw) if suffixes_raw else []
+        result.append(
+            {
+                "id": person_uid,
+                "extensionAttributes": [],
+                "name": name or "",
+                "label": None,
+                "description": None,
+                "personName": {
+                    "id": person_name_uid,
+                    "extensionAttributes": [],
+                    "text": text or None,
+                    "familyName": family_name or None,
+                    "givenNames": given,
+                    "prefixes": prefixes,
+                    "suffixes": suffixes,
+                    "instanceType": "PersonName",
+                },
+                "jobTitle": job_title or "",
+                "organizationId": org_uid or None,
+                "instanceType": "AssignedPerson",
+            }
+        )
+    return result
 
 
 def _read_code(soa_id: int, code_uid: Optional[str]) -> Optional[Dict[str, Any]]:

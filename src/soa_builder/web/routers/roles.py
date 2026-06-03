@@ -123,7 +123,7 @@ def _list_roles(soa_id: int) -> list:
     cur = conn.cursor()
     cur.execute(
         "SELECT r.id, r.role_uid, r.name, r.label, r.description, "
-        "r.code_uid, c.decode AS type_decode, "
+        "r.code_uid, c.decode AS type_decode, c.code AS type_code_value, "
         "r.organization_ids, r.masking "
         "FROM role r "
         "LEFT JOIN code c "
@@ -139,11 +139,24 @@ def _list_roles(soa_id: int) -> list:
         (soa_id,),
     )
     org_map = {r[0]: r[1] for r in cur.fetchall()}
+
+    # Fetch assigned person UIDs per role
+    cur.execute(
+        "SELECT rp.role_id, p.person_uid"
+        " FROM role_person rp"
+        " JOIN person p ON p.id = rp.person_id AND p.soa_id = rp.soa_id"
+        " WHERE rp.soa_id=?",
+        (soa_id,),
+    )
+    person_uid_map: dict = {}
+    for role_id_val, p_uid in cur.fetchall():
+        person_uid_map.setdefault(role_id_val, []).append(p_uid)
+
     conn.close()
 
     result = []
     for r in rows:
-        org_ids = json.loads(r[7]) if r[7] else []
+        org_ids = json.loads(r[8]) if r[8] else []
         org_names = (
             ", ".join(org_map.get(uid, uid) for uid in org_ids) if org_ids else ""
         )
@@ -156,9 +169,11 @@ def _list_roles(soa_id: int) -> list:
                 "description": r[4],
                 "code_uid": r[5],
                 "type_decode": r[6] or "",
+                "type_code_value": r[7] or "",
                 "organization_ids": org_ids,
                 "org_names": org_names,
-                "masking": bool(r[8]),
+                "masking": bool(r[9]),
+                "assigned_person_uids": person_uid_map.get(r[0], []),
             }
         )
     return result
@@ -261,6 +276,7 @@ def delete_role(soa_id: int, role_id: int):
     (rid, role_uid, name, code_uid) = row
     before = {"role_uid": role_uid, "name": name}
 
+    _delete_person_assignments(cur, soa_id, rid)
     _delete_code(cur, soa_id, code_uid)
     cur.execute(
         "DELETE FROM role WHERE id=? AND soa_id=?",
@@ -285,10 +301,12 @@ def delete_role(soa_id: int, role_id: int):
 
 def _partial_response(request: Request, soa_id: int) -> HTMLResponse:
     from .organizations import _list_organizations
+    from .persons import _list_persons
 
     roles = _list_roles(soa_id)
     role_type_options = _get_role_type_options()
     organizations = _list_organizations(soa_id)
+    persons = _list_persons(soa_id)
     return templates.TemplateResponse(
         request,
         "roles_partial.html",
@@ -297,7 +315,33 @@ def _partial_response(request: Request, soa_id: int) -> HTMLResponse:
             "roles": roles,
             "role_type_options": role_type_options,
             "organizations": organizations,
+            "persons": persons,
         },
+    )
+
+
+def _assign_persons_to_role(cur, soa_id: int, role_id: int, person_uids: list) -> None:
+    """Insert role_person rows for each matching person UID."""
+    for p_uid in person_uids:
+        if not p_uid.strip():
+            continue
+        cur.execute(
+            "SELECT id FROM person WHERE soa_id=? AND person_uid=?",
+            (soa_id, p_uid.strip()),
+        )
+        row = cur.fetchone()
+        if row:
+            cur.execute(
+                "INSERT OR IGNORE INTO role_person"
+                " (soa_id, role_id, person_id) VALUES (?,?,?)",
+                (soa_id, role_id, row[0]),
+            )
+
+
+def _delete_person_assignments(cur, soa_id: int, role_id: int) -> None:
+    cur.execute(
+        "DELETE FROM role_person WHERE soa_id=? AND role_id=?",
+        (soa_id, role_id),
     )
 
 
@@ -314,6 +358,7 @@ def ui_roles_add(
     role_type_code: str = Form(""),
     role_type_decode: str = Form(""),
     organization_ids: List[str] = Form(default=[]),
+    person_uids: List[str] = Form(default=[]),
     masking: str = Form(""),
 ):
     if not soa_exists(soa_id):
@@ -363,6 +408,7 @@ def ui_roles_add(
             ),
         )
         role_id = cur.lastrowid
+        _assign_persons_to_role(cur, soa_id, role_id, person_uids)
         conn.commit()
     except Exception:
         conn.rollback()
@@ -403,6 +449,7 @@ def ui_roles_delete(
     (rid, role_uid, name, code_uid) = row
     before = {"role_uid": role_uid, "name": name}
 
+    _delete_person_assignments(cur, soa_id, rid)
     _delete_code(cur, soa_id, code_uid)
     cur.execute(
         "DELETE FROM role WHERE id=? AND soa_id=?",
@@ -417,4 +464,87 @@ def ui_roles_delete(
     conn.commit()
     conn.close()
     _record_role_audit(soa_id, "delete", rid, before=before)
+    return _partial_response(request, soa_id)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/roles/{role_id}/update",
+    response_class=HTMLResponse,
+)
+def ui_roles_update(
+    request: Request,
+    soa_id: int,
+    role_id: int,
+    name: str = Form(""),
+    label: str = Form(""),
+    description: str = Form(""),
+    role_type_code: str = Form(""),
+    role_type_decode: str = Form(""),
+    organization_ids: List[str] = Form(default=[]),
+    person_uids: List[str] = Form(default=[]),
+    masking: str = Form(""),
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    name = name.strip()
+    if not name:
+        raise HTTPException(400, "name is required")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, role_uid, name, code_uid FROM role WHERE id=? AND soa_id=?",
+        (role_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(404, "Role not found")
+    (rid, role_uid, old_name, old_code_uid) = row
+    before = {"role_uid": role_uid, "name": old_name}
+
+    # Replace role type code record
+    _delete_code(cur, soa_id, old_code_uid)
+    new_code_uid = None
+    if role_type_code.strip():
+        version = _ddf_ct_version()
+        new_code_uid = _insert_role_code(
+            cur,
+            soa_id,
+            role_type_code.strip(),
+            role_type_decode.strip(),
+            version,
+        )
+
+    org_ids = [o for o in organization_ids if o.strip()]
+    is_masked = masking.strip().lower() == "on"
+
+    cur.execute(
+        "UPDATE role SET name=?, label=?, description=?,"
+        " code_uid=?, organization_ids=?, masking=?"
+        " WHERE id=? AND soa_id=?",
+        (
+            name,
+            label.strip() or None,
+            description.strip() or None,
+            new_code_uid,
+            json.dumps(org_ids) if org_ids else None,
+            1 if is_masked else 0,
+            role_id,
+            soa_id,
+        ),
+    )
+
+    # Replace person assignments
+    _delete_person_assignments(cur, soa_id, rid)
+    _assign_persons_to_role(cur, soa_id, rid, person_uids)
+
+    conn.commit()
+    conn.close()
+    _record_role_audit(
+        soa_id,
+        "update",
+        rid,
+        before=before,
+        after={"role_uid": role_uid, "name": name},
+    )
     return _partial_response(request, soa_id)
