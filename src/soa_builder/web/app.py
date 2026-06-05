@@ -22,7 +22,6 @@ from typing import Any, List, Optional
 
 import pandas as pd
 import requests
-import threading as _threading
 from dotenv import load_dotenv
 from fastapi import (
     BackgroundTasks,
@@ -68,7 +67,7 @@ from .migrate_database import (
     _migrate_study_cell_add_order_index,
     _migrate_biomedical_concept_audit,
     _migrate_backfill_biomedical_concept_codes,
-    _migrate_truncate_biomedical_concept_property_data,
+    _migrate_repopulate_bcp_rows_once,
     _migrate_repoint_stale_bc_code_chains,
     _migrate_add_soa_id_indexes,
     _migrate_add_footnote_table,
@@ -218,10 +217,6 @@ from .utils import (
     get_scheduled_activity_instance,
 )
 
-from usdm.generate_biomedical_concept_properties import (
-    populate_biomedical_concept_properties_for_all_soas as _bcp_backfill,
-)
-
 
 def _configure_logging():
     level = logging.INFO
@@ -309,7 +304,7 @@ _migrate_arm_add_type_fields()
 _migrate_element_audit_columns()
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
-_migrate_truncate_biomedical_concept_property_data()
+_migrate_repopulate_bcp_rows_once()
 _migrate_repoint_stale_bc_code_chains()
 _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
@@ -378,10 +373,6 @@ _migrate_add_person_audit_table()
 _migrate_add_role_person_table()
 _migrate_person_drop_job_title_notnull()
 _migrate_add_person_name_fields()
-
-# Backfill BCP rows for any SOA that pre-dates eager population
-_t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")
-_t.start()
 
 
 # Include routers

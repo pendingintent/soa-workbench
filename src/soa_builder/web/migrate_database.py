@@ -1128,19 +1128,27 @@ def _migrate_biomedical_concept_property_add_uid():
 
 
 def _migrate_truncate_biomedical_concept_property_data():
-    """Truncate biomedical_concept_property rows that were populated from DSS.
+    """One-time removal of BCP rows populated by the prior DSS-based writer.
 
-    The prior DSS-based writer produced incorrect BiomedicalConceptProperty
-    values. This one-time migration clears those rows and the alias_code/code
-    rows that were created solely to back them. Idempotent: a no-op on an
-    empty table.
+    The prior writer produced incorrect values. Runs only when the sentinel
+    column ``migrated_bcp_truncate`` is absent from the ``soa`` table, then
+    adds it so subsequent startups skip this migration entirely.
     """
     try:
         conn = _connect()
         cur = conn.cursor()
+        cur.execute("PRAGMA table_info(soa)")
+        soa_cols = {r[1] for r in cur.fetchall()}
+        if "migrated_bcp_truncate" in soa_cols:
+            conn.close()
+            return
         cur.execute("PRAGMA table_info(biomedical_concept_property)")
         cols = {r[1] for r in cur.fetchall()}
         if not cols:
+            cur.execute(
+                "ALTER TABLE soa ADD COLUMN migrated_bcp_truncate INTEGER DEFAULT 0"
+            )
+            conn.commit()
             conn.close()
             return
         cur.execute(
@@ -1178,10 +1186,53 @@ def _migrate_truncate_biomedical_concept_property_data():
                     "DELETE FROM code WHERE code_uid=? AND soa_id=?",
                     (code_row[0], soa_id),
                 )
+        cur.execute(
+            "ALTER TABLE soa ADD COLUMN migrated_bcp_truncate INTEGER DEFAULT 0"
+        )
         conn.commit()
         conn.close()
     except Exception as e:
         logger.warning("_migrate_truncate_biomedical_concept_property_data: %s", e)
+
+
+def _migrate_repopulate_bcp_rows_once():
+    """One-time repopulation of BCP rows for SOAs where BCs exist but have
+    no property rows — recovers data cleared by the truncate migration.
+    Guarded by the ``migrated_bcp_truncate`` sentinel column; once that
+    column exists the truncation already ran and this migration is a no-op.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(biomedical_concept_property)")
+        if not cur.fetchall():
+            conn.close()
+            return
+        cur.execute("SELECT COUNT(*) FROM biomedical_concept_property")
+        if cur.fetchone()[0] > 0:
+            conn.close()
+            return
+        cur.execute("SELECT COUNT(*) FROM biomedical_concept")
+        if cur.fetchone()[0] == 0:
+            conn.close()
+            return
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_repopulate_bcp_rows_once (check): %s", e)
+        return
+
+    try:
+        from usdm.generate_biomedical_concept_properties import (
+            populate_biomedical_concept_properties_for_all_soas,
+        )
+
+        logger.info(
+            "_migrate_repopulate_bcp_rows_once: BCP table is empty, "
+            "repopulating from CDISC Library API"
+        )
+        populate_biomedical_concept_properties_for_all_soas()
+    except Exception as e:
+        logger.warning("_migrate_repopulate_bcp_rows_once (populate): %s", e)
 
 
 def _migrate_repoint_stale_bc_code_chains():

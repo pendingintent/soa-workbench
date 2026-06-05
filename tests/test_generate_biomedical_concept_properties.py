@@ -9,6 +9,7 @@ from usdm.generate_biomedical_concept_properties import (
     build_usdm_biomedical_concept_properties,
     build_usdm_biomedical_concept_properties_for_soa,
     populate_biomedical_concept_properties,
+    populate_biomedical_concept_properties_for_all_soas,
     populate_biomedical_concept_properties_for_bc,
 )
 
@@ -615,3 +616,48 @@ def test_build_usdm_for_soa_is_json_serialisable():
     serialised = json.dumps(out)
     assert isinstance(serialised, str)
     assert "BiomedicalConceptProperty" in serialised
+
+
+def test_backfill_skips_already_populated_bcs():
+    """populate_biomedical_concept_properties_for_all_soas must not re-fetch
+    BCs that already have property rows in the database."""
+    _seed_bc()
+    call_count = 0
+
+    def _mock_fetch(code):
+        nonlocal call_count
+        call_count += 1
+        return MOCK_BC_API
+
+    # First call: nothing populated yet, so backfill should fetch.
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            side_effect=_mock_fetch,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
+        ),
+    ):
+        populate_biomedical_concept_properties_for_all_soas()
+
+    assert call_count == 1, "Expected one API call on first backfill"
+    first_run_calls = call_count
+
+    # Second call: properties already exist, backfill must not fetch again.
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            side_effect=_mock_fetch,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
+        ),
+    ):
+        populate_biomedical_concept_properties_for_all_soas()
+
+    assert call_count == first_run_calls, (
+        "Backfill must not re-fetch BCs that are already populated"
+    )

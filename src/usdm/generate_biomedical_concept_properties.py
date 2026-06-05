@@ -672,25 +672,54 @@ def build_usdm_biomedical_concept_properties(
 
 
 def populate_biomedical_concept_properties_for_all_soas() -> None:
-    """Backfill BCP + ResponseCode rows for every BC in every SOA.
+    """Backfill BCP + ResponseCode rows for BCs that have no properties yet.
 
-    Called once at startup. Idempotent (delete-then-insert per BC).
+    Called once at startup. Only processes BCs without existing property rows
+    so repeated restarts do not re-fetch data that is already up to date.
     """
     conn = _connect()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id FROM soa ORDER BY id")
-        soa_ids = [r[0] for r in cur.fetchall()]
+        cur.execute(
+            "SELECT DISTINCT bc.soa_id, bc.biomedical_concept_uid, ac.concept_code"
+            " FROM biomedical_concept bc"
+            " INNER JOIN activity_concept ac"
+            " ON bc.biomedical_concept_uid = ac.concept_uid"
+            " AND bc.soa_id = ac.soa_id"
+            " WHERE NOT EXISTS ("
+            "   SELECT 1 FROM biomedical_concept_property bcp"
+            "   WHERE bcp.soa_id = bc.soa_id"
+            "   AND bcp.biomedical_concept_uid = bc.biomedical_concept_uid"
+            " )"
+            " ORDER BY bc.soa_id, bc.id"
+        )
+        unpopulated = cur.fetchall()
     finally:
         conn.close()
 
-    for soa_id in soa_ids:
+    if not unpopulated:
+        logger.info(
+            "populate_biomedical_concept_properties_for_all_soas: "
+            "all BCs already populated, nothing to do"
+        )
+        return
+
+    logger.info(
+        "populate_biomedical_concept_properties_for_all_soas: "
+        "backfilling %d unpopulated BC(s)",
+        len(unpopulated),
+    )
+    for soa_id, bc_uid, concept_code in unpopulated:
+        if not concept_code:
+            continue
         try:
-            populate_biomedical_concept_properties(soa_id)
+            populate_biomedical_concept_properties_for_bc(soa_id, bc_uid, concept_code)
         except Exception:
             logger.exception(
-                "populate_biomedical_concept_properties_for_all_soas failed soa_id=%s",
+                "populate_biomedical_concept_properties_for_all_soas "
+                "failed soa_id=%s bc_uid=%s",
                 soa_id,
+                bc_uid,
             )
 
 
