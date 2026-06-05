@@ -14,15 +14,18 @@ from typing import Any, Dict, List, Optional
 
 from soa_builder.web.db import _connect
 
-_CODE_MISSING = {
-    "id": "Code_missing",
-    "extensionAttributes": [],
-    "code": "",
-    "codeSystem": "",
-    "codeSystemVersion": "",
-    "decode": "",
-    "instanceType": "Code",
-}
+
+def _missing_code(uid: str) -> Dict[str, Any]:
+    """Minimal valid Code-Output when no code has been assigned."""
+    return {
+        "id": uid,
+        "extensionAttributes": [],
+        "code": "",
+        "codeSystem": "",
+        "codeSystemVersion": "",
+        "decode": "",
+        "instanceType": "Code",
+    }
 
 
 def build_usdm_study_interventions(soa_id: int) -> List[Dict[str, Any]]:
@@ -92,8 +95,12 @@ def _build_intervention(
     mrd_unit_alias_uid: Optional[str],
     code_uids: List[str],
 ) -> Dict[str, Any]:
-    role = _read_code(soa_id, role_code_uid) or _CODE_MISSING
-    type_ = _read_code(soa_id, type_code_uid) or _CODE_MISSING
+    role = _read_code(soa_id, role_code_uid) or _missing_code(
+        f"Code_{intervention_uid}_role"
+    )
+    type_ = _read_code(soa_id, type_code_uid) or _missing_code(
+        f"Code_{intervention_uid}_type"
+    )
 
     mrd = None
     if mrd_quantity_uid and mrd_value is not None:

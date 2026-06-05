@@ -46,7 +46,16 @@ def _build_org(soa_id: int, row) -> Dict[str, Any]:
         "label": label or None,
         "identifier": identifier or "",
         "identifierScheme": id_scheme or "",
-        "type": _read_code(soa_id, type_code_uid),
+        "type": _read_code(soa_id, type_code_uid)
+        or {
+            "id": f"Code_{org_uid}_type",
+            "extensionAttributes": [],
+            "code": "",
+            "codeSystem": "",
+            "codeSystemVersion": "",
+            "decode": "",
+            "instanceType": "Code",
+        },
         "legalAddress": _build_address(
             soa_id,
             org_uid,

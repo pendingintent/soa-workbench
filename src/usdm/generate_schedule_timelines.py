@@ -15,6 +15,21 @@ generate_study_instances = _load_generate_study_instances()
 generate_decision_instances = _load_generate_decision_instances()
 
 
+def _first_instance_uid(soa_id: int, timeline_uid: str):
+    """Return the UID of the first instance on this timeline, or None."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT instance_uid FROM instances"
+        " WHERE soa_id=? AND member_of_timeline=?"
+        " ORDER BY length(instance_uid), instance_uid LIMIT 1",
+        (soa_id, timeline_uid),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
 def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
     """
     Build USDM scheduleTimelines
@@ -138,7 +153,9 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
             "description": _nz(description),
             "mainTimeline": bool(mainTimeline),
             "entryCondition": _nz(entryCondition),
-            "entryId": _nz(entryId),
+            "entryId": entryId
+            or _first_instance_uid(soa_id, schedule_timeline_uid)
+            or "",
             "exits": [],
             "timings": generate_study_timings(soa_id, schedule_timeline_uid),
             "instances": (

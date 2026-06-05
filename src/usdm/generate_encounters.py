@@ -275,8 +275,8 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             },
             "previousId": prev_id,
             "nextId": next_id,
-            "scheduledAt": timing_uid,
-            "environmentSettings": env_settings,
+            "scheduledAtId": timing_uid,
+            "environmentalSettings": env_settings,
             "contactModes": contact_mode,
             "transitionStartRule": transition_start_rule_obj or None,
             "transitionEndRule": transition_end_rule_obj or None,
@@ -284,7 +284,7 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
             "instanceType": "Encounter",
         }
         if timing_uid:
-            encounter["scheduledAt"] = timing_uid
+            encounter["scheduledAtId"] = timing_uid
         out.append(encounter)
     return out
 

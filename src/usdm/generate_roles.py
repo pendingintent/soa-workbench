@@ -50,7 +50,7 @@ def _build_role(soa_id: int, row) -> Dict[str, Any]:
         "name": name or "",
         "label": label or None,
         "description": description or None,
-        "code": _read_code(soa_id, code_uid),
+        "code": _read_code(soa_id, code_uid) or _empty_code(f"Code_{role_uid}_type"),
         "organizationIds": org_ids,
         "appliesToIds": [],
         "assignedPersons": _read_assigned_persons(
@@ -127,6 +127,19 @@ def _read_assigned_persons(
             }
         )
     return result
+
+
+def _empty_code(uid: str) -> Dict[str, Any]:
+    """Minimal valid Code-Output when no code has been assigned."""
+    return {
+        "id": uid,
+        "extensionAttributes": [],
+        "code": "",
+        "codeSystem": "",
+        "codeSystemVersion": "",
+        "decode": "",
+        "instanceType": "Code",
+    }
 
 
 def _read_code(soa_id: int, code_uid: Optional[str]) -> Optional[Dict[str, Any]]:
