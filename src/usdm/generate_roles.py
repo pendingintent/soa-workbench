@@ -122,7 +122,7 @@ def _read_assigned_persons(
                     "instanceType": "PersonName",
                 },
                 "jobTitle": job_title or "",
-                "organizationId": None if role_has_orgs else (org_uid or None),
+                **({} if role_has_orgs else {"organizationId": org_uid or None}),
                 "instanceType": "AssignedPerson",
             }
         )

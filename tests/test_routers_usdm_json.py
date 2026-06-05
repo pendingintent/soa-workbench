@@ -86,6 +86,29 @@ def test_download_usdm_component_404_nonexistent_soa():
     assert resp.status_code == 404
 
 
+def test_full_usdm_wrapper_structure():
+    """Full USDM download conforms to Wrapper-Output schema top level.
+
+    The document must be a JSON object with 'study' and 'usdmVersion' at
+    the top level — not a bare Study object or any other shape.
+    """
+    r = client.post("/soa", json={"name": "USDM Wrapper Structure Test"})
+    soa_id = r.json()["id"]
+
+    resp = client.get(f"/soa/{soa_id}/usdm_json/full")
+    assert resp.status_code == 200
+    doc = resp.json()
+
+    assert isinstance(doc, dict), "Top-level must be a JSON object"
+    assert "study" in doc, "Top-level must contain 'study'"
+    assert "usdmVersion" in doc, "Top-level must contain 'usdmVersion'"
+    assert doc["usdmVersion"] == "4.0"
+
+    study = doc["study"]
+    assert study["instanceType"] == "Study"
+    assert "versions" in study
+
+
 def test_download_usdm_component_400_unknown_component():
     """Download endpoint returns 400 for an unknown component key."""
     r = client.post("/soa", json={"name": "USDM Bad Component Test"})

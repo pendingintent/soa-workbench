@@ -326,4 +326,4 @@ def test_usdm_person_org_id_suppressed_when_role_has_org_ids():
     role = resp.json()["study"]["versions"][0]["roles"][0]
     assert org_uid in role["organizationIds"]
     ap = role["assignedPersons"][0]
-    assert ap["organizationId"] is None
+    assert "organizationId" not in ap
