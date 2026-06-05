@@ -7,6 +7,7 @@ hierarchy, populating sub-entities from the existing per-entity generators.
 """
 
 import subprocess
+from datetime import datetime
 from typing import List, Dict, Any
 import logging
 from .usdm_utils import _get_soa_metadata
@@ -51,7 +52,8 @@ def _git_branch() -> str:
         while len(parts) < 3:
             parts.append("0")
         return ".".join(parts[:3])
-    return branch
+    timestamp = datetime.now().strftime("%Y%m%dT%H:%M")
+    return f"{branch}-{timestamp}"
 
 
 def build_usdm(soa_id: int) -> Dict[str, Any]:
