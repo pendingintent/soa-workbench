@@ -293,3 +293,37 @@ def test_usdm_person_with_organization():
     roles = resp.json()["study"]["versions"][0]["roles"]
     ap = roles[0]["assignedPersons"][0]
     assert ap["organizationId"] == org_uid
+
+
+def test_usdm_person_org_id_suppressed_when_role_has_org_ids():
+    """CORE-000997: when a role has organizationIds, assignedPersons.organizationId
+    must be null even if the person itself has an organization_uid."""
+    soa_id = _new_soa("CORE-000997 OrgId Suppression Test")
+
+    org_r = client.post(
+        f"/soa/{soa_id}/organizations",
+        json={"name": "ACME", "type_concept_id": "", "type_preferred_term": ""},
+    )
+    assert org_r.status_code == 201
+    org_uid = org_r.json()["organization_uid"]
+
+    person = _create_person(soa_id, name="Bob", organization_uid=org_uid)
+    person_uid = person["person_uid"]
+
+    with _PATCH_SLUG, _PATCH_ROWS:
+        r = client.post(
+            "/ui/soa/{}/roles-add".format(soa_id),
+            data={
+                "name": "Role With Both",
+                "organization_ids": [org_uid],
+                "person_uids": [person_uid],
+            },
+        )
+    assert r.status_code == 200
+
+    resp = client.get(f"/soa/{soa_id}/usdm_json/full")
+    assert resp.status_code == 200
+    role = resp.json()["study"]["versions"][0]["roles"][0]
+    assert org_uid in role["organizationIds"]
+    ap = role["assignedPersons"][0]
+    assert ap["organizationId"] is None

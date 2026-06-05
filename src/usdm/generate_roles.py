@@ -53,14 +53,18 @@ def _build_role(soa_id: int, row) -> Dict[str, Any]:
         "code": _read_code(soa_id, code_uid),
         "organizationIds": org_ids,
         "appliesToIds": [],
-        "assignedPersons": _read_assigned_persons(soa_id, role_uid),
+        "assignedPersons": _read_assigned_persons(
+            soa_id, role_uid, role_has_orgs=bool(org_ids)
+        ),
         "masking": masking_obj,
         "notes": [],
         "instanceType": "StudyRole",
     }
 
 
-def _read_assigned_persons(soa_id: int, role_uid: str) -> List[Dict[str, Any]]:
+def _read_assigned_persons(
+    soa_id: int, role_uid: str, role_has_orgs: bool = False
+) -> List[Dict[str, Any]]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -118,7 +122,7 @@ def _read_assigned_persons(soa_id: int, role_uid: str) -> List[Dict[str, Any]]:
                     "instanceType": "PersonName",
                 },
                 "jobTitle": job_title or "",
-                "organizationId": org_uid or None,
+                "organizationId": None if role_has_orgs else (org_uid or None),
                 "instanceType": "AssignedPerson",
             }
         )
