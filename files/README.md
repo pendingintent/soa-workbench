@@ -10,14 +10,6 @@
         <td>The USDM JSON file for the `CDISC Pilot Study (LZZT)` that passes CORE USDM conformance checks</td>
     </tr>
     <tr>
-        <td>DDF_Terminology_2025-09-26.xls</td>
-        <td>Static DDF terminology file loaded for use in the SOA Workbench</td>
-    </tr>
-    <tr>
-        <td>Protocol_Terminology_2025-09-26.xls</td>
-        <td>Static Protocol terminology file loaded for use in the SOA Workbench</td>
-    </tr>
-    <tr>
         <td>NCT01797120_Footnote_1.html</td>
         <td>HTML Table loaded in the SOA Workbench to support footnotes for NCT01797120.  This file was created outside of the Workbench and the markup copy and pasted when creating the footnote.</td>
     </tr>
@@ -38,8 +30,8 @@
         <td>USDM v4.0 Implementation Guide</td>
     </tr>
     <tr>
-        <td></td>
-        <td></td>
+        <td>NCT01797120_timeline.svg</td>
+        <td>AI-generated study timeline to match formatting from USDM-IG_v4.pdf, section 4.14 <i>Study Timing</i>.</td>
     </tr>
     <tr>
         <td></td>
