@@ -52,14 +52,22 @@ def _list_identifiers(soa_id: int) -> list:
     return rows
 
 
+_SPONSOR_CODE = "C70793"
+_SPONSOR_CODE_SYSTEM = "http://www.cdisc.org"
+
+
 def _list_orgs(soa_id: int) -> list:
-    """Return organizations for an SOA (for dropdown population)."""
+    """Return only Clinical Study Sponsor orgs (C70793) for dropdown."""
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT organization_uid, name FROM organization"
-        " WHERE soa_id=? ORDER BY order_index, id",
-        (soa_id,),
+        "SELECT o.organization_uid, o.name"
+        " FROM organization o"
+        " LEFT JOIN code c"
+        "   ON c.code_uid = o.type_code_uid AND c.soa_id = o.soa_id"
+        " WHERE o.soa_id=? AND c.code=? AND c.code_system=?"
+        " ORDER BY o.order_index, o.id",
+        (soa_id, _SPONSOR_CODE, _SPONSOR_CODE_SYSTEM),
     )
     rows = [{"organization_uid": r[0], "name": r[1]} for r in cur.fetchall()]
     conn.close()
