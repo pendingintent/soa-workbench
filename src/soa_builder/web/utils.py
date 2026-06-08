@@ -18,21 +18,24 @@ _epoch_type_cache: dict[str, Any] = {
     "last_error": None,
     "parent_package_href": None,
 }
-_EPOCH_TYPE_CACHE_TTL = 60 * 60  # 1 hour
+_CACHE_TTL = int(os.environ.get("SOA_BUILDER_CACHE_TTL", "3600"))
+_HTTP_TIMEOUT = int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15"))
+
+_EPOCH_TYPE_CACHE_TTL = _CACHE_TTL
 
 _env_setting_cache: dict[str, Any] = {
     "options": None,
     "fetched_at": 0,
     "last_error": None,
 }
-_ENV_SETTING_CACHE_TTL = 60 * 60  # 1 hour
+_ENV_SETTING_CACHE_TTL = _CACHE_TTL
 
 _contact_mode_cache: dict[str, Any] = {
     "options": None,
     "fetched_at": 0,
     "last_error": None,
 }
-_CONTACT_MODE_CACHE_TTL = 60 * 60  # 1 hour
+_CONTACT_MODE_CACHE_TTL = _CACHE_TTL
 
 _sdtm_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -42,7 +45,7 @@ _sdtm_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_SDTM_CT_CACHE_TTL = 60 * 60  # 1 hour
+_SDTM_CT_CACHE_TTL = _CACHE_TTL
 
 _cdash_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -52,7 +55,7 @@ _cdash_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_CDASH_CT_CACHE_TTL = 60 * 60  # 1 hour
+_CDASH_CT_CACHE_TTL = _CACHE_TTL
 
 _define_xml_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -62,7 +65,7 @@ _define_xml_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_DEFINE_XML_CT_CACHE_TTL = 60 * 60  # 1 hour
+_DEFINE_XML_CT_CACHE_TTL = _CACHE_TTL
 
 _protocol_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -72,7 +75,7 @@ _protocol_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_PROTOCOL_CT_CACHE_TTL = 60 * 60  # 1 hour
+_PROTOCOL_CT_CACHE_TTL = _CACHE_TTL
 
 _ddf_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -82,7 +85,7 @@ _ddf_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_DDF_CT_CACHE_TTL = 60 * 60  # 1 hour
+_DDF_CT_CACHE_TTL = _CACHE_TTL
 
 
 # Constants for the helper function
@@ -201,7 +204,7 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
         values: list[str] = []
         last_status = None
         _epoch_type_cache.update(last_url=url, last_error=None)
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         last_status = resp.status_code
         if resp.status_code != 200:
             data = {}
@@ -246,7 +249,9 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
                         continue
                     try:
                         _epoch_type_cache.update(last_url=href)
-                        term_resp = requests.get(href, headers=headers, timeout=10)
+                        term_resp = requests.get(
+                            href, headers=headers, timeout=_HTTP_TIMEOUT
+                        )
                         if term_resp.status_code == 200:
                             term_json = term_resp.json() or {}
                             sv = term_json.get("submissionValue") or term_json.get(
@@ -309,7 +314,7 @@ def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
     last_status = None
     try:
         _epoch_type_cache.update(last_url=url, last_error=None)
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         last_status = resp.status_code
         if resp.status_code != 200:
             data = {}
@@ -350,7 +355,9 @@ def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
                 if href:
                     try:
                         _epoch_type_cache.update(last_url=href)
-                        term_resp = requests.get(href, headers=headers, timeout=10)
+                        term_resp = requests.get(
+                            href, headers=headers, timeout=_HTTP_TIMEOUT
+                        )
                         if term_resp.status_code == 200:
                             tj = term_resp.json() or {}
                             sub2 = tj.get("submissionValue") or tj.get(
@@ -873,7 +880,7 @@ def get_sdtm_submission_values(url: str, codelist_code: str) -> Dict[str, str]:
 
     mapping: Dict[str, str] = {}
     try:
-        resp = requests.get(full_url, headers=headers, timeout=10)
+        resp = requests.get(full_url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             return {}
         data = resp.json() or {}
@@ -903,7 +910,7 @@ def get_sdtm_submission_values(url: str, codelist_code: str) -> Dict[str, str]:
                 href = linkself.get("href") if isinstance(linkself, dict) else None
             if href:
                 try:
-                    tr = requests.get(href, headers=headers, timeout=10)
+                    tr = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
                     if tr.status_code == 200:
                         tj = tr.json() or {}
                         code2 = tj.get("conceptId") or tj.get("code") or code
@@ -1488,7 +1495,7 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
         return []
 
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             return None
         payload = resp.json() or {}
@@ -1511,7 +1518,7 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
         if href.startswith("/"):
             href = f"https://library.cdisc.org{href}"
         try:
-            term_resp = requests.get(href, headers=headers, timeout=10)
+            term_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
             if term_resp.status_code != 200:
                 continue
             term_data = term_resp.json() or {}
@@ -1595,7 +1602,7 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
         return []
 
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             return None
         payload = resp.json() or {}
@@ -1618,7 +1625,7 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
         if href.startswith("/"):
             href = f"https://library.cdisc.org{href}"
         try:
-            term_resp = requests.get(href, headers=headers, timeout=10)
+            term_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
             if term_resp.status_code != 200:
                 continue
             term_data = term_resp.json() or {}
@@ -1670,7 +1677,7 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
 
     options: list[dict[str, str]] = []
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             raise RuntimeError(f"HTTP {resp.status_code}")
         data = resp.json() or {}
@@ -1706,7 +1713,7 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
                 if href.startswith("/"):
                     href = f"https://library.cdisc.org{href}"
                 try:
-                    t_resp = requests.get(href, headers=headers, timeout=10)
+                    t_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
                     if t_resp.status_code == 200:
                         _ensure_option(t_resp.json() or {})
                 except Exception:
@@ -1762,7 +1769,7 @@ def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
 
     options: list[dict[str, str]] = []
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             raise RuntimeError(f"HTTP {resp.status_code}")
         data = resp.json() or {}
@@ -1798,7 +1805,7 @@ def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
                 if href.startswith("/"):
                     href = f"https://library.cdisc.org{href}"
                 try:
-                    t_resp = requests.get(href, headers=headers, timeout=10)
+                    t_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
                     if t_resp.status_code == 200:
                         _ensure_options(t_resp.json() or {})
                 except Exception:

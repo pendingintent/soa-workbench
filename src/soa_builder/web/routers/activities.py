@@ -22,7 +22,7 @@ from ..utils import (
 import html as _html
 
 _ACT_CONCEPT_CACHE = {"data": None, "fetched_at": 0}
-_ACT_CONCEPT_TTL = 60 * 60
+_ACT_CONCEPT_TTL = int(os.environ.get("SOA_BUILDER_CACHE_TTL", "3600"))
 
 router = APIRouter(prefix="/soa/{soa_id}")
 ui_router = APIRouter()
@@ -1104,7 +1104,14 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
         headers["Authorization"] = f"Bearer {api_key}"
         headers["api-key"] = api_key
 
-    _ALLOWED_CDISC_PREFIX = "https://api.library.cdisc.org/"
+    from urllib.parse import urlparse as _urlparse
+
+    _bc_base = os.environ.get(
+        "CDISC_BC_API_BASE_URL",
+        "https://api.library.cdisc.org/api/cosmos/v2",
+    )
+    _p = _urlparse(_bc_base)
+    _ALLOWED_CDISC_PREFIX = f"{_p.scheme}://{_p.netloc}/"
 
     status = None
     error = None
@@ -1129,7 +1136,11 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
                 },
             )
         try:
-            resp = _requests.get(href, headers=headers, timeout=15)
+            resp = _requests.get(
+                href,
+                headers=headers,
+                timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
+            )
             status = resp.status_code
             raw_text_snippet = resp.text[:500]
             if resp.status_code == 200:

@@ -192,9 +192,7 @@ from .routers.organizations import (
 )
 from .routers.roles import _get_role_type_options, _list_roles
 from .audit import _record_element_audit
-from usdm.generate_biomedical_concept_properties import (
-    populate_biomedical_concept_properties_for_all_soas as _bcp_backfill,
-)
+
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
 from .schemas import (
@@ -237,30 +235,38 @@ def _configure_logging():
 
 logger = _configure_logging()
 
-load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
+load_dotenv("config.env")  # must come BEFORE reading env-based config
 # Use the DB path resolved by db.py to keep consistency across modules
 DB_PATH = _DB_PATH
 NORMALIZED_ROOT = os.environ.get("SOA_BUILDER_NORMALIZED_ROOT", "normalized")
 
+# Server bind address / port (override via config.env)
+HTTP_LISTEN_PORT = int(os.environ.get("SOA_BUILDER_PORT", "8008"))
+HTTP_LISTEN_IP = os.environ.get("SOA_BUILDER_HOST", "0.0.0.0")
 
-# Set server listen port
-HTTP_LISTEN_PORT = 8008
-HTTP_LISTEN_IP = "0.0.0.0"
-
+# CDISC Library Cosmos v2 API base URL (override via config.env)
+CDISC_BC_API_BASE_URL = os.environ.get(
+    "CDISC_BC_API_BASE_URL",
+    "https://api.library.cdisc.org/api/cosmos/v2",
+)
 
 _concept_cache = {"data": None, "fetched_at": 0}
-_CONCEPT_CACHE_TTL = 60 * 60  # 1 hour TTL
+_CONCEPT_CACHE_TTL = int(os.environ.get("SOA_BUILDER_CACHE_TTL", "3600"))
 # SDTM dataset specializations cache (similar TTL)
 _sdtm_specializations_cache = {"data": None, "fetched_at": 0}
-_SDTM_SPECIALIZATIONS_CACHE_TTL = 60 * 60
+_SDTM_SPECIALIZATIONS_CACHE_TTL = _CONCEPT_CACHE_TTL
 # Per-code SDTM specializations cache: {code: (fetched_at, [results])}
 _sdtm_specializations_by_code_cache: dict[str, tuple[float, list]] = {}
 # Category-specific biomedical concepts cache (per category key)
 _category_concepts_cache: dict[str, dict] = {}
-_CATEGORY_CONCEPTS_CACHE_TTL = 60 * 60  # 1 hour
+_CATEGORY_CONCEPTS_CACHE_TTL = _CONCEPT_CACHE_TTL
 # Biomedical concept categories cache (whole list)
 _bc_categories_cache = {"data": None, "fetched_at": 0}
-_BC_CATEGORIES_CACHE_TTL = 60 * 60  # 1 hour
+_BC_CATEGORIES_CACHE_TTL = _CONCEPT_CACHE_TTL
+
+# Outbound HTTP timeout for CDISC Library API requests (seconds)
+_HTTP_TIMEOUT = int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15"))
+
 app = FastAPI(title="SoA Builder API", version="0.1.0")
 logger = logging.getLogger("soa_builder.concepts")
 if not logger.handlers:
@@ -310,7 +316,6 @@ _migrate_element_audit_columns()
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
 _migrate_repoint_stale_bc_code_chains()
-_bcp_backfill()
 _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
 _migrate_add_footnote_audit_table()
@@ -713,8 +718,8 @@ def fetch_biomedical_concept_categories(force: bool = False) -> list[dict]:
     Normalized shape:
       [{'name': <category_name>, 'title': <title>, 'href': <absolute_href>}]
     """
-    url = "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/categories"
-    base_prefix = "https://api.library.cdisc.org/api/cosmos/v2"
+    url = f"{CDISC_BC_API_BASE_URL}/mdr/bc/categories"
+    base_prefix = CDISC_BC_API_BASE_URL
     headers = {"Accept": "application/json"}
     api_key = _get_cdisc_api_key()
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
@@ -744,7 +749,7 @@ def fetch_biomedical_concept_categories(force: bool = False) -> list[dict]:
         return _bc_categories_cache.get("data") or []
 
     try:
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             logger.warning(
                 "BC categories fetch HTTP %s (snippet=%s)",
@@ -803,7 +808,7 @@ def fetch_biomedical_concepts_by_category(name: str, force: bool = False) -> lis
     if not name or not name.strip():
         return []
     category = name.strip()
-    base_prefix = "https://api.library.cdisc.org/api/cosmos/v2"
+    base_prefix = CDISC_BC_API_BASE_URL
     # Deterministic single encoding: unquote once then re-encode
     decoded_once = urllib.parse.unquote(category)
     encoded = requests.utils.quote(decoded_once, safe="")
@@ -836,7 +841,7 @@ def fetch_biomedical_concepts_by_category(name: str, force: bool = False) -> lis
 
     concepts: list[dict] = []
     try:
-        resp = requests.get(url, headers=headers, timeout=20)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             logger.warning(
                 "BC concepts by category fetch HTTP %s category=%s snippet=%s",
@@ -982,7 +987,7 @@ def fetch_biomedical_concepts(force: bool = False):
         _concept_cache.update(data=[], fetched_at=now)
         logger.warning("CDISC_SKIP_REMOTE=1; concept list empty")
         return []
-    url = "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts"
+    url = f"{CDISC_BC_API_BASE_URL}/mdr/bc/biomedicalconcepts"
     headers = {"Accept": "application/json"}
     api_key = _get_cdisc_api_key()
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
@@ -993,7 +998,7 @@ def fetch_biomedical_concepts(force: bool = False):
         headers["Authorization"] = f"Bearer {api_key}"  # bearer token style
         headers["api-key"] = api_key  # fallback header name
     try:
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         _concept_cache["last_status"] = resp.status_code
         _concept_cache["last_url"] = url
         _concept_cache["last_error"] = None
@@ -1104,7 +1109,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
       - Do NOT use or update the main cache (code-specific result only).
     """
     now = time.time()
-    base_prefix = "https://api.library.cdisc.org/api/cosmos/v2"
+    base_prefix = CDISC_BC_API_BASE_URL
 
     def _normalize_href(h: Optional[str]) -> Optional[str]:
         if not h:
@@ -1140,7 +1145,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
             headers["api-key"] = api_key
 
         try:
-            resp = requests.get(url, headers=headers, timeout=20)
+            resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
             _sdtm_specializations_cache["last_status"] = resp.status_code
             _sdtm_specializations_cache["last_url"] = url
             _sdtm_specializations_cache["last_error"] = None
@@ -1275,7 +1280,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
 
     packages: list[dict] = []
     try:
-        resp = requests.get(url, headers=headers, timeout=20)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         _sdtm_specializations_cache["last_status"] = resp.status_code
         _sdtm_specializations_cache["last_url"] = url
         _sdtm_specializations_cache["last_error"] = None
@@ -2154,10 +2159,18 @@ def _enrich_code_bg(concept_code: str, soa_id: int) -> None:
         headers["api-key"] = api_key
     try:
         url = (
-            "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/"
+            os.environ.get(
+                "CDISC_BC_API_BASE_URL",
+                "https://api.library.cdisc.org/api/cosmos/v2",
+            )
+            + "/mdr/bc/biomedicalconcepts/"
             + concept_code
         )
-        resp = _requests.get(url, headers=headers, timeout=15)
+        resp = _requests.get(
+            url,
+            headers=headers,
+            timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
+        )
         if resp.status_code != 200:
             return
         data = resp.json()
@@ -2293,10 +2306,18 @@ def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
     conn = None
     try:
         url = (
-            "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/"
+            os.environ.get(
+                "CDISC_BC_API_BASE_URL",
+                "https://api.library.cdisc.org/api/cosmos/v2",
+            )
+            + "/mdr/bc/biomedicalconcepts/"
             + concept_code
         )
-        resp = _requests.get(url, headers=headers, timeout=15)
+        resp = _requests.get(
+            url,
+            headers=headers,
+            timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
+        )
         if resp.status_code != 200:
             return
         data = resp.json()
@@ -4576,7 +4597,7 @@ def ui_concepts_list(request: Request):
         code = c.get("concept_code") or c.get("code")
         title = c.get("title") or c.get("concept_title") or c.get("name") or code
         href = (
-            f"https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/{code}"
+            f"{CDISC_BC_API_BASE_URL}/mdr/bc/biomedicalconcepts/{code}"
             if code
             else None
         )
@@ -4720,7 +4741,7 @@ def ui_sdtm_specialization_detail(
     raw_text_snippet = None
     if href:
         try:
-            resp = requests.get(href, headers=headers, timeout=15)
+            resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
             status = resp.status_code
             raw_text_snippet = resp.text[:500]
             if resp.status_code == 200:
@@ -4786,7 +4807,7 @@ def ui_concept_detail(code: str, request: Request):
     parent_pkg_name = None
     status = None
     try:
-        resp = requests.get(api_href, headers=headers, timeout=10)
+        resp = requests.get(api_href, headers=headers, timeout=_HTTP_TIMEOUT)
         status = resp.status_code
         if resp.status_code == 200:
             concept_json = resp.json()

@@ -10,7 +10,13 @@ from soa_builder.web.db import _connect
 from soa_builder.web.utils import get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href
 
 logger = logging.getLogger("usdm.usdm_utils")
-URL_PREFIX = "https://api.library.cdisc.org/api/cosmos/v2/"
+URL_PREFIX = (
+    os.environ.get(
+        "CDISC_BC_API_BASE_URL",
+        "https://api.library.cdisc.org/api/cosmos/v2",
+    )
+    + "/"
+)
 
 
 # Generic helper functions for USDM generator scripts
@@ -253,7 +259,13 @@ def _get_biomedical_concept_data(concept_code: str) -> Dict[str, Any]:
 def _absolute_url(href: str) -> str:
     if href.startswith("http"):
         return href
-    return "https://api.library.cdisc.org/api/cosmos/v2" + href
+    return (
+        os.environ.get(
+            "CDISC_BC_API_BASE_URL",
+            "https://api.library.cdisc.org/api/cosmos/v2",
+        )
+        + href
+    )
 
 
 @functools.lru_cache(maxsize=1)
