@@ -3117,3 +3117,47 @@ def _migrate_add_person_name_fields():
         except Exception:
             pass
     conn.close()
+
+
+def _migrate_add_study_identifier_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS study_identifier ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "study_identifier_uid TEXT NOT NULL,"
+            "text TEXT NOT NULL,"
+            "scope_org_uid TEXT NOT NULL DEFAULT '',"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, study_identifier_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_identifier_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_identifier_table failed: %s", e)
+
+
+def _migrate_add_study_identifier_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS study_identifier_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "si_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_identifier_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_identifier_audit_table failed: %s", e)

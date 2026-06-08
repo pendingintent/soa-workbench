@@ -135,6 +135,8 @@ from .migrate_database import (
     _migrate_add_role_person_table,
     _migrate_add_person_name_fields,
     _migrate_person_drop_job_title_notnull,
+    _migrate_add_study_identifier_table,
+    _migrate_add_study_identifier_audit_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -182,6 +184,7 @@ from .routers import estimands as estimands_router
 from .routers import indications as indications_router
 from .routers import persons as persons_router
 from .routers import soa_bundle as soa_bundle_router
+from .routers import study_identifiers as study_identifiers_router
 from .routers.organizations import (
     _get_org_type_options,
     _get_countries_options,
@@ -375,6 +378,8 @@ _migrate_add_person_audit_table()
 _migrate_add_role_person_table()
 _migrate_person_drop_job_title_notnull()
 _migrate_add_person_name_fields()
+_migrate_add_study_identifier_table()
+_migrate_add_study_identifier_audit_table()
 
 
 # Include routers
@@ -428,6 +433,8 @@ app.include_router(persons_router.router)
 app.include_router(persons_router.ui_router)
 app.include_router(soa_bundle_router.router)
 app.include_router(soa_bundle_router.ui_router)
+app.include_router(study_identifiers_router.router)
+app.include_router(study_identifiers_router.ui_router)
 
 
 def _record_visit_audit(
@@ -4229,9 +4236,15 @@ def ui_edit(request: Request, soa_id: int):
         _get_title_type_options,
         _list_titles,
     )
+    from .routers.study_identifiers import (
+        _list_identifiers as _list_study_identifiers,
+        _list_orgs as _list_identifier_orgs,
+    )
 
     study_titles = _list_titles(soa_id)
     title_type_options = _get_title_type_options()
+    study_identifiers = _list_study_identifiers(soa_id)
+    identifier_orgs = _list_identifier_orgs(soa_id)
     # Load Protocol Terminology (C174222) options from CDISC Library
     from .utils import get_protocol_ct_codelist_map as _get_protocol_ct_codelist_map
 
@@ -4542,6 +4555,8 @@ def ui_edit(request: Request, soa_id: int):
             "superscript_map": superscript_map,
             "study_titles": study_titles,
             "title_type_options": title_type_options,
+            "study_identifiers": study_identifiers,
+            "orgs": identifier_orgs,
             "organizations": _list_organizations(soa_id),
             "org_type_options": _get_org_type_options(),
             "countries_options": _get_countries_options(),

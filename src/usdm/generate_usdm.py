@@ -30,6 +30,7 @@ from usdm.generate_roles import build_usdm_roles
 from usdm.generate_study_interventions import build_usdm_study_interventions
 from usdm.generate_estimands import build_usdm_estimands
 from usdm.generate_indications import build_usdm_indications
+from usdm.generate_study_identifiers import build_usdm_study_identifiers
 
 logger = logging.getLogger("usdm.generate_usdm")
 
@@ -148,15 +149,9 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "extensionAttributes": [],
         "versionIdentifier": "1",
         "rationale": "",
-        "studyIdentifiers": [
-            {
-                "id": "StudyIdentifier_1",
-                "extensionAttributes": [],
-                "text": meta["study_id"] or "",
-                "scopeId": "",
-                "instanceType": "StudyIdentifier",
-            }
-        ],
+        "studyIdentifiers": _safe(
+            "studyIdentifiers", build_usdm_study_identifiers, soa_id
+        ),
         "referenceIdentifiers": [],
         "studyDesigns": [study_design],
         "titles": build_usdm_titles(soa_id),

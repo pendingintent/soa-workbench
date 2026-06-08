@@ -526,6 +526,54 @@ def get_next_indication_uid(cur: Any, soa_id: int) -> str:
     return f"Indication_{max_n + 1}"
 
 
+def get_next_study_identifier_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique StudyIdentifier_N for the given SOA.
+
+    Scans both the live study_identifier table and audit JSON so
+    deleted UIDs are never reused. Assumes `cur` is a sqlite cursor
+    within an open transaction.
+    """
+    max_n = 0
+    try:
+        cur.execute(
+            "SELECT study_identifier_uid FROM study_identifier"
+            " WHERE soa_id=? AND study_identifier_uid"
+            " LIKE 'StudyIdentifier_%'",
+            (soa_id,),
+        )
+        for (uid,) in cur.fetchall():
+            try:
+                n = int(uid.split("_")[-1])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                pass
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            "SELECT before_json, after_json FROM study_identifier_audit WHERE soa_id=?",
+            (soa_id,),
+        )
+        import json as _json
+
+        for before_raw, after_raw in cur.fetchall():
+            for raw in (before_raw, after_raw):
+                if not raw:
+                    continue
+                try:
+                    uid = _json.loads(raw).get("study_identifier_uid", "")
+                    if isinstance(uid, str) and uid.startswith("StudyIdentifier_"):
+                        n = int(uid.split("_")[-1])
+                        if n > max_n:
+                            max_n = n
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return f"StudyIdentifier_{max_n + 1}"
+
+
 # Helper function to generate new alias_code_uid value
 def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique AliasCode_ for the given SOA.
