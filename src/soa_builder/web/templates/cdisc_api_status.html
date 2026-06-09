@@ -1,0 +1,30 @@
+{% if status == "ok" %}
+<div class="am-api-notice am-api-notice-ok">
+  <span class="am-api-notice-icon">&#10003;</span>
+  <span>CDISC Library API is connected.</span>
+</div>
+{% elif status == "no_key" %}
+<div class="am-api-notice am-api-notice-warn">
+  <span class="am-api-notice-icon">&#9888;</span>
+  <div>
+    <strong>CDISC API key not configured.</strong>
+    <span class="am-api-notice-detail">{{ detail }}</span>
+  </div>
+</div>
+{% elif status == "error" %}
+<div class="am-api-notice am-api-notice-error">
+  <span class="am-api-notice-icon">&#10007;</span>
+  <div>
+    <strong>CDISC Library API unavailable.</strong>
+    <span class="am-api-notice-detail">{{ detail }}</span>
+  </div>
+</div>
+{% elif status == "offline" %}
+<div class="am-api-notice am-api-notice-info">
+  <span class="am-api-notice-icon">&#8212;</span>
+  <div>
+    <strong>CDISC API offline mode.</strong>
+    <span class="am-api-notice-detail">{{ detail }}</span>
+  </div>
+</div>
+{% endif %}

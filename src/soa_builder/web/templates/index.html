@@ -1,5 +1,14 @@
 {% extends 'base.html' %}
 {% block content %}
+
+<div id="cdisc-api-notice"
+     hx-get="/ui/cdisc-api-status"
+     hx-trigger="load"
+     hx-swap="outerHTML">
+</div>
+
+<hr class="fz-section-divider" />
+
 <h2>Studies</h2>
 
 <hr class="fz-section-divider" />

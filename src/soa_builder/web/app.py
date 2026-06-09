@@ -1546,6 +1546,69 @@ def ui_sdtm_specializations_refresh(request: Request):
     return HTMLResponse("<script>window.location='/ui/sdtm/specializations';</script>")
 
 
+@app.get("/ui/cdisc-api-status", response_class=HTMLResponse)
+def ui_cdisc_api_status(request: Request):
+    """Return HTML partial indicating CDISC Library API availability."""
+    api_key = os.environ.get("CDISC_API_KEY")
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    skip_remote = os.environ.get("CDISC_SKIP_REMOTE") == "1"
+    has_key = bool(api_key or subscription_key)
+
+    if skip_remote:
+        status, detail = (
+            "offline",
+            (
+                "CDISC API calls are disabled (CDISC_SKIP_REMOTE=1). "
+                "Local overrides are active."
+            ),
+        )
+    elif not has_key:
+        status, detail = (
+            "no_key",
+            (
+                "No CDISC API key configured. "
+                "Set CDISC_API_KEY or CDISC_SUBSCRIPTION_KEY in your "
+                "shell environment to enable Biomedical Concept features."
+            ),
+        )
+    else:
+        unified = subscription_key or api_key
+        headers = {}
+        if unified:
+            headers["Ocp-Apim-Subscription-Key"] = unified
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+            headers["api-key"] = api_key
+        try:
+            resp = requests.get(CDISC_BC_API_BASE_URL, headers=headers, timeout=5)
+            if resp.status_code < 500:
+                status, detail = "ok", "CDISC Library API is connected."
+            else:
+                status = "error"
+                detail = f"CDISC Library API returned HTTP {resp.status_code}."
+        except requests.exceptions.Timeout:
+            status, detail = (
+                "error",
+                (
+                    "CDISC Library API timed out. "
+                    "The service may be temporarily unavailable."
+                ),
+            )
+        except requests.exceptions.ConnectionError:
+            status, detail = (
+                "error",
+                ("CDISC Library API is not reachable. Check your network connection."),
+            )
+        except Exception as exc:
+            status, detail = "error", f"CDISC API check failed: {exc}"
+
+    return templates.TemplateResponse(
+        request,
+        "cdisc_api_status.html",
+        {"status": status, "detail": detail},
+    )
+
+
 def _wide_csv_path(soa_id: int) -> str:
     return os.path.join(tempfile.gettempdir(), f"soa_{soa_id}_wide.csv")
 
