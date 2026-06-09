@@ -56,11 +56,15 @@
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* Show submenu on hover */
-.sidenav ul li:hover > ul {
+/* Show submenu when heading is clicked (open state) */
+.sidenav ul li.open > ul {
     display: block;
     opacity: 1;
     transform: translateY(0);
+}
+
+.sidenav ul > li.open > a {
+    color: #f1f1f1;
 }
 
 /* Submenu item styling */

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>SoA Workbench</title>
-  <link rel="stylesheet" href="/static/style.css?v=4" />
+  <link rel="stylesheet" href="/static/style.css?v=5" />
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
@@ -77,5 +77,21 @@
   <hr />
   <small>&copy; 2025 SoA Workbench</small>
 </footer>
+<script>
+  document.querySelectorAll('.sidenav ul > li').forEach(function(li) {
+    var heading = li.querySelector(':scope > a');
+    if (!heading || !li.querySelector(':scope > ul')) return;
+    heading.addEventListener('click', function(e) {
+      e.preventDefault();
+      var isOpen = li.classList.contains('open');
+      document.querySelectorAll('.sidenav ul > li.open').forEach(function(el) {
+        el.classList.remove('open');
+      });
+      if (!isOpen) {
+        li.classList.add('open');
+      }
+    });
+  });
+</script>
 </body>
 </html>
