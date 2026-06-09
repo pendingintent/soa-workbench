@@ -203,11 +203,13 @@ def create_role(soa_id: int, body: dict):
     type_preferred_term = (body.get("type_preferred_term") or "").strip()
     type_version = (body.get("type_version") or _ddf_ct_version()).strip()
     org_ids = body.get("organization_ids") or []
+    person_uids = body.get("person_uids") or []
     masking = bool(body.get("masking", False))
 
     conn = _connect()
     cur = conn.cursor()
     try:
+        _assert_no_role_org_person_org_conflict(cur, soa_id, org_ids, person_uids)
         code_uid = None
         if type_concept_id:
             code_uid = _insert_role_code(
@@ -345,6 +347,29 @@ def _delete_person_assignments(cur, soa_id: int, role_id: int) -> None:
     )
 
 
+def _assert_no_role_org_person_org_conflict(
+    cur, soa_id: int, org_ids: list, person_uids: list
+) -> None:
+    """Raise 422 if role org refs and any person org ref would coexist."""
+    if not org_ids or not person_uids:
+        return
+    placeholders = ",".join("?" * len(person_uids))
+    cur.execute(
+        f"SELECT person_uid, name FROM person"
+        f" WHERE soa_id=? AND person_uid IN ({placeholders})"
+        f" AND organization_uid IS NOT NULL",
+        [soa_id, *person_uids],
+    )
+    conflicts = cur.fetchall()
+    if conflicts:
+        names = ", ".join(r[1] or r[0] for r in conflicts)
+        raise HTTPException(
+            422,
+            f"Role has organizationIds; the following assigned persons "
+            f"also have an organizationId and cannot be combined: {names}",
+        )
+
+
 @ui_router.post(
     "/ui/soa/{soa_id}/roles-add",
     response_class=HTMLResponse,
@@ -369,11 +394,13 @@ def ui_roles_add(
 
     type_version = _ddf_ct_version()
     org_ids = [o for o in organization_ids if o.strip()]
+    clean_person_uids = [p for p in person_uids if p.strip()]
     is_masked = masking.strip().lower() == "on"
 
     conn = _connect()
     cur = conn.cursor()
     try:
+        _assert_no_role_org_person_org_conflict(cur, soa_id, org_ids, clean_person_uids)
         code_uid = None
         if role_type_code.strip():
             code_uid = _insert_role_code(
@@ -502,43 +529,52 @@ def ui_roles_update(
     (rid, role_uid, old_name, old_code_uid) = row
     before = {"role_uid": role_uid, "name": old_name}
 
-    # Replace role type code record
-    _delete_code(cur, soa_id, old_code_uid)
-    new_code_uid = None
-    if role_type_code.strip():
-        version = _ddf_ct_version()
-        new_code_uid = _insert_role_code(
-            cur,
-            soa_id,
-            role_type_code.strip(),
-            role_type_decode.strip(),
-            version,
-        )
-
     org_ids = [o for o in organization_ids if o.strip()]
+    clean_person_uids = [p for p in person_uids if p.strip()]
     is_masked = masking.strip().lower() == "on"
 
-    cur.execute(
-        "UPDATE role SET name=?, label=?, description=?,"
-        " code_uid=?, organization_ids=?, masking=?"
-        " WHERE id=? AND soa_id=?",
-        (
-            name,
-            label.strip() or None,
-            description.strip() or None,
-            new_code_uid,
-            json.dumps(org_ids) if org_ids else None,
-            1 if is_masked else 0,
-            role_id,
-            soa_id,
-        ),
-    )
+    # Validate before any writes
+    try:
+        _assert_no_role_org_person_org_conflict(cur, soa_id, org_ids, clean_person_uids)
 
-    # Replace person assignments
-    _delete_person_assignments(cur, soa_id, rid)
-    _assign_persons_to_role(cur, soa_id, rid, person_uids)
+        # Replace role type code record
+        _delete_code(cur, soa_id, old_code_uid)
+        new_code_uid = None
+        if role_type_code.strip():
+            version = _ddf_ct_version()
+            new_code_uid = _insert_role_code(
+                cur,
+                soa_id,
+                role_type_code.strip(),
+                role_type_decode.strip(),
+                version,
+            )
 
-    conn.commit()
+        cur.execute(
+            "UPDATE role SET name=?, label=?, description=?,"
+            " code_uid=?, organization_ids=?, masking=?"
+            " WHERE id=? AND soa_id=?",
+            (
+                name,
+                label.strip() or None,
+                description.strip() or None,
+                new_code_uid,
+                json.dumps(org_ids) if org_ids else None,
+                1 if is_masked else 0,
+                role_id,
+                soa_id,
+            ),
+        )
+
+        # Replace person assignments
+        _delete_person_assignments(cur, soa_id, rid)
+        _assign_persons_to_role(cur, soa_id, rid, clean_person_uids)
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
     conn.close()
     _record_role_audit(
         soa_id,

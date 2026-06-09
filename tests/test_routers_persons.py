@@ -295,10 +295,9 @@ def test_usdm_person_with_organization():
     assert ap["organizationId"] == org_uid
 
 
-def test_usdm_person_org_id_suppressed_when_role_has_org_ids():
-    """CORE-000997: when a role has organizationIds, assignedPersons.organizationId
-    must be null even if the person itself has an organization_uid."""
-    soa_id = _new_soa("CORE-000997 OrgId Suppression Test")
+def test_role_add_with_org_and_person_with_org_returns_422():
+    """Role with organizationIds + person with organizationId must be rejected."""
+    soa_id = _new_soa("Role+PersonOrg Conflict Test")
 
     org_r = client.post(
         f"/soa/{soa_id}/organizations",
@@ -319,11 +318,95 @@ def test_usdm_person_org_id_suppressed_when_role_has_org_ids():
                 "person_uids": [person_uid],
             },
         )
+    assert r.status_code == 422
+
+
+def test_role_add_with_org_and_person_without_org_succeeds():
+    """Role with organizationIds + person without organizationId is valid."""
+    soa_id = _new_soa("Role+PersonNoOrg OK Test")
+
+    org_r = client.post(
+        f"/soa/{soa_id}/organizations",
+        json={"name": "ACME", "type_concept_id": "", "type_preferred_term": ""},
+    )
+    assert org_r.status_code == 201
+    org_uid = org_r.json()["organization_uid"]
+
+    person = _create_person(soa_id, name="Alice")
+    person_uid = person["person_uid"]
+
+    with _PATCH_SLUG, _PATCH_ROWS:
+        r = client.post(
+            "/ui/soa/{}/roles-add".format(soa_id),
+            data={
+                "name": "Org Role",
+                "organization_ids": [org_uid],
+                "person_uids": [person_uid],
+            },
+        )
     assert r.status_code == 200
 
-    resp = client.get(f"/soa/{soa_id}/usdm_json/full")
-    assert resp.status_code == 200
-    role = resp.json()["study"]["versions"][0]["roles"][0]
-    assert org_uid in role["organizationIds"]
-    ap = role["assignedPersons"][0]
-    assert "organizationId" not in ap
+
+def test_person_update_with_org_while_in_org_role_returns_422():
+    """Setting person organizationId while assigned to a role with orgs → 422."""
+    soa_id = _new_soa("PersonOrgUpdate Conflict Test")
+
+    org_r = client.post(
+        f"/soa/{soa_id}/organizations",
+        json={"name": "ACME", "type_concept_id": "", "type_preferred_term": ""},
+    )
+    assert org_r.status_code == 201
+    org_uid = org_r.json()["organization_uid"]
+
+    person = _create_person(soa_id, name="Carol")
+    person_uid = person["person_uid"]
+    person_id = person["id"]
+
+    # Assign person to a role that has organizationIds
+    with _PATCH_SLUG, _PATCH_ROWS:
+        r = client.post(
+            "/ui/soa/{}/roles-add".format(soa_id),
+            data={
+                "name": "Org Role",
+                "organization_ids": [org_uid],
+                "person_uids": [person_uid],
+            },
+        )
+    assert r.status_code == 200
+
+    # Now try to set an organization on the person → must be rejected
+    r = client.post(
+        f"/ui/soa/{soa_id}/persons/{person_id}/update",
+        data={"name": "Carol", "organization_uid": org_uid},
+    )
+    assert r.status_code == 422
+
+
+def test_person_update_with_org_not_in_org_role_succeeds():
+    """Setting person organizationId when not in any org-role is valid."""
+    soa_id = _new_soa("PersonOrgUpdate OK Test")
+
+    org_r = client.post(
+        f"/soa/{soa_id}/organizations",
+        json={"name": "ACME", "type_concept_id": "", "type_preferred_term": ""},
+    )
+    assert org_r.status_code == 201
+    org_uid = org_r.json()["organization_uid"]
+
+    person = _create_person(soa_id, name="Dave")
+    person_id = person["id"]
+
+    # Assign to a role with no organizationIds
+    with _PATCH_SLUG, _PATCH_ROWS:
+        r = client.post(
+            "/ui/soa/{}/roles-add".format(soa_id),
+            data={"name": "No-Org Role", "person_uids": [person["person_uid"]]},
+        )
+    assert r.status_code == 200
+
+    # Setting org on person is fine because the role has no organizationIds
+    r = client.post(
+        f"/ui/soa/{soa_id}/persons/{person_id}/update",
+        data={"name": "Dave", "organization_uid": org_uid},
+    )
+    assert r.status_code == 200

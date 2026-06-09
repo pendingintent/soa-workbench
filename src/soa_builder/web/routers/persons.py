@@ -131,6 +131,29 @@ def _delete_role_assignments(cur, soa_id: int, person_id: int) -> None:
     )
 
 
+def _assert_no_person_org_role_org_conflict(
+    cur, soa_id: int, person_id: int, org_uid: Optional[str]
+) -> None:
+    """Raise 422 if person org ref conflicts with any assigned role org."""
+    if not org_uid:
+        return
+    cur.execute(
+        "SELECT r.role_uid, r.name FROM role r"
+        " JOIN role_person rp ON rp.role_id = r.id AND rp.soa_id = r.soa_id"
+        " WHERE r.soa_id=? AND rp.person_id=?"
+        " AND r.organization_ids IS NOT NULL",
+        (soa_id, person_id),
+    )
+    conflicts = cur.fetchall()
+    if conflicts:
+        names = ", ".join(r[1] or r[0] for r in conflicts)
+        raise HTTPException(
+            422,
+            f"Person has an organizationId; the following assigned roles "
+            f"also have organizationIds and cannot be combined: {names}",
+        )
+
+
 # ---------------------------------------------------------------------------
 # JSON API endpoints
 # ---------------------------------------------------------------------------
@@ -467,28 +490,36 @@ def ui_persons_update(
     pid, person_uid, old_name = row
     before = {"person_uid": person_uid, "name": old_name}
 
-    given_list = _parse_lines(given_names)
-    prefix_list = _parse_lines(prefixes)
-    suffix_list = _parse_lines(suffixes)
+    org_uid_clean = organization_uid.strip() or None
+    try:
+        _assert_no_person_org_role_org_conflict(cur, soa_id, pid, org_uid_clean)
 
-    cur.execute(
-        "UPDATE person SET name=?, job_title=?, text=?, family_name=?,"
-        " given_names=?, prefixes=?, suffixes=?, organization_uid=?"
-        " WHERE id=? AND soa_id=?",
-        (
-            name,
-            job_title.strip() or None,
-            text.strip() or None,
-            family_name.strip() or None,
-            json.dumps(given_list) if given_list else None,
-            json.dumps(prefix_list) if prefix_list else None,
-            json.dumps(suffix_list) if suffix_list else None,
-            organization_uid.strip() or None,
-            person_id,
-            soa_id,
-        ),
-    )
-    conn.commit()
+        given_list = _parse_lines(given_names)
+        prefix_list = _parse_lines(prefixes)
+        suffix_list = _parse_lines(suffixes)
+
+        cur.execute(
+            "UPDATE person SET name=?, job_title=?, text=?, family_name=?,"
+            " given_names=?, prefixes=?, suffixes=?, organization_uid=?"
+            " WHERE id=? AND soa_id=?",
+            (
+                name,
+                job_title.strip() or None,
+                text.strip() or None,
+                family_name.strip() or None,
+                json.dumps(given_list) if given_list else None,
+                json.dumps(prefix_list) if prefix_list else None,
+                json.dumps(suffix_list) if suffix_list else None,
+                org_uid_clean,
+                person_id,
+                soa_id,
+            ),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
     conn.close()
     _record_person_audit(
         soa_id,

@@ -179,3 +179,81 @@ def test_role_with_organization_ids():
     roles = resp.json()["study"]["versions"][0]["roles"]
     assert len(roles) == 1
     assert org_uid in roles[0]["organizationIds"]
+
+
+# ---------------------------------------------------------------------------
+# Mutual-exclusion: role.organizationIds vs assignedPerson.organizationId
+# ---------------------------------------------------------------------------
+
+
+def _create_org(soa_id: int, name: str = "Test Org") -> str:
+    r = client.post(
+        f"/soa/{soa_id}/organizations",
+        json={"name": name, "type_concept_id": "", "type_preferred_term": ""},
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["organization_uid"]
+
+
+def _create_person(soa_id: int, **kwargs) -> dict:
+    body = {"name": "Test Person"}
+    body.update(kwargs)
+    r = client.post(f"/soa/{soa_id}/persons", json=body)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def test_create_role_api_org_and_person_with_org_returns_422():
+    """JSON create_role: role org + person org → 422."""
+    soa_id = _new_soa("Role API Org+PersonOrg Conflict")
+    org_uid = _create_org(soa_id)
+    person = _create_person(soa_id, organization_uid=org_uid)
+
+    with _PATCH_SLUG, _PATCH_ROWS:
+        r = client.post(
+            f"/soa/{soa_id}/roles",
+            json={
+                "name": "Conflicting Role",
+                "organization_ids": [org_uid],
+                "person_uids": [person["person_uid"]],
+            },
+        )
+    assert r.status_code == 422
+
+
+def test_create_role_api_org_and_person_without_org_ok():
+    """JSON create_role: role org + person without org → 201."""
+    soa_id = _new_soa("Role API Org+PersonNoOrg OK")
+    org_uid = _create_org(soa_id)
+    person = _create_person(soa_id)
+
+    with _PATCH_SLUG, _PATCH_ROWS:
+        r = client.post(
+            f"/soa/{soa_id}/roles",
+            json={
+                "name": "Valid Role",
+                "organization_ids": [org_uid],
+                "person_uids": [person["person_uid"]],
+            },
+        )
+    assert r.status_code == 201
+
+
+def test_ui_roles_update_org_and_person_with_org_returns_422():
+    """HTMX roles update: adding role org to role that has a person with org → 422."""
+    soa_id = _new_soa("Role Update Org+PersonOrg Conflict")
+    org_uid = _create_org(soa_id)
+    person = _create_person(soa_id, organization_uid=org_uid)
+    role = _create_role(soa_id, name="Role To Update")
+    role_id = role["id"]
+
+    with _PATCH_SLUG, _PATCH_ROWS:
+        r = client.post(
+            f"/ui/soa/{soa_id}/roles/{role_id}/update",
+            data={
+                "name": "Updated Role",
+                "organization_ids": [org_uid],
+                "person_uids": [person["person_uid"]],
+            },
+        )
+    assert r.status_code == 422
