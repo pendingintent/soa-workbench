@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="am-page-title">Generate Define-JSON for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
+
+<div style="margin-bottom:12px;">
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
+</div>
+
+{% if study_id_value %}
+<p style="color:var(--am-text-mid);">Study ID: <strong>{{ study_id_value }}</strong></p>
+{% endif %}
+
+<hr class="fz-section-divider" />
+
+<p style="max-width:560px;color:var(--am-text-mid);margin-bottom:20px;">
+  Define-JSON is a metadata contract that describes which datasets and variables this study
+  produces. It complements USDM and is suitable for inclusion in a regulatory submission
+  package alongside Dataset-JSON.
+</p>
+
+<table class="fz-table" style="max-width:420px;">
+  <tr class="fz-thead-row">
+    <th>Artifact</th>
+    <th style="text-align:center;">Download</th>
+  </tr>
+  <tr>
+    <td>Define-JSON metadata contract</td>
+    <td class="am-td-center">
+      <a href="/soa/{{ soa_id }}/usdm_json/define_json"
+         class="am-btn am-btn-info am-btn-sm">
+        Download define.json
+      </a>
+    </td>
+  </tr>
+</table>
+
+{% endblock %}

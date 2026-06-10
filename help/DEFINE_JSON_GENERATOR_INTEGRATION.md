@@ -16,7 +16,9 @@ a complete regulatory submission package (USDM + Define) from one tool.
 |--------|------|
 | EDIT | `pyproject.toml` — add `define-json` path dependency |
 | CREATE | `src/usdm/generate_define_json.py` — new generator |
-| EDIT | `src/soa_builder/web/routers/usdm_json.py` — register new component |
+| EDIT | `src/soa_builder/web/routers/usdm_json.py` — register new component + UI route |
+| CREATE | `src/soa_builder/web/templates/define_json.html` — UI page |
+| EDIT | `src/soa_builder/web/templates/base.html` — add menu item |
 | CREATE | `tests/test_define_json_generator.py` — unit + integration tests |
 | CREATE | `docs/define_json_integration.md` — design doc (user requested) |
 
@@ -64,8 +66,8 @@ SELECT
     bc.biomedical_concept_uid, bc.name, bc.label,
     c.code ncit_code, c.decode, c.code_system, c.code_system_version
 FROM biomedical_concept bc
-JOIN alias_code a ON bc.code = a.alias_code_uid
-JOIN code c ON a.standard_code = c.code_uid
+LEFT  JOIN alias_code a ON bc.code = a.alias_code_uid AND bc.soa_id = a.soa_id
+LEFT  JOIN code c ON a.standard_code = c.code_uid AND a.soa_id = c.soa_id
 WHERE bc.soa_id = ?
 ORDER BY bc.id
 
@@ -76,8 +78,8 @@ SELECT
     bcp.datatype, bcp.isRequired, bcp.isEnabled,
     c.code ncit_code, c.decode, c.code_system, c.code_system_version
 FROM biomedical_concept_property bcp
-JOIN alias_code a ON bcp.code = a.alias_code_uid
-JOIN code c ON a.standard_code = c.code_uid
+LEFT  JOIN alias_code a ON bcp.code = a.alias_code_uid AND bcp.soa_id = a.soa_id
+LEFT  JOIN code c ON a.standard_code = c.code_uid AND a.soa_id = c.soa_id
 WHERE bcp.soa_id = ?
 ORDER BY bcp.id
 ```
@@ -88,7 +90,7 @@ ORDER BY bcp.id
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 from define_json.schema.define import (
-    MetaDataVersion, ItemGroup, Item, Coding
+    MetaDataVersion, ItemGroup, Item, Coding, DataType
 )
 from soa_builder.web.db import _connect
 
@@ -143,6 +145,19 @@ def _build_item_group(bc: Dict, props: List[Dict]) -> ItemGroup:
     )
 
 
+_DATATYPE_MAP = {
+    "char": "text", "string": "text", "num": "float",
+}
+_VALID_DATATYPES = {dt.value for dt in DataType}
+
+
+def _safe_datatype(raw: str) -> str:
+    raw = (raw or "").lower().strip()
+    if raw in _VALID_DATATYPES:
+        return raw
+    return _DATATYPE_MAP.get(raw, "text")
+
+
 def _build_item(prop: Dict) -> Item:
     coding = [Coding(
         code=prop["ncit_code"],
@@ -155,15 +170,20 @@ def _build_item(prop: Dict) -> Item:
         OID=f"IT.{prop['biomedical_concept_property_uid']}",
         name=prop["name"],
         label=prop.get("label"),
-        dataType=prop["datatype"] or "text",
+        dataType=_safe_datatype(prop["datatype"]),
         mandatory=bool(prop["isRequired"]),
         coding=coding,
     )
 ```
 
-**Guard**: If `biomedical_concept_property` rows have not yet been populated for a SOA
-(they are lazily upserted by `populate_biomedical_concept_properties()`), call it first —
-same pattern as `generate_biomedical_concepts.py`.
+**Guard**: If `biomedical_concept_property` rows have not yet been populated for a SOA,
+call the guard first — same pattern as `generate_biomedical_concepts.py`:
+```python
+from .generate_biomedical_concept_properties import (
+    build_usdm_biomedical_concept_properties_for_soa as _ensure_bcp_populated,
+)
+_ensure_bcp_populated(soa_id)
+```
 
 ---
 
@@ -171,7 +191,7 @@ same pattern as `generate_biomedical_concepts.py`.
 
 File: `src/soa_builder/web/routers/usdm_json.py`
 
-1. Add to `_COMPONENTS` tuple list:
+1. Add to `_COMPONENTS` list:
    ```python
    ("define_json", "Define-JSON", "define.json"),
    ```

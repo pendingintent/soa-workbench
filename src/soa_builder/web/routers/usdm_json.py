@@ -36,6 +36,7 @@ _COMPONENTS = [
     ("objectives", "Objectives", "usdm_objectives.json"),
     ("endpoints", "Endpoints", "usdm_endpoints.json"),
     ("amendments", "Study Amendments", "usdm_amendments.json"),
+    ("define_json", "Define-JSON", "define.json"),
 ]
 
 
@@ -104,6 +105,10 @@ def _build(component: str, soa_id: int):
         from usdm.generate_amendments import build_usdm_amendments
 
         return build_usdm_amendments(soa_id)
+    if component == "define_json":
+        from usdm.generate_define_json import build_define_json
+
+        return build_define_json(soa_id)
     raise ValueError(f"Unknown component: {component}")
 
 
@@ -125,6 +130,27 @@ def ui_usdm_json(request: Request, soa_id: int):
             "study_id_value": row[1],
             "study_label": row[2],
             "components": _COMPONENTS,
+        },
+    )
+
+
+@router.get("/ui/soa/{soa_id}/define_json", response_class=HTMLResponse)
+def ui_define_json(request: Request, soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT name, study_id, study_label FROM soa WHERE id=?", (soa_id,))
+    row = cur.fetchone()
+    conn.close()
+    return templates.TemplateResponse(
+        request,
+        "define_json.html",
+        {
+            "soa_id": soa_id,
+            "study_name": row[0],
+            "study_id_value": row[1],
+            "study_label": row[2],
         },
     )
 
