@@ -22,6 +22,7 @@ from usdm.generate_study_cells import build_usdm_study_cells
 from usdm.generate_study_epochs import build_usdm_epochs
 from usdm.generate_biomedical_concepts import build_usdm_biomedical_concepts
 from usdm.generate_bc_surrogates import build_usdm_bc_surrogates
+from usdm.generate_bc_categories import build_usdm_bc_categories
 from usdm.generate_objectives import build_usdm_objectives
 from usdm.generate_amendments import build_usdm_amendments
 from usdm.generate_study_titles import build_usdm_titles
@@ -164,7 +165,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
         "businessTherapeuticAreas": [],
         "biomedicalConcepts": build_usdm_biomedical_concepts(soa_id),
         "bcSurrogates": _safe("bcSurrogates", build_usdm_bc_surrogates, soa_id),
-        "bcCategories": [],
+        "bcCategories": build_usdm_bc_categories(soa_id),
         "eligibilityCriterionItems": [],
         "narrativeContentItems": [],
         "abbreviations": [],

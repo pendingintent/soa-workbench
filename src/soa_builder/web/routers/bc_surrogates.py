@@ -498,11 +498,36 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
         raise HTTPException(404, "Activity not found")
     activity_uid = act_row[0]
 
-    # Fetch linked BC concepts (include concept_group_uid and group name)
+    # Fetch linked BC concepts (include concept_group_uid, group name,
+    # and bc_category_name)
     cur.execute("PRAGMA table_info(activity_concept)")
     ac_cols = {r[1] for r in cur.fetchall()}
     has_group_uid = "concept_group_uid" in ac_cols
-    if has_group_uid:
+    has_category = "bc_category_name" in ac_cols
+    if has_group_uid and has_category:
+        cur.execute(
+            "SELECT ac.concept_code, ac.concept_title, ac.concept_group_uid, "
+            "cg.name AS group_name, ac.bc_category_name "
+            "FROM activity_concept ac "
+            "LEFT JOIN concept_group cg ON cg.concept_group_uid=ac.concept_group_uid "
+            "WHERE ac.activity_id=? AND ac.soa_id=? "
+            "ORDER BY ac.bc_category_name NULLS LAST, "
+            "ac.concept_group_uid NULLS LAST, ac.id",
+            (activity_id, soa_id),
+        )
+        selected_list = [
+            {
+                "code": r[0],
+                "title": r[1],
+                "dss_title": "",
+                "dss_href": "",
+                "concept_group_uid": r[2],
+                "group_name": r[3],
+                "bc_category_name": r[4],
+            }
+            for r in cur.fetchall()
+        ]
+    elif has_group_uid:
         cur.execute(
             "SELECT ac.concept_code, ac.concept_title, ac.concept_group_uid, "
             "cg.name AS group_name "
@@ -520,6 +545,7 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
                 "dss_href": "",
                 "concept_group_uid": r[2],
                 "group_name": r[3],
+                "bc_category_name": None,
             }
             for r in cur.fetchall()
         ]
@@ -537,6 +563,7 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
                 "dss_href": "",
                 "concept_group_uid": None,
                 "group_name": None,
+                "bc_category_name": None,
             }
             for r in cur.fetchall()
         ]
@@ -579,6 +606,16 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
         for r in cur.fetchall()
     ]
 
+    # Fetch CDISC BC categories list (for the dropdown)
+    from ..app import (
+        fetch_biomedical_concept_categories as _fetch_categories,
+    )
+
+    bc_categories_list = _fetch_categories()
+    activity_category_names = list(
+        {c["bc_category_name"] for c in selected_list if c.get("bc_category_name")}
+    )
+
     # Fetch all concept groups (for the dropdown)
     cur.execute(
         "SELECT id, concept_group_uid, name, label FROM concept_group ORDER BY id"
@@ -617,6 +654,8 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
             "surrogates": surrogates,
             "concept_groups": concept_groups,
             "activity_group_uids": activity_group_uids,
+            "bc_categories_list": bc_categories_list,
+            "activity_category_names": activity_category_names,
             "edit": False,
         },
     )

@@ -625,11 +625,24 @@ def ui_list_activities(request: Request, soa_id: int):
     # Fetch activity concepts for all activities in this SOA
     activity_concepts: dict = {}
     has_group = _table_has_columns(cur, "activity_concept", ("concept_group_uid",))
+    has_category = _table_has_columns(cur, "activity_concept", ("bc_category_name",))
     if _table_has_columns(cur, "activity_concept", ("soa_id",)):
-        if has_group:
+        if has_group and has_category:
             cur.execute(
                 "SELECT ac.activity_id, ac.concept_code, ac.concept_title, "
-                "ac.concept_group_uid, cg.name "
+                "ac.concept_group_uid, cg.name, ac.bc_category_name "
+                "FROM activity_concept ac "
+                "LEFT JOIN concept_group cg "
+                "ON cg.concept_group_uid=ac.concept_group_uid "
+                "WHERE ac.soa_id=? "
+                "ORDER BY ac.bc_category_name NULLS LAST, "
+                "ac.concept_group_uid NULLS LAST, ac.id",
+                (soa_id,),
+            )
+        elif has_group:
+            cur.execute(
+                "SELECT ac.activity_id, ac.concept_code, ac.concept_title, "
+                "ac.concept_group_uid, cg.name, NULL "
                 "FROM activity_concept ac "
                 "LEFT JOIN concept_group cg "
                 "ON cg.concept_group_uid=ac.concept_group_uid "
@@ -639,7 +652,7 @@ def ui_list_activities(request: Request, soa_id: int):
             )
         else:
             cur.execute(
-                "SELECT activity_id, concept_code, concept_title, NULL, NULL "
+                "SELECT activity_id, concept_code, concept_title, NULL, NULL, NULL "
                 "FROM activity_concept WHERE soa_id=?",
                 (soa_id,),
             )
@@ -648,7 +661,7 @@ def ui_list_activities(request: Request, soa_id: int):
         if activity_ids:
             placeholders = ",".join("?" * len(activity_ids))
             cur.execute(
-                f"SELECT activity_id, concept_code, concept_title, NULL, NULL "
+                f"SELECT activity_id, concept_code, concept_title, NULL, NULL, NULL "
                 f"FROM activity_concept WHERE activity_id IN ({placeholders})",
                 activity_ids,
             )
@@ -658,12 +671,14 @@ def ui_list_activities(request: Request, soa_id: int):
         aid, code, title = row[0], row[1], row[2]
         concept_group_uid = row[3] if has_group else None
         group_name = row[4] if has_group else None
+        bc_category_name = row[5] if has_category else None
         activity_concepts.setdefault(aid, []).append(
             {
                 "code": code,
                 "title": title,
                 "concept_group_uid": concept_group_uid,
                 "group_name": group_name,
+                "bc_category_name": bc_category_name,
                 "assigned_dss": [],
             }
         )
@@ -696,6 +711,11 @@ def ui_list_activities(request: Request, soa_id: int):
         for r in cur.fetchall()
     ]
     conn.close()
+
+    # Fetch CDISC BC categories list (for the category dropdown in concepts_cell)
+    from ..app import fetch_biomedical_concept_categories as _fetch_cats
+
+    bc_categories_list = _fetch_cats()
 
     # Fetch biomedical concepts list (lazy import to avoid circular dependency)
     from ..app import fetch_biomedical_concepts as _app_fetch_concepts
@@ -762,6 +782,7 @@ def ui_list_activities(request: Request, soa_id: int):
             "surrogates": surrogates,
             "activity_surrogates": activity_surrogates,
             "concept_groups": concept_groups,
+            "bc_categories_list": bc_categories_list,
             "study_id": study_id,
             "study_label": study_label,
             "study_description": study_description,

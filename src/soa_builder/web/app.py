@@ -79,6 +79,7 @@ from .migrate_database import (
     _migrate_activity_concept_add_concept_group_uid,
     _migrate_surrogate_add_concept_group_uid,
     _migrate_activity_surrogate_add_concept_group_uid,
+    _migrate_activity_concept_add_bc_category_name,
     _migrate_add_activity_concept_dss_table,
     _migrate_activity_concept_dss_add_display,
     _migrate_activity_concept_dss_add_extension_attribute_uid,
@@ -164,6 +165,7 @@ from .routers import condition_assignments as condition_assignments_router
 from .routers import footnotes as footnotes_router
 from .routers import bc_surrogates as bc_surrogates_router
 from .routers import concept_groups as concept_groups_router
+from .routers import bc_categories as bc_categories_router
 from .routers import sdtm_terminology as sdtm_terminology_router
 from .routers import cdash_terminology as cdash_terminology_router
 from .routers import define_xml_terminology as define_xml_terminology_router
@@ -327,6 +329,7 @@ _migrate_add_concept_group_table()
 _migrate_activity_concept_add_concept_group_uid()
 _migrate_surrogate_add_concept_group_uid()
 _migrate_activity_surrogate_add_concept_group_uid()
+_migrate_activity_concept_add_bc_category_name()
 _migrate_drop_protocol_terminology_tables()
 _migrate_drop_ddf_terminology_tables()
 _migrate_add_activity_concept_dss_table()
@@ -412,6 +415,7 @@ app.include_router(bc_surrogates_router.router)
 app.include_router(bc_surrogates_router.ui_router)
 app.include_router(concept_groups_router.router)
 app.include_router(concept_groups_router.ui_router)
+app.include_router(bc_categories_router.ui_router)
 app.include_router(sdtm_terminology_router.router)
 app.include_router(cdash_terminology_router.router)
 app.include_router(define_xml_terminology_router.router)
@@ -2097,6 +2101,25 @@ def _get_concept_groups_for_cell(soa_id: int, activity_id: int):
         activity_group_uids = []
     conn.close()
     return concept_groups, activity_group_uids
+
+
+def _get_bc_categories_for_cell(soa_id: int, activity_id: int):
+    """Return (bc_categories_list, activity_category_names) for concepts_cell rendering."""
+    bc_categories_list = fetch_biomedical_concept_categories()
+    conn = _connect()
+    cur = conn.cursor()
+    has_col = _table_has_columns(cur, "activity_concept", ("bc_category_name",))
+    if has_col:
+        cur.execute(
+            "SELECT DISTINCT bc_category_name FROM activity_concept "
+            "WHERE activity_id=? AND soa_id=? AND bc_category_name IS NOT NULL",
+            (activity_id, soa_id),
+        )
+        activity_category_names = [r[0] for r in cur.fetchall()]
+    else:
+        activity_category_names = []
+    conn.close()
+    return bc_categories_list, activity_category_names
 
 
 def _get_activity_surrogates(soa_id: int, activity_id: int):
@@ -5600,6 +5623,9 @@ def ui_activity_concepts_cell(
     concept_groups, activity_group_uids = _get_concept_groups_for_cell(
         soa_id, activity_id
     )
+    bc_categories_list, activity_category_names = _get_bc_categories_for_cell(
+        soa_id, activity_id
+    )
     return HTMLResponse(
         templates.get_template("concepts_cell.html").render(
             request=request,
@@ -5613,6 +5639,8 @@ def ui_activity_concepts_cell(
             selected_surrogate_uids=selected_surrogate_uids,
             concept_groups=concept_groups,
             activity_group_uids=activity_group_uids,
+            bc_categories_list=bc_categories_list,
+            activity_category_names=activity_category_names,
             edit=bool(edit),
         )
     )

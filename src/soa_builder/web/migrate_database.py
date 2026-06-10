@@ -1553,6 +1553,22 @@ def _migrate_activity_concept_add_concept_group_uid():
         logger.warning("_migrate_activity_concept_add_concept_group_uid failed: %s", e)
 
 
+def _migrate_activity_concept_add_bc_category_name():
+    """Add bc_category_name column to activity_concept if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_concept)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "bc_category_name" not in cols:
+            cur.execute("ALTER TABLE activity_concept ADD COLUMN bc_category_name TEXT")
+            conn.commit()
+            logger.info("Added bc_category_name column to activity_concept")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_activity_concept_add_bc_category_name failed: %s", e)
+
+
 def _migrate_surrogate_add_concept_group_uid():
     """Add concept_group_uid column to biomedical_concept_surrogate if missing."""
     try:

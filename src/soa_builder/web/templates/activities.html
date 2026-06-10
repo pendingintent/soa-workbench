@@ -69,6 +69,7 @@
     {% set selected_surrogate_list = activity_surrogates.get(a.id, []) %}
     {% set selected_surrogate_uids = selected_surrogate_list | map(attribute='surrogate_uid') | list %}
     {% set activity_group_uids = concepts_list | selectattr('concept_group_uid', 'defined') | selectattr('concept_group_uid') | map(attribute='concept_group_uid') | unique | list %}
+    {% set activity_category_names = concepts_list | selectattr('bc_category_name', 'defined') | selectattr('bc_category_name') | map(attribute='bc_category_name') | unique | list %}
     {% set activity_id = a.id %}
     {% include 'concepts_cell.html' %}
     {% set activity_id = a.id %}
