@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="am-page-title">Unassigned Biomedical Concepts</h2>
+
+<div style="margin-bottom:12px;">
+  <a href="/ui/concepts" class="am-back-link">&larr; Concepts Explorer</a>
+</div>
+<hr class="fz-section-divider" />
+
+<div class="study-meta-card">
+  <h3>About This Report</h3>
+  <p>
+    This report lists CDISC Library biomedical concepts that exist in the
+    full concept catalogue but are not classified under any biomedical
+    concept category. These concepts may represent recently added or
+    uncategorized clinical observations. Study builders can use this report
+    to identify gaps in category coverage and decide which concepts to
+    assign directly to study activities.
+  </p>
+</div>
+
+<div style="display:flex;align-items:center;gap:10px;margin:16px 0;">
+  <button class="am-btn am-btn-info"
+          hx-post="/ui/bc/unassigned-concepts/generate"
+          hx-target="#unassigned-results"
+          hx-swap="innerHTML"
+          hx-indicator="#generate-spinner">
+    Generate Report
+  </button>
+  <a href="/ui/bc/unassigned-concepts/export/csv"
+     class="am-btn am-btn-slate">
+    Export CSV
+  </a>
+  <span id="generate-spinner"
+        class="htmx-indicator"
+        style="color:var(--am-text-mid);font-size:0.85em;">
+    Computing&hellip;
+  </span>
+</div>
+
+<div id="unassigned-results">
+  <p class="fz-no-data">
+    Click <strong>Generate Report</strong> to compute results.
+  </p>
+</div>
+{% endblock %}

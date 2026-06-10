@@ -1099,6 +1099,21 @@ def fetch_biomedical_concepts(force: bool = False):
     return []
 
 
+def _compute_unassigned_concepts() -> list[dict]:
+    """Return BC concepts not in any category, sorted by title."""
+    all_concepts = {c["code"]: c for c in fetch_biomedical_concepts()}
+    categories = fetch_biomedical_concept_categories()
+    assigned_codes: set[str] = set()
+    for cat in categories:
+        for c in fetch_biomedical_concepts_by_category(cat["name"]):
+            if c.get("code"):
+                assigned_codes.add(c["code"])
+    return sorted(
+        [c for code, c in all_concepts.items() if code not in assigned_codes],
+        key=lambda c: (c.get("title") or "").lower(),
+    )
+
+
 def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
     """Return list of SDTM dataset specializations as [{'title':..., 'href':...}].
 
@@ -4696,6 +4711,46 @@ def ui_concepts_list(request: Request):
             "rows": rows,
             "count": len(rows),
             "missing_key": subscription_key is None,
+        },
+    )
+
+
+# UI endpoints for Unassigned Biomedical Concepts report
+@app.get("/ui/bc/unassigned-concepts", response_class=HTMLResponse)
+def ui_bc_unassigned_concepts(request: Request):
+    """Page for the Unassigned Biomedical Concepts report."""
+    return templates.TemplateResponse(
+        request,
+        "bc_unassigned_concepts.html",
+        {},
+    )
+
+
+@app.post("/ui/bc/unassigned-concepts/generate", response_class=HTMLResponse)
+def ui_bc_unassigned_concepts_generate(request: Request):
+    """HTMX endpoint — compute and return inline results partial."""
+    concepts = _compute_unassigned_concepts()
+    return templates.TemplateResponse(
+        request,
+        "bc_unassigned_results.html",
+        {"concepts": concepts, "count": len(concepts)},
+    )
+
+
+@app.get("/ui/bc/unassigned-concepts/export/csv")
+def ui_bc_unassigned_concepts_export_csv():
+    """Download unassigned concepts as CSV."""
+    concepts = _compute_unassigned_concepts()
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=["code", "title"])
+    writer.writeheader()
+    writer.writerows({"code": c["code"], "title": c.get("title", "")} for c in concepts)
+    buf = io.BytesIO(out.getvalue().encode("utf-8"))
+    return StreamingResponse(
+        buf,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": ('attachment; filename="bc_unassigned_concepts.csv"')
         },
     )
 
