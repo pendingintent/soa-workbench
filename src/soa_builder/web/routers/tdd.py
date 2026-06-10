@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -51,6 +52,245 @@ _FIELDNAMES: dict[str, list[str]] = {
         "TVENRL",
     ],
 }
+
+_COLUMN_DEFS: dict[str, list[dict]] = {
+    "ta": [
+        {
+            "itemOID": "TA.STUDYID",
+            "name": "STUDYID",
+            "label": "Study Identifier",
+            "dataType": "string",
+            "length": 200,
+            "keySequence": 1,
+        },
+        {
+            "itemOID": "TA.DOMAIN",
+            "name": "DOMAIN",
+            "label": "Domain Abbreviation",
+            "dataType": "string",
+            "length": 2,
+        },
+        {
+            "itemOID": "TA.ARMCD",
+            "name": "ARMCD",
+            "label": "Planned Arm Code",
+            "dataType": "string",
+            "length": 20,
+            "keySequence": 2,
+        },
+        {
+            "itemOID": "TA.ARM",
+            "name": "ARM",
+            "label": "Description of Planned Arm",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TA.TAETORD",
+            "name": "TAETORD",
+            "label": "Order of Element within Arm",
+            "dataType": "integer",
+            "keySequence": 3,
+        },
+        {
+            "itemOID": "TA.ETCD",
+            "name": "ETCD",
+            "label": "Element Code",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TA.ELEMENT",
+            "name": "ELEMENT",
+            "label": "Description of Element",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TA.TABRANCH",
+            "name": "TABRANCH",
+            "label": "Branch",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TA.TATRANS",
+            "name": "TATRANS",
+            "label": "Transition Rule",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TA.EPOCH",
+            "name": "EPOCH",
+            "label": "Epoch",
+            "dataType": "string",
+            "length": 200,
+        },
+    ],
+    "te": [
+        {
+            "itemOID": "TE.STUDYID",
+            "name": "STUDYID",
+            "label": "Study Identifier",
+            "dataType": "string",
+            "length": 200,
+            "keySequence": 1,
+        },
+        {
+            "itemOID": "TE.DOMAIN",
+            "name": "DOMAIN",
+            "label": "Domain Abbreviation",
+            "dataType": "string",
+            "length": 2,
+        },
+        {
+            "itemOID": "TE.ETCD",
+            "name": "ETCD",
+            "label": "Element Code",
+            "dataType": "string",
+            "length": 200,
+            "keySequence": 2,
+        },
+        {
+            "itemOID": "TE.ELEMENT",
+            "name": "ELEMENT",
+            "label": "Description of Element",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TE.TESTRL",
+            "name": "TESTRL",
+            "label": "Rule for Start of Element",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TE.TEENRL",
+            "name": "TEENRL",
+            "label": "Rule for End of Element",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TE.TEDUR",
+            "name": "TEDUR",
+            "label": "Planned Duration of Element",
+            "dataType": "string",
+            "length": 200,
+        },
+    ],
+    "tv": [
+        {
+            "itemOID": "TV.STUDYID",
+            "name": "STUDYID",
+            "label": "Study Identifier",
+            "dataType": "string",
+            "length": 200,
+            "keySequence": 1,
+        },
+        {
+            "itemOID": "TV.DOMAIN",
+            "name": "DOMAIN",
+            "label": "Domain Abbreviation",
+            "dataType": "string",
+            "length": 2,
+        },
+        {
+            "itemOID": "TV.VISITNUM",
+            "name": "VISITNUM",
+            "label": "Visit Number",
+            "dataType": "decimal",
+            "displayFormat": "8.1",
+            "keySequence": 2,
+        },
+        {
+            "itemOID": "TV.VISIT",
+            "name": "VISIT",
+            "label": "Visit Name",
+            "dataType": "string",
+            "length": 90,
+        },
+        {
+            "itemOID": "TV.VISITDY",
+            "name": "VISITDY",
+            "label": "Planned Study Day of Visit",
+            "dataType": "integer",
+        },
+        {
+            "itemOID": "TV.ARMCD",
+            "name": "ARMCD",
+            "label": "Planned Arm Code",
+            "dataType": "string",
+            "length": 8,
+        },
+        {
+            "itemOID": "TV.ARM",
+            "name": "ARM",
+            "label": "Description of Planned Arm",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TV.TVSTRL",
+            "name": "TVSTRL",
+            "label": "Visit Start Rule",
+            "dataType": "string",
+            "length": 200,
+        },
+        {
+            "itemOID": "TV.TVENRL",
+            "name": "TVENRL",
+            "label": "Visit End Rule",
+            "dataType": "string",
+            "length": 200,
+        },
+    ],
+}
+
+_NUMERIC_TYPES = {"integer", "decimal", "float"}
+
+
+def _to_dataset_json(domain: str, records: list[dict]) -> dict:
+    """Wrap list[dict] records in a dataset-json 1.1 envelope."""
+    col_defs = _COLUMN_DEFS[domain]
+    col_names = [c["name"] for c in col_defs]
+    study_id = records[0]["STUDYID"] if records else ""
+    domain_upper = domain.upper()
+    domain_label = next(d[1] for d in _DOMAINS if d[0] == domain)
+
+    def _coerce(col_def, val):
+        if col_def["dataType"] in _NUMERIC_TYPES:
+            if val == "" or val is None:
+                return None
+            try:
+                if col_def["dataType"] == "integer":
+                    return int(val)
+                return float(val)
+            except (ValueError, TypeError):
+                return None
+        return val
+
+    rows = [
+        [_coerce(col_defs[i], rec.get(name, "")) for i, name in enumerate(col_names)]
+        for rec in records
+    ]
+    file_oid = f"{study_id}.{domain}" if study_id else domain
+    return {
+        "datasetJSONCreationDateTime": datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%S"
+        ),
+        "datasetJSONVersion": "1.1.0",
+        "fileOID": file_oid,
+        "studyOID": study_id,
+        "itemGroupOID": domain_upper,
+        "records": len(rows),
+        "name": domain_upper,
+        "label": domain_label,
+        "columns": col_defs,
+        "rows": rows,
+    }
 
 
 _UNICODE_ESCAPE_RE = re.compile(r"\\u([0-9a-fA-F]{4})")
@@ -108,7 +348,7 @@ def download_tdd_json(soa_id: int, domain: str):
         logger.exception("Failed to build TDD domain %s for soa_id=%s", domain, soa_id)
         raise HTTPException(500, f"Failed to generate {domain}: {exc}") from exc
     filename = next(d[2] for d in _DOMAINS if d[0] == domain)
-    payload = json.dumps(data, indent=2) + "\n"
+    payload = json.dumps(_to_dataset_json(domain, data), indent=2) + "\n"
     buf = io.BytesIO(payload.encode("utf-8"))
     return StreamingResponse(
         buf,
