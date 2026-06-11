@@ -83,6 +83,7 @@ from .migrate_database import (
     _migrate_add_activity_concept_dss_table,
     _migrate_activity_concept_dss_add_display,
     _migrate_activity_concept_dss_add_extension_attribute_uid,
+    _migrate_add_activity_concept_crf_table,
     _migrate_drop_protocol_terminology_tables,
     _migrate_drop_ddf_terminology_tables,
     _migrate_add_objective_table,
@@ -251,6 +252,12 @@ CDISC_BC_API_BASE_URL = os.environ.get(
     "CDISC_BC_API_BASE_URL",
     "https://api.library.cdisc.org/api/cosmos/v2",
 )
+CDISC_CRF_API_BASE_URL = (
+    os.environ.get(
+        "CDISC_CRF_API_BASE_URL",
+    )
+    or CDISC_BC_API_BASE_URL
+)
 
 _concept_cache = {"data": None, "fetched_at": 0}
 _CONCEPT_CACHE_TTL = int(os.environ.get("SOA_BUILDER_CACHE_TTL", "3600"))
@@ -259,6 +266,9 @@ _sdtm_specializations_cache = {"data": None, "fetched_at": 0}
 _SDTM_SPECIALIZATIONS_CACHE_TTL = _CONCEPT_CACHE_TTL
 # Per-code SDTM specializations cache: {code: (fetched_at, [results])}
 _sdtm_specializations_by_code_cache: dict[str, tuple[float, list]] = {}
+# CRF specializations cache (full list)
+_crf_specializations_cache = {"data": None, "fetched_at": 0}
+_CRF_SPECIALIZATIONS_CACHE_TTL = _CONCEPT_CACHE_TTL
 # Category-specific biomedical concepts cache (per category key)
 _category_concepts_cache: dict[str, dict] = {}
 _CATEGORY_CONCEPTS_CACHE_TTL = _CONCEPT_CACHE_TTL
@@ -335,6 +345,7 @@ _migrate_drop_ddf_terminology_tables()
 _migrate_add_activity_concept_dss_table()
 _migrate_activity_concept_dss_add_display()
 _migrate_activity_concept_dss_add_extension_attribute_uid()
+_migrate_add_activity_concept_crf_table()
 _migrate_add_objective_table()
 _migrate_add_objective_audit_table()
 _migrate_add_endpoint_table()
@@ -1393,6 +1404,185 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
     return packages
 
 
+def fetch_crf_specializations(force: bool = False):
+    """Return list of CRF specializations as [{'title':..., 'href':...}].
+
+    Fetches the latest package from the CRF packages endpoint, then
+    retrieves specializations for that package. Sorted alphabetically
+    by title. Cached with the standard SOA_BUILDER_CACHE_TTL TTL.
+    """
+    now = time.time()
+    base_prefix = CDISC_CRF_API_BASE_URL
+
+    def _normalize_href(h):
+        if not h:
+            return None
+        if h.startswith("http://") or h.startswith("https://"):
+            return h
+        if h.startswith("/"):
+            return base_prefix + h
+        return base_prefix + "/" + h
+
+    # Return cached result if still fresh
+    if (
+        not force
+        and _crf_specializations_cache["data"] is not None
+        and now - _crf_specializations_cache["fetched_at"]
+        < _CRF_SPECIALIZATIONS_CACHE_TTL
+    ):
+        return _crf_specializations_cache["data"]
+
+    # Env override branch
+    override_json = os.environ.get("CDISC_CRF_SPECIALIZATIONS_JSON")
+    if override_json:
+        try:
+            raw = json.loads(override_json)
+            items = raw if isinstance(raw, list) else [raw]
+            packages = []
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                title = (
+                    it.get("title") or it.get("name") or it.get("label") or "(untitled)"
+                )
+                href = _normalize_href(it.get("href") or it.get("link"))
+                packages.append({"title": title, "href": href})
+            packages.sort(key=lambda p: (p.get("title") or "").lower())
+            _crf_specializations_cache.update(data=packages, fetched_at=now)
+            logger.info("Loaded %d CRF specializations from override", len(packages))
+            return packages
+        except Exception as e:
+            logger.warning("CRF specializations override parse failed: %s", e)
+
+    if os.environ.get("CDISC_SKIP_REMOTE") == "1":
+        _crf_specializations_cache.update(data=[], fetched_at=now)
+        logger.warning("CDISC_SKIP_REMOTE=1; CRF specializations list empty")
+        return []
+
+    headers = {"Accept": "application/json"}
+    api_key = _get_cdisc_api_key()
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    # Step 1: fetch package list to determine the latest package href
+    latest_pkg_href = None
+    try:
+        pkg_url = f"{base_prefix}/mdr/specializations/crf/packages"
+        pkg_resp = requests.get(pkg_url, headers=headers, timeout=_HTTP_TIMEOUT)
+        _crf_specializations_cache["last_status"] = pkg_resp.status_code
+        _crf_specializations_cache["last_url"] = pkg_url
+        _crf_specializations_cache["last_error"] = None
+        if pkg_resp.status_code == 200:
+            try:
+                pkg_data = pkg_resp.json()
+            except ValueError:
+                pkg_data = None
+            # Collect hrefs only — never titles, which aren't valid URL segments
+            pkg_hrefs = []
+            if isinstance(pkg_data, dict) and "_links" in pkg_data:
+                links = pkg_data["_links"]
+                for key in ("packages", "crf", "items"):
+                    val = links.get(key)
+                    if isinstance(val, list):
+                        for lnk in val:
+                            if isinstance(lnk, dict):
+                                h = lnk.get("href") or ""
+                                if h:
+                                    pkg_hrefs.append(h)
+                        break
+            elif isinstance(pkg_data, list):
+                for item in pkg_data:
+                    if isinstance(item, dict):
+                        h = item.get("href") or item.get("packageDate") or ""
+                        if h:
+                            pkg_hrefs.append(str(h))
+            if pkg_hrefs:
+                # Sort descending — date-based hrefs sort lexicographically
+                pkg_hrefs.sort(reverse=True)
+                latest_pkg_href = pkg_hrefs[0]
+        else:
+            _crf_specializations_cache["last_error"] = (
+                f"Packages HTTP {pkg_resp.status_code}: {pkg_resp.text[:180]}"
+            )
+    except Exception as e:
+        logger.error("CRF packages fetch error: %s", e)
+        _crf_specializations_cache["last_error"] = str(e)
+        _crf_specializations_cache.update(data=[], fetched_at=now)
+        return []
+
+    if not latest_pkg_href:
+        logger.warning("CRF packages list returned no package hrefs")
+        _crf_specializations_cache.update(data=[], fetched_at=now)
+        return []
+
+    # Step 2: fetch specializations for the latest package.
+    # latest_pkg_href may already include "/specializations" as the terminal
+    # segment (the API returns it that way). Strip it before appending so we
+    # never produce ".../specializations/specializations".
+    norm_href = _normalize_href(latest_pkg_href) or latest_pkg_href
+    base_pkg = norm_href.rstrip("/")
+    if base_pkg.endswith("/specializations"):
+        base_pkg = base_pkg[: -len("/specializations")]
+    spec_url = base_pkg + "/specializations"
+    packages = []
+    try:
+        resp = requests.get(spec_url, headers=headers, timeout=_HTTP_TIMEOUT)
+        _crf_specializations_cache["last_status"] = resp.status_code
+        _crf_specializations_cache["last_url"] = spec_url
+        if resp.status_code == 200:
+            try:
+                data = resp.json()
+            except ValueError:
+                _crf_specializations_cache["last_error"] = "200 but non-JSON response"
+                data = None
+            if isinstance(data, dict) and "_links" in data:
+                links = data["_links"]
+                spec_links = links.get("specializations")
+                if isinstance(spec_links, list):
+                    for lnk in spec_links:
+                        if not isinstance(lnk, dict):
+                            continue
+                        href = _normalize_href(lnk.get("href"))
+                        title = lnk.get("title") or href
+                        packages.append({"title": title, "href": href})
+                elif isinstance(spec_links, dict):
+                    href = _normalize_href(spec_links.get("href"))
+                    title = spec_links.get("title") or href
+                    packages.append({"title": title, "href": href})
+            elif isinstance(data, list):
+                for it in data:
+                    if not isinstance(it, dict):
+                        continue
+                    title = (
+                        it.get("title")
+                        or it.get("name")
+                        or it.get("label")
+                        or "(untitled)"
+                    )
+                    href = _normalize_href(it.get("href") or it.get("link"))
+                    packages.append({"title": title, "href": href})
+        else:
+            _crf_specializations_cache["last_error"] = (
+                f"HTTP {resp.status_code}: {resp.text[:180]}"
+            )
+    except Exception as e:
+        logger.error("CRF specializations fetch error: %s", e)
+        _crf_specializations_cache["last_error"] = str(e)
+
+    packages.sort(key=lambda p: (p.get("title") or "").lower())
+    _crf_specializations_cache.update(data=packages, fetched_at=now, spec_url=spec_url)
+    logger.info(
+        "Fetched %d CRF specializations from remote API (package_href=%s)",
+        len(packages),
+        latest_pkg_href,
+    )
+    return packages
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI lifespan context replacing deprecated startup event.
@@ -1411,6 +1601,11 @@ async def lifespan(app: FastAPI):
         logger.info("Lifespan preload SDTM specializations count=%d", len(sdtm_specs))
     except Exception as e:
         logger.error("Lifespan SDTM specializations preload failed: %s", e)
+    try:
+        crf_specs = fetch_crf_specializations(force=True)
+        logger.info("Lifespan preload CRF specializations count=%d", len(crf_specs))
+    except Exception as e:
+        logger.error("Lifespan CRF specializations preload failed: %s", e)
     try:
         import threading
         from concurrent.futures import ThreadPoolExecutor
@@ -4917,6 +5112,112 @@ def ui_sdtm_specialization_detail(
             "missing_key": unified_key is None,
             "total": len(packages),
             "code": code,  # optional: for breadcrumb/back link
+        },
+    )
+
+
+@app.get("/ui/crf/specializations", response_class=HTMLResponse)
+def ui_crf_specializations_list(request: Request):
+    """List all available CRF specializations."""
+    packages = fetch_crf_specializations(force=True) or []
+    rows = [
+        {"title": p.get("title") or "(untitled)", "href": p.get("href")}
+        for p in packages
+    ]
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or _get_cdisc_api_key()
+    last_status = _crf_specializations_cache.get("last_status")
+    last_error = _crf_specializations_cache.get("last_error")
+    last_url = _crf_specializations_cache.get("last_url")
+    # Extract the /mdr/... path from the resolved specializations URL for display
+    spec_url = _crf_specializations_cache.get("spec_url") or ""
+    from urllib.parse import urlparse as _up
+
+    _p = _up(spec_url)
+    spec_path = (
+        _p.path
+        if spec_url
+        else "/mdr/specializations/crf/packages/{package}/specializations"
+    )
+    return templates.TemplateResponse(
+        request,
+        "crf_specializations.html",
+        {
+            "rows": rows,
+            "count": len(rows),
+            "missing_key": subscription_key is None,
+            "last_status": last_status,
+            "last_error": last_error,
+            "last_url": last_url,
+            "spec_path": spec_path,
+        },
+    )
+
+
+@app.post("/ui/crf/specializations/refresh", response_class=HTMLResponse)
+def ui_crf_specializations_refresh(request: Request):
+    """Force refresh of CRF specializations cache and redirect back to list."""
+    fetch_crf_specializations(force=True)
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": "/ui/crf/specializations"})
+    return HTMLResponse("<script>window.location='/ui/crf/specializations';</script>")
+
+
+@app.get("/ui/crf/specializations/{idx}", response_class=HTMLResponse)
+def ui_crf_specialization_detail(idx: int, request: Request):
+    """Detail page for a single CRF specialization (tabular + raw JSON)."""
+    packages = fetch_crf_specializations() or []
+    if idx < 0 or idx >= len(packages):
+        raise HTTPException(
+            status_code=404, detail="CRF specialization index out of range"
+        )
+    spec = packages[idx]
+    title = spec.get("title") or "(untitled)"
+    href = spec.get("href")
+
+    api_key = _get_cdisc_api_key()
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    unified_key = subscription_key or api_key
+    headers: dict[str, str] = {}
+    if unified_key:
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    spec_data = None
+    spec_json = None
+    error = None
+    status = None
+    if href:
+        try:
+            resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
+            status = resp.status_code
+            if resp.status_code == 200:
+                try:
+                    spec_data = resp.json()
+                    spec_json = json.dumps(spec_data, indent=2, sort_keys=True)
+                except ValueError:
+                    error = "200 OK but response was not valid JSON"
+            else:
+                error = f"HTTP {resp.status_code} retrieving CRF specialization"
+        except Exception as e:
+            error = f"Fetch error: {e}"[:300]
+    else:
+        error = "No href available for this CRF specialization entry."
+
+    return templates.TemplateResponse(
+        request,
+        "crf_specialization_detail.html",
+        {
+            "index": idx,
+            "title": title,
+            "href": href,
+            "status": status,
+            "error": error,
+            "spec_data": spec_data,
+            "spec_json": spec_json,
+            "missing_key": unified_key is None,
+            "total": len(packages),
         },
     )
 

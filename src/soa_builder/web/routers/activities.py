@@ -680,6 +680,7 @@ def ui_list_activities(request: Request, soa_id: int):
                 "group_name": group_name,
                 "bc_category_name": bc_category_name,
                 "assigned_dss": [],
+                "assigned_crf": [],
             }
         )
 
@@ -698,6 +699,24 @@ def ui_list_activities(request: Request, soa_id: int):
                         "dss_title": dss_title,
                         "dss_href": dss_href,
                         "dss_display": dss_display or dss_title,
+                    }
+                )
+                break
+
+    # Fetch CRF assignments
+    cur.execute(
+        "SELECT activity_id, concept_code, id, crf_title, crf_href"
+        " FROM activity_concept_crf WHERE soa_id=?",
+        (soa_id,),
+    )
+    for aid, code, row_id, crf_title, crf_href in cur.fetchall():
+        for ac in activity_concepts.get(aid, []):
+            if ac["code"] == code:
+                ac["assigned_crf"].append(
+                    {
+                        "id": row_id,
+                        "crf_title": crf_title,
+                        "crf_href": crf_href,
                     }
                 )
                 break
@@ -893,7 +912,8 @@ def _render_dss_cell(request, soa_id, activity_id):
             (activity_id,),
         )
     concepts_list = [
-        {"code": r[0], "title": r[1], "assigned_dss": []} for r in cur.fetchall()
+        {"code": r[0], "title": r[1], "assigned_dss": [], "assigned_crf": []}
+        for r in cur.fetchall()
     ]
 
     # Fetch DSS assignments from the new table
@@ -1246,5 +1266,310 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
             "back_url": f"/ui/soa/{soa_id}/activities",
             "summary": summary,
             "variables": variables,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# CRF Specializations — cell helper + CRUD endpoints
+# ---------------------------------------------------------------------------
+
+
+def _render_crf_cell(request, soa_id, activity_id):
+    """Helper: render the crf_cell.html partial for a single activity."""
+    conn = _connect()
+    cur = conn.cursor()
+
+    if _table_has_columns(cur, "activity_concept", ("soa_id",)):
+        cur.execute(
+            "SELECT concept_code, concept_title"
+            " FROM activity_concept WHERE activity_id=? AND soa_id=?",
+            (activity_id, soa_id),
+        )
+    else:
+        cur.execute(
+            "SELECT concept_code, concept_title"
+            " FROM activity_concept WHERE activity_id=?",
+            (activity_id,),
+        )
+    concepts_list = [
+        {"code": r[0], "title": r[1], "assigned_crf": []} for r in cur.fetchall()
+    ]
+
+    concept_index = {c["code"]: c for c in concepts_list}
+    cur.execute(
+        "SELECT concept_code, id, crf_title, crf_href"
+        " FROM activity_concept_crf"
+        " WHERE soa_id=? AND activity_id=?",
+        (soa_id, activity_id),
+    )
+    for code, row_id, crf_title, crf_href in cur.fetchall():
+        if code in concept_index:
+            concept_index[code]["assigned_crf"].append(
+                {
+                    "id": row_id,
+                    "crf_title": crf_title,
+                    "crf_href": crf_href,
+                }
+            )
+    conn.close()
+
+    activity_concepts = {activity_id: concepts_list}
+    html = templates.get_template("crf_cell.html").render(
+        request=request,
+        soa_id=soa_id,
+        activity_id=activity_id,
+        activity_concepts=activity_concepts,
+    )
+    return HTMLResponse(html)
+
+
+@ui_router.get(
+    "/ui/soa/{soa_id}/activity/{activity_id}/concept/{concept_code}/crf/options",
+    response_class=HTMLResponse,
+)
+def ui_crf_options(
+    soa_id: int,
+    activity_id: int,
+    concept_code: str,
+):
+    """Return <option> elements for unassigned CRF specializations (lazy load)."""
+    from ..app import fetch_crf_specializations as _app_fetch_crf
+
+    available = _app_fetch_crf()
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT crf_href FROM activity_concept_crf"
+        " WHERE soa_id=? AND activity_id=? AND concept_code=?",
+        (soa_id, activity_id, concept_code),
+    )
+    assigned_hrefs = {r[0] for r in cur.fetchall()}
+    conn.close()
+
+    options = ['<option value="" disabled selected>Select CRF...</option>']
+    for d in available:
+        href = d.get("href") or ""
+        if href not in assigned_hrefs:
+            title = d.get("title") or href
+            value = f"{title}||{href}"
+            title_escaped = _html.escape(str(title), quote=True)
+            value_escaped = _html.escape(value, quote=True)
+            options.append(f'<option value="{value_escaped}">{title_escaped}</option>')
+    return HTMLResponse("\n".join(options))
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/activity/{activity_id}/concept/{concept_code}/crf",
+    response_class=HTMLResponse,
+)
+def ui_save_crf_assignment(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    concept_code: str,
+    crf_selection: str = Form(""),
+):
+    """Add a CRF specialization assignment for a concept on an activity."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT 1 FROM activity WHERE id=? AND soa_id=?",
+        (activity_id, soa_id),
+    )
+    if not cur.fetchone():
+        conn.close()
+        raise HTTPException(404, "Activity not found")
+
+    selection = crf_selection.strip()
+    if not selection or "||" not in selection:
+        conn.close()
+        return _render_crf_cell(request, soa_id, activity_id)
+    parts = selection.split("||", 1)
+    new_title = parts[0]
+    new_href = parts[1] if len(parts) > 1 else ""
+    if not new_title or not new_href:
+        conn.close()
+        return _render_crf_cell(request, soa_id, activity_id)
+
+    # Prevent duplicate assignments (guard on href)
+    cur.execute(
+        "SELECT id FROM activity_concept_crf"
+        " WHERE soa_id=? AND activity_id=? AND concept_code=? AND crf_href=?",
+        (soa_id, activity_id, concept_code, new_href),
+    )
+    if cur.fetchone():
+        conn.close()
+        return _render_crf_cell(request, soa_id, activity_id)
+
+    cur.execute(
+        "INSERT INTO activity_concept_crf"
+        " (soa_id, activity_id, concept_code, crf_title, crf_href)"
+        " VALUES (?, ?, ?, ?, ?)",
+        (soa_id, activity_id, concept_code, new_title, new_href),
+    )
+    conn.commit()
+    conn.close()
+
+    _record_activity_audit(
+        soa_id,
+        "add_crf",
+        activity_id,
+        before=None,
+        after={
+            "concept_code": concept_code,
+            "crf_title": new_title,
+            "crf_href": new_href,
+        },
+    )
+
+    return _render_crf_cell(request, soa_id, activity_id)
+
+
+@ui_router.post(
+    "/ui/soa/{soa_id}/activity/{activity_id}"
+    "/concept/{concept_code}/crf/{crf_row_id}/delete",
+    response_class=HTMLResponse,
+)
+def ui_delete_crf_assignment(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    concept_code: str,
+    crf_row_id: int,
+):
+    """Remove a single CRF specialization assignment."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    conn = _connect()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT crf_title, crf_href FROM activity_concept_crf WHERE id=? AND soa_id=?",
+        (crf_row_id, soa_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return _render_crf_cell(request, soa_id, activity_id)
+    old_title, old_href = row
+
+    cur.execute(
+        "DELETE FROM activity_concept_crf WHERE id=? AND soa_id=?",
+        (crf_row_id, soa_id),
+    )
+    conn.commit()
+    conn.close()
+
+    _record_activity_audit(
+        soa_id,
+        "remove_crf",
+        activity_id,
+        before={
+            "concept_code": concept_code,
+            "crf_title": old_title,
+            "crf_href": old_href,
+        },
+        after=None,
+    )
+
+    return _render_crf_cell(request, soa_id, activity_id)
+
+
+@ui_router.get(
+    "/ui/soa/{soa_id}/activity/{activity_id}/crf_cell",
+    response_class=HTMLResponse,
+)
+def ui_get_crf_cell(request: Request, soa_id: int, activity_id: int):
+    """Return the CRF cell partial for an activity."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    return _render_crf_cell(request, soa_id, activity_id)
+
+
+@ui_router.get(
+    "/ui/soa/{soa_id}/activity/{activity_id}/crf/detail",
+    response_class=HTMLResponse,
+)
+def ui_crf_detail_from_activity(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    href: str = "",
+    title: str = "",
+):
+    """Detail page for a single CRF specialization, linked from the activities page."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    import requests as _requests
+    import json as _json
+
+    api_key = _get_cdisc_api_key()
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    unified_key = subscription_key or api_key
+    headers: dict = {}
+    if unified_key:
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    from urllib.parse import urlparse as _urlparse
+
+    _crf_base = os.environ.get(
+        "CDISC_CRF_API_BASE_URL",
+    ) or os.environ.get(
+        "CDISC_BC_API_BASE_URL",
+        "https://api.library.cdisc.org/api/cosmos/v2",
+    )
+    _p = _urlparse(_crf_base)
+    _ALLOWED_PREFIX = f"{_p.scheme}://{_p.netloc}/"
+
+    spec_data = None
+    spec_json = None
+    error = None
+    status = None
+    if href:
+        if not href.startswith(_ALLOWED_PREFIX):
+            error = "Invalid href: only CDISC Library API URLs are permitted."
+        else:
+            try:
+                resp = _requests.get(
+                    href,
+                    headers=headers,
+                    timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
+                )
+                status = resp.status_code
+                if resp.status_code == 200:
+                    try:
+                        spec_data = resp.json()
+                        spec_json = _json.dumps(spec_data, indent=2, sort_keys=True)
+                    except ValueError:
+                        error = "200 OK but response was not valid JSON"
+                else:
+                    error = f"HTTP {resp.status_code} retrieving CRF specialization"
+            except Exception as e:
+                error = f"Fetch error: {e}"[:300]
+    else:
+        error = "No href provided."
+
+    return templates.TemplateResponse(
+        request,
+        "crf_specialization_detail.html",
+        {
+            "title": title or "(untitled)",
+            "href": href,
+            "status": status,
+            "error": error,
+            "spec_data": spec_data,
+            "spec_json": spec_json,
+            "missing_key": unified_key is None,
+            "back_url": f"/ui/soa/{soa_id}/activities",
         },
     )

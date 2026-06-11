@@ -1705,6 +1705,30 @@ def _migrate_activity_concept_dss_add_extension_attribute_uid():
         )
 
 
+def _migrate_add_activity_concept_crf_table():
+    """Create activity_concept_crf for 0-to-many CRF assignments per BC."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity_concept_crf (
+                id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id                INTEGER NOT NULL,
+                activity_id           INTEGER NOT NULL,
+                concept_code          TEXT NOT NULL,
+                crf_title             TEXT NOT NULL,
+                crf_href              TEXT NOT NULL,
+                extension_attribute_uid TEXT
+            )
+            """
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_add_activity_concept_crf_table failed: %s", e)
+
+
 def _migrate_drop_protocol_terminology_tables():
     """Drop the legacy protocol_terminology and protocol_terminology_audit tables.
 

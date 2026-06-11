@@ -13,7 +13,9 @@ from .generate_biomedical_concept_properties import (
 )
 from .generate_extension_attributes import (
     build_usdm_dss_extension_attributes,
+    build_usdm_crf_extension_attributes,
     populate_extension_attributes,
+    populate_crf_extension_attributes,
 )
 
 
@@ -34,6 +36,7 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
     """
     _ensure_bcp_populated(soa_id)
     populate_extension_attributes(soa_id)
+    populate_crf_extension_attributes(soa_id)
 
     conn = _connect()
     cur = conn.cursor()
@@ -108,7 +111,10 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
             }
         biomedical_concept = {
             "id": id,
-            "extensionAttributes": build_usdm_dss_extension_attributes(soa_id, id),
+            "extensionAttributes": (
+                build_usdm_dss_extension_attributes(soa_id, id)
+                + build_usdm_crf_extension_attributes(soa_id, id)
+            ),
             "name": name,
             "label": label,
             "synonyms": synonyms,
