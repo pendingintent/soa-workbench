@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2 class="am-page-title">Generate Define-JSON for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
+<h2 class="am-page-title">Generate Define-JSON for Study:
+  {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 <div style="margin-bottom:12px;">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
-
 {% if study_id_value %}
 <p style="color:var(--am-text-mid);">Study ID: <strong>{{ study_id_value }}</strong></p>
 {% endif %}
@@ -13,25 +13,34 @@
 <hr class="fz-section-divider" />
 
 <p style="max-width:560px;color:var(--am-text-mid);margin-bottom:20px;">
-  Define-JSON is a metadata contract that describes which datasets and variables this study
-  produces. It complements USDM and is suitable for inclusion in a regulatory submission
-  package alongside Dataset-JSON.
+  Define-JSON is a metadata contract that describes which datasets and variables
+  this study produces. It complements USDM and is suitable for inclusion in a
+  regulatory submission package alongside Dataset-JSON.
 </p>
 
-<table class="fz-table" style="max-width:420px;">
-  <tr class="fz-thead-row">
-    <th>Artifact</th>
-    <th style="text-align:center;">Download</th>
-  </tr>
-  <tr>
-    <td>Define-JSON metadata contract</td>
-    <td class="am-td-center">
-      <a href="/soa/{{ soa_id }}/usdm_json/define_json"
-         class="am-btn am-btn-info am-btn-sm">
-        Download define.json
-      </a>
-    </td>
-  </tr>
-</table>
-
+<div class="study-meta-card" style="max-width:480px;">
+  <h3>Download Parameters</h3>
+  <form method="get" action="/soa/{{ soa_id }}/usdm_json/define_json"
+        class="am-grid-2">
+    <div class="am-field am-field-span">
+      <label class="am-field-label">
+        SDTM CT Date <span class="am-required">*</span>
+      </label>
+      <input class="am-input" type="date" name="sdtmct" required
+             value="{{ default_sdtmct }}" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">SDTM IG Version</label>
+      <input class="am-input" type="text" name="sdtmig"
+             value="{{ default_sdtmig }}" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Cosmos API Version</label>
+      <input class="am-input" type="text" name="cosmosversion" value="v2" />
+    </div>
+    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+      <button type="submit" class="am-btn am-btn-info">Download define.json</button>
+    </div>
+  </form>
+</div>
 {% endblock %}
