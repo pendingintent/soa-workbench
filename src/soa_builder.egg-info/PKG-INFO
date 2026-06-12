@@ -19,6 +19,7 @@ Requires-Dist: jinja2>=3.1.0
 Requires-Dist: python-multipart>=0.0.9
 Requires-Dist: jmespath>=1.1.0
 Requires-Dist: cdisc-library-client>=0.1.6
+Requires-Dist: mcp>=1.0.0
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.0.0; extra == "dev"

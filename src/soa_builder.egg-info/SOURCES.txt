@@ -15,6 +15,8 @@ src/soa_builder.egg-info/dependency_links.txt
 src/soa_builder.egg-info/entry_points.txt
 src/soa_builder.egg-info/requires.txt
 src/soa_builder.egg-info/top_level.txt
+src/soa_builder/mcp/__init__.py
+src/soa_builder/mcp/server.py
 src/soa_builder/web/app.py
 src/soa_builder/web/audit.py
 src/soa_builder/web/db.py
@@ -112,6 +114,7 @@ tests/test_generate_extension_attributes.py
 tests/test_generate_objectives.py
 tests/test_instances_audit.py
 tests/test_routers_activities.py
+tests/test_routers_activities_crf.py
 tests/test_routers_amendments.py
 tests/test_routers_arms.py
 tests/test_routers_audits.py

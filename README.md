@@ -164,6 +164,57 @@ python -m usdm.generate_study_epochs 1 -o epochs.json
 
 ---
 
+## MCP Server
+
+The workbench ships an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that exposes SoA data as tools for Claude agents. This enables workflows such as "analyze this protocol PDF and populate the visit schedule" without copy-paste.
+
+### Setup
+
+The server is registered in `.mcp.json` and starts automatically when Claude Code loads the project. Confirm it is listed with `/mcp` in a Claude session.
+
+The `soa-mcp` command is installed alongside `soa-builder-web`:
+
+```bash
+pip install -e .
+soa-mcp   # starts the MCP stdio server (for manual testing)
+```
+
+The server reads `SOA_BUILDER_DB` from the environment (falls back to `soa_builder_web.db`). No web server needs to be running — it accesses the SQLite database directly.
+
+### Available Tools (11)
+
+| Tool | Description |
+|------|-------------|
+| `list_soas` | List all Schedules of Activities |
+| `create_soa` | Create a new SoA; returns `soa_id` |
+| `get_soa` | Get SoA metadata by id |
+| `list_visits` | List visit definitions ordered by `order_index` |
+| `create_visit` | Add a visit (name, label, type) |
+| `list_activities` | List activities ordered by `order_index` |
+| `create_activity` | Add an activity (name, label, description) |
+| `assign_instance_activity` | Mark an activity at a ScheduledActivityInstance; use `get_soa_matrix` for ids |
+| `get_soa_matrix` | Return the visits × activities grid (instances, activities, cells) |
+| `get_usdm_json` | Generate a USDM component as JSON (`full`, `encounters`, `activities`, `biomedical_concepts`, etc.) |
+| `get_define_json` | Generate a Define-JSON document (requires `sdtmct` date and `CDISC_API_KEY`) |
+
+### Configuration
+
+The `.mcp.json` entry uses the absolute path to the venv console script:
+
+```json
+"soa-workbench": {
+  "command": "/path/to/.venv/bin/soa-mcp",
+  "args": [],
+  "env": {
+    "SOA_BUILDER_DB": "/path/to/soa_builder_web.db"
+  }
+}
+```
+
+Update the paths to match your environment after cloning.
+
+---
+
 ## Architecture Notes
 - **Database**: SQLite with WAL mode (production) or DELETE mode (tests)
 - **Test Isolation**: Tests use `soa_builder_web_tests.db` (set via `SOA_BUILDER_DB` env var)

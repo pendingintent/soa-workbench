@@ -22,7 +22,8 @@ dependencies = [
   "jinja2>=3.1.0",
   "python-multipart>=0.0.9",
   "jmespath>=1.1.0",
-  "cdisc-library-client>=0.1.6"
+  "cdisc-library-client>=0.1.6",
+  "mcp>=1.0.0"
 ]
 
 [project.optional-dependencies]
@@ -38,6 +39,7 @@ dev = [
 [project.scripts]
 soa-builder = "soa_builder.cli:main"
 soa-builder-web = "soa_builder.web.app:main"
+soa-mcp = "soa_builder.mcp.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
