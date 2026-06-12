@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from ..db import _connect
-from ..utils import soa_exists
+from ..utils import get_latest_sdtm_ct_href, soa_exists
 
 router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.usdm_json")
@@ -36,7 +36,6 @@ _COMPONENTS = [
     ("objectives", "Objectives", "usdm_objectives.json"),
     ("endpoints", "Endpoints", "usdm_endpoints.json"),
     ("amendments", "Study Amendments", "usdm_amendments.json"),
-    ("define_json", "Define-JSON", "define.json"),
 ]
 
 
@@ -105,10 +104,6 @@ def _build(component: str, soa_id: int):
         from usdm.generate_amendments import build_usdm_amendments
 
         return build_usdm_amendments(soa_id)
-    if component == "define_json":
-        from usdm.generate_define_json import build_define_json
-
-        return build_define_json(soa_id)
     raise ValueError(f"Unknown component: {component}")
 
 
@@ -143,6 +138,8 @@ def ui_define_json(request: Request, soa_id: int):
     cur.execute("SELECT name, study_id, study_label FROM soa WHERE id=?", (soa_id,))
     row = cur.fetchone()
     conn.close()
+    slug = get_latest_sdtm_ct_href() or ""
+    default_sdtmct = slug.replace("sdtmct-", "") if slug else ""
     return templates.TemplateResponse(
         request,
         "define_json.html",
@@ -151,7 +148,47 @@ def ui_define_json(request: Request, soa_id: int):
             "study_name": row[0],
             "study_id_value": row[1],
             "study_label": row[2],
+            "default_sdtmct": default_sdtmct,
+            "default_sdtmig": "3.4",
         },
+    )
+
+
+@router.get("/soa/{soa_id}/usdm_json/define_json")
+def download_define_json(
+    soa_id: int,
+    sdtmct: str,
+    sdtmig: str = "3.4",
+    cosmosversion: str = "v2",
+    studyversion: int = 0,
+    studydesign: int = 0,
+    docversion: int = 0,
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    try:
+        from usdm.generate_define_json import build_define_json
+
+        data = build_define_json(
+            soa_id,
+            sdtmct=sdtmct,
+            sdtmig=sdtmig,
+            cosmosversion=cosmosversion,
+            studyversion=studyversion,
+            studydesign=studydesign,
+            docversion=docversion,
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Failed to generate Define-JSON for soa_id=%s", soa_id)
+        raise HTTPException(500, f"Failed to generate Define-JSON: {exc}") from exc
+    payload = json.dumps(data, indent=2) + "\n"
+    buf = io.BytesIO(payload.encode("utf-8"))
+    return StreamingResponse(
+        buf,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="define.json"'},
     )
 
 

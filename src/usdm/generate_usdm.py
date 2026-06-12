@@ -47,15 +47,17 @@ def _git_branch() -> str:
             .strip()
         )
     except Exception:
-        return "unknown"
+        branch = "unknown"
+    timestamp = datetime.now().strftime("%Y%m%dT%H:%M")
     if branch.startswith("release-v-"):
         version = branch[len("release-v-") :]
         parts = version.split(".")
         while len(parts) < 3:
             parts.append("0")
-        return ".".join(parts[:3])
-    timestamp = datetime.now().strftime("%Y%m%dT%H:%M")
-    return f"{branch}-{timestamp}"
+        base = ".".join(parts[:3])
+    else:
+        base = branch
+    return f"{base}-{timestamp}"
 
 
 def build_usdm(soa_id: int) -> Dict[str, Any]:
