@@ -979,6 +979,10 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         (soa_id,),
     )
     cur.execute("DELETE FROM biomedical_concept WHERE soa_id=?", (soa_id,))
+    # Cascade: BCPs/RCs are rebuilt on the next populate; wipe them here so
+    # they do not orphan when biomedical_concept/alias_code/code are reset.
+    cur.execute("DELETE FROM bcp_response_code WHERE soa_id=?", (soa_id,))
+    cur.execute("DELETE FROM biomedical_concept_property WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM alias_code WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM code WHERE soa_id=?", (soa_id,))
     if _table_has_columns(cur, "objective", ("id",)):

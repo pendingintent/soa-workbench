@@ -237,6 +237,145 @@ def _delete_bcp_rows(cur, soa_id: int, bc_uid: str) -> None:
     )
 
 
+def delete_bc_cascade(cur, soa_id: int, bc_uid: str) -> None:
+    """Delete a BC's BCP + RC rows and their owned code chains.
+
+    Does NOT delete the ``biomedical_concept`` row itself — callers own
+    that. Call this from any path that removes a BC so its properties and
+    response codes never orphan. Reuses ``_delete_bcp_rows``.
+    """
+    _delete_bcp_rows(cur, soa_id, bc_uid)
+
+
+def _delete_owned_code_chains(cur, soa_id: int, alias_uids: List[str]) -> None:
+    """Delete the code + alias_code rows owned by the given alias UIDs.
+
+    Each BCP/RC owns a freshly created code + alias_code chain, so
+    deleting by the row's own ``code`` (alias) UID is safe.
+    """
+    alias_uids = [a for a in alias_uids if a]
+    if not alias_uids:
+        return
+    ph = ",".join("?" * len(alias_uids))
+    cur.execute(
+        f"DELETE FROM code WHERE code_uid IN"
+        f" (SELECT standard_code FROM alias_code"
+        f" WHERE alias_code_uid IN ({ph}) AND soa_id=?)",
+        (*alias_uids, soa_id),
+    )
+    cur.execute(
+        f"DELETE FROM alias_code WHERE alias_code_uid IN ({ph}) AND soa_id=?",
+        (*alias_uids, soa_id),
+    )
+
+
+def _sweep_one_soa(cur, soa_id: int) -> Dict[str, int]:
+    """Remove orphaned BCP/RC rows for one SOA. Returns count dict."""
+    # An RC is orphaned if no BCP+BC pair backs it (covers RCs whose
+    # parent BCP is gone AND RCs whose BCP exists but its BC is gone).
+    cur.execute(
+        "SELECT rc.code FROM bcp_response_code rc"
+        " WHERE rc.soa_id=? AND NOT EXISTS ("
+        "   SELECT 1 FROM biomedical_concept_property bcp"
+        "   JOIN biomedical_concept bc"
+        "     ON bc.soa_id=bcp.soa_id"
+        "     AND bc.biomedical_concept_uid=bcp.biomedical_concept_uid"
+        "   WHERE bcp.soa_id=rc.soa_id"
+        "     AND bcp.biomedical_concept_property_uid"
+        "       =rc.biomedical_concept_property_uid"
+        " )",
+        (soa_id,),
+    )
+    rc_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
+
+    cur.execute(
+        "SELECT bcp.code FROM biomedical_concept_property bcp"
+        " WHERE bcp.soa_id=? AND NOT EXISTS ("
+        "   SELECT 1 FROM biomedical_concept bc"
+        "   WHERE bc.soa_id=bcp.soa_id"
+        "     AND bc.biomedical_concept_uid=bcp.biomedical_concept_uid"
+        " )",
+        (soa_id,),
+    )
+    bcp_alias_uids = [r[0] for r in cur.fetchall() if r[0]]
+
+    _delete_owned_code_chains(cur, soa_id, rc_alias_uids + bcp_alias_uids)
+
+    cur.execute(
+        "DELETE FROM bcp_response_code"
+        " WHERE soa_id=? AND biomedical_concept_property_uid NOT IN ("
+        "   SELECT bcp.biomedical_concept_property_uid"
+        "   FROM biomedical_concept_property bcp"
+        "   JOIN biomedical_concept bc"
+        "     ON bc.soa_id=bcp.soa_id"
+        "     AND bc.biomedical_concept_uid=bcp.biomedical_concept_uid"
+        "   WHERE bcp.soa_id=?"
+        " )",
+        (soa_id, soa_id),
+    )
+    rc_deleted = cur.rowcount
+
+    cur.execute(
+        "DELETE FROM biomedical_concept_property"
+        " WHERE soa_id=? AND biomedical_concept_uid NOT IN ("
+        "   SELECT biomedical_concept_uid FROM biomedical_concept"
+        "   WHERE soa_id=?"
+        " )",
+        (soa_id, soa_id),
+    )
+    bcp_deleted = cur.rowcount
+    return {"response_codes": rc_deleted, "properties": bcp_deleted}
+
+
+def sweep_orphaned_bcp_rows(soa_id: Optional[int] = None) -> Dict[str, int]:
+    """Remove orphaned BCP/RC rows and their owned code chains.
+
+    Deletes, for the given SOA (or every SOA when ``soa_id`` is None):
+      * ``bcp_response_code`` rows whose parent BCP (and its BC) is absent
+      * ``biomedical_concept_property`` rows whose parent BC is absent
+      * the ``code``/``alias_code`` chains those rows owned
+
+    Always operates per-SOA so alias UIDs (unique only within a SOA) are
+    never deleted across SOA boundaries. Idempotent. Returns aggregate
+    counts ``{"response_codes": n, "properties": n}``.
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    try:
+        if soa_id is not None:
+            soa_ids = [soa_id]
+        else:
+            cur.execute(
+                "SELECT DISTINCT soa_id FROM ("
+                "  SELECT soa_id FROM bcp_response_code"
+                "  UNION SELECT soa_id FROM biomedical_concept_property"
+                ")"
+            )
+            soa_ids = [r[0] for r in cur.fetchall()]
+
+        totals = {"response_codes": 0, "properties": 0}
+        for sid in soa_ids:
+            counts = _sweep_one_soa(cur, sid)
+            totals["response_codes"] += counts["response_codes"]
+            totals["properties"] += counts["properties"]
+
+        conn.commit()
+        if totals["response_codes"] or totals["properties"]:
+            logger.info(
+                "sweep_orphaned_bcp_rows soa_id=%s removed %d RC, %d BCP",
+                soa_id,
+                totals["response_codes"],
+                totals["properties"],
+            )
+        return totals
+    except Exception:
+        conn.rollback()
+        logger.exception("sweep_orphaned_bcp_rows failed soa_id=%s", soa_id)
+        raise
+    finally:
+        conn.close()
+
+
 def _insert_bcp(
     cur,
     soa_id: int,

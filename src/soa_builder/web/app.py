@@ -1634,6 +1634,15 @@ async def lifespan(app: FastAPI):
             threading.Thread(target=_run_enrichment_pool, daemon=True).start()
     except Exception as e:
         logger.error("Lifespan code enrichment startup failed: %s", e)
+    try:
+        from usdm.generate_biomedical_concept_properties import (
+            sweep_orphaned_bcp_rows,
+        )
+
+        swept = sweep_orphaned_bcp_rows()
+        logger.info("Lifespan orphaned BCP sweep removed %s", swept)
+    except Exception as e:
+        logger.error("Lifespan orphaned BCP sweep failed: %s", e)
     yield
     # No shutdown actions required presently.
 
@@ -2709,6 +2718,7 @@ def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
     so the orphan check reflects the final state of activity_concept.
     """
     from .audit import _record_biomedical_concept_audit
+    from usdm.generate_biomedical_concept_properties import delete_bc_cascade
 
     for concept_code, concept_uid in removed_pairs:
         if concept_uid:
@@ -2737,6 +2747,9 @@ def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
                     after=None,
                     cur=cur,
                 )
+            # Cascade: remove the BC's properties + response codes first so
+            # they never orphan when the biomedical_concept row is deleted.
+            delete_bc_cascade(cur, soa_id, concept_uid)
             cur.execute(
                 "DELETE FROM biomedical_concept"
                 " WHERE biomedical_concept_uid=? AND soa_id=?",
@@ -2788,6 +2801,8 @@ def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
                     after=None,
                     cur=cur,
                 )
+                # Cascade BCP/RC cleanup for this edge-case BC.
+                delete_bc_cascade(cur, soa_id, edge_bc_uid)
             cur.execute(
                 "DELETE FROM biomedical_concept WHERE code=? AND soa_id=?",
                 (alias_row[0], soa_id),

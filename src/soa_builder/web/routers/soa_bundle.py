@@ -136,6 +136,55 @@ def _insert_and_map(
     return id_map
 
 
+def _import_bc_properties_and_response_codes(
+    cur, bundle: Dict[str, Any], new_soa_id: int
+) -> None:
+    """Insert BCP + RC rows from a bundle with referential integrity.
+
+    Keeps only properties whose parent BC exists in the bundle and only
+    response codes whose parent property survives, deduping RCs that
+    resolve to the same code on the same property. This prevents a corrupt
+    bundle from re-introducing the orphaned/duplicate rows this migration
+    is meant to eliminate.
+    """
+    bc_uids = {
+        r.get("biomedical_concept_uid") for r in bundle.get("biomedical_concept", [])
+    }
+    bcp_rows = [
+        r
+        for r in bundle.get("biomedical_concept_property", [])
+        if r.get("biomedical_concept_uid") in bc_uids
+    ]
+    kept_bcp_uids = {r.get("biomedical_concept_property_uid") for r in bcp_rows}
+
+    # Resolve an RC's alias_code → standard code value using bundle data so
+    # duplicates can be detected by (property, code) rather than alias UID.
+    alias_by_uid = {a.get("alias_code_uid"): a for a in bundle.get("alias_code", [])}
+    code_by_uid = {c.get("code_uid"): c for c in bundle.get("code", [])}
+
+    def _resolved_code(alias_uid: Any) -> Any:
+        alias = alias_by_uid.get(alias_uid)
+        if not alias:
+            return alias_uid
+        code_row = code_by_uid.get(alias.get("standard_code"))
+        return code_row.get("code") if code_row else alias_uid
+
+    rc_rows = []
+    seen = set()
+    for r in bundle.get("bcp_response_code", []):
+        bcp_uid = r.get("biomedical_concept_property_uid")
+        if bcp_uid not in kept_bcp_uids:
+            continue
+        key = (bcp_uid, _resolved_code(r.get("code")))
+        if key in seen:
+            continue
+        seen.add(key)
+        rc_rows.append(r)
+
+    _insert_and_map(cur, "biomedical_concept_property", bcp_rows, new_soa_id)
+    _insert_and_map(cur, "bcp_response_code", rc_rows, new_soa_id)
+
+
 def _import_soa_bundle(
     bundle: Dict[str, Any], name: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -198,8 +247,6 @@ def _import_soa_bundle(
             "timing",
             "transition_rule",
             "biomedical_concept",
-            "biomedical_concept_property",
-            "bcp_response_code",
             "biomedical_concept_surrogate",
             "activity_surrogate",
             "objective",
@@ -218,6 +265,13 @@ def _import_soa_bundle(
             "amendment_subject_enrollment",
         ]:
             _insert_and_map(cur, table, bundle.get(table, []), new_soa_id)
+
+        # biomedical_concept_property + bcp_response_code: import with
+        # referential-integrity filtering so a corrupt bundle (orphaned or
+        # duplicate rows) cannot propagate. Drop BCPs whose parent BC is
+        # absent, RCs whose parent BCP is absent, and duplicate RCs that
+        # resolve to the same code on the same property.
+        _import_bc_properties_and_response_codes(cur, bundle, new_soa_id)
 
         # study_amendment: freeze_id references soa_freeze which is not
         # imported; use 0 as sentinel for "imported, no associated freeze"
