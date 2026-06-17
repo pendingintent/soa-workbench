@@ -63,22 +63,26 @@ artifact plus live CDISC Library lookups; it is not stored.
 runs these steps in order:
 
 1. `process_biomedical_concepts()` — read BCs/DSS specializations from the
-   USDM data and CDISC Library; seed `datasets_dict`.
+   USDM data and CDISC Library; seed `datasets_dict` (and record a
+   dataset → BC association used for concept linkage).
 2. `build_vlm_lookup()` — build value-level-metadata lookups.
 3. `update_datasets_dict()` — merge VLM data into datasets.
-4. `_build_global_codelist_terms()` — index codelist terms.
-5. `populate_study_elements()` — study/document metadata into `template`.
-6. `process_datasets()` — build `itemGroups` (datasets + ItemDefs),
-   `whereClauses`, `conditions`.
-7. `_update_subset_codelist_names()` — tidy subset codelist names.
-8. `add_standards()` — populate `standards`.
-9. `save_output()` — assemble the template.
+4. `populate_concepts()` — map the in-memory USDM BiomedicalConcepts into
+   `concepts` / `conceptProperties` and synthesize response-code codelists.
+5. `_build_global_codelist_terms()` — index codelist terms.
+6. `populate_study_elements()` — study/document metadata into `template`.
+7. `process_datasets()` — build `itemGroups` (datasets + ItemDefs),
+   `whereClauses`, `conditions`, and wire `implementsConcept` /
+   `conceptProperty` references.
+8. `_update_subset_codelist_names()` — tidy subset codelist names.
+9. `add_standards()` — populate `standards`.
+10. `save_output()` — assemble the template.
 
-[`save_output()`](src/usdm/create_define_json.py#L3387) explicitly writes
-only `itemGroups`, `whereClauses`, `conditions`, and `codeLists`;
-`standards` is set by `add_standards()`. The remaining sections
-(`methods`, `comments`, `annotatedCRF`, `concepts`, `conceptProperties`)
-are left at the empty-list values from the template initializer in
+[`save_output()`](src/usdm/create_define_json.py#L3387) writes
+`itemGroups`, `whereClauses`, `conditions`, `codeLists`, `concepts`, and
+`conceptProperties`; `standards` is set by `add_standards()`. The remaining
+sections (`methods`, `comments`, `annotatedCRF`) are left at the empty-list
+values from the template initializer in
 [`__init__`](src/usdm/create_define_json.py#L150).
 
 ## How the CDISC Library API is used
@@ -130,12 +134,26 @@ For a representative export the document is well populated for:
   [`_infer_origin`](src/usdm/create_define_json.py#L238) and includes
   `Assigned`, `Collected`, `Protocol`, and `Derived`.
 - **`whereClauses` / `conditions`** — value-level metadata.
-- **`codeLists`** — pulled from the CDISC Library CT package.
+- **`codeLists`** — pulled from the CDISC Library CT package, plus
+  synthesized enumerated codelists for BiomedicalConceptProperty response
+  codes (see `concepts` below).
 - **`standards`** — SDTM IG + CT entries.
+- **`concepts` / `conceptProperties`** — the study's CDISC Biomedical
+  Concepts, mapped by
+  [`populate_concepts()`](src/usdm/create_define_json.py#L290) from the USDM
+  BiomedicalConcepts already in memory (no extra CDISC calls). Each USDM
+  `BiomedicalConcept` becomes a `ReifiedConcept` (`OID` `CONC.<bc uid>`,
+  `name`, `label`, `aliases` from synonyms, `href` from the reference, a
+  `coding` from the standard code) with inline `ConceptProperty` objects
+  (`OID` `CONCPROP.<bcp uid>`, `mandatory` from `isRequired`, `coding` from
+  the standard code). A property's `responseCodes` are emitted as a
+  synthesized enumerated `CodeList` (deduped by value set) referenced via
+  `ConceptProperty.codeList`. Datasets and variables are linked back to
+  these via `ItemGroup.implementsConcept` and `Item.conceptProperty`.
 
 ## Gaps and missing classes
 
-Five Define-XML sections are always emitted **empty**, and there are a few
+Three Define-XML sections are still emitted **empty**, plus a few
 secondary data-quality gaps.
 
 ### 1. `methods` (MethodDef) — empty
@@ -173,22 +191,10 @@ linkage from the CRF specialization data already attached to BCs. Requires
 a CRF document reference (filename/URL + page map) to be captured in the
 workbench.
 
-### 4. `concepts` / `conceptProperties` — empty
+> **Resolved:** `concepts` / `conceptProperties` (formerly gap 4) are now
+> populated — see "What is generated today" above.
 
-Define-XML 2.1 can embed CDISC Biomedical Concepts and their properties
-(CDISC 360 alignment). The workbench **already holds this data** —
-`biomedical_concept` and `biomedical_concept_property` flow into the USDM
-JSON consumed by the processor — but it is not copied into the define's
-`concepts` / `conceptProperties` sections.
-
-**To complete:** map the USDM `BiomedicalConcept` /
-`BiomedicalConceptProperty` objects (already in `self.usdm_data` and used
-by `process_biomedical_concepts()`) into Define-JSON `concepts` and
-`conceptProperties` entries, and reference them from the relevant
-ItemGroups/Items. This is the lowest-effort gap because the source data is
-present in-process; it is mostly a mapping/serialization step.
-
-### 5. Secondary data-quality gaps
+### 4. Secondary data-quality gaps
 
 - **Unknown data types** — [`_convert_data_type`](src/usdm/create_define_json.py#L218)
   emits the literal `"????"` when a SDTM `simpleDatatype` is not `Char`/`Num`
@@ -203,7 +209,7 @@ present in-process; it is mostly a mapping/serialization step.
 
 | Missing class | Source data available? | Effort | Notes |
 |---|---|---|---|
-| `concepts` / `conceptProperties` | Yes (USDM BCs in-process) | Low | Mapping only |
+| ~~`concepts` / `conceptProperties`~~ | Yes (USDM BCs in-process) | Done | Implemented via `populate_concepts()` + item/group linkage |
 | `annotatedCRF` | Partial (CRF specializations) | Medium | Needs CRF document reference + page map |
 | `methods` | No (needs derivation text) | Medium | Hook exists via `_infer_origin`; needs authored derivations |
 | `comments` | No (needs comment text) | Medium | Needs a capture field + OID wiring |

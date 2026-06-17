@@ -186,6 +186,16 @@ class USDMDefineJSONProcessor:
         self.code_lists_map = {}
         self.vlm_items_by_variable = {}
 
+        # Define-JSON concepts / conceptProperties (populated from the USDM
+        # BiomedicalConcepts already in memory — see populate_concepts()).
+        self.concepts = []
+        self.concept_properties = []
+        # Lookups wired into itemGroups/items so datasets and variables can
+        # reference the concept they implement.
+        self.concept_oid_by_bc_id = {}
+        self.concept_property_oid_by_var = {}  # (bc_id, variable_name) -> OID
+        self.dataset_to_bc_id = {}  # dataset domain -> bc_id
+
         self.required_variables_exceptions = {
             "TA": ["ELEMENT"],
             "TV": ["VISITDY", "ARM", "TVENRL"],
@@ -362,6 +372,116 @@ class USDMDefineJSONProcessor:
             )
         self._process_vlm_target_variables(bc, bc_data, where_clause)
 
+    def _coding(self, alias_code):
+        """Map a USDM AliasCode's standardCode to a Define-JSON Coding.
+
+        Returns None when no usable code is present.
+        """
+        if not alias_code:
+            return None
+        return self._coding_from_code(alias_code.get("standardCode"))
+
+    def _coding_from_code(self, code_obj):
+        """Map a USDM Code object to a Define-JSON Coding, or None."""
+        if not code_obj:
+            return None
+        code = code_obj.get("code")
+        if not code:
+            return None
+        return {
+            "code": code,
+            "codeSystem": code_obj.get("codeSystem") or "",
+            "codeSystemVersion": code_obj.get("codeSystemVersion") or "",
+            "decode": code_obj.get("decode") or "",
+        }
+
+    def _synthesize_response_codelist(self, prop):
+        """Create (once) an enumerated CodeList for a property's response
+        codes and return its OID, or None when there are none.
+
+        The OID is derived from the sorted set of response-code values so
+        identical value sets dedupe across properties. The CodeList is
+        inserted into code_lists_map and therefore emitted by save_output().
+        """
+        response_codes = prop.get("responseCodes") or []
+        if not response_codes:
+            return None
+        keys = sorted(
+            (rc.get("code") or {}).get("code") or rc.get("name") or ""
+            for rc in response_codes
+        )
+        oid = self._generate_hex_oid("|".join(keys), "CL")
+        if oid in self.code_lists_map:
+            return oid
+        items = []
+        for rc in response_codes:
+            item = {"codedValue": rc.get("name") or ""}
+            coding = self._coding_from_code(rc.get("code"))
+            if coding:
+                item["coding"] = [coding]
+            items.append(item)
+        self.code_lists_map[oid] = {
+            "OID": oid,
+            "name": f"{prop.get('name') or 'Property'} Response Codes",
+            "dataType": "text",
+            "isNonStandard": True,
+            "codeListItems": items,
+        }
+        return oid
+
+    def populate_concepts(self):
+        """Populate concepts / conceptProperties from the USDM BCs.
+
+        Maps each USDM BiomedicalConcept to a Define-JSON ReifiedConcept
+        (with inline ConceptProperty objects), synthesizes a CodeList for
+        each property's response codes, and records lookup maps so
+        itemGroups/items can reference the concepts. Uses BC data already
+        loaded in self.study_version_data — no additional CDISC calls.
+        """
+        for bc in self.study_version_data.get("biomedicalConcepts") or []:
+            bc_id = bc.get("id")
+            if not bc_id:
+                continue
+            concept_oid = f"CONC.{bc_id}"
+
+            properties = []
+            for prop in bc.get("properties") or []:
+                prop_id = prop.get("id")
+                if not prop_id:
+                    continue
+                prop_oid = f"CONCPROP.{prop_id}"
+                concept_property = {
+                    "OID": prop_oid,
+                    "name": prop.get("name"),
+                    "label": prop.get("label"),
+                    "mandatory": prop.get("isRequired"),
+                }
+                coding = self._coding(prop.get("code"))
+                if coding:
+                    concept_property["coding"] = [coding]
+                codelist_oid = self._synthesize_response_codelist(prop)
+                if codelist_oid:
+                    concept_property["codeList"] = codelist_oid
+
+                properties.append(concept_property)
+                self.concept_properties.append(concept_property)
+                self.concept_property_oid_by_var[(bc_id, prop.get("name"))] = prop_oid
+
+            concept = {
+                "OID": concept_oid,
+                "name": bc.get("name"),
+                "label": bc.get("label"),
+                "aliases": bc.get("synonyms") or None,
+                "href": bc.get("reference"),
+                "properties": properties,
+            }
+            coding = self._coding(bc.get("code"))
+            if coding:
+                concept["coding"] = [coding]
+
+            self.concepts.append(concept)
+            self.concept_oid_by_bc_id[bc_id] = concept_oid
+
     def _process_variables(self, variables, dataset_name, bc):
         """
         Process variables for a dataset, extracting response codes.
@@ -373,6 +493,11 @@ class USDMDefineJSONProcessor:
         """
         if dataset_name not in self.datasets_dict:
             self.datasets_dict[dataset_name] = {}
+
+        # Remember which BC implements this dataset so itemGroups can
+        # reference the concept later (first BC wins for a given domain).
+        if bc and bc.get("id"):
+            self.dataset_to_bc_id.setdefault(dataset_name, bc["id"])
 
         for variable in variables:
             variable_name = variable.get("name")
@@ -2581,6 +2706,12 @@ class USDMDefineJSONProcessor:
             "items": [],
         }
 
+        # Link the dataset to the concept it implements (when known).
+        bc_for_dataset = self.dataset_to_bc_id.get(dataset)
+        concept_oid = self.concept_oid_by_bc_id.get(bc_for_dataset)
+        if concept_oid:
+            item_group["implementsConcept"] = concept_oid
+
         # Add standard items to itemGroup
         for var in all_vars:
             item_dict = {
@@ -2590,6 +2721,13 @@ class USDMDefineJSONProcessor:
                 "description": var["label"],
                 "role": var["role"],
             }
+
+            # Link the variable to its concept property (when known).
+            concept_property_oid = self.concept_property_oid_by_var.get(
+                (bc_for_dataset, var["name"])
+            )
+            if concept_property_oid:
+                item_dict["conceptProperty"] = concept_property_oid
 
             # Add optional fields from datasets_dict if they exist
             var_data = self.datasets_dict[dataset].get(var["name"], {})
@@ -3395,6 +3533,8 @@ class USDMDefineJSONProcessor:
         self.template["whereClauses"] = self.where_clauses
         self.template["conditions"] = self.conditions
         self.template["codeLists"] = list(self.code_lists_map.values())
+        self.template["concepts"] = self.concepts
+        self.template["conceptProperties"] = self.concept_properties
 
         with open(self.output_template, "w") as f:
             f.write(json.dumps(self.template, indent=2))
@@ -4184,6 +4324,13 @@ class USDMDefineJSONProcessor:
         self.update_datasets_dict()
         print(
             f"✅ update_datasets_dict complete — {len(self.datasets_dict)} dataset(s) total."
+        )
+
+        print("Populating concepts...")
+        self.populate_concepts()
+        print(
+            f"✅ populate_concepts complete — {len(self.concepts)} concept(s), "
+            f"{len(self.concept_properties)} conceptPropert(ies)."
         )
 
         print("Building global codelist terms...")
