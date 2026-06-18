@@ -25,13 +25,13 @@
                 {
                   "id": "ExtensionAttribute_155",
                   "url": "tool-version",
-                  "valueString": "pi-new-extension-class",
+                  "valueString": "1.4.0",
                   "instanceType": "ExtensionAttribute"
                 },
                 {
                   "id": "ExtensionAttribute_156",
                   "url": "usdm-creation-date",
-                  "valueString": "20260618T14:51",
+                  "valueString": "20260618T15:09",
                   "instanceType": "ExtensionAttribute"
                 }
               ],
@@ -33889,5 +33889,5 @@
   },
   "usdmVersion": "4.0",
   "systemName": "SOA Workbench",
-  "systemVersion": "pi-new-extension-class"
+  "systemVersion": "1.4.0"
 }

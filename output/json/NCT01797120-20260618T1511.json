@@ -8,7 +8,38 @@
     "versions": [
       {
         "id": "StudyVersion_1",
-        "extensionAttributes": [],
+        "extensionAttributes": [
+          {
+            "id": "ExtensionAttribute_44",
+            "url": "http://www.cdisc.org/usdm/extensions/studyDesignSolution",
+            "valueExtensionClass": {
+              "id": "ExtensionClass_1",
+              "url": "http://www.cdisc.org/usdm/extensions/StudyDesignSolution",
+              "extensionAttributes": [
+                {
+                  "id": "ExtensionAttribute_45",
+                  "url": "tool-name",
+                  "valueString": "SoA Workbench",
+                  "instanceType": "ExtensionAttribute"
+                },
+                {
+                  "id": "ExtensionAttribute_46",
+                  "url": "tool-version",
+                  "valueString": "1.4.0",
+                  "instanceType": "ExtensionAttribute"
+                },
+                {
+                  "id": "ExtensionAttribute_47",
+                  "url": "usdm-creation-date",
+                  "valueString": "20260618T15:11",
+                  "instanceType": "ExtensionAttribute"
+                }
+              ],
+              "instanceType": "ExtensionClass"
+            },
+            "instanceType": "ExtensionAttribute"
+          }
+        ],
         "versionIdentifier": "1",
         "rationale": "",
         "studyIdentifiers": [
@@ -11406,5 +11437,5 @@
   },
   "usdmVersion": "4.0",
   "systemName": "SOA Workbench",
-  "systemVersion": "pi-fix-bd-response-codes-20260617T07:19"
+  "systemVersion": "1.4.0"
 }
