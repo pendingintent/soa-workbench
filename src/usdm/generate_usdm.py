@@ -8,10 +8,15 @@ hierarchy, populating sub-entities from the existing per-entity generators.
 
 import subprocess
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List, Optional
 import logging
 from .usdm_utils import _get_soa_metadata
-from soa_builder.web.utils import _nz
+from soa_builder.web.db import _connect
+from soa_builder.web.utils import (
+    _nz,
+    get_next_extension_attribute_uid,
+    get_next_extension_class_uid,
+)
 
 from usdm.generate_activities import build_usdm_activities
 from usdm.generate_arms import build_usdm_arms
@@ -48,25 +53,114 @@ def _git_branch() -> str:
         )
     except Exception:
         branch = "unknown"
-    timestamp = datetime.now().strftime("%Y%m%dT%H:%M")
     if branch.startswith("release-v-"):
         version = branch[len("release-v-") :]
         parts = version.split(".")
         while len(parts) < 3:
             parts.append("0")
-        base = ".".join(parts[:3])
-    else:
-        base = branch
-    return f"{base}-{timestamp}"
+        return ".".join(parts[:3])
+    return branch
 
 
-def build_usdm(soa_id: int) -> Dict[str, Any]:
+def _get_or_create_tool_uids(soa_id: int) -> Dict[str, str]:
+    """Return the 5 stable tool extension UIDs for the SOA.
+
+    On first call the UIDs are generated (monotonic max+1) and persisted
+    to soa_tool_extension so subsequent USDM generations reuse identical
+    UIDs.
+    """
+    conn = _connect()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT ea_outer_uid, ec_uid,"
+            " ea_name_uid, ea_version_uid, ea_date_uid"
+            " FROM soa_tool_extension WHERE soa_id=?",
+            (soa_id,),
+        )
+        row = cur.fetchone()
+        if row and all(row):
+            return {
+                "ea_outer": row[0],
+                "ec": row[1],
+                "ea_name": row[2],
+                "ea_version": row[3],
+                "ea_date": row[4],
+            }
+        ea_start_uid = get_next_extension_attribute_uid(cur, soa_id)
+        ea_n = int(ea_start_uid.split("_")[1])
+        ec_uid = get_next_extension_class_uid(cur, soa_id)
+        uids = {
+            "ea_outer": f"ExtensionAttribute_{ea_n}",
+            "ec": ec_uid,
+            "ea_name": f"ExtensionAttribute_{ea_n + 1}",
+            "ea_version": f"ExtensionAttribute_{ea_n + 2}",
+            "ea_date": f"ExtensionAttribute_{ea_n + 3}",
+        }
+        cur.execute(
+            "INSERT INTO soa_tool_extension"
+            " (soa_id, ea_outer_uid, ec_uid,"
+            "  ea_name_uid, ea_version_uid, ea_date_uid)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                soa_id,
+                uids["ea_outer"],
+                uids["ec"],
+                uids["ea_name"],
+                uids["ea_version"],
+                uids["ea_date"],
+            ),
+        )
+        conn.commit()
+        return uids
+    finally:
+        conn.close()
+
+
+def _tool_extension_attribute(uids: Dict[str, str], timestamp: str) -> Dict[str, Any]:
+    """Build the outer ExtensionAttribute that wraps the tool ExtensionClass."""
+    return {
+        "id": uids["ea_outer"],
+        "url": ("http://www.cdisc.org/usdm/extensions/studyDesignSolution"),
+        "valueExtensionClass": {
+            "id": uids["ec"],
+            "url": ("http://www.cdisc.org/usdm/extensions/StudyDesignSolution"),
+            "extensionAttributes": [
+                {
+                    "id": uids["ea_name"],
+                    "url": "tool-name",
+                    "valueString": "SoA Workbench",
+                    "instanceType": "ExtensionAttribute",
+                },
+                {
+                    "id": uids["ea_version"],
+                    "url": "tool-version",
+                    "valueString": _git_branch(),
+                    "instanceType": "ExtensionAttribute",
+                },
+                {
+                    "id": uids["ea_date"],
+                    "url": "usdm-creation-date",
+                    "valueString": timestamp,
+                    "instanceType": "ExtensionAttribute",
+                },
+            ],
+            "instanceType": "ExtensionClass",
+        },
+        "instanceType": "ExtensionAttribute",
+    }
+
+
+def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
     """
     Build a complete USDM Study-Output document for the given SOA.
 
     Returns the full hierarchy:
       Study -> versions[0] -> studyDesigns[0] (InterventionalStudyDesign)
     """
+    if timestamp is None:
+        timestamp = datetime.now().strftime("%Y%m%dT%H:%M")
+    tool_uids = _get_or_create_tool_uids(soa_id)
     meta = _get_soa_metadata(soa_id)
 
     def _safe(label: str, fn, *args) -> List[Dict[str, Any]]:
@@ -149,7 +243,7 @@ def build_usdm(soa_id: int) -> Dict[str, Any]:
 
     study_version = {
         "id": "StudyVersion_1",
-        "extensionAttributes": [],
+        "extensionAttributes": [_tool_extension_attribute(tool_uids, timestamp)],
         "versionIdentifier": "1",
         "rationale": "",
         "studyIdentifiers": _safe(

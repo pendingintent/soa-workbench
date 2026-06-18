@@ -2,6 +2,7 @@ import io
 import json
 import logging
 import os
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -200,13 +201,28 @@ def download_usdm_component(soa_id: int, component: str):
     if component not in valid_keys:
         raise HTTPException(400, f"Unknown component '{component}'")
     try:
-        data = _build(component, soa_id)
+        if component == "full":
+            from usdm.generate_usdm import build_usdm
+
+            now = datetime.now()
+            ts = now.strftime("%Y%m%dT%H:%M")
+            ts_filename = now.strftime("%Y%m%dT%H%M")
+            data = build_usdm(soa_id, timestamp=ts)
+            conn = _connect()
+            cur = conn.cursor()
+            cur.execute("SELECT study_id, name FROM soa WHERE id=?", (soa_id,))
+            row = cur.fetchone()
+            conn.close()
+            base = (row[0] or row[1] or "usdm") if row else "usdm"
+            filename = f"{base}-{ts_filename}.json"
+        else:
+            data = _build(component, soa_id)
+            filename = next(c[2] for c in _COMPONENTS if c[0] == component)
     except Exception as exc:
         logger.exception(
             "Failed to build USDM component %s for soa_id=%s", component, soa_id
         )
         raise HTTPException(500, f"Failed to generate {component}: {exc}") from exc
-    filename = next(c[2] for c in _COMPONENTS if c[0] == component)
     payload = json.dumps(data, indent=2) + "\n"
     buf = io.BytesIO(payload.encode("utf-8"))
     return StreamingResponse(

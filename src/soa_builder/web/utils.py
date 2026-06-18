@@ -668,13 +668,19 @@ def get_next_response_code_uid(cur: Any, soa_id: int) -> str:
 def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique ExtensionAttribute_N for the given SOA.
 
+    Scans both activity_concept_dss and activity_concept_crf to ensure
+    the returned UID does not collide with any existing EA UID.
     Assumes `cur` is a sqlite cursor within an open transaction.
     """
     cur.execute(
         "SELECT extension_attribute_uid FROM activity_concept_dss"
         " WHERE soa_id=?"
+        " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'"
+        " UNION ALL"
+        " SELECT extension_attribute_uid FROM activity_concept_crf"
+        " WHERE soa_id=?"
         " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'",
-        (soa_id,),
+        (soa_id, soa_id),
     )
     existing = [x[0] for x in cur.fetchall() if x[0]]
     n = 1
@@ -684,6 +690,28 @@ def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
         except Exception:
             n = len(existing) + 1
     return f"ExtensionAttribute_{n}"
+
+
+def get_next_extension_class_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique ExtensionClass_N for the given SOA.
+
+    Scans soa_tool_extension.ec_uid for existing ExtensionClass UIDs.
+    Assumes `cur` is a sqlite cursor within an open transaction.
+    """
+    cur.execute(
+        "SELECT ec_uid FROM soa_tool_extension"
+        " WHERE soa_id=?"
+        " AND ec_uid LIKE 'ExtensionClass_%'",
+        (soa_id,),
+    )
+    existing = [x[0] for x in cur.fetchall() if x[0]]
+    n = 1
+    if existing:
+        try:
+            n = max(int(x.split("_")[1]) for x in existing) + 1
+        except Exception:
+            n = len(existing) + 1
+    return f"ExtensionClass_{n}"
 
 
 def get_next_concept_uid(cur: Any, soa_id: int) -> str:

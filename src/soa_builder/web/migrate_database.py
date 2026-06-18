@@ -3201,3 +3201,52 @@ def _migrate_add_study_identifier_audit_table():
         logger.info("_migrate_add_study_identifier_audit_table complete")
     except Exception as e:
         logger.warning("_migrate_add_study_identifier_audit_table failed: %s", e)
+
+
+def _migrate_soa_add_tool_extension_uids():
+    """Create soa_tool_extension table for stable per-SOA USDM tool UIDs.
+
+    Also drops any stale tool_*_uid columns from the soa table that may
+    have been added by an earlier version of this migration.
+    """
+    stale_cols = [
+        "tool_ea_outer_uid",
+        "tool_ec_uid",
+        "tool_ea_name_uid",
+        "tool_ea_version_uid",
+        "tool_ea_date_uid",
+    ]
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS soa_tool_extension (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id         INTEGER NOT NULL UNIQUE,
+                ea_outer_uid   TEXT,
+                ec_uid         TEXT,
+                ea_name_uid    TEXT,
+                ea_version_uid TEXT,
+                ea_date_uid    TEXT
+            )
+            """
+        )
+        conn.commit()
+        cur.execute("PRAGMA table_info(soa)")
+        soa_cols = {r[1] for r in cur.fetchall()}
+        dropped = []
+        for col in stale_cols:
+            if col in soa_cols:
+                cur.execute(f"ALTER TABLE soa DROP COLUMN {col}")
+                dropped.append(col)
+        if dropped:
+            conn.commit()
+            logger.info(
+                "_migrate_soa_add_tool_extension_uids dropped stale soa columns: %s",
+                ", ".join(dropped),
+            )
+        logger.info("_migrate_soa_add_tool_extension_uids complete")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_soa_add_tool_extension_uids failed: %s", e)
