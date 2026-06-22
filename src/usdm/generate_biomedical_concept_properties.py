@@ -588,7 +588,14 @@ def _populate_bcp_locked(
                 if not dec_id or not dec:
                     continue
 
-                datatype = dec.get("dataType") or dec.get("datatype") or ""
+                # Prefer DSS variable's dataType (more specific, e.g.
+                # "float" for a numeric result) over the DEC's generic type.
+                datatype = (
+                    var.get("dataType")
+                    or dec.get("dataType")
+                    or dec.get("datatype")
+                    or ""
+                )
                 bcp_uid_new = _insert_bcp(
                     cur,
                     soa_id,
