@@ -857,17 +857,14 @@ def fetch_biomedical_concepts_by_category(name: str, force: bool = False) -> lis
         resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             logger.warning(
-                "BC concepts by category fetch HTTP %s category=%s",
+                "BC concepts by category fetch HTTP %s",
                 resp.status_code,
-                category,
             )
             return []
         try:
             data = resp.json()
         except ValueError:
-            logger.warning(
-                "BC concepts by category non-JSON response category=%s", category
-            )
+            logger.warning("BC concepts by category non-JSON response")
             return []
 
         # Strategy:
@@ -943,16 +940,14 @@ def fetch_biomedical_concepts_by_category(name: str, force: bool = False) -> lis
                 concepts.append({"code": str(code), "title": str(title), "href": href})
 
         if not concepts:
-            logger.info("No biomedical concepts parsed for category '%s'", category)
+            logger.info("No biomedical concepts parsed for this category")
         concepts.sort(key=lambda c: c["title"].lower())
-        logger.info(
-            "Fetched %d biomedical concepts for category '%s'", len(concepts), category
-        )
+        logger.info("Fetched %d biomedical concepts for category", len(concepts))
         # Populate cache
         _category_concepts_cache[ckey] = {"data": concepts, "fetched_at": now}
         return concepts
-    except Exception as e:  # pragma: no cover
-        logger.error("BC concepts by category fetch error for '%s': %s", category, e)
+    except Exception:  # pragma: no cover
+        logger.exception("BC concepts by category fetch error")
         return []
 
 

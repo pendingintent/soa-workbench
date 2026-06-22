@@ -2388,10 +2388,11 @@ def ui_add_governance_date(
             description=description or None,
             scope_uids=scope_uids,
         )
-    except Exception as exc:
+    except Exception:
+        logger.exception("Governance date validation error")
         return HTMLResponse(
-            f"<div style='color:#c62828;font-size:0.8em;'>"
-            f"Error: {html.escape(str(exc))}</div>"
+            "<div style='color:#c62828;font-size:0.8em;'>"
+            "Error: Invalid data. Please check your input.</div>"
         )
     conn = _connect()
     cur = conn.cursor()

@@ -1152,7 +1152,6 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
         "https://api.library.cdisc.org/api/cosmos/v2",
     )
     _p = _urlparse(_bc_base)
-    _ALLOWED_CDISC_PREFIX = f"{_p.scheme}://{_p.netloc}/"
 
     status = None
     error = None
@@ -1160,7 +1159,11 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
     raw_text_snippet = None
     data = None
     if href:
-        if not href.startswith(_ALLOWED_CDISC_PREFIX):
+        _parsed_href = _urlparse(href)
+        if _parsed_href.netloc != _p.netloc or _parsed_href.scheme not in (
+            "http",
+            "https",
+        ):
             error = "Invalid href: only CDISC Library API URLs are permitted."
             return templates.TemplateResponse(
                 "dss_detail.html",
@@ -1530,14 +1533,17 @@ def ui_crf_detail_from_activity(
         "https://api.library.cdisc.org/api/cosmos/v2",
     )
     _p = _urlparse(_crf_base)
-    _ALLOWED_PREFIX = f"{_p.scheme}://{_p.netloc}/"
 
     spec_data = None
     spec_json = None
     error = None
     status = None
     if href:
-        if not href.startswith(_ALLOWED_PREFIX):
+        _parsed_href = _urlparse(href)
+        if _parsed_href.netloc != _p.netloc or _parsed_href.scheme not in (
+            "http",
+            "https",
+        ):
             error = "Invalid href: only CDISC Library API URLs are permitted."
         else:
             try:
