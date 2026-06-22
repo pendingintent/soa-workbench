@@ -426,7 +426,10 @@ async def import_bundle(
     try:
         bundle = json.loads(content)
     except json.JSONDecodeError as exc:
-        raise HTTPException(422, f"Invalid JSON: {exc}") from exc
+        logger.debug("Bundle upload JSON decode error: %s", exc)
+        raise HTTPException(
+            422, "Invalid JSON: uploaded file is not valid JSON"
+        ) from exc
     result = _import_soa_bundle(bundle, name)
     return JSONResponse(result, status_code=201)
 
@@ -440,6 +443,10 @@ async def ui_import_bundle(
     try:
         bundle = json.loads(content)
     except json.JSONDecodeError as exc:
-        raise HTTPException(422, f"Invalid JSON: {exc}") from exc
+        logger.debug("Bundle upload JSON decode error: %s", exc)
+        raise HTTPException(
+            422, "Invalid JSON: uploaded file is not valid JSON"
+        ) from exc
     result = _import_soa_bundle(bundle, name or None)
-    return RedirectResponse(f"/ui/soa/{result['soa_id']}/edit", status_code=303)
+    new_soa_id = int(result["soa_id"])
+    return RedirectResponse(f"/ui/soa/{new_soa_id}/edit", status_code=303)

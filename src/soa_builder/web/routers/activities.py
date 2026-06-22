@@ -1181,6 +1181,7 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
                 href,
                 headers=headers,
                 timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
+                allow_redirects=False,
             )
             status = resp.status_code
             raw_text_snippet = resp.text[:500]
@@ -1544,6 +1545,7 @@ def ui_crf_detail_from_activity(
                     href,
                     headers=headers,
                     timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
+                    allow_redirects=False,
                 )
                 status = resp.status_code
                 if resp.status_code == 200:

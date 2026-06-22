@@ -1323,14 +1323,15 @@ def ui_create_amendment(
             primary_reason_other=primary_reason_other or None,
         )
     except Exception as exc:
-        msg = str(exc)
+        logger.exception("Amendment creation validation error: %s", exc)
         if request.headers.get("HX-Request") == "true":
             return HTMLResponse(
-                f"<div class='error' style='color:#c62828;font-size:0.7em;'>"
-                f"Error: {html.escape(msg)}</div>"
+                "<div class='error' style='color:#c62828;font-size:0.7em;'>"
+                "Error: Invalid amendment data. Please check your input.</div>"
             )
         return HTMLResponse(
-            f"<div class='error' style='color:#c62828;'>{html.escape(msg)}</div>"
+            "<div class='error' style='color:#c62828;'>"
+            "Error: Invalid amendment data. Please check your input.</div>"
         )
     conn = _connect()
     cur = conn.cursor()
@@ -1476,9 +1477,10 @@ def ui_add_secondary_reason(
     try:
         body = StudyAmendmentReasonCreate(code=code, other_reason=other_reason or None)
     except Exception as exc:
+        logger.exception("Amendment reason validation error: %s", exc)
         return HTMLResponse(
-            f"<div style='color:#c62828;font-size:0.8em;'>"
-            f"Error: {html.escape(str(exc))}</div>"
+            "<div style='color:#c62828;font-size:0.8em;'>"
+            "Error: Invalid reason data. Please check your input.</div>"
         )
     conn = _connect()
     cur = conn.cursor()
@@ -1613,9 +1615,10 @@ def ui_add_impact(
             is_substantial=bool(is_substantial),
         )
     except Exception as exc:
+        logger.exception("Amendment impact validation error: %s", exc)
         return HTMLResponse(
-            f"<div style='color:#c62828;font-size:0.8em;'>"
-            f"Error: {html.escape(str(exc))}</div>"
+            "<div style='color:#c62828;font-size:0.8em;'>"
+            "Error: Invalid impact data. Please check your input.</div>"
         )
     conn = _connect()
     cur = conn.cursor()
@@ -1753,9 +1756,10 @@ def ui_add_change(
             description=description or None,
         )
     except Exception as exc:
+        logger.exception("Amendment change validation error: %s", exc)
         return HTMLResponse(
-            f"<div style='color:#c62828;font-size:0.8em;'>"
-            f"Error: {html.escape(str(exc))}</div>"
+            "<div style='color:#c62828;font-size:0.8em;'>"
+            "Error: Invalid change data. Please check your input.</div>"
         )
     conn = _connect()
     cur = conn.cursor()
@@ -1894,9 +1898,10 @@ def ui_add_section(
             applies_to_id=applies_to_id,
         )
     except Exception as exc:
+        logger.exception("Document content reference validation error: %s", exc)
         return HTMLResponse(
-            f"<div style='color:#c62828;font-size:0.8em;'>"
-            f"Error: {html.escape(str(exc))}</div>"
+            "<div style='color:#c62828;font-size:0.8em;'>"
+            "Error: Invalid section data. Please check your input.</div>"
         )
     conn = _connect()
     cur = conn.cursor()
