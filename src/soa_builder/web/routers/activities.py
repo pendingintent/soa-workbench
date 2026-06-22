@@ -1145,7 +1145,7 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
         headers["Authorization"] = f"Bearer {api_key}"
         headers["api-key"] = api_key
 
-    from urllib.parse import urlparse as _urlparse
+    from urllib.parse import urlparse as _urlparse, urlunparse as _urlunparse
 
     _bc_base = os.environ.get(
         "CDISC_BC_API_BASE_URL",
@@ -1179,9 +1179,19 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
                     "summary": {},
                 },
             )
+        _safe_url = _urlunparse(
+            (
+                _p.scheme,
+                _p.netloc,
+                _parsed_href.path,
+                _parsed_href.params,
+                _parsed_href.query,
+                "",
+            )
+        )
         try:
             resp = _requests.get(
-                href,
+                _safe_url,
                 headers=headers,
                 timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
                 allow_redirects=False,
@@ -1524,7 +1534,7 @@ def ui_crf_detail_from_activity(
         headers["Authorization"] = f"Bearer {api_key}"
         headers["api-key"] = api_key
 
-    from urllib.parse import urlparse as _urlparse
+    from urllib.parse import urlparse as _urlparse, urlunparse as _urlunparse
 
     _crf_base = os.environ.get(
         "CDISC_CRF_API_BASE_URL",
@@ -1546,9 +1556,19 @@ def ui_crf_detail_from_activity(
         ):
             error = "Invalid href: only CDISC Library API URLs are permitted."
         else:
+            _safe_url = _urlunparse(
+                (
+                    _p.scheme,
+                    _p.netloc,
+                    _parsed_href.path,
+                    _parsed_href.params,
+                    _parsed_href.query,
+                    "",
+                )
+            )
             try:
                 resp = _requests.get(
-                    href,
+                    _safe_url,
                     headers=headers,
                     timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
                     allow_redirects=False,

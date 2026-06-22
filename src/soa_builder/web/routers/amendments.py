@@ -2217,10 +2217,11 @@ def ui_add_enrollment(
             for_study_cohort_id=for_study_cohort_id or None,
             for_study_site_id=for_study_site_id or None,
         )
-    except Exception as exc:
+    except Exception:
+        logger.exception("Geographic scope validation error")
         return HTMLResponse(
-            f"<div style='color:#c62828;font-size:0.8em;'>"
-            f"Error: {html.escape(str(exc))}</div>"
+            "<div style='color:#c62828;font-size:0.8em;'>"
+            "Error: Invalid data. Please check your input.</div>"
         )
     conn = _connect()
     cur = conn.cursor()
