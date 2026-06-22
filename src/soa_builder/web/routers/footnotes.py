@@ -202,7 +202,7 @@ def ui_create_footnote(
             dictionary_uid=dictionary_uid,
         ),
     )
-    redirect_url = f"/ui/soa/{soa_id}/edit"
+    redirect_url = f"/ui/soa/{int(soa_id)}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
 
@@ -235,7 +235,7 @@ def ui_update_footnote(
             dictionary_uid=dictionary_uid,
         ),
     )
-    redirect_url = f"/ui/soa/{soa_id}/edit"
+    redirect_url = f"/ui/soa/{int(soa_id)}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
 
@@ -253,7 +253,7 @@ def ui_delete_footnote(
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     delete_footnote(soa_id, footnote_id)
-    redirect_url = f"/ui/soa/{soa_id}/edit"
+    redirect_url = f"/ui/soa/{int(soa_id)}/edit"
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": redirect_url})
 

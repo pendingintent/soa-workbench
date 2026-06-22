@@ -768,11 +768,7 @@ def fetch_biomedical_concept_categories(force: bool = False) -> list[dict]:
     try:
         resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
-            logger.warning(
-                "BC categories fetch HTTP %s (snippet=%s)",
-                resp.status_code,
-                resp.text[:200],
-            )
+            logger.warning("BC categories fetch HTTP %s", resp.status_code)
             return []
         try:
             data = resp.json()
@@ -861,10 +857,9 @@ def fetch_biomedical_concepts_by_category(name: str, force: bool = False) -> lis
         resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             logger.warning(
-                "BC concepts by category fetch HTTP %s category=%s snippet=%s",
+                "BC concepts by category fetch HTTP %s category=%s",
                 resp.status_code,
                 category,
-                resp.text[:180],
             )
             return []
         try:
@@ -1019,16 +1014,13 @@ def fetch_biomedical_concepts(force: bool = False):
         _concept_cache["last_status"] = resp.status_code
         _concept_cache["last_url"] = url
         _concept_cache["last_error"] = None
-        _concept_cache["raw_snippet"] = resp.text[:400]
         if resp.status_code == 200:
             try:
                 data = resp.json()
             except ValueError:
                 # Not JSON, likely HTML error despite 200
                 _concept_cache["last_error"] = "200 but non-JSON response"
-                logger.error(
-                    "Concept fetch 200 but non-JSON body (snippet: %s)", resp.text[:200]
-                )
+                logger.error("Concept fetch 200 but non-JSON body (url: %s)", url)
                 return []
 
             # If JSON is a string, attempt second decode
@@ -1103,7 +1095,7 @@ def fetch_biomedical_concepts(force: bool = False):
             logger.info("Fetched %d concepts from remote API", len(concepts))
             return concepts
         else:
-            _concept_cache["last_error"] = f"HTTP {resp.status_code}: {resp.text[:200]}"
+            _concept_cache["last_error"] = f"HTTP {resp.status_code}"
     except Exception as e:
         logger.error("Concept fetch error: %s", e)
         _concept_cache["last_error"] = str(e)
@@ -1181,11 +1173,8 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
             _sdtm_specializations_cache["last_status"] = resp.status_code
             _sdtm_specializations_cache["last_url"] = url
             _sdtm_specializations_cache["last_error"] = None
-            _sdtm_specializations_cache["raw_snippet"] = resp.text[:400]
             if resp.status_code != 200:
-                _sdtm_specializations_cache["last_error"] = (
-                    f"HTTP {resp.status_code}: {resp.text[:180]}"
-                )
+                _sdtm_specializations_cache["last_error"] = f"HTTP {resp.status_code}"
                 logger.warning(
                     "SDTM specializations by BC code fetch HTTP %s for code=%s",
                     resp.status_code,
@@ -1316,7 +1305,6 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
         _sdtm_specializations_cache["last_status"] = resp.status_code
         _sdtm_specializations_cache["last_url"] = url
         _sdtm_specializations_cache["last_error"] = None
-        _sdtm_specializations_cache["raw_snippet"] = resp.text[:400]
         if resp.status_code == 200:
             try:
                 data = resp.json()
@@ -1390,12 +1378,10 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
                     href = _normalize_href(href)
                     packages.append({"title": title, "href": href})
         else:
-            _sdtm_specializations_cache["last_error"] = (
-                f"HTTP {resp.status_code}: {resp.text[:180]}"
-            )
+            _sdtm_specializations_cache["last_error"] = f"HTTP {resp.status_code}"
     except Exception as e:
         logger.error("SDTM dataset specializations fetch error: %s", e)
-        _sdtm_specializations_cache["last_error"] = str(e)
+        _sdtm_specializations_cache["last_error"] = "Fetch failed; see server logs"
 
     packages.sort(key=lambda p: p.get("title", "").lower())
     _sdtm_specializations_cache.update(data=packages, fetched_at=now)
@@ -1721,7 +1707,6 @@ def concepts_status():
         ),
         "last_status": _concept_cache.get("last_status"),
         "last_error": _concept_cache.get("last_error"),
-        "raw_snippet": _concept_cache.get("raw_snippet"),
         "api_key_present": bool(_get_cdisc_api_key()),
         "override_present": bool(_get_concepts_override()),
         "skip_remote": os.environ.get("CDISC_SKIP_REMOTE") == "1",
@@ -1742,7 +1727,6 @@ def sdtm_specializations_status():
         "last_status": _sdtm_specializations_cache.get("last_status"),
         "last_error": _sdtm_specializations_cache.get("last_error"),
         "last_url": _sdtm_specializations_cache.get("last_url"),
-        "raw_snippet": _sdtm_specializations_cache.get("raw_snippet"),
         "api_key_present": bool(_get_cdisc_api_key()),
         "skip_remote": os.environ.get("CDISC_SKIP_REMOTE") == "1",
         "override_present": bool(os.environ.get("CDISC_SDTM_SPECIALIZATIONS_JSON")),
@@ -1825,7 +1809,11 @@ def ui_cdisc_api_status(request: Request):
                 ("CDISC Library API is not reachable. Check your network connection."),
             )
         except Exception as exc:
-            status, detail = "error", f"CDISC API check failed: {exc}"
+            logger.warning("CDISC API connectivity check failed: %s", exc)
+            status, detail = (
+                "error",
+                "CDISC API check failed. See server logs for details.",
+            )
 
     return templates.TemplateResponse(
         request,

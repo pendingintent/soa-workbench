@@ -384,7 +384,7 @@ def ui_create_bc_surrogate(
             "reference": _nz(reference),
         },
     )
-    return RedirectResponse(f"/ui/soa/{soa_id}/activities", status_code=303)
+    return RedirectResponse(f"/ui/soa/{int(soa_id)}/activities", status_code=303)
 
 
 @ui_router.post(
@@ -441,7 +441,7 @@ def ui_update_bc_surrogate(
     _record_bc_surrogate_audit(
         soa_id, "update", surrogate_id, before=before, after=after
     )
-    return RedirectResponse(f"/ui/soa/{soa_id}/activities", status_code=303)
+    return RedirectResponse(f"/ui/soa/{int(soa_id)}/activities", status_code=303)
 
 
 @ui_router.post(
@@ -474,7 +474,7 @@ def ui_delete_bc_surrogate(request: Request, soa_id: int, surrogate_id: int):
     _record_bc_surrogate_audit(
         soa_id, "delete", surrogate_id, before=before, after=None
     )
-    return RedirectResponse(f"/ui/soa/{soa_id}/activities", status_code=303)
+    return RedirectResponse(f"/ui/soa/{int(soa_id)}/activities", status_code=303)
 
 
 # ---------------------------------------------------------------------------

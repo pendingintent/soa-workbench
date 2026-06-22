@@ -81,31 +81,31 @@ def ui_freeze_soa(
                 primary_reason_other=primary_reason_other or None,
             )
         except Exception as exc:
-            err = html.escape(str(exc))
+            logger.exception("Amendment body validation error: %s", exc)
             if request.headers.get("HX-Request") == "true":
                 return HTMLResponse(
-                    f"<div class='error' style='color:#c62828;"
-                    f"font-size:0.7em;'>Amendment error: {err}</div>"
+                    "<div class='error' style='color:#c62828;"
+                    "font-size:0.7em;'>Invalid amendment data. Please check your input.</div>"
                 )
             return HTMLResponse(
-                f"<div class='error' style='color:#c62828;'>"
-                f"Amendment error: {err}</div>",
-                headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
+                "<div class='error' style='color:#c62828;'>"
+                "Invalid amendment data. Please check your input.</div>",
+                headers={"Refresh": f"2; url=/ui/soa/{int(soa_id)}/freezes"},
             )
 
     try:
         freeze_id, _ = _create_freeze(soa_id, version_label or None)
     except HTTPException as he:
-        err = html.escape(str(he.detail))
+        logger.warning("Freeze creation failed for soa_id=%s: %s", soa_id, he.detail)
         if request.headers.get("HX-Request") == "true":
             return HTMLResponse(
-                f"<div class='error' style='color:#c62828;font-size:0.7em;'>"
-                f"Error: {err}</div>"
+                "<div class='error' style='color:#c62828;font-size:0.7em;'>"
+                "Freeze creation failed. Please try again.</div>"
             )
         return HTMLResponse(
-            f"<div class='error' style='color:#c62828;font-size:0.85em;'>"
-            f"Error: {err}</div>",
-            headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
+            "<div class='error' style='color:#c62828;font-size:0.85em;'>"
+            "Freeze creation failed. Please try again.</div>",
+            headers={"Refresh": f"2; url=/ui/soa/{int(soa_id)}/freezes"},
         )
 
     if amendment_body is not None:
@@ -185,18 +185,17 @@ def ui_freeze_soa(
                     "Failed to delete freeze %s after amendment creation error",
                     freeze_id,
                 )
-            err = html.escape(str(exc))
             if request.headers.get("HX-Request") == "true":
                 return HTMLResponse(
-                    f"<div class='error' style='color:#c62828;"
-                    f"font-size:0.7em;'>Amendment creation failed: {err}</div>",
+                    "<div class='error' style='color:#c62828;"
+                    "font-size:0.7em;'>Amendment creation failed. See server logs.</div>",
                     status_code=500,
                 )
             return HTMLResponse(
-                f"<div class='error' style='color:#c62828;'>"
-                f"Amendment creation failed: {err}</div>",
+                "<div class='error' style='color:#c62828;'>"
+                "Amendment creation failed. See server logs.</div>",
                 status_code=500,
-                headers={"Refresh": f"2; url=/ui/soa/{soa_id}/freezes"},
+                headers={"Refresh": f"2; url=/ui/soa/{int(soa_id)}/freezes"},
             )
 
     if request.headers.get("HX-Request") == "true":
