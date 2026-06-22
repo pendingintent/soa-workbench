@@ -3441,7 +3441,7 @@ class USDMDefineJSONProcessor:
 
     def _generate_hex_oid(self, content, prefix="ID"):
         """
-        Generate a consistent hex-based OID using MD5 hash.
+        Generate a consistent hex-based OID using SHA-256 hash.
 
         Args:
             content (str): Content to hash for OID generation
@@ -3450,7 +3450,7 @@ class USDMDefineJSONProcessor:
         Returns:
             str: Hex-based OID (e.g., "COND.3cd24cc4")
         """
-        content_hash = hashlib.md5(content.encode("utf-8")).hexdigest()
+        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         short_hash = content_hash[:8]
         return f"{prefix}.{short_hash}"
 
