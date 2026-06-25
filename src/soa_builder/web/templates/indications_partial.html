@@ -1,0 +1,138 @@
+<div id="indications-container">
+
+{% if not indications %}
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th><th>Name</th><th>Rare Disease</th><th>Codes</th><th></th>
+  </tr>
+  <tr class="fz-empty-row"><td colspan="5">No indications yet.</td></tr>
+</table>
+{% else %}
+
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>UID</th>
+    <th>Name</th>
+    <th>Rare Disease</th>
+    <th>Codes</th>
+    <th></th>
+  </tr>
+  {% for ind in indications %}
+  <tr>
+    <td><span class="obj-uid">{{ ind.indication_uid }}</span></td>
+    <td>
+      {{ ind.name }}
+      {% if ind.label %}
+        <div style="color:var(--am-text-muted);font-size:0.85em;">
+          {{ ind.label }}
+        </div>
+      {% endif %}
+      {% if ind.description %}
+        <div style="color:var(--am-text-muted);font-size:0.82em;">
+          {{ ind.description }}
+        </div>
+      {% endif %}
+    </td>
+    <td style="text-align:center;">
+      {% if ind.is_rare_disease %}
+        <span style="color:var(--am-success);font-weight:600;">&#10003;</span>
+      {% else %}
+        <span style="color:var(--am-text-muted);">—</span>
+      {% endif %}
+    </td>
+    <td>
+      {% if ind.codes %}
+        {{ ind.codes | length }} code{{ 's' if ind.codes|length != 1 else '' }}
+      {% else %}
+        <span style="color:var(--am-text-muted);">—</span>
+      {% endif %}
+    </td>
+    <td>
+      <form hx-post="/ui/soa/{{ soa_id }}/indications/{{ ind.id }}/delete"
+            hx-target="#indications-container" hx-swap="outerHTML"
+            style="display:inline;">
+        <button type="submit" class="am-btn am-btn-danger am-btn-xs">
+          &times;
+        </button>
+      </form>
+    </td>
+  </tr>
+
+  {# ── Codes subsection ── #}
+  <tr>
+    <td colspan="5"
+        style="padding:0 12px 12px 24px;background:var(--am-surface);">
+      <strong style="font-size:0.85em;color:var(--am-text-mid);">
+        Codes ({{ ind.codes | length }})
+      </strong>
+
+      <form hx-post="/ui/soa/{{ soa_id }}/indications/{{ ind.id }}/codes-add"
+            hx-target="#indications-container" hx-swap="outerHTML"
+            class="am-grid-2" style="margin-top:6px;">
+        <div class="am-field">
+          <label class="am-field-label">Code</label>
+          <input name="code" class="am-input am-input-compact"
+                 placeholder="e.g. C12345" />
+        </div>
+        <div class="am-field">
+          <label class="am-field-label">Code System</label>
+          <input name="code_system" class="am-input am-input-compact"
+                 placeholder="e.g. http://www.cdisc.org" />
+        </div>
+        <div class="am-field">
+          <label class="am-field-label">Version</label>
+          <input name="code_system_version" class="am-input am-input-compact"
+                 placeholder="e.g. 2024-09-27" />
+        </div>
+        <div class="am-field">
+          <label class="am-field-label">Decode</label>
+          <input name="decode" class="am-input am-input-compact"
+                 placeholder="Human-readable term" />
+        </div>
+        <div class="am-field-span" style="display:flex;gap:8px;">
+          <button type="submit" class="am-btn am-btn-info am-btn-xs">
+            Add Code
+          </button>
+        </div>
+      </form>
+
+      {% if ind.codes %}
+      <table class="fz-table" style="margin-top:6px;">
+        <tr class="fz-thead-row">
+          <th>UID</th>
+          <th>Code</th>
+          <th>Code System</th>
+          <th>Version</th>
+          <th>Decode</th>
+          <th></th>
+        </tr>
+        {% for c in ind.codes %}
+        <tr>
+          <td>
+            <span class="obj-uid" style="font-size:0.78em;">{{ c.code_uid }}</span>
+          </td>
+          <td style="font-size:0.88em;">{{ c.code or '—' }}</td>
+          <td style="font-size:0.82em;">{{ c.code_system or '—' }}</td>
+          <td style="font-size:0.82em;">{{ c.code_system_version or '—' }}</td>
+          <td style="font-size:0.88em;">{{ c.decode or '—' }}</td>
+          <td>
+            <form
+              hx-post="/ui/soa/{{ soa_id }}/indications/{{ ind.id }}/codes/{{ c.id }}/delete"
+              hx-target="#indications-container" hx-swap="outerHTML"
+              style="display:inline;">
+              <button type="submit"
+                      class="am-btn am-btn-danger am-btn-xs">&times;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+    </td>
+  </tr>
+
+  {% endfor %}
+</table>
+{% endif %}
+
+</div>

@@ -46,6 +46,7 @@
     <th title="Save Changes">Save</th>
     <th title="Biomedical Concepts">Concepts</th>
     <th title="Data Set Specializations">DSS</th>
+    <th title="CRF Specializations">CRF</th>
     <th title="Delete Activity">Delete</th>
     <th title="Save Order">
       <button type="button" id="save-activity-order-btn" data-soa-id="{{ soa_id }}"
@@ -69,10 +70,13 @@
     {% set selected_surrogate_list = activity_surrogates.get(a.id, []) %}
     {% set selected_surrogate_uids = selected_surrogate_list | map(attribute='surrogate_uid') | list %}
     {% set activity_group_uids = concepts_list | selectattr('concept_group_uid', 'defined') | selectattr('concept_group_uid') | map(attribute='concept_group_uid') | unique | list %}
+    {% set activity_category_names = concepts_list | selectattr('bc_category_name', 'defined') | selectattr('bc_category_name') | map(attribute='bc_category_name') | unique | list %}
     {% set activity_id = a.id %}
     {% include 'concepts_cell.html' %}
     {% set activity_id = a.id %}
     {% include 'dss_cell.html' %}
+    {% set activity_id = a.id %}
+    {% include 'crf_cell.html' %}
     <td>
       <form method="post" action="/ui/soa/{{ soa_id }}/activities/{{ a.id }}/delete" class="fz-inline-form">
         <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
@@ -84,7 +88,7 @@
     </td>
   </tr>
   {% else %}
-  <tr class="fz-empty-row"><td colspan="9">No activities yet.</td></tr>
+  <tr class="fz-empty-row"><td colspan="10">No activities yet.</td></tr>
   {% endfor %}
 </table>
 

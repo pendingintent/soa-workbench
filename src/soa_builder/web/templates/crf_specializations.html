@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="am-page-title">CRF Specializations (<span id="specTotal">{{ count }}</span>)</h2>
+<p style="font-size:0.9em;color:var(--am-text-mid);">
+  Data sourced from CDISC Library <code>{{ spec_path }}</code>.
+</p>
+
+<div style="margin-bottom:12px;">
+  <a href="/" class="am-back-link">&larr; Home</a>
+</div>
+
+{% if last_error %}
+<div style="padding:8px 12px;margin-bottom:12px;border:1px solid var(--am-danger,#c62828);background:#fee;color:var(--am-danger,#c62828);font-size:0.85em;border-radius:4px;">
+  <strong>Fetch diagnostics:</strong> Status {{ last_status }}{% if last_url %} from <code>{{ last_url }}</code>{% endif %}.<br/>
+  Error: {{ last_error }}<br/>
+  {% if missing_key %}<em>No API key detected — set <code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code>.</em>{% endif %}
+</div>
+{% elif missing_key %}
+<div style="padding:8px 12px;margin-bottom:12px;border:1px solid #cc9;background:#ffd;color:#660;font-size:0.85em;border-radius:4px;">
+  <strong>Notice:</strong> No API key provided; response may be empty or unauthorized. Set <code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code>.
+</div>
+{% endif %}
+
+<hr class="fz-section-divider" />
+
+<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <div class="am-field">
+    <label class="am-field-label" for="specSearch">Search</label>
+    <input id="specSearch" type="text" placeholder="Filter CRF specializations..."
+           class="fz-version-input" style="width:300px;" oninput="filterSpecs()" />
+  </div>
+  <span id="searchCount" style="font-size:0.84em;color:var(--am-text-mid);margin-top:18px;"></span>
+  <div style="margin-top:18px;display:flex;gap:8px;">
+    <form action="/ui/crf/specializations/refresh" method="post" class="am-inline-form">
+      <button type="submit" class="am-btn am-btn-slate am-btn-sm">&#x21bb; Refresh</button>
+    </form>
+  </div>
+</div>
+
+{% if rows and rows|length > 0 %}
+<table class="fz-table" id="specTable">
+  <tr class="fz-thead-row">
+    <th>Title</th>
+    <th>Detail</th>
+  </tr>
+  {% for r in rows %}
+  <tr>
+    <td>{{ r.title }}</td>
+    <td>
+      <a href="/ui/crf/specializations/{{ loop.index0 }}"
+         class="am-btn am-btn-info am-btn-xs">Detail</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="fz-no-data">No CRF specializations available.</p>
+<ul style="font-size:0.85em;color:var(--am-text-mid);margin-top:6px;">
+  <li>Verify API key env (<code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code>).</li>
+  <li>If testing offline, export <code>CDISC_CRF_SPECIALIZATIONS_JSON</code> with sample JSON.</li>
+  <li>Confirm network access to the CDISC Library domain.</li>
+  <li>Check <code>CDISC_CRF_API_BASE_URL</code> is set correctly.</li>
+</ul>
+{% endif %}
+
+<script>
+function filterSpecs(){
+  const q = document.getElementById('specSearch').value.toLowerCase();
+  const rows = document.querySelectorAll('#specTable tbody tr');
+  let visible = 0;
+  rows.forEach(tr => {
+    const text = tr.innerText.toLowerCase();
+    if(!q || text.indexOf(q) !== -1){ tr.style.display=''; visible++; }
+    else { tr.style.display='none'; }
+  });
+  const sc = document.getElementById('searchCount');
+  sc.textContent = q ? visible + ' match' + (visible===1?'':'es') : '';
+}
+</script>
+{% endblock %}

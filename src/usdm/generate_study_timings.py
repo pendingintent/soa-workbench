@@ -126,7 +126,7 @@ def build_usdm_timings(
                     "id": relative_to_from,
                     "extensionAttributes": [],
                     "code": rtf_code[0],
-                    "codeSystem": "db://" + rtf_codeSystem[0],
+                    "codeSystem": "http://www.cdisc.org",
                     "codeSystemVersion": rtf_codeSystemVersion[0],
                     "decode": rtf_decode[0],
                     "instanceType": "Code",

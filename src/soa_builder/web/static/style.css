@@ -56,11 +56,15 @@
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* Show submenu on hover */
-.sidenav ul li:hover > ul {
+/* Show submenu when heading is clicked (open state) */
+.sidenav ul li.open > ul {
     display: block;
     opacity: 1;
     transform: translateY(0);
+}
+
+.sidenav ul > li.open > a {
+    color: #f1f1f1;
 }
 
 /* Submenu item styling */
@@ -162,6 +166,7 @@ details.collapsible > *:not(summary) { padding: 0 14px 12px; }
   --am-danger:        #c62828;
   --am-danger-hover:  #a91e1e;
   --am-success:       #2e7d32;
+  --am-warn:          #e65100;
   --am-info:          #1565c0;
   --am-border:        #e2e8f0;
   --am-border-med:    #cbd5e1;
@@ -764,6 +769,37 @@ details.collapsible > *:not(summary) { padding: 0 14px 12px; }
   color: #1565c0;
   text-transform: uppercase;
   letter-spacing: 0.07em;
+}
+
+/* ---- CDISC API availability notice --------------------------- */
+.am-api-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--am-surface);
+  border: 1px solid var(--am-border);
+  border-left: 4px solid transparent;
+  border-radius: var(--am-radius);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+  color: var(--am-text);
+}
+.am-api-notice-ok    { border-left-color: var(--am-success); }
+.am-api-notice-warn  { border-left-color: var(--am-warn); }
+.am-api-notice-error { border-left-color: var(--am-danger); }
+.am-api-notice-info  { border-left-color: var(--am-info); }
+.am-api-notice-warn strong,
+.am-api-notice-error strong { color: var(--am-danger); }
+.am-api-notice-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.am-api-notice-detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--am-text-mid);
 }
 
 /* ---- Edit page: timeline selector ---------------------------- */

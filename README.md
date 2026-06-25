@@ -35,17 +35,85 @@ Recommended: editable install for development.
 > pre-commit run --all-files
 ```
 
+## Configuration
+
+All runtime settings are controlled through `config.env` in the project root.
+The file is loaded automatically at startup via python-dotenv.
+
+Edit `config.env` before starting the server:
+
+```ini
+# Server
+SOA_BUILDER_HOST=0.0.0.0
+SOA_BUILDER_PORT=8008
+
+# Database (relative to working directory)
+SOA_BUILDER_DB=soa_builder_web.db
+
+# Logging — set to 1 for DEBUG output
+SOA_BUILDER_DEBUG=0
+
+# Output directory for normalized SOA files
+SOA_BUILDER_NORMALIZED_ROOT=normalized
+
+# CDISC Library Cosmos v2 API base URL
+CDISC_BC_API_BASE_URL=https://api.library.cdisc.org/api/cosmos/v2
+
+# Set to 1 to skip all remote CDISC Library API calls (offline mode)
+CDISC_SKIP_REMOTE=0
+
+# Cache TTL in seconds for all CDISC Library API responses (default: 1 hour)
+SOA_BUILDER_CACHE_TTL=3600
+
+# HTTP timeout in seconds for outbound CDISC Library API requests
+CDISC_REQUEST_TIMEOUT=15
+
+# Set to 0 to disable eager BCP property loading at startup
+SOA_EAGER_BCP_POPULATION=1
+```
+
+> **CDISC API credentials** — `CDISC_API_KEY` and `CDISC_SUBSCRIPTION_KEY` are
+> secrets and must **not** be placed in `config.env`. Set them in your shell
+> environment instead:
+>
+> ```bash
+> export CDISC_API_KEY=your-key-here
+> ```
+>
+> The server will pick them up automatically via the process environment.
+
+### Full settings reference
+
+| Variable | Default | Description |
+|---|---|---|
+| `SOA_BUILDER_HOST` | `0.0.0.0` | IP address the server binds to |
+| `SOA_BUILDER_PORT` | `8008` | TCP port the server listens on |
+| `SOA_BUILDER_DB` | `soa_builder_web.db` | SQLite database file path |
+| `SOA_BUILDER_DEBUG` | `0` | Set `1` for DEBUG-level logging |
+| `SOA_BUILDER_NORMALIZED_ROOT` | `normalized` | Root dir for normalized SOA output |
+| `CDISC_BC_API_BASE_URL` | `https://api.library.cdisc.org/api/cosmos/v2` | CDISC Cosmos v2 API base URL |
+| `CDISC_SKIP_REMOTE` | `0` | Set `1` to skip remote CDISC API calls |
+| `CDISC_CONCEPTS_JSON` | _(empty)_ | Override biomedical concepts (JSON file path or inline JSON) |
+| `CDISC_SDTM_SPECIALIZATIONS_JSON` | _(empty)_ | Override SDTM specializations (JSON file path or inline JSON) |
+| `SOA_BUILDER_CACHE_TTL` | `3600` | Cache TTL (seconds) for all CDISC API responses |
+| `CDISC_REQUEST_TIMEOUT` | `15` | HTTP timeout (seconds) for CDISC Library API requests |
+| `SOA_EAGER_BCP_POPULATION` | `1` | Set `0` to enable lazy BCP property loading |
+| `CDISC_API_KEY` | _(shell env)_ | CDISC Library API key — set in shell, not `config.env` |
+| `CDISC_SUBSCRIPTION_KEY` | _(shell env)_ | CDISC Library subscription key — set in shell, not `config.env` |
+
+---
+
 ## Start web server
 ```bash
-soa-builder-web  # starts uvicorn on 0.0.0.0:8000 with reload
+soa-builder-web  # starts uvicorn on the host/port set in config.env
 ```
 
 Or manually:
 ```bash
-uvicorn soa_builder.web.app:app --reload --port 8000
+uvicorn soa_builder.web.app:app --reload --port 8008
 ```
 HTML UI:
-- Open http://localhost:8000/ in a browser.
+- Open http://localhost:8008/ in a browser (or the port set in `config.env`).
 - Create a new Schedule of Activities for a study or access an existing one.
 	- When a study is chosen, additional navigation links are available in the navigation menu that are unique to the Study context.
 	- More options and parameters for configuring the USDM classes are available through these navigation links.
@@ -93,6 +161,57 @@ python -m usdm.generate_encounters 1 -o encounters.json
 python -m usdm.generate_study_epochs 1 -o epochs.json
 # See src/usdm/ for all generator scripts
 ```
+
+---
+
+## MCP Server
+
+The workbench ships an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that exposes SoA data as tools for Claude agents. This enables workflows such as "analyze this protocol PDF and populate the visit schedule" without copy-paste.
+
+### Setup
+
+The server is registered in `.mcp.json` and starts automatically when Claude Code loads the project. Confirm it is listed with `/mcp` in a Claude session.
+
+The `soa-mcp` command is installed alongside `soa-builder-web`:
+
+```bash
+pip install -e .
+soa-mcp   # starts the MCP stdio server (for manual testing)
+```
+
+The server reads `SOA_BUILDER_DB` from the environment (falls back to `soa_builder_web.db`). No web server needs to be running — it accesses the SQLite database directly.
+
+### Available Tools (11)
+
+| Tool | Description |
+|------|-------------|
+| `list_soas` | List all Schedules of Activities |
+| `create_soa` | Create a new SoA; returns `soa_id` |
+| `get_soa` | Get SoA metadata by id |
+| `list_visits` | List visit definitions ordered by `order_index` |
+| `create_visit` | Add a visit (name, label, type) |
+| `list_activities` | List activities ordered by `order_index` |
+| `create_activity` | Add an activity (name, label, description) |
+| `assign_instance_activity` | Mark an activity at a ScheduledActivityInstance; use `get_soa_matrix` for ids |
+| `get_soa_matrix` | Return the visits × activities grid (instances, activities, cells) |
+| `get_usdm_json` | Generate a USDM component as JSON (`full`, `encounters`, `activities`, `biomedical_concepts`, etc.) |
+| `get_define_json` | Generate a Define-JSON document (requires `sdtmct` date and `CDISC_API_KEY`) |
+
+### Configuration
+
+The `.mcp.json` entry uses the absolute path to the venv console script:
+
+```json
+"soa-workbench": {
+  "command": "/path/to/.venv/bin/soa-mcp",
+  "args": [],
+  "env": {
+    "SOA_BUILDER_DB": "/path/to/soa_builder_web.db"
+  }
+}
+```
+
+Update the paths to match your environment after cloning.
 
 ---
 

@@ -1,0 +1,104 @@
+<div id="gov-dates-section" {% if oob %}hx-swap-oob="true"{% endif %}>
+  <table class="fz-table">
+    <tr class="fz-thead-row">
+      <th>UID</th>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Date</th>
+      <th style="width:1%;white-space:nowrap;">Save</th>
+      <th style="width:1%;white-space:nowrap;">Delete</th>
+    </tr>
+    {% for d in gov_dates %}
+    <tr>
+      <td class="fz-td-version"><span class="obj-uid">{{ d.date_uid }}</span></td>
+      <td><input name="name" value="{{ d.name }}" required class="am-input-compact" /></td>
+      <td>
+        <select name="type_code" required class="am-select-compact">
+          {% for code, sv in gov_date_type_terms.items()|sort(attribute='1') %}
+          <option value="{{ code }}" {% if d.type_code == code %}selected{% endif %}>{{ sv }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td>
+        <input name="date_value" type="date" value="{{ d.date_value }}"
+               required class="am-input-compact" style="width:130px;" />
+      </td>
+      <td style="width:1%;white-space:nowrap;">
+        <button type="button" class="am-btn am-btn-slate am-btn-sm"
+                hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-date/{{ d.id }}/update"
+                hx-target="#gov-dates-section" hx-swap="outerHTML"
+                hx-include="closest tr">Save</button>
+      </td>
+      <td style="width:1%;white-space:nowrap;">
+        <button type="button" class="am-btn am-btn-danger am-btn-sm"
+                hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-date/{{ d.id }}/delete"
+                hx-target="#gov-dates-section" hx-swap="outerHTML"
+                onclick="return confirm('Remove this governance date?')">Delete</button>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="6" style="padding:0 11px 12px 30px; background:var(--am-surface); border-bottom:2px solid var(--am-border-med);">
+        <div style="font-size:0.72em; font-weight:700; color:var(--am-text-mid); text-transform:uppercase; letter-spacing:0.07em; margin:8px 0 4px;">Geographic Scopes</div>
+        <table class="fz-table" style="font-size:0.82em;">
+          <tr class="fz-thead-row">
+            <th>Scope UID</th>
+            <th style="width:1%;white-space:nowrap;">Unlink</th>
+          </tr>
+          {% for s_uid in d.scope_uids %}
+          <tr>
+            <td>{{ s_uid }}</td>
+            <td style="width:1%;white-space:nowrap;">
+              <button type="button" class="am-btn am-btn-danger am-btn-sm"
+                      hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-date/{{ d.id }}/unlink-scope/{{ s_uid }}"
+                      hx-target="#gov-dates-section" hx-swap="outerHTML"
+                      onclick="return confirm('Remove scope link?')">Unlink</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr class="fz-empty-row"><td colspan="2">No scopes linked.</td></tr>
+          {% endfor %}
+        </table>
+        {% if geo_scopes %}
+        <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-date/{{ d.id }}/link-scope"
+              hx-target="#gov-dates-section" hx-swap="outerHTML"
+              style="display:flex; gap:6px; align-items:flex-end; margin-top:8px; padding-top:8px; border-top:1px dashed var(--am-border-med);">
+          <select name="scope_uid" required class="am-select-compact" style="min-width:160px;">
+            <option value="" disabled selected>— select scope —</option>
+            {% for s in geo_scopes %}
+            {% if s.scope_uid not in d.scope_uids %}
+            <option value="{{ s.scope_uid }}">{{ s.scope_uid }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+          <button type="submit" class="am-btn am-btn-slate am-btn-sm">+ Link Scope</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr class="fz-empty-row"><td colspan="6">No governance dates added.</td></tr>
+    {% endfor %}
+  </table>
+
+  <details class="am-add-change-panel" style="margin-top:10px;">
+    <summary class="am-add-change-summary">+ Add Governance Date</summary>
+    <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-dates/add"
+          hx-target="#gov-dates-section" hx-swap="outerHTML"
+          class="am-change-form-grid">
+      <label>Name <span class="am-required">*</span></label>
+      <input name="name" required class="am-input" placeholder="Date name" />
+      <label>Type <span class="am-required">*</span></label>
+      <select name="type_code" required class="am-select">
+        <option value="" disabled selected>— select —</option>
+        {% for code, sv in gov_date_type_terms.items()|sort(attribute='1') %}
+        <option value="{{ code }}">{{ sv }}</option>
+        {% endfor %}
+      </select>
+      <label>Date <span class="am-required">*</span></label>
+      <input name="date_value" type="date" required class="am-input" />
+      <div class="am-form-actions">
+        <button type="submit" class="am-btn am-btn-primary">Add Date</button>
+      </div>
+    </form>
+  </details>
+</div>

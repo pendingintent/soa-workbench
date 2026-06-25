@@ -1,5 +1,14 @@
 {% extends 'base.html' %}
 {% block content %}
+
+<div id="cdisc-api-notice"
+     hx-get="/ui/cdisc-api-status"
+     hx-trigger="load"
+     hx-swap="outerHTML">
+</div>
+
+<hr class="fz-section-divider" />
+
 <h2>Studies</h2>
 
 <hr class="fz-section-divider" />
@@ -27,6 +36,23 @@
   </form>
 </div>
 
+<div class="fz-create-card fz-create-card-full" style="margin-top:16px;">
+  <h3>Import Study from Bundle</h3>
+  <form method="post" action="/ui/soa/import/bundle" enctype="multipart/form-data"
+        class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Bundle File <span class="am-required">*</span></label>
+      <input type="file" name="file" accept=".json" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Study Name Override</label>
+      <input name="name" placeholder="Leave blank to use bundle name"
+             class="fz-version-input" />
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Import Study</button>
+  </form>
+</div>
+
 <h3 class="fz-section-heading">Existing Studies ({{ soas|length }})</h3>
 
 <table class="fz-table">
@@ -38,7 +64,9 @@
     <th>Description</th>
     <th>Created</th>
     <th>Actions</th>
+    <th>Export</th>
     <th>Audits</th>
+    <th>Delete</th>
   </tr>
   {% for s in soas %}
   <tr>
@@ -50,9 +78,136 @@
         title="{{ s.study_description }}">{{ s.study_description or '' }}</td>
     <td class="fz-td-date">{{ s.created_at }}</td>
     <td><a href="/ui/soa/{{ s.id }}/edit" class="am-btn am-btn-slate am-btn-sm">Edit</a></td>
+    <td><a href="/soa/{{ s.id }}/export/bundle" class="am-btn am-btn-slate am-btn-sm">Export</a></td>
     <td><a href="/ui/soa/{{ s.id }}/audits" class="am-btn am-btn-slate am-btn-sm">Audits</a></td>
+    <td>
+      <button class="am-btn am-btn-danger am-btn-sm"
+              data-soa-id="{{ s.id }}"
+              data-name="{{ s.name | e }}"
+              data-study-id="{{ (s.study_id or '') | e }}"
+              onclick="confirmDeleteSoa(this)">
+        Delete
+      </button>
+    </td>
   </tr>
   {% endfor %}
 </table>
+
+<!-- Delete SOA modal -->
+<div id="delete-soa-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+            z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--am-card-bg,#fff);border-radius:8px;
+              padding:28px 32px;max-width:440px;width:90%;
+              box-shadow:0 4px 24px rgba(0,0,0,.25);">
+    <h3 style="margin:0 0 6px;color:var(--am-danger,#c0392b);">
+      Delete Study
+    </h3>
+    <p id="delete-modal-desc"
+       style="margin:0 0 16px;font-size:0.9em;color:var(--am-text);">
+    </p>
+    <label id="delete-confirm-label"
+           style="display:block;font-size:0.85em;margin-bottom:4px;">
+      Type the Study ID to confirm:
+    </label>
+    <input id="delete-confirm-input"
+           class="fz-version-input"
+           style="width:100%;box-sizing:border-box;margin-bottom:16px;"
+           placeholder=""
+           oninput="checkDeleteInput()" />
+    <p id="delete-error-msg"
+       style="display:none;color:var(--am-danger,#c0392b);
+              font-size:0.85em;margin:0 0 10px;"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="am-btn am-btn-slate am-btn-sm"
+              onclick="closeDeleteModal()">Cancel</button>
+      <button id="delete-confirm-btn"
+              class="am-btn am-btn-danger am-btn-sm"
+              disabled
+              onclick="submitDelete()">
+        Confirm Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var _deleteSoaId = null;
+  var _deleteConfirmToken = null;
+
+  function confirmDeleteSoa(btn) {
+    var soaId = btn.dataset.soaId;
+    var name = btn.dataset.name;
+    var studyId = btn.dataset.studyId;
+    if (!window.confirm(
+      'Delete study "' + name + '"?\nThis action cannot be undone.'
+    )) return;
+    // Studies imported without a study_id confirm by name instead
+    var token = studyId || name;
+    _deleteSoaId = soaId;
+    _deleteConfirmToken = token;
+    document.getElementById('delete-modal-desc').textContent =
+      studyId ? 'Study: ' + name + ' (' + studyId + ')' : 'Study: ' + name;
+    document.getElementById('delete-confirm-label').textContent = studyId
+      ? 'Type the Study ID to confirm:'
+      : 'No Study ID set — type the Study Name to confirm:';
+    document.getElementById('delete-confirm-input').value = '';
+    document.getElementById('delete-confirm-input').placeholder = token;
+    document.getElementById('delete-confirm-btn').disabled = true;
+    document.getElementById('delete-error-msg').style.display = 'none';
+    var modal = document.getElementById('delete-soa-modal');
+    modal.style.display = 'flex';
+    document.getElementById('delete-confirm-input').focus();
+  }
+
+  function checkDeleteInput() {
+    var val = document.getElementById('delete-confirm-input').value;
+    document.getElementById('delete-confirm-btn').disabled =
+      (val !== _deleteConfirmToken);
+  }
+
+  function submitDelete() {
+    var btn = document.getElementById('delete-confirm-btn');
+    var val = document.getElementById('delete-confirm-input').value;
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+    var body = new URLSearchParams();
+    body.append('confirm_study_id', val);
+    fetch('/ui/soa/' + _deleteSoaId + '/delete', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body.toString()
+    }).then(function(resp) {
+      if (resp.ok) {
+        window.location = '/';
+        return;
+      }
+      return resp.json().then(function(data) {
+        var msg = document.getElementById('delete-error-msg');
+        msg.textContent = 'Delete failed: ' + (data.detail || JSON.stringify(data));
+        msg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Confirm Delete';
+      });
+    }).catch(function(err) {
+      var msg = document.getElementById('delete-error-msg');
+      msg.textContent = 'Delete failed: ' + err;
+      msg.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Confirm Delete';
+    });
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('delete-soa-modal').style.display = 'none';
+    _deleteSoaId = null;
+    _deleteConfirmToken = null;
+  }
+
+  document.getElementById('delete-soa-modal')
+    .addEventListener('click', function(e) {
+      if (e.target === this) closeDeleteModal();
+    });
+</script>
 
 {% endblock %}

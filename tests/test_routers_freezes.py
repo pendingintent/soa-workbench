@@ -4,6 +4,7 @@ import os
 import sqlite3
 from fastapi.testclient import TestClient
 from soa_builder.web.app import app
+from soa_builder.web.routers._freeze_helpers import _diff_freezes_limited
 
 client = TestClient(app)
 
@@ -374,3 +375,277 @@ def test_get_freeze_wrong_soa():
     # Try to access from soa2
     resp = client.get(f"/soa/{soa_id2}/freeze/{freeze_id}")
     assert resp.status_code == 404
+
+
+# --- USDM entity diff coverage tests ---
+# Call _diff_freezes_limited directly to avoid the pre-existing route ordering
+# conflict between GET /soa/{soa_id}/freeze/{freeze_id} and
+# GET /soa/{soa_id}/freeze/diff.json.
+
+
+def _diff(soa_id, freeze_id1, freeze_id2):
+    return _diff_freezes_limited(soa_id, freeze_id1, freeze_id2, limit=None)
+
+
+def test_diff_epochs_captured():
+    """Epoch changes appear in diff entities.epochs."""
+    r = client.post("/soa", json={"name": "Epoch Diff Study"})
+    soa_id = r.json()["id"]
+    ep_r = client.post(
+        f"/soa/{soa_id}/epochs",
+        json={"name": "Screening", "epoch_label": "SCR", "type": "SCREENING"},
+    )
+    assert ep_r.status_code == 200
+    epoch_id = ep_r.json()["id"]
+
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v1"})
+    freeze_id1 = _get_latest_freeze_id(soa_id)
+
+    client.patch(
+        f"/soa/{soa_id}/epochs/{epoch_id}",
+        json={"epoch_label": "SCR_UPDATED"},
+    )
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v2"})
+    freeze_id2 = _get_latest_freeze_id(soa_id)
+
+    diff = _diff(soa_id, freeze_id1, freeze_id2)
+    entities = diff.get("entities", {})
+    assert "epochs" in entities
+    epochs_diff = entities["epochs"]
+    assert (
+        len(epochs_diff["changed"]) > 0
+        or len(epochs_diff["added"]) > 0
+        or len(epochs_diff["removed"]) > 0
+    ), f"Expected epoch changes, got: {epochs_diff}"
+
+
+def test_diff_arms_captured():
+    """Arm changes appear in diff entities.arms."""
+    r = client.post("/soa", json={"name": "Arm Diff Study"})
+    soa_id = r.json()["id"]
+    arm_r = client.post(
+        f"/soa/{soa_id}/arms",
+        json={"name": "Placebo", "label": "PBO"},
+    )
+    assert arm_r.status_code == 201
+
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v1"})
+    freeze_id1 = _get_latest_freeze_id(soa_id)
+
+    client.post(
+        f"/soa/{soa_id}/arms",
+        json={"name": "Active", "label": "ACT"},
+    )
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v2"})
+    freeze_id2 = _get_latest_freeze_id(soa_id)
+
+    diff = _diff(soa_id, freeze_id1, freeze_id2)
+    entities = diff.get("entities", {})
+    assert "arms" in entities
+    arms_diff = entities["arms"]
+    assert len(arms_diff["added"]) > 0, f"Expected new arm in added, got: {arms_diff}"
+
+
+def test_diff_timings_captured():
+    """Timing changes appear in diff entities.timings."""
+    r = client.post("/soa", json={"name": "Timing Diff Study"})
+    soa_id = r.json()["id"]
+    timing_r = client.post(
+        f"/soa/{soa_id}/timings",
+        json={"name": "T1", "type": "AFTER"},
+    )
+    assert timing_r.status_code in (200, 201)
+
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v1"})
+    freeze_id1 = _get_latest_freeze_id(soa_id)
+
+    client.post(
+        f"/soa/{soa_id}/timings",
+        json={"name": "T2", "type": "AFTER"},
+    )
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v2"})
+    freeze_id2 = _get_latest_freeze_id(soa_id)
+
+    diff = _diff(soa_id, freeze_id1, freeze_id2)
+    entities = diff.get("entities", {})
+    assert "timings" in entities
+    timings_diff = entities["timings"]
+    assert len(timings_diff["added"]) > 0, (
+        f"Expected new timing in added, got: {timings_diff}"
+    )
+
+
+def test_diff_objectives_captured():
+    """Objective changes appear in diff entities.objectives."""
+    r = client.post("/soa", json={"name": "Objective Diff Study"})
+    soa_id = r.json()["id"]
+    obj_r = client.post(
+        f"/soa/{soa_id}/objectives",
+        json={"name": "Obj1", "text": "Primary objective", "level": "PRIMARY"},
+    )
+    assert obj_r.status_code in (200, 201)
+
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v1"})
+    freeze_id1 = _get_latest_freeze_id(soa_id)
+
+    client.post(
+        f"/soa/{soa_id}/objectives",
+        json={
+            "name": "Obj2",
+            "text": "Secondary objective",
+            "level": "SECONDARY",
+        },
+    )
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v2"})
+    freeze_id2 = _get_latest_freeze_id(soa_id)
+
+    diff = _diff(soa_id, freeze_id1, freeze_id2)
+    entities = diff.get("entities", {})
+    assert "objectives" in entities
+    obj_diff = entities["objectives"]
+    assert len(obj_diff["added"]) > 0, (
+        f"Expected new objective in added, got: {obj_diff}"
+    )
+
+
+def test_diff_endpoints_captured():
+    """Endpoint changes appear in diff entities.endpoints."""
+    r = client.post("/soa", json={"name": "Endpoint Diff Study"})
+    soa_id = r.json()["id"]
+    obj_r = client.post(
+        f"/soa/{soa_id}/objectives",
+        json={"name": "ObjE", "text": "Objective", "level": "PRIMARY"},
+    )
+    obj_uid = obj_r.json().get("objective_uid", "")
+    ep_r = client.post(
+        f"/soa/{soa_id}/endpoints",
+        json={
+            "name": "EP1",
+            "text": "Endpoint text",
+            "objective_uid": obj_uid,
+            "level": "PRIMARY",
+        },
+    )
+    assert ep_r.status_code in (200, 201)
+
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v1"})
+    freeze_id1 = _get_latest_freeze_id(soa_id)
+
+    client.post(
+        f"/soa/{soa_id}/endpoints",
+        json={
+            "name": "EP2",
+            "text": "Second endpoint",
+            "objective_uid": obj_uid,
+            "level": "SECONDARY",
+        },
+    )
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v2"})
+    freeze_id2 = _get_latest_freeze_id(soa_id)
+
+    diff = _diff(soa_id, freeze_id1, freeze_id2)
+    entities = diff.get("entities", {})
+    assert "endpoints" in entities
+    ep_diff = entities["endpoints"]
+    assert len(ep_diff["added"]) > 0, f"Expected new endpoint in added, got: {ep_diff}"
+
+
+def test_diff_entities_empty_when_no_changes():
+    """Two identical consecutive freezes produce no entity changes."""
+    r = client.post("/soa", json={"name": "No Change Study"})
+    soa_id = r.json()["id"]
+    client.post(
+        f"/soa/{soa_id}/epochs",
+        json={"name": "Epoch1", "epoch_label": "E1"},
+    )
+    client.post(
+        f"/soa/{soa_id}/arms",
+        json={"name": "Arm1", "label": "A1"},
+    )
+
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v1"})
+    freeze_id1 = _get_latest_freeze_id(soa_id)
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v2"})
+    freeze_id2 = _get_latest_freeze_id(soa_id)
+
+    diff = _diff(soa_id, freeze_id1, freeze_id2)
+    entities = diff.get("entities", {})
+    for ent_key, ent_data in entities.items():
+        assert len(ent_data.get("added", [])) == 0, (
+            f"{ent_key} added unexpected: {ent_data['added']}"
+        )
+        assert len(ent_data.get("removed", [])) == 0, (
+            f"{ent_key} removed unexpected: {ent_data['removed']}"
+        )
+        assert len(ent_data.get("changed", [])) == 0, (
+            f"{ent_key} changed unexpected: {ent_data['changed']}"
+        )
+
+
+def test_diff_all_entities_in_xlsx():
+    """XLSX export with left/right includes EntityDiff sheet."""
+    import io
+    import openpyxl
+
+    r = client.post("/soa", json={"name": "XLSX EntityDiff Study"})
+    soa_id = r.json()["id"]
+    # Export requires at least one ScheduledActivityInstance and one activity
+    client.post(f"/soa/{soa_id}/instances", json={"name": "Instance1"})
+    client.post(f"/soa/{soa_id}/activities", json={"name": "A1"})
+    client.post(
+        f"/soa/{soa_id}/epochs",
+        json={"name": "Epoch A", "epoch_label": "EA"},
+    )
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v1"})
+    freeze_id1 = _get_latest_freeze_id(soa_id)
+
+    client.post(
+        f"/soa/{soa_id}/epochs",
+        json={"name": "Epoch B", "epoch_label": "EB"},
+    )
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v2"})
+    freeze_id2 = _get_latest_freeze_id(soa_id)
+
+    resp = client.get(f"/soa/{soa_id}/export/xlsx?left={freeze_id1}&right={freeze_id2}")
+    assert resp.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(resp.content))
+    assert "EntityDiff" in wb.sheetnames, (
+        f"Expected EntityDiff sheet, got sheets: {wb.sheetnames}"
+    )
+    ws = wb["EntityDiff"]
+    headers = [c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
+    assert "EntityType" in headers
+    assert "UID" in headers
+    assert "ChangeType" in headers
+    # Verify at least one row of epoch data
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    epoch_rows = [row for row in rows if row and row[0] == "epochs"]
+    assert len(epoch_rows) > 0, (
+        f"Expected epoch rows in EntityDiff, got rows: {rows[:5]}"
+    )
+
+
+def test_freeze_snapshot_includes_new_entity_keys():
+    """Freeze snapshot JSON includes all new USDM entity keys."""
+    r = client.post("/soa", json={"name": "Snapshot Keys Study"})
+    soa_id = r.json()["id"]
+    client.post(f"/ui/soa/{soa_id}/freeze", data={"version_label": "v1"})
+    freeze_id = _get_latest_freeze_id(soa_id)
+
+    resp = client.get(f"/soa/{soa_id}/freeze/{freeze_id}")
+    assert resp.status_code == 200
+    snap = resp.json()
+    expected_keys = [
+        "encounters_full",
+        "study_cells",
+        "schedule_timelines",
+        "instances",
+        "decision_instances",
+        "bc_surrogates",
+        "biomedical_concepts",
+        "bc_properties",
+        "amendments",
+        "extension_attributes",
+    ]
+    for key in expected_keys:
+        assert key in snap, f"Missing key '{key}' in freeze snapshot"

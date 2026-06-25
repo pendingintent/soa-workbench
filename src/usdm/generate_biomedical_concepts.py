@@ -12,7 +12,10 @@ from .generate_biomedical_concept_properties import (
     build_usdm_biomedical_concept_properties_for_soa as _ensure_bcp_populated,
 )
 from .generate_extension_attributes import (
+    build_usdm_dss_extension_attributes,
+    build_usdm_crf_extension_attributes,
     populate_extension_attributes,
+    populate_crf_extension_attributes,
 )
 
 
@@ -33,6 +36,7 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
     """
     _ensure_bcp_populated(soa_id)
     populate_extension_attributes(soa_id)
+    populate_crf_extension_attributes(soa_id)
 
     conn = _connect()
     cur = conn.cursor()
@@ -48,9 +52,13 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
             c.code_system_version code_system_version,
             c.decode decode
         FROM biomedical_concept bc
-        INNER JOIN activity_concept ac ON bc.biomedical_concept_uid = ac.concept_uid AND bc.soa_id = ac.soa_id
-        INNER JOIN alias_code a ON bc.code = a.alias_code_uid AND bc.soa_id = a.soa_id
-        INNER JOIN code c ON a.standard_code = c.code_uid AND a.soa_id = c.soa_id
+        INNER JOIN activity_concept ac
+               ON bc.biomedical_concept_uid = ac.concept_uid
+              AND bc.soa_id = ac.soa_id
+        LEFT  JOIN alias_code a
+               ON bc.code = a.alias_code_uid AND bc.soa_id = a.soa_id
+        LEFT  JOIN code c
+               ON a.standard_code = c.code_uid AND a.soa_id = c.soa_id
         WHERE bc.soa_id = ?
         ORDER BY bc.id;
         """,
@@ -84,30 +92,35 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
         synonyms = synonyms_map[concept_code]
         reference = reference_map[concept_code]
 
+        code_block = None
+        if alias_code:
+            code_block = {
+                "id": alias_code,
+                "extensionAttributes": [],
+                "standardCode": {
+                    "id": code_uid or "",
+                    "extensionAttributes": [],
+                    "code": concept_code or "",
+                    "codeSystem": "http://www.cdisc.org",
+                    "codeSystemVersion": code_system_version or "",
+                    "decode": decode or "",
+                    "instanceType": "Code",
+                },
+                "standardCodeAliases": [],
+                "instanceType": "AliasCode",
+            }
         biomedical_concept = {
             "id": id,
-            # "extensionAttributes": build_usdm_extension_attributes(soa_id, id),
-            "extensionAttributes": [],
+            "extensionAttributes": (
+                build_usdm_dss_extension_attributes(soa_id, id)
+                + build_usdm_crf_extension_attributes(soa_id, id)
+            ),
             "name": name,
             "label": label,
             "synonyms": synonyms,
             "reference": reference,
             "properties": build_usdm_biomedical_concept_properties(soa_id, id),
-            "code": {
-                "id": alias_code,
-                "extensionAttributes": [],
-                "standardCode": {
-                    "id": code_uid,
-                    "extensionAttributes": [],
-                    "code": concept_code,
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": code_system_version,
-                    "decode": decode,
-                    "instanceType": "Code",
-                },
-                "standardCodeAliases": [],
-                "instanceType": "AliasCode",
-            },
+            "code": code_block,
             "notes": [],
             "instanceType": "BiomedicalConcept",
         }

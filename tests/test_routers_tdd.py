@@ -36,7 +36,7 @@ def test_ui_tdd_404_nonexistent_soa():
 
 
 def test_download_tdd_ta_json():
-    """Download TA domain as JSON returns attachment with list payload."""
+    """Download TA domain as JSON returns attachment with dataset-json 1.1."""
     r = client.post("/soa", json={"name": "TDD TA JSON Test"})
     soa_id = r.json()["id"]
 
@@ -45,7 +45,11 @@ def test_download_tdd_ta_json():
     assert "application/json" in resp.headers.get("content-type", "")
     assert "attachment" in resp.headers.get("content-disposition", "")
     assert "ta.json" in resp.headers.get("content-disposition", "")
-    assert isinstance(resp.json(), list)
+    data = resp.json()
+    assert isinstance(data, dict)
+    assert data["datasetJSONVersion"] == "1.1.0"
+    assert data["name"] == "TA"
+    assert isinstance(data["rows"], list)
 
 
 def test_download_tdd_ta_csv():
@@ -62,7 +66,7 @@ def test_download_tdd_ta_csv():
 
 
 def test_download_tdd_te_json():
-    """Download TE domain as JSON returns attachment with list payload."""
+    """Download TE domain as JSON returns attachment with dataset-json 1.1."""
     r = client.post("/soa", json={"name": "TDD TE JSON Test"})
     soa_id = r.json()["id"]
 
@@ -71,7 +75,11 @@ def test_download_tdd_te_json():
     assert "application/json" in resp.headers.get("content-type", "")
     assert "attachment" in resp.headers.get("content-disposition", "")
     assert "te.json" in resp.headers.get("content-disposition", "")
-    assert isinstance(resp.json(), list)
+    data = resp.json()
+    assert isinstance(data, dict)
+    assert data["datasetJSONVersion"] == "1.1.0"
+    assert data["name"] == "TE"
+    assert isinstance(data["rows"], list)
 
 
 def test_download_tdd_te_csv():
@@ -135,9 +143,10 @@ def test_download_tdd_ta_with_data():
 
     resp = client.get(f"/soa/{soa_id}/tdd/ta/json")
     assert resp.status_code == 200
-    records = resp.json()
-    assert len(records) >= 1
-    rec = records[0]
+    data = resp.json()
+    assert data["records"] >= 1
+    col_names = [c["name"] for c in data["columns"]]
+    rec = dict(zip(col_names, data["rows"][0]))
     assert rec["DOMAIN"] == "TA"
     assert rec["ARMCD"] == "ArmA"
     assert rec["ETCD"] == "EL-SCREEN"
@@ -154,9 +163,10 @@ def test_download_tdd_te_with_data():
 
     resp = client.get(f"/soa/{soa_id}/tdd/te/json")
     assert resp.status_code == 200
-    records = resp.json()
-    assert len(records) >= 1
-    rec = records[0]
+    data = resp.json()
+    assert data["records"] >= 1
+    col_names = [c["name"] for c in data["columns"]]
+    rec = dict(zip(col_names, data["rows"][0]))
     assert rec["DOMAIN"] == "TE"
     assert rec["ETCD"] == "EL-RUN-IN"
     assert "TESTRL" in rec
@@ -165,7 +175,7 @@ def test_download_tdd_te_with_data():
 
 
 def test_download_tdd_tv_json():
-    """Download TV domain as JSON returns attachment with list payload."""
+    """Download TV domain as JSON returns attachment with dataset-json 1.1."""
     r = client.post("/soa", json={"name": "TDD TV JSON Test"})
     soa_id = r.json()["id"]
 
@@ -174,7 +184,11 @@ def test_download_tdd_tv_json():
     assert "application/json" in resp.headers.get("content-type", "")
     assert "attachment" in resp.headers.get("content-disposition", "")
     assert "tv.json" in resp.headers.get("content-disposition", "")
-    assert isinstance(resp.json(), list)
+    data = resp.json()
+    assert isinstance(data, dict)
+    assert data["datasetJSONVersion"] == "1.1.0"
+    assert data["name"] == "TV"
+    assert isinstance(data["rows"], list)
 
 
 def test_download_tdd_tv_csv():
@@ -200,13 +214,14 @@ def test_download_tdd_tv_with_data():
 
     resp = client.get(f"/soa/{soa_id}/tdd/tv/json")
     assert resp.status_code == 200
-    records = resp.json()
-    assert len(records) == 2
-    rec = records[0]
+    data = resp.json()
+    assert data["records"] == 2
+    col_names = [c["name"] for c in data["columns"]]
+    rec = dict(zip(col_names, data["rows"][0]))
     assert rec["DOMAIN"] == "TV"
     assert rec["VISIT"] == "Visit 1"
     assert rec["VISITNUM"] == 1
-    assert rec["VISITDY"] == ""
+    assert rec["VISITDY"] is None
     assert rec["ARMCD"] == ""
     assert "ARM" in rec
     assert "TVSTRL" in rec
@@ -255,11 +270,12 @@ def test_download_tdd_tv_visitdy_and_arm():
 
     resp = client.get(f"/soa/{soa_id}/tdd/tv/json")
     assert resp.status_code == 200
-    records = resp.json()
-    assert len(records) == 1
-    rec = records[0]
+    data = resp.json()
+    assert data["records"] == 1
+    col_names = [c["name"] for c in data["columns"]]
+    rec = dict(zip(col_names, data["rows"][0]))
     assert rec["DOMAIN"] == "TV"
     assert rec["VISIT"] == "Screening"
-    assert rec["VISITDY"] == "1"
+    assert rec["VISITDY"] == 1
     assert rec["ARMCD"] == "TrtArm"
     assert rec["ARM"] == "TrtArm"  # falls back to arm.name when no description set

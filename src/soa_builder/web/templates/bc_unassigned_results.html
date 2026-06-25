@@ -1,0 +1,21 @@
+<h3 class="fz-section-heading">
+  {{ count }} Unassigned Concept{% if count != 1 %}s{% endif %}
+</h3>
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>Code</th>
+    <th>Title</th>
+  </tr>
+  {% for c in concepts %}
+  <tr>
+    <td class="fz-td-version">
+      <span class="obj-uid">{{ c.code }}</span>
+    </td>
+    <td>{{ c.title or '—' }}</td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row">
+    <td colspan="2">All concepts are assigned to at least one category.</td>
+  </tr>
+  {% endfor %}
+</table>

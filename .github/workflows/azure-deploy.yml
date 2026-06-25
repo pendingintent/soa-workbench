@@ -4,7 +4,7 @@ on:
     push:
         branches:
             - master
-            - release-*
+            # - release-*
     workflow_dispatch: #Allow manual triggers
 
 permissions:

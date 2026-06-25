@@ -9,6 +9,7 @@ from usdm.generate_biomedical_concept_properties import (
     build_usdm_biomedical_concept_properties,
     build_usdm_biomedical_concept_properties_for_soa,
     populate_biomedical_concept_properties,
+    populate_biomedical_concept_properties_for_all_soas,
     populate_biomedical_concept_properties_for_bc,
 )
 
@@ -615,3 +616,265 @@ def test_build_usdm_for_soa_is_json_serialisable():
     serialised = json.dumps(out)
     assert isinstance(serialised, str)
     assert "BiomedicalConceptProperty" in serialised
+
+
+# ---------------------------------------------------------------------------
+# Issue #218: Validate BCP output correctness against Dave's reference
+# ---------------------------------------------------------------------------
+
+# Dave Iberson-Hurst's exact exclusion list from usdm_excel/cdisc_bc_library.py
+# (_process_property method).  Our frozenset must stay in sync with it.
+_DAVE_EXCLUDED_SUFFIXES = [
+    "TEST",
+    "STRESN",
+    "STRESU",
+    "STRESC",
+    "CLASCD",
+    "LOINC",
+    "LOT",
+    "CAT",
+    "SCAT",
+    "LLT",
+    "LLTCD",
+    "HLT",
+    "HLTCD",
+    "PTCD",
+    "BODSYS",
+    "BDSYCD",
+    "SOC",
+    "SOCCD",
+    "RLDEV",
+]
+_DAVE_EXCLUDED_NAMES = ["EPOCH"]
+
+MOCK_SDTM_WITH_DSS_DATATYPE = {
+    "_links": {
+        "parentPackage": {
+            "href": (
+                "/mdr/specializations/sdtm/packages/2024-09-27/datasetspecializations"
+            )
+        }
+    },
+    "shortName": "VS",
+    "variables": [
+        {
+            "name": "VSORRES",
+            # DSS gives a more specific type ("float") than the DEC ("decimal")
+            "dataType": "float",
+            "mandatoryValue": True,
+            "dataElementConceptId": "C25347",
+        },
+        {
+            "name": "VSORRESU",
+            "dataType": "string",
+            "mandatoryValue": False,
+            "dataElementConceptId": "C49669",
+        },
+    ],
+}
+
+
+def test_exclusion_list_matches_dave_reference():
+    """Our _EXCLUDED_PROPERTY_SUFFIXES must exactly match Dave's list."""
+    from usdm.generate_biomedical_concept_properties import (
+        _EXCLUDED_PROPERTY_NAMES,
+        _EXCLUDED_PROPERTY_SUFFIXES,
+    )
+
+    assert _EXCLUDED_PROPERTY_SUFFIXES == frozenset(_DAVE_EXCLUDED_SUFFIXES), (
+        "Exclusion suffix list has drifted from Dave Iberson-Hurst's "
+        "cdisc_bc_library._process_property reference"
+    )
+    assert _EXCLUDED_PROPERTY_NAMES == frozenset(_DAVE_EXCLUDED_NAMES), (
+        "Exclusion name list has drifted from Dave's reference"
+    )
+
+
+def test_all_excluded_suffixes_are_filtered():
+    """Every suffix in Dave's list must cause _include_property to return False."""
+    from usdm.generate_biomedical_concept_properties import _include_property
+
+    for suffix in _DAVE_EXCLUDED_SUFFIXES:
+        var_name = f"LB{suffix}"
+        assert not _include_property(var_name), (
+            f"Expected {var_name!r} to be excluded but _include_property returned True"
+        )
+    assert not _include_property("EPOCH")
+
+
+def test_non_excluded_variables_are_included():
+    """Key data-carrying variables must pass the filter."""
+    from usdm.generate_biomedical_concept_properties import _include_property
+
+    for var in ("VSORRES", "VSORRESU", "LBORRES", "LBORRESU", "LBSPEC", "LBDTC"):
+        assert _include_property(var), f"Expected {var!r} to be included"
+
+
+def test_all_bcp_usdm_attributes_present():
+    """Every BCP in the USDM output must carry all required attributes."""
+    _seed_bc()
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    out = build_usdm_biomedical_concept_properties(SOA_ID, BC_UID)
+    assert out, "Expected at least one BCP in output"
+
+    required_keys = {
+        "id",
+        "extensionAttributes",
+        "name",
+        "label",
+        "isRequired",
+        "isEnabled",
+        "datatype",
+        "responseCodes",
+        "code",
+        "notes",
+        "instanceType",
+    }
+    for bcp in out:
+        missing = required_keys - bcp.keys()
+        assert not missing, f"BCP {bcp['id']} missing keys: {missing}"
+        assert bcp["instanceType"] == "BiomedicalConceptProperty"
+        assert isinstance(bcp["isRequired"], bool)
+        assert isinstance(bcp["isEnabled"], bool)
+        assert isinstance(bcp["responseCodes"], list)
+        assert isinstance(bcp["notes"], list)
+        code_block = bcp["code"]
+        assert "standardCode" in code_block
+        assert code_block["instanceType"] == "AliasCode"
+        sc = code_block["standardCode"]
+        assert sc["instanceType"] == "Code"
+        assert sc["codeSystem"] == "http://www.cdisc.org"
+
+
+def test_is_enabled_always_true():
+    """isEnabled must be True for all generated BCPs."""
+    _seed_bc()
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    out = build_usdm_biomedical_concept_properties(SOA_ID, BC_UID)
+    for bcp in out:
+        assert bcp["isEnabled"] is True, (
+            f"BCP {bcp['id']} has isEnabled={bcp['isEnabled']!r}, expected True"
+        )
+
+
+def test_mandatory_value_false_sets_is_required_false():
+    """mandatoryValue: false in DSS must produce isRequired: False in USDM."""
+    _seed_bc()
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
+            return_value=MOCK_SDTM_API,
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    out = build_usdm_biomedical_concept_properties(SOA_ID, BC_UID)
+    vsorresu = next(p for p in out if p["name"] == "VSORRESU")
+    assert vsorresu["isRequired"] is False, (
+        "mandatoryValue: false must map to isRequired: False"
+    )
+    vsorres = next(p for p in out if p["name"] == "VSORRES")
+    assert vsorres["isRequired"] is True
+
+
+def test_datatype_from_dss_variable_preferred_over_dec():
+    """DSS variable dataType (specific) must take priority over DEC dataType."""
+    _seed_bc()
+    # MOCK_BC_API has Height DEC with dataType "decimal"
+    # MOCK_SDTM_WITH_DSS_DATATYPE overrides VSORRES to "float"
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            return_value=MOCK_BC_API,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value=FAKE_DSS_HREF,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._fetch_dss_spec",
+            return_value=MOCK_SDTM_WITH_DSS_DATATYPE,
+        ),
+    ):
+        populate_biomedical_concept_properties_for_bc(SOA_ID, BC_UID, CONCEPT_CODE)
+
+    out = build_usdm_biomedical_concept_properties(SOA_ID, BC_UID)
+    vsorres = next(p for p in out if p["name"] == "VSORRES")
+    assert vsorres["datatype"] == "float", (
+        f"Expected DSS dataType 'float', got {vsorres['datatype']!r}"
+    )
+
+
+def test_backfill_skips_already_populated_bcs():
+    """populate_biomedical_concept_properties_for_all_soas must not re-fetch
+    BCs that already have property rows in the database."""
+    _seed_bc()
+    call_count = 0
+
+    def _mock_fetch(code):
+        nonlocal call_count
+        call_count += 1
+        return MOCK_BC_API
+
+    # First call: nothing populated yet, so backfill should fetch.
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            side_effect=_mock_fetch,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
+        ),
+    ):
+        populate_biomedical_concept_properties_for_all_soas()
+
+    assert call_count == 1, "Expected one API call on first backfill"
+    first_run_calls = call_count
+
+    # Second call: properties already exist, backfill must not fetch again.
+    with (
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_biomedical_concept_data",
+            side_effect=_mock_fetch,
+        ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
+            return_value="",
+        ),
+    ):
+        populate_biomedical_concept_properties_for_all_soas()
+
+    assert call_count == first_run_calls, (
+        "Backfill must not re-fetch BCs that are already populated"
+    )

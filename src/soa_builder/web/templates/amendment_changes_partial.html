@@ -1,78 +1,95 @@
 <div id="changes-section">
-  {% for c in changes %}
-  <details class="am-change-card">
-    <summary class="am-change-summary">
-      <span class="am-change-uid">{{ c.change_uid }}</span>
-      <span class="am-change-name">{{ c.name }}</span>
-      <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/change/{{ c.id }}/delete"
-            hx-target="#changes-section" hx-swap="outerHTML" class="am-inline-form">
-        <button type="submit" class="am-btn am-btn-danger am-btn-xs"
-          onclick="return confirm('Remove this change?')">Delete</button>
-      </form>
-    </summary>
-    <div class="am-change-detail">
-      <dl class="am-detail-grid">
-        <dt>Summary</dt>   <dd>{{ c.summary }}</dd>
-        <dt>Rationale</dt> <dd>{{ c.rationale }}</dd>
-        {% if c.label %}<dt>Label</dt><dd>{{ c.label }}</dd>{% endif %}
-        {% if c.description %}<dt>Description</dt><dd>{{ c.description }}</dd>{% endif %}
-      </dl>
+  <table class="fz-table">
+    <tr class="fz-thead-row">
+      <th>UID</th>
+      <th>Name</th>
+      <th>Summary</th>
+      <th>Rationale</th>
+      <th style="width:1%;white-space:nowrap;">Save</th>
+      <th style="width:1%;white-space:nowrap;">Delete</th>
+    </tr>
+    {% for c in changes %}
+    <tr>
+      <td class="fz-td-version"><span class="obj-uid">{{ c.change_uid }}</span></td>
+      <td><input name="name" value="{{ c.name }}" required class="am-input-compact" /></td>
+      <td><textarea name="summary" required rows="2"
+                    class="am-input-compact" style="resize:vertical;">{{ c.summary }}</textarea></td>
+      <td><textarea name="rationale" required rows="2"
+                    class="am-input-compact" style="resize:vertical;">{{ c.rationale }}</textarea></td>
+      <td style="width:1%;white-space:nowrap;">
+        <button type="button" class="am-btn am-btn-slate am-btn-sm"
+                hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/change/{{ c.id }}/update"
+                hx-target="#changes-section" hx-swap="outerHTML"
+                hx-include="closest tr">Save</button>
+      </td>
+      <td style="width:1%;white-space:nowrap;">
+        <button type="button" class="am-btn am-btn-danger am-btn-sm"
+                hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/change/{{ c.id }}/delete"
+                hx-target="#changes-section" hx-swap="outerHTML"
+                onclick="return confirm('Remove this change and all its sections?')">Delete</button>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="6" style="padding:0 11px 14px 30px; background:var(--am-surface); border-bottom:2px solid var(--am-border-med);">
+        <div style="font-size:0.72em; font-weight:700; color:var(--am-text-mid); text-transform:uppercase; letter-spacing:0.07em; margin:8px 0 4px;">Changed Sections</div>
+        <table class="fz-table" style="font-size:0.82em;">
+          <tr class="fz-thead-row">
+            <th>§ Number</th>
+            <th>Section Title</th>
+            <th>Applies To ID</th>
+            <th style="width:1%;white-space:nowrap;">Delete</th>
+          </tr>
+          {% for s in c.sections %}
+          <tr>
+            <td class="fz-td-date">{{ s.section_number }}</td>
+            <td>{{ s.section_title }}</td>
+            <td class="fz-td-date">{{ s.applies_to_id }}</td>
+            <td style="width:1%;white-space:nowrap;">
+              <button type="button" class="am-btn am-btn-danger am-btn-sm"
+                      hx-post="/ui/soa/{{ soa_id }}/change/{{ c.id }}/section/{{ s.id }}/delete"
+                      hx-target="#changes-section" hx-swap="outerHTML"
+                      hx-vals='{"amendment_id": {{ amendment.id }}}'
+                      onclick="return confirm('Remove section?')">Delete</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr class="fz-empty-row"><td colspan="4">No sections added.</td></tr>
+          {% endfor %}
+        </table>
+        <form hx-post="/ui/soa/{{ soa_id }}/change/{{ c.id }}/sections/add"
+              hx-target="#changes-section" hx-swap="outerHTML"
+              style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-end; margin-top:8px; padding-top:8px; border-top:1px dashed var(--am-border-med);">
+          <input type="hidden" name="amendment_id" value="{{ amendment.id }}" />
+          <input name="section_number" required placeholder="§ Number"
+                 class="am-input-compact" style="width:90px;" />
+          <input name="section_title" required placeholder="Section title"
+                 class="am-input-compact" style="flex:1; min-width:150px;" />
+          <input name="applies_to_id" required placeholder="Applies to ID"
+                 class="am-input-compact" style="width:130px;" />
+          <button type="submit" class="am-btn am-btn-slate am-btn-sm">+ Section</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="fz-empty-row"><td colspan="6">No changes added.</td></tr>
+    {% endfor %}
+  </table>
 
-      <h5 class="am-sections-header">Changed Sections</h5>
-      <table class="am-data-table">
-        {% for s in c.sections %}
-        <tr>
-          <td>{{ s.section_number }}</td>
-          <td>{{ s.section_title }}</td>
-          <td class="am-td-muted">{{ s.applies_to_id }}</td>
-          <td class="am-td-right">
-            <form hx-post="/ui/soa/{{ soa_id }}/change/{{ c.id }}/section/{{ s.id }}/delete"
-                  hx-target="#changes-section" hx-swap="outerHTML" class="am-inline-form">
-              <input type="hidden" name="amendment_id" value="{{ amendment.id }}" />
-              <button type="submit" class="am-btn am-btn-danger am-btn-xs"
-                onclick="return confirm('Remove section?')">×</button>
-            </form>
-          </td>
-        </tr>
-        {% else %}
-        <tr class="am-empty-row"><td colspan="4">No sections.</td></tr>
-        {% endfor %}
-      </table>
-      <form hx-post="/ui/soa/{{ soa_id }}/change/{{ c.id }}/sections/add"
-            hx-target="#changes-section" hx-swap="outerHTML"
-            class="am-section-add-form">
-        <input type="hidden" name="amendment_id" value="{{ amendment.id }}" />
-        <input name="section_number" required placeholder="§ Number" class="am-input-sm am-input-xs-w" />
-        <input name="section_title" required placeholder="Section title" class="am-input-sm am-input-flex" />
-        <input name="applies_to_id" required placeholder="Applies to ID" class="am-input-sm am-input-md-w" />
-        <button type="submit" class="am-btn am-btn-slate am-btn-sm">+ Section</button>
-      </form>
-    </div>
-  </details>
-  {% else %}
-  <p class="am-no-changes">No changes added.</p>
-  {% endfor %}
-
-  <details class="am-add-change-panel">
+  <details class="am-add-change-panel" style="margin-top:10px;">
     <summary class="am-add-change-summary">+ Add Change</summary>
     <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/changes/add"
           hx-target="#changes-section" hx-swap="outerHTML"
           class="am-change-form-grid">
       <label>Name <span class="am-required">*</span></label>
       <input name="name" required class="am-input" placeholder="Change name" />
-
       <label>Label</label>
       <input name="label" class="am-input" placeholder="Short label (optional)" />
-
       <label class="am-label-top">Summary <span class="am-required">*</span></label>
       <textarea name="summary" required rows="3" class="am-textarea" placeholder="Summary of the change"></textarea>
-
       <label class="am-label-top">Rationale <span class="am-required">*</span></label>
       <textarea name="rationale" required rows="3" class="am-textarea" placeholder="Rationale for the change"></textarea>
-
       <label>Description</label>
       <input name="description" class="am-input" placeholder="Description (optional)" />
-
       <div class="am-form-actions">
         <button type="submit" class="am-btn am-btn-primary">Save Change</button>
       </div>

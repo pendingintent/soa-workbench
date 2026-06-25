@@ -1,0 +1,118 @@
+<div id="interventions-container">
+
+  <table class="fz-table">
+    <tr class="fz-thead-row">
+      <th>UID</th>
+      <th>Name</th>
+      <th>Role</th>
+      <th>Type</th>
+      <th>Min Duration</th>
+      <th></th>
+    </tr>
+    {% for si in interventions %}
+    <tr>
+      <td class="fz-td-version"><span class="obj-uid">{{ si.intervention_uid }}</span></td>
+      <td>
+        {{ si.name }}
+        {% if si.label %}
+        <span style="color:var(--am-text-muted);font-size:0.85em;">({{ si.label }})</span>
+        {% endif %}
+        {% if si.description %}
+        <br><small style="color:var(--am-text-mid);">{{ si.description }}</small>
+        {% endif %}
+      </td>
+      <td class="fz-td-date">{{ si.role_decode or '—' }}</td>
+      <td class="fz-td-date">{{ si.type_decode or '—' }}</td>
+      <td class="fz-td-date">
+        {% if si.mrd_value is not none and si.unit_decode %}
+          {{ si.mrd_value }} {{ si.unit_decode }}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td class="am-td-center">
+        <form hx-post="/ui/soa/{{ soa_id }}/study-interventions/{{ si.id }}/delete"
+              hx-target="#interventions-container"
+              hx-swap="outerHTML"
+              style="display:inline;">
+          <button type="submit" class="am-btn am-btn-danger am-btn-xs"
+                  onclick="return confirm('Delete {{ si.intervention_uid }}?');">&times;</button>
+        </form>
+      </td>
+    </tr>
+
+    {# Codes subsection — renders below each intervention row #}
+    <tr>
+      <td></td>
+      <td colspan="5" style="padding-bottom:12px;">
+        <div style="margin-left:8px;">
+          <p style="font-size:0.85em;font-weight:600;color:var(--am-text-mid);margin:4px 0 6px;">
+            Codes ({{ si.codes|length }})
+          </p>
+
+          {% if si.codes %}
+          <table class="fz-table" style="margin-bottom:8px;">
+            <tr class="fz-thead-row">
+              <th>UID</th>
+              <th>Code</th>
+              <th>Code System</th>
+              <th>Version</th>
+              <th>Decode</th>
+              <th></th>
+            </tr>
+            {% for c in si.codes %}
+            <tr>
+              <td class="fz-td-version"><span class="obj-uid">{{ c.code_uid }}</span></td>
+              <td>{{ c.code }}</td>
+              <td>{{ c.code_system }}</td>
+              <td class="fz-td-date">{{ c.code_system_version }}</td>
+              <td>{{ c.decode }}</td>
+              <td class="am-td-center">
+                <form hx-post="/ui/soa/{{ soa_id }}/study-interventions/{{ si.id }}/codes/{{ c.id }}/delete"
+                      hx-target="#interventions-container"
+                      hx-swap="outerHTML"
+                      style="display:inline;">
+                  <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+          {% endif %}
+
+          <form hx-post="/ui/soa/{{ soa_id }}/study-interventions/{{ si.id }}/codes-add"
+                hx-target="#interventions-container"
+                hx-swap="outerHTML"
+                style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="am-field" style="min-width:100px;flex:1;">
+              <label class="am-field-label" style="font-size:0.78em;">Code</label>
+              <input name="code" class="am-input" placeholder="e.g. C12345" />
+            </div>
+            <div class="am-field" style="min-width:140px;flex:2;">
+              <label class="am-field-label" style="font-size:0.78em;">Code System</label>
+              <input name="code_system" class="am-input"
+                     placeholder="e.g. http://www.whocc.no/atc" />
+            </div>
+            <div class="am-field" style="min-width:80px;flex:1;">
+              <label class="am-field-label" style="font-size:0.78em;">Version</label>
+              <input name="code_system_version" class="am-input" placeholder="e.g. 2024" />
+            </div>
+            <div class="am-field" style="min-width:120px;flex:2;">
+              <label class="am-field-label" style="font-size:0.78em;">Decode</label>
+              <input name="decode" class="am-input" placeholder="Human-readable term" />
+            </div>
+            <div style="padding-bottom:2px;">
+              <button type="submit" class="am-btn am-btn-slate am-btn-sm">Add Code</button>
+            </div>
+          </form>
+
+        </div>
+      </td>
+    </tr>
+
+    {% else %}
+    <tr class="fz-empty-row"><td colspan="6">No study interventions yet.</td></tr>
+    {% endfor %}
+  </table>
+
+</div>

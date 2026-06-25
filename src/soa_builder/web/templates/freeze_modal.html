@@ -170,6 +170,88 @@
           {% if diff.concepts|length == 0 %}<li style="color:#777;">None</li>{% endif %}
         </ul>
       </details>
+      {% if diff.entities %}
+      {% set _entity_labels = {
+        'epochs': 'Epochs (StudyEpoch)',
+        'arms': 'Arms (StudyArm)',
+        'elements': 'Elements (StudyElement)',
+        'timings': 'Timings (Timing)',
+        'objectives': 'Objectives (Objective)',
+        'endpoints': 'Endpoints (Endpoint)',
+        'encounters_full': 'Encounters (Encounter)',
+        'study_cells': 'Study Cells (StudyCell)',
+        'schedule_timelines': 'Schedule Timelines (ScheduleTimeline)',
+        'instances': 'Scheduled Activity Instances (ScheduledActivityInstance)',
+        'decision_instances': 'Scheduled Decision Instances (ScheduledDecisionInstance)',
+        'bc_surrogates': 'BC Surrogates (BiomedicalConceptSurrogate)',
+        'biomedical_concepts': 'Biomedical Concepts (BiomedicalConcept)',
+        'bc_properties': 'BC Properties (BiomedicalConceptProperty)',
+        'amendments': 'Amendments (StudyAmendment)',
+        'extension_attributes': 'Extension Attributes (ExtensionAttribute)'
+      } %}
+      <details>
+        <summary style="cursor:pointer;font-weight:bold;">USDM Entities</summary>
+        {% for ent_key, ent_data in diff.entities.items() %}
+          {% set has_changes = ent_data.added|length > 0 or ent_data.removed|length > 0 or ent_data.changed|length > 0 %}
+          {% if has_changes %}
+          <details style="margin-left:10px;margin-top:4px;">
+            <summary style="cursor:pointer;">
+              {{ _entity_labels.get(ent_key, ent_key) }}
+              <small style="color:#555;">
+                {% if ent_data.added|length > 0 %}+{{ ent_data.added|length }}{% endif %}
+                {% if ent_data.removed|length > 0 %}-{{ ent_data.removed|length }}{% endif %}
+                {% if ent_data.changed|length > 0 %}Δ{{ ent_data.changed|length }}{% endif %}
+              </small>
+            </summary>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.9em;">
+              {% if ent_data.added %}
+              <div><strong style="color:#2e7d32;">Added</strong>
+                <ul style="margin:2px 0 4px 14px;padding:0;">
+                  {% for e in ent_data.added %}
+                    <li>{{ e.get('name') or e.get('amendment_uid') or e.get('study_cell_uid') or e.get('schedule_timeline_uid') or e.get('instance_uid') or e.get('surrogate_uid') or e.get('biomedical_concept_uid') or e.get('biomedical_concept_property_uid') or e.get('extension_attribute_uid') or e.get('epoch_uid') or e.get('arm_uid') or e.get('timing_uid') or e.get('objective_uid') or e.get('endpoint_uid') or e.get('encounter_uid') or '?' }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+              {% if ent_data.removed %}
+              <div><strong style="color:#c62828;">Removed</strong>
+                <ul style="margin:2px 0 4px 14px;padding:0;">
+                  {% for e in ent_data.removed %}
+                    <li>{{ e.get('name') or e.get('amendment_uid') or e.get('study_cell_uid') or e.get('schedule_timeline_uid') or e.get('instance_uid') or e.get('surrogate_uid') or e.get('biomedical_concept_uid') or e.get('biomedical_concept_property_uid') or e.get('extension_attribute_uid') or e.get('epoch_uid') or e.get('arm_uid') or e.get('timing_uid') or e.get('objective_uid') or e.get('endpoint_uid') or e.get('encounter_uid') or '?' }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+              {% if ent_data.changed %}
+              <div><strong style="color:#e65100;">Changed</strong>
+                <ul style="margin:2px 0 4px 14px;padding:0;">
+                  {% for e in ent_data.changed %}
+                    <li>{{ e.uid }}
+                      <ul style="margin:2px 0 2px 12px;padding:0;">
+                        {% for field, vals in e.changes.items() %}
+                          <li><em>{{ field }}</em>: "{{ vals.old }}" → "{{ vals.new }}"</li>
+                        {% endfor %}
+                      </ul>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+            </div>
+          </details>
+          {% endif %}
+        {% endfor %}
+        {% set _any_entity_changes = namespace(found=false) %}
+        {% for ent_key, ent_data in diff.entities.items() %}
+          {% if ent_data.added|length > 0 or ent_data.removed|length > 0 or ent_data.changed|length > 0 %}
+            {% set _any_entity_changes.found = true %}
+          {% endif %}
+        {% endfor %}
+        {% if not _any_entity_changes.found %}
+          <p style="margin:4px 0 4px 10px;color:#777;font-size:0.85em;">No USDM entity changes detected.</p>
+        {% endif %}
+      </details>
+      {% endif %}
       <div style="margin-top:10px;font-size:0.65em;display:flex;gap:8px;flex-wrap:wrap;">
         <form hx-post="/ui/soa/{{ soa_id }}/freeze/{{ diff.left.id }}/rollback" hx-target="body" hx-confirm="Rollback current state to version {{ diff.left.label }}? This replaces visits, activities, cells & concepts." style="display:inline;">
           <button style="background:#6a1b9a;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">Rollback to {{ diff.left.label }}</button>

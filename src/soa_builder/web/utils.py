@@ -18,21 +18,24 @@ _epoch_type_cache: dict[str, Any] = {
     "last_error": None,
     "parent_package_href": None,
 }
-_EPOCH_TYPE_CACHE_TTL = 60 * 60  # 1 hour
+_CACHE_TTL = int(os.environ.get("SOA_BUILDER_CACHE_TTL", "3600"))
+_HTTP_TIMEOUT = int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15"))
+
+_EPOCH_TYPE_CACHE_TTL = _CACHE_TTL
 
 _env_setting_cache: dict[str, Any] = {
     "options": None,
     "fetched_at": 0,
     "last_error": None,
 }
-_ENV_SETTING_CACHE_TTL = 60 * 60  # 1 hour
+_ENV_SETTING_CACHE_TTL = _CACHE_TTL
 
 _contact_mode_cache: dict[str, Any] = {
     "options": None,
     "fetched_at": 0,
     "last_error": None,
 }
-_CONTACT_MODE_CACHE_TTL = 60 * 60  # 1 hour
+_CONTACT_MODE_CACHE_TTL = _CACHE_TTL
 
 _sdtm_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -42,7 +45,7 @@ _sdtm_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_SDTM_CT_CACHE_TTL = 60 * 60  # 1 hour
+_SDTM_CT_CACHE_TTL = _CACHE_TTL
 
 _cdash_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -52,7 +55,7 @@ _cdash_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_CDASH_CT_CACHE_TTL = 60 * 60  # 1 hour
+_CDASH_CT_CACHE_TTL = _CACHE_TTL
 
 _define_xml_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -62,7 +65,7 @@ _define_xml_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_DEFINE_XML_CT_CACHE_TTL = 60 * 60  # 1 hour
+_DEFINE_XML_CT_CACHE_TTL = _CACHE_TTL
 
 _protocol_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -72,7 +75,7 @@ _protocol_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_PROTOCOL_CT_CACHE_TTL = 60 * 60  # 1 hour
+_PROTOCOL_CT_CACHE_TTL = _CACHE_TTL
 
 _ddf_ct_cache: dict[str, Any] = {
     "slug": None,
@@ -82,7 +85,7 @@ _ddf_ct_cache: dict[str, Any] = {
     "last_error": None,
     "last_status": None,
 }
-_DDF_CT_CACHE_TTL = 60 * 60  # 1 hour
+_DDF_CT_CACHE_TTL = _CACHE_TTL
 
 
 # Constants for the helper function
@@ -201,7 +204,7 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
         values: list[str] = []
         last_status = None
         _epoch_type_cache.update(last_url=url, last_error=None)
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         last_status = resp.status_code
         if resp.status_code != 200:
             data = {}
@@ -246,7 +249,9 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
                         continue
                     try:
                         _epoch_type_cache.update(last_url=href)
-                        term_resp = requests.get(href, headers=headers, timeout=10)
+                        term_resp = requests.get(
+                            href, headers=headers, timeout=_HTTP_TIMEOUT
+                        )
                         if term_resp.status_code == 200:
                             term_json = term_resp.json() or {}
                             sv = term_json.get("submissionValue") or term_json.get(
@@ -309,7 +314,7 @@ def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
     last_status = None
     try:
         _epoch_type_cache.update(last_url=url, last_error=None)
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         last_status = resp.status_code
         if resp.status_code != 200:
             data = {}
@@ -350,7 +355,9 @@ def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
                 if href:
                     try:
                         _epoch_type_cache.update(last_url=href)
-                        term_resp = requests.get(href, headers=headers, timeout=10)
+                        term_resp = requests.get(
+                            href, headers=headers, timeout=_HTTP_TIMEOUT
+                        )
                         if term_resp.status_code == 200:
                             tj = term_resp.json() or {}
                             sub2 = tj.get("submissionValue") or tj.get(
@@ -376,6 +383,202 @@ def get_epoch_parent_package_href_cached() -> str | None:
     """
     val = _epoch_type_cache.get("parent_package_href")
     return str(val) if val else None
+
+
+# Helper function to generate new quantity_uid value
+def get_next_quantity_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique Quantity_N for the given SOA.
+
+    Scans both the live study_intervention table and audit JSON so
+    deleted UIDs are never reused. Assumes `cur` is a sqlite cursor
+    within an open transaction.
+    """
+    max_n = 0
+    try:
+        cur.execute(
+            "SELECT mrd_quantity_uid FROM study_intervention"
+            " WHERE soa_id=? AND mrd_quantity_uid LIKE 'Quantity_%'",
+            (soa_id,),
+        )
+        for (uid,) in cur.fetchall():
+            try:
+                n = int(uid.split("_")[-1])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                pass
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            "SELECT before_json, after_json FROM study_intervention_audit"
+            " WHERE soa_id=?",
+            (soa_id,),
+        )
+        import json as _json
+
+        for before_raw, after_raw in cur.fetchall():
+            for raw in (before_raw, after_raw):
+                if not raw:
+                    continue
+                try:
+                    uid = _json.loads(raw).get("mrd_quantity_uid", "")
+                    if isinstance(uid, str) and uid.startswith("Quantity_"):
+                        n = int(uid.split("_")[-1])
+                        if n > max_n:
+                            max_n = n
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return f"Quantity_{max_n + 1}"
+
+
+def get_next_intercurrent_event_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique IntercurrentEvent_N for the given SOA.
+
+    Scans both the live intercurrent_event table and estimand_audit
+    JSON so deleted UIDs are never reused. Assumes `cur` is a sqlite
+    cursor within an open transaction.
+    """
+    max_n = 0
+    try:
+        cur.execute(
+            "SELECT event_uid FROM intercurrent_event"
+            " WHERE soa_id=? AND event_uid LIKE 'IntercurrentEvent_%'",
+            (soa_id,),
+        )
+        for (uid,) in cur.fetchall():
+            try:
+                n = int(uid.split("_")[-1])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                pass
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            "SELECT before_json, after_json FROM estimand_audit WHERE soa_id=?",
+            (soa_id,),
+        )
+        import json as _json
+
+        for before_raw, after_raw in cur.fetchall():
+            for raw in (before_raw, after_raw):
+                if not raw:
+                    continue
+                try:
+                    data = _json.loads(raw)
+                    ices = data.get("intercurrent_events") or []
+                    for ice in ices:
+                        uid = ice.get("event_uid", "")
+                        if isinstance(uid, str) and uid.startswith(
+                            "IntercurrentEvent_"
+                        ):
+                            n = int(uid.split("_")[-1])
+                            if n > max_n:
+                                max_n = n
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return f"IntercurrentEvent_{max_n + 1}"
+
+
+def get_next_indication_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique Indication_N for the given SOA.
+
+    Scans both the live indication table and indication_audit
+    JSON so deleted UIDs are never reused. Assumes `cur` is a sqlite
+    cursor within an open transaction.
+    """
+    max_n = 0
+    try:
+        cur.execute(
+            "SELECT indication_uid FROM indication"
+            " WHERE soa_id=? AND indication_uid LIKE 'Indication_%'",
+            (soa_id,),
+        )
+        for (uid,) in cur.fetchall():
+            try:
+                n = int(uid.split("_")[-1])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                pass
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            "SELECT before_json, after_json FROM indication_audit WHERE soa_id=?",
+            (soa_id,),
+        )
+        import json as _json
+
+        for before_raw, after_raw in cur.fetchall():
+            for raw in (before_raw, after_raw):
+                if not raw:
+                    continue
+                try:
+                    uid = _json.loads(raw).get("indication_uid", "")
+                    if isinstance(uid, str) and uid.startswith("Indication_"):
+                        n = int(uid.split("_")[-1])
+                        if n > max_n:
+                            max_n = n
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return f"Indication_{max_n + 1}"
+
+
+def get_next_study_identifier_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique StudyIdentifier_N for the given SOA.
+
+    Scans both the live study_identifier table and audit JSON so
+    deleted UIDs are never reused. Assumes `cur` is a sqlite cursor
+    within an open transaction.
+    """
+    max_n = 0
+    try:
+        cur.execute(
+            "SELECT study_identifier_uid FROM study_identifier"
+            " WHERE soa_id=? AND study_identifier_uid"
+            " LIKE 'StudyIdentifier_%'",
+            (soa_id,),
+        )
+        for (uid,) in cur.fetchall():
+            try:
+                n = int(uid.split("_")[-1])
+                if n > max_n:
+                    max_n = n
+            except (ValueError, IndexError):
+                pass
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            "SELECT before_json, after_json FROM study_identifier_audit WHERE soa_id=?",
+            (soa_id,),
+        )
+        import json as _json
+
+        for before_raw, after_raw in cur.fetchall():
+            for raw in (before_raw, after_raw):
+                if not raw:
+                    continue
+                try:
+                    uid = _json.loads(raw).get("study_identifier_uid", "")
+                    if isinstance(uid, str) and uid.startswith("StudyIdentifier_"):
+                        n = int(uid.split("_")[-1])
+                        if n > max_n:
+                            max_n = n
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return f"StudyIdentifier_{max_n + 1}"
 
 
 # Helper function to generate new alias_code_uid value
@@ -465,13 +668,19 @@ def get_next_response_code_uid(cur: Any, soa_id: int) -> str:
 def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique ExtensionAttribute_N for the given SOA.
 
+    Scans both activity_concept_dss and activity_concept_crf to ensure
+    the returned UID does not collide with any existing EA UID.
     Assumes `cur` is a sqlite cursor within an open transaction.
     """
     cur.execute(
         "SELECT extension_attribute_uid FROM activity_concept_dss"
         " WHERE soa_id=?"
+        " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'"
+        " UNION ALL"
+        " SELECT extension_attribute_uid FROM activity_concept_crf"
+        " WHERE soa_id=?"
         " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'",
-        (soa_id,),
+        (soa_id, soa_id),
     )
     existing = [x[0] for x in cur.fetchall() if x[0]]
     n = 1
@@ -481,6 +690,28 @@ def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
         except Exception:
             n = len(existing) + 1
     return f"ExtensionAttribute_{n}"
+
+
+def get_next_extension_class_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique ExtensionClass_N for the given SOA.
+
+    Scans soa_tool_extension.ec_uid for existing ExtensionClass UIDs.
+    Assumes `cur` is a sqlite cursor within an open transaction.
+    """
+    cur.execute(
+        "SELECT ec_uid FROM soa_tool_extension"
+        " WHERE soa_id=?"
+        " AND ec_uid LIKE 'ExtensionClass_%'",
+        (soa_id,),
+    )
+    existing = [x[0] for x in cur.fetchall() if x[0]]
+    n = 1
+    if existing:
+        try:
+            n = max(int(x.split("_")[1]) for x in existing) + 1
+        except Exception:
+            n = len(existing) + 1
+    return f"ExtensionClass_{n}"
 
 
 def get_next_concept_uid(cur: Any, soa_id: int) -> str:
@@ -677,7 +908,7 @@ def get_sdtm_submission_values(url: str, codelist_code: str) -> Dict[str, str]:
 
     mapping: Dict[str, str] = {}
     try:
-        resp = requests.get(full_url, headers=headers, timeout=10)
+        resp = requests.get(full_url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             return {}
         data = resp.json() or {}
@@ -707,7 +938,7 @@ def get_sdtm_submission_values(url: str, codelist_code: str) -> Dict[str, str]:
                 href = linkself.get("href") if isinstance(linkself, dict) else None
             if href:
                 try:
-                    tr = requests.get(href, headers=headers, timeout=10)
+                    tr = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
                     if tr.status_code == 200:
                         tj = tr.json() or {}
                         code2 = tj.get("conceptId") or tj.get("code") or code
@@ -1292,7 +1523,7 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
         return []
 
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             return None
         payload = resp.json() or {}
@@ -1315,7 +1546,7 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
         if href.startswith("/"):
             href = f"https://library.cdisc.org{href}"
         try:
-            term_resp = requests.get(href, headers=headers, timeout=10)
+            term_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
             if term_resp.status_code != 200:
                 continue
             term_data = term_resp.json() or {}
@@ -1399,7 +1630,7 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
         return []
 
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             return None
         payload = resp.json() or {}
@@ -1422,7 +1653,7 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
         if href.startswith("/"):
             href = f"https://library.cdisc.org{href}"
         try:
-            term_resp = requests.get(href, headers=headers, timeout=10)
+            term_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
             if term_resp.status_code != 200:
                 continue
             term_data = term_resp.json() or {}
@@ -1474,7 +1705,7 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
 
     options: list[dict[str, str]] = []
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             raise RuntimeError(f"HTTP {resp.status_code}")
         data = resp.json() or {}
@@ -1510,7 +1741,7 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
                 if href.startswith("/"):
                     href = f"https://library.cdisc.org{href}"
                 try:
-                    t_resp = requests.get(href, headers=headers, timeout=10)
+                    t_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
                     if t_resp.status_code == 200:
                         _ensure_option(t_resp.json() or {})
                 except Exception:
@@ -1566,7 +1797,7 @@ def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
 
     options: list[dict[str, str]] = []
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             raise RuntimeError(f"HTTP {resp.status_code}")
         data = resp.json() or {}
@@ -1602,7 +1833,7 @@ def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
                 if href.startswith("/"):
                     href = f"https://library.cdisc.org{href}"
                 try:
-                    t_resp = requests.get(href, headers=headers, timeout=10)
+                    t_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
                     if t_resp.status_code == 200:
                         _ensure_options(t_resp.json() or {})
                 except Exception:

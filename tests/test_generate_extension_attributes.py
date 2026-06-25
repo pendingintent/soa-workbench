@@ -4,9 +4,8 @@ from soa_builder.web.app import app  # noqa: F401  (triggers DB init)
 from soa_builder.web.db import _connect
 from usdm.generate_extension_attributes import (
     populate_extension_attributes,
-    build_usdm_extension_attributes,
+    build_usdm_dss_extension_attributes,
 )
-
 
 SOA_ID = 9101
 BC_UID = "BiomedicalConcept_1"
@@ -121,7 +120,7 @@ def test_build_returns_single_ea_for_bc():
     _seed_dss()
     populate_extension_attributes(SOA_ID)
 
-    out = build_usdm_extension_attributes(SOA_ID, BC_UID)
+    out = build_usdm_dss_extension_attributes(SOA_ID, BC_UID)
     assert len(out) == 1
     ea = out[0]
     assert ea["id"] == "ExtensionAttribute_1"
@@ -139,7 +138,7 @@ def test_build_returns_one_ea_per_dss_row():
     _seed_dss(href=DSS_HREF_2, title="VSSTRESN")
     populate_extension_attributes(SOA_ID)
 
-    out = build_usdm_extension_attributes(SOA_ID, BC_UID)
+    out = build_usdm_dss_extension_attributes(SOA_ID, BC_UID)
     assert len(out) == 2
     assert [e["id"] for e in out] == [
         "ExtensionAttribute_1",
@@ -153,5 +152,5 @@ def test_build_returns_empty_list_when_no_dss():
     _clean()
     _seed_ac()
 
-    out = build_usdm_extension_attributes(SOA_ID, BC_UID)
+    out = build_usdm_dss_extension_attributes(SOA_ID, BC_UID)
     assert out == []

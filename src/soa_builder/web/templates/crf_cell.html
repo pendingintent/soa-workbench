@@ -1,0 +1,96 @@
+{# Partial for CRF specialization assignment cell — lazy-loaded options per concept #}
+<td id="crf-cell-{{ activity_id }}" style="padding:4px;vertical-align:top;max-width:300px;">
+  {% set crf_concepts = activity_concepts.get(activity_id, []) %}
+  {% if crf_concepts %}
+    {% set ns = namespace(total=0) %}
+    {% for ac in crf_concepts %}
+      {% set ns.total = ns.total + (ac.assigned_crf | length) %}
+    {% endfor %}
+
+    <!-- Clickable header -->
+    <div class="concepts-toggle" onclick="toggleCrf('{{ activity_id }}')">
+      <span class="concepts-label">CRF</span>
+      {% if ns.total > 0 %}
+        <span class="concept-count-pill">{{ ns.total }}</span>
+      {% endif %}
+      <span class="concepts-arrow">▸</span>
+    </div>
+
+    <!-- Collapsible content -->
+    <div id="crf-content-{{ activity_id }}" style="display:none;margin-top:4px;">
+      {% for ac in crf_concepts %}
+
+        <!-- Inline row: concept pill + lazy-loaded select -->
+        <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/crf"
+              hx-target="#crf-cell-{{ activity_id }}"
+              hx-swap="outerHTML"
+              style="display:flex;align-items:center;gap:4px;margin:4px 0;font-size:0.8em;">
+          <span title="{{ ac.title }}"
+                style="background:#efe;color:#141;padding:1px 4px;border-radius:3px;
+                       white-space:nowrap;min-width:70px;text-align:center;
+                       display:inline-block;flex-shrink:0;">{{ ac.code }}</span>
+          <select name="crf_selection"
+                  style="font-size:1em;max-width:150px;min-width:0;"
+                  hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/crf/options"
+                  hx-trigger="focus once"
+                  hx-target="this"
+                  hx-swap="innerHTML">
+            <option value="" disabled selected>Select CRF...</option>
+          </select>
+          <button type="submit" class="cell-add-btn" style="flex-shrink:0;">+</button>
+        </form>
+
+        <!-- Assigned CRF rows — one full-width row per specialisation -->
+        {% for assigned in ac.assigned_crf %}
+          <div style="display:flex;align-items:center;gap:4px;margin:3px 0 3px 4px;
+                      background:#efe;border-radius:3px;padding:3px 6px;font-size:0.8em;">
+            <span title="{{ assigned.crf_title }}"
+                  style="flex:1;overflow:hidden;text-overflow:ellipsis;
+                         white-space:nowrap;color:#141;">{{ assigned.crf_title }}</span>
+            <a href="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/crf/detail?href={{ assigned.crf_href|urlencode }}&title={{ assigned.crf_title|urlencode }}"
+               style="font-size:0.85em;white-space:nowrap;color:#1565c0;">details</a>
+            <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept/{{ ac.code }}/crf/{{ assigned.id }}/delete"
+                  hx-target="#crf-cell-{{ activity_id }}"
+                  hx-swap="outerHTML"
+                  style="margin:0;display:inline;flex-shrink:0;">
+              <button type="submit" class="cell-add-btn" title="Remove CRF">&minus;</button>
+            </form>
+          </div>
+        {% endfor %}
+        <hr style="border:none;border-top:1px solid #dde;margin:4px 0;">
+      {% endfor %}
+    </div>
+  {% else %}
+    <span style="color:#888;font-size:0.6em;">&ndash;</span>
+  {% endif %}
+</td>
+
+<script>
+function toggleCrf(activityId) {
+  const content = document.getElementById("crf-content-" + activityId);
+  if (!content) return;
+  const header = content.previousElementSibling;
+  const arrow = header.querySelector(".concepts-arrow");
+  const open = content.style.display === "block";
+  content.style.display = open ? "none" : "block";
+  arrow.textContent = open ? "▸" : "▾";
+}
+if (!window._crfSettleListenerAdded) {
+  window._crfSettleListenerAdded = true;
+  document.addEventListener("htmx:afterSettle", function(evt) {
+    var target = evt.detail.target;
+    if (target && target.id && target.id.startsWith("crf-cell-")) {
+      var activityId = target.id.replace("crf-cell-", "");
+      var content = document.getElementById("crf-content-" + activityId);
+      if (content) {
+        content.style.display = "block";
+        var header = content.previousElementSibling;
+        if (header) {
+          var arrow = header.querySelector(".concepts-arrow");
+          if (arrow) arrow.textContent = "▾";
+        }
+      }
+    }
+  });
+}
+</script>

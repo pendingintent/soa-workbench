@@ -1,0 +1,67 @@
+<div id="enrollments-section" {% if oob %}hx-swap-oob="true"{% endif %}>
+  <table class="fz-table">
+    <tr class="fz-thead-row">
+      <th>UID</th>
+      <th>Name</th>
+      <th>Quantity</th>
+      <th>Geographic Scope</th>
+      <th style="width:1%;white-space:nowrap;">Save</th>
+      <th style="width:1%;white-space:nowrap;">Delete</th>
+    </tr>
+    {% for e in enrollments %}
+    <tr>
+      <td class="fz-td-version"><span class="obj-uid">{{ e.enrollment_uid }}</span></td>
+      <td><input name="name" value="{{ e.name }}" required class="am-input-compact" /></td>
+      <td><input name="quantity_value" type="number" step="any" value="{{ e.quantity_value }}"
+                 required class="am-input-compact" style="width:80px;" /></td>
+      <td>
+        <select name="for_scope_uid" class="am-select-compact">
+          <option value="">— none —</option>
+          {% for s in geo_scopes %}
+          <option value="{{ s.scope_uid }}" {% if e.for_scope_uid == s.scope_uid %}selected{% endif %}>
+            {{ s.scope_uid }}
+          </option>
+          {% endfor %}
+        </select>
+      </td>
+      <td style="width:1%;white-space:nowrap;">
+        <button type="button" class="am-btn am-btn-slate am-btn-sm"
+                hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/enrollment/{{ e.id }}/update"
+                hx-target="#enrollments-section" hx-swap="outerHTML"
+                hx-include="closest tr">Save</button>
+      </td>
+      <td style="width:1%;white-space:nowrap;">
+        <button type="button" class="am-btn am-btn-danger am-btn-sm"
+                hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/enrollment/{{ e.id }}/delete"
+                hx-target="#enrollments-section" hx-swap="outerHTML"
+                onclick="return confirm('Remove this enrollment?')">Delete</button>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="fz-empty-row"><td colspan="6">No enrollments added.</td></tr>
+    {% endfor %}
+  </table>
+
+  <details class="am-add-change-panel" style="margin-top:10px;">
+    <summary class="am-add-change-summary">+ Add Enrollment</summary>
+    <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/enrollments/add"
+          hx-target="#enrollments-section" hx-swap="outerHTML"
+          class="am-change-form-grid">
+      <label>Name <span class="am-required">*</span></label>
+      <input name="name" required class="am-input" placeholder="Enrollment name" />
+      <label>Quantity <span class="am-required">*</span></label>
+      <input name="quantity_value" type="number" step="any" required class="am-input"
+             placeholder="e.g. 100" />
+      <label>Geographic Scope</label>
+      <select name="for_scope_uid" class="am-select">
+        <option value="">— none —</option>
+        {% for s in geo_scopes %}
+        <option value="{{ s.scope_uid }}">{{ s.scope_uid }}</option>
+        {% endfor %}
+      </select>
+      <div class="am-form-actions">
+        <button type="submit" class="am-btn am-btn-primary">Add Enrollment</button>
+      </div>
+    </form>
+  </details>
+</div>

@@ -1,51 +1,60 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="am-page-bar">
+<h2>Protocol Amendment: {{ amendment.name }}</h2>
+
+<div style="margin-bottom:12px;">
   <a href="/ui/soa/{{ soa_id }}/freezes" class="am-back-link">&larr; Return to Frozen Versions</a>
-  <h2 class="am-page-title">Protocol Amendment: {{ amendment.name }}</h2>
 </div>
+
+<hr class="fz-section-divider" />
 
 <div class="am-meta-card">
   <div>
-    <span class="am-meta-label"><strong>Name:</strong></span>
-    <span class="am-meta-value">{{ amendment.name }}</span>
-  </div>
-  <div>
-    <span class="am-meta-label"><strong>Number:</strong></span>
+    <span class="am-meta-label">Number</span>
     <span class="am-meta-value">{{ amendment.number }}</span>
   </div>
   <div>
-    <span class="am-meta-label"><strong>Summary:</strong></span>
+    <span class="am-meta-label">Summary</span>
     <span class="am-meta-value">{{ amendment.summary }}</span>
   </div>
   {% if amendment.label %}
   <div>
-    <span class="am-meta-label"><strong>Label:</strong></span>
+    <span class="am-meta-label">Label</span>
     <span class="am-meta-value">{{ amendment.label }}</span>
   </div>
   {% endif %}
   {% if amendment.description %}
   <div>
-    <span class="am-meta-label"><strong>Description:</strong></span>
+    <span class="am-meta-label">Description</span>
     <span class="am-meta-value">{{ amendment.description }}</span>
   </div>
   {% endif %}
 </div>
 
-<div class="am-sections-grid">
-  <div>
-    <h3 class="am-section-title">Secondary Reasons</h3>
-    {% include 'amendment_reasons_partial.html' %}
-  </div>
-  <div>
-    <h3 class="am-section-title">Impacts</h3>
-    {% include 'amendment_impacts_partial.html' %}
-  </div>
-</div>
+<hr class="fz-section-divider" />
+<h3 class="fz-section-heading">Reasons</h3>
+{% include 'amendment_reasons_partial.html' %}
 
-<div>
-  <h3 class="am-section-title">Changes</h3>
-  {% include 'amendment_changes_partial.html' %}
-</div>
+<hr class="fz-section-divider" />
+<h3 class="fz-section-heading">Impacts</h3>
+{% include 'amendment_impacts_partial.html' %}
+
+<hr class="fz-section-divider" />
+<h3 class="fz-section-heading">Changes</h3>
+{% include 'amendment_changes_partial.html' %}
+
+<hr class="fz-section-divider" />
+<h3 class="fz-section-heading">Governance Dates</h3>
+{% include 'amendment_gov_dates_partial.html' %}
+
+<hr class="fz-section-divider" />
+<h3 class="fz-section-heading">Geographic Scopes</h3>
+{% include 'amendment_geo_scopes_partial.html' %}
+
+<hr class="fz-section-divider" />
+<h3 class="fz-section-heading">Subject Enrollments</h3>
+{% include 'amendment_enrollments_partial.html' %}
+
+
 
 {% endblock %}

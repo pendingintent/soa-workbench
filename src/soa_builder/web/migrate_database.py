@@ -1,6 +1,9 @@
+import csv
 import logging
 import os
+import pathlib
 from datetime import datetime, timezone
+from typing import Dict, Optional
 
 from dotenv import load_dotenv
 
@@ -1124,63 +1127,6 @@ def _migrate_biomedical_concept_property_add_uid():
         logger.warning("_migrate_biomedical_concept_property_add_uid: %s", e)
 
 
-def _migrate_truncate_biomedical_concept_property_data():
-    """Truncate biomedical_concept_property rows that were populated from DSS.
-
-    The prior DSS-based writer produced incorrect BiomedicalConceptProperty
-    values. This one-time migration clears those rows and the alias_code/code
-    rows that were created solely to back them. Idempotent: a no-op on an
-    empty table.
-    """
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute("PRAGMA table_info(biomedical_concept_property)")
-        cols = {r[1] for r in cur.fetchall()}
-        if not cols:
-            conn.close()
-            return
-        cur.execute(
-            "SELECT DISTINCT soa_id, code FROM biomedical_concept_property"
-            " WHERE code IS NOT NULL"
-        )
-        alias_refs = cur.fetchall()
-        cur.execute("DELETE FROM biomedical_concept_property")
-        for soa_id, alias_uid in alias_refs:
-            cur.execute(
-                "SELECT 1 FROM biomedical_concept_property"
-                " WHERE soa_id=? AND code=? LIMIT 1",
-                (soa_id, alias_uid),
-            )
-            if cur.fetchone():
-                continue
-            cur.execute(
-                "SELECT 1 FROM biomedical_concept WHERE soa_id=? AND code=? LIMIT 1",
-                (soa_id, alias_uid),
-            )
-            if cur.fetchone():
-                continue
-            cur.execute(
-                "SELECT standard_code FROM alias_code"
-                " WHERE alias_code_uid=? AND soa_id=?",
-                (alias_uid, soa_id),
-            )
-            code_row = cur.fetchone()
-            cur.execute(
-                "DELETE FROM alias_code WHERE alias_code_uid=? AND soa_id=?",
-                (alias_uid, soa_id),
-            )
-            if code_row:
-                cur.execute(
-                    "DELETE FROM code WHERE code_uid=? AND soa_id=?",
-                    (code_row[0], soa_id),
-                )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("_migrate_truncate_biomedical_concept_property_data: %s", e)
-
-
 def _migrate_repoint_stale_bc_code_chains():
     """Realign biomedical_concept.code chain with activity_concept.concept_code.
 
@@ -1607,6 +1553,22 @@ def _migrate_activity_concept_add_concept_group_uid():
         logger.warning("_migrate_activity_concept_add_concept_group_uid failed: %s", e)
 
 
+def _migrate_activity_concept_add_bc_category_name():
+    """Add bc_category_name column to activity_concept if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity_concept)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "bc_category_name" not in cols:
+            cur.execute("ALTER TABLE activity_concept ADD COLUMN bc_category_name TEXT")
+            conn.commit()
+            logger.info("Added bc_category_name column to activity_concept")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_activity_concept_add_bc_category_name failed: %s", e)
+
+
 def _migrate_surrogate_add_concept_group_uid():
     """Add concept_group_uid column to biomedical_concept_surrogate if missing."""
     try:
@@ -1741,6 +1703,30 @@ def _migrate_activity_concept_dss_add_extension_attribute_uid():
             "_migrate_activity_concept_dss_add_extension_attribute_uid failed: %s",
             e,
         )
+
+
+def _migrate_add_activity_concept_crf_table():
+    """Create activity_concept_crf for 0-to-many CRF assignments per BC."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity_concept_crf (
+                id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id                INTEGER NOT NULL,
+                activity_id           INTEGER NOT NULL,
+                concept_code          TEXT NOT NULL,
+                crf_title             TEXT NOT NULL,
+                crf_href              TEXT NOT NULL,
+                extension_attribute_uid TEXT
+            )
+            """
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_add_activity_concept_crf_table failed: %s", e)
 
 
 def _migrate_drop_protocol_terminology_tables():
@@ -2143,42 +2129,6 @@ def _migrate_add_document_content_reference_audit_table():
         )
 
 
-def _migrate_clear_bcp_rows():
-    """Delete all BCP + ResponseCode rows and their orphaned code chains.
-
-    Removes rows created by the incorrect generic-BC-only populate path.
-    The startup backfill repopulates everything correctly via the SDTM
-    specialization index.
-    """
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            """DELETE FROM code WHERE code_uid IN (
-                SELECT ac.standard_code FROM alias_code ac
-                WHERE ac.alias_code_uid IN (
-                    SELECT code FROM biomedical_concept_property
-                    UNION ALL
-                    SELECT code FROM bcp_response_code
-                )
-            )"""
-        )
-        cur.execute(
-            """DELETE FROM alias_code WHERE alias_code_uid IN (
-                SELECT code FROM biomedical_concept_property
-                UNION ALL
-                SELECT code FROM bcp_response_code
-            )"""
-        )
-        cur.execute("DELETE FROM bcp_response_code")
-        cur.execute("DELETE FROM biomedical_concept_property")
-        conn.commit()
-        conn.close()
-        logger.info("_migrate_clear_bcp_rows: cleared BCP rows for repopulation")
-    except Exception as e:
-        logger.warning("_migrate_clear_bcp_rows failed: %s", e)
-
-
 def _migrate_add_bcp_response_code_table():
     """Create bcp_response_code table for ResponseCode entities."""
     try:
@@ -2204,3 +2154,1099 @@ def _migrate_add_bcp_response_code_table():
         )
     except Exception as e:
         logger.warning("_migrate_add_bcp_response_code_table failed: %s", e)
+
+
+def _migrate_add_amendment_geographic_scope_table():
+    """Create amendment_geographic_scope table for GeographicScope entities."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_geographic_scope (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                scope_uid TEXT NOT NULL,
+                type_code_uid TEXT NOT NULL,
+                UNIQUE(soa_id, scope_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_geographic_scope_table created "
+            "amendment_geographic_scope table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_amendment_geographic_scope_table failed: %s", e)
+
+
+def _migrate_add_amendment_geographic_scope_audit_table():
+    """Create amendment_geographic_scope_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_geographic_scope_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                scope_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_geographic_scope_audit_table created "
+            "amendment_geographic_scope_audit table"
+        )
+    except Exception as e:
+        logger.warning(
+            "_migrate_add_amendment_geographic_scope_audit_table failed: %s",
+            e,
+        )
+
+
+def _migrate_add_amendment_subject_enrollment_table():
+    """Create amendment_subject_enrollment table for SubjectEnrollment entities."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_subject_enrollment (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                enrollment_uid TEXT NOT NULL,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT,
+                quantity_value REAL NOT NULL,
+                quantity_unit_code_uid TEXT,
+                for_scope_uid TEXT,
+                for_study_cohort_id TEXT,
+                for_study_site_id TEXT,
+                UNIQUE(soa_id, enrollment_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_subject_enrollment_table created "
+            "amendment_subject_enrollment table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_amendment_subject_enrollment_table failed: %s", e)
+
+
+def _migrate_add_amendment_subject_enrollment_audit_table():
+    """Create amendment_subject_enrollment_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_subject_enrollment_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                enrollment_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_subject_enrollment_audit_table created "
+            "amendment_subject_enrollment_audit table"
+        )
+    except Exception as e:
+        logger.warning(
+            "_migrate_add_amendment_subject_enrollment_audit_table failed: %s",
+            e,
+        )
+
+
+def _migrate_add_amendment_governance_date_table():
+    """Create amendment_governance_date table for GovernanceDate entities."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_governance_date (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                amendment_uid TEXT NOT NULL,
+                date_uid TEXT NOT NULL,
+                name TEXT NOT NULL,
+                label TEXT,
+                description TEXT,
+                type_code_uid TEXT NOT NULL,
+                date_value TEXT NOT NULL,
+                UNIQUE(soa_id, date_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_governance_date_table created "
+            "amendment_governance_date table"
+        )
+    except Exception as e:
+        logger.warning("_migrate_add_amendment_governance_date_table failed: %s", e)
+
+
+def _migrate_add_amendment_governance_date_audit_table():
+    """Create amendment_governance_date_audit table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS amendment_governance_date_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                date_id INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_amendment_governance_date_audit_table created "
+            "amendment_governance_date_audit table"
+        )
+    except Exception as e:
+        logger.warning(
+            "_migrate_add_amendment_governance_date_audit_table failed: %s",
+            e,
+        )
+
+
+def _migrate_add_governance_date_geographic_scope_table():
+    """Create governance_date_geographic_scope junction table."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS governance_date_geographic_scope (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                date_uid TEXT NOT NULL,
+                scope_uid TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_add_governance_date_geographic_scope_table created "
+            "governance_date_geographic_scope table"
+        )
+    except Exception as e:
+        logger.warning(
+            "_migrate_add_governance_date_geographic_scope_table failed: %s",
+            e,
+        )
+
+
+def _migrate_add_decode_to_code_association():
+    """Add decode TEXT column to code_association for human-readable term labels."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(code_association)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "decode" not in cols:
+            cur.execute("ALTER TABLE code_association ADD COLUMN decode TEXT")
+            conn.commit()
+            logger.info("_migrate_add_decode_to_code_association added decode column")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_add_decode_to_code_association failed: %s", e)
+
+
+def _migrate_remap_code_association_codes():
+    """Remap code_association rows where code was stored as submission_value text.
+
+    For codelists where the DDF CT now provides a proper conceptId (C-code),
+    look up each stored value in the {submission_value: code} map.  When the
+    stored value is found as a submission_value key and the mapped code differs,
+    update code to the C-code and set decode to the original submission_value.
+    Rows that already hold a C-code are not matched and are left unchanged.
+    """
+    try:
+        from soa_builder.web.utils import get_ddf_ct_codelist_map_by_submission
+
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT code_uid, soa_id, codelist_code, code "
+            "FROM code_association "
+            "WHERE codelist_code IS NOT NULL AND codelist_code != ''"
+        )
+        rows = cur.fetchall()
+        updated = 0
+        _sv_cache: Dict[str, Dict[str, str]] = {}
+        for code_uid, soa_id, codelist_code, stored_code in rows:
+            if not codelist_code or not stored_code:
+                continue
+            if codelist_code not in _sv_cache:
+                _sv_cache[codelist_code] = get_ddf_ct_codelist_map_by_submission(
+                    codelist_code
+                )
+            by_sv = _sv_cache[codelist_code]
+            actual_code = by_sv.get(stored_code)
+            if actual_code and actual_code != stored_code:
+                cur.execute(
+                    "UPDATE code_association SET code=?, decode=? "
+                    "WHERE code_uid=? AND soa_id=?",
+                    (actual_code, stored_code, code_uid, soa_id),
+                )
+                updated += 1
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_remap_code_association_codes remapped %d rows", updated)
+    except Exception as e:
+        logger.warning("_migrate_remap_code_association_codes failed: %s", e)
+
+
+def _migrate_backfill_code_association_decode():
+    """Populate decode for existing code_association rows via DDF CT lookup."""
+    try:
+        from soa_builder.web.utils import get_ddf_ct_term
+
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT code_uid, soa_id, codelist_code, code "
+            "FROM code_association "
+            "WHERE (decode IS NULL OR decode = '') "
+            "AND codelist_code IS NOT NULL AND codelist_code != ''"
+        )
+        rows = cur.fetchall()
+        updated = 0
+        for code_uid, soa_id, codelist_code, code in rows:
+            if not codelist_code or not code:
+                continue
+            term: Optional[dict] = get_ddf_ct_term(codelist_code, code)
+            decode = (term.get("submission_value") or code) if term else code
+            cur.execute(
+                "UPDATE code_association SET decode=? WHERE code_uid=? AND soa_id=?",
+                (decode, code_uid, soa_id),
+            )
+            updated += 1
+        conn.commit()
+        conn.close()
+        logger.info(
+            "_migrate_backfill_code_association_decode backfilled %d rows",
+            updated,
+        )
+    except Exception as e:
+        logger.warning("_migrate_backfill_code_association_decode failed: %s", e)
+
+
+_FILES_DIR = pathlib.Path(__file__).parent.parent.parent.parent / "files"
+
+
+def _migrate_create_country_codes_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS country_codes ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "country_name TEXT NOT NULL,"
+            "country_numeric_code TEXT NOT NULL"
+            ")"
+        )
+        cur.execute("SELECT COUNT(*) FROM country_codes")
+        if cur.fetchone()[0] == 0:
+            csv_path = _FILES_DIR / "country_codes.csv"
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                rows = [(r["country_name"], r["country_numeric_code"]) for r in reader]
+            cur.executemany(
+                "INSERT INTO country_codes "
+                "(country_name,country_numeric_code) VALUES (?,?)",
+                rows,
+            )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_create_country_codes_table complete")
+    except Exception as e:
+        logger.warning("_migrate_create_country_codes_table failed: %s", e)
+
+
+def _migrate_create_geographic_regions_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS geographic_regions ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "region TEXT NOT NULL,"
+            "subregion TEXT NOT NULL,"
+            "region_numeric_code TEXT NOT NULL"
+            ")"
+        )
+        cur.execute("SELECT COUNT(*) FROM geographic_regions")
+        if cur.fetchone()[0] == 0:
+            csv_path = _FILES_DIR / "geographic_regions.csv"
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                rows = [
+                    (r["region"], r["subregion"], r["region_numeric_code"])
+                    for r in reader
+                ]
+            cur.executemany(
+                "INSERT INTO geographic_regions "
+                "(region,subregion,region_numeric_code) VALUES (?,?,?)",
+                rows,
+            )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_create_geographic_regions_table complete")
+    except Exception as e:
+        logger.warning("_migrate_create_geographic_regions_table failed: %s", e)
+
+
+def _migrate_add_location_code_uid_to_geo_scope():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "ALTER TABLE amendment_geographic_scope ADD COLUMN location_code_uid TEXT"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_location_code_uid_to_geo_scope added column")
+    except Exception as e:
+        logger.warning("_migrate_add_location_code_uid_to_geo_scope failed: %s", e)
+
+
+def _migrate_add_study_title_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_title (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id          INTEGER NOT NULL,
+                study_title_uid TEXT NOT NULL,
+                text            TEXT NOT NULL,
+                type_code_uid   TEXT,
+                order_index     INTEGER,
+                UNIQUE(soa_id, study_title_uid)
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_title_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_title_table failed: %s", e)
+
+
+def _migrate_add_study_title_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS study_title_audit (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id       INTEGER NOT NULL,
+                title_id     INTEGER,
+                action       TEXT NOT NULL,
+                before_json  TEXT,
+                after_json   TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_title_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_title_audit_table failed: %s", e)
+
+
+def _migrate_repair_broken_bc_code_chains():
+    """Repair biomedical_concept rows whose alias_code exists but code is missing.
+
+    When code rows are deleted without cascading to their alias_code references,
+    the INNER JOIN in build_usdm_biomedical_concepts silently excludes those BCs
+    from USDM output. This migration re-creates the missing code rows using the
+    concept_code from activity_concept and repoints biomedical_concept.code to
+    a fresh alias_code/code pair. The now-orphaned old alias_code row is left in
+    place (harmless) since the BC no longer references it.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT bc.id, bc.soa_id, bc.biomedical_concept_uid, ac.concept_code
+            FROM biomedical_concept bc
+            INNER JOIN alias_code a
+                    ON a.alias_code_uid = bc.code AND a.soa_id = bc.soa_id
+            LEFT  JOIN code c
+                    ON c.code_uid = a.standard_code AND c.soa_id = a.soa_id
+            LEFT  JOIN activity_concept ac
+                    ON ac.concept_uid = bc.biomedical_concept_uid
+                   AND ac.soa_id = bc.soa_id
+            WHERE c.code_uid IS NULL
+            """
+        )
+        rows = cur.fetchall()
+        if not rows:
+            conn.close()
+            return
+
+        repaired = 0
+        for bc_id, soa_id, bc_uid, concept_code in rows:
+            if not concept_code:
+                continue
+
+            # get-or-create code row for this concept_code
+            cur.execute(
+                "SELECT code_uid FROM code WHERE soa_id=? AND code=?",
+                (soa_id, concept_code),
+            )
+            row = cur.fetchone()
+            if row:
+                code_uid = row[0]
+            else:
+                cur.execute(
+                    "SELECT code_uid FROM code"
+                    " WHERE soa_id=? AND code_uid LIKE 'Code_%'"
+                    " UNION SELECT code_uid FROM code_association"
+                    " WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+                    (soa_id, soa_id),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = max((int(x.split("_")[1]) for x in existing), default=0) + 1
+                code_uid = f"Code_{n}"
+                cur.execute(
+                    "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
+                    (soa_id, code_uid, concept_code),
+                )
+
+            # get-or-create alias_code row pointing to that code
+            cur.execute(
+                "SELECT alias_code_uid FROM alias_code"
+                " WHERE soa_id=? AND standard_code=?",
+                (soa_id, code_uid),
+            )
+            row = cur.fetchone()
+            if row:
+                alias_uid = row[0]
+            else:
+                cur.execute(
+                    "SELECT alias_code_uid FROM alias_code"
+                    " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+                    (soa_id,),
+                )
+                existing = [x[0] for x in cur.fetchall() if x[0]]
+                n = max((int(x.split("_")[1]) for x in existing), default=0) + 1
+                alias_uid = f"AliasCode_{n}"
+                cur.execute(
+                    "INSERT INTO alias_code"
+                    " (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
+                    (soa_id, alias_uid, code_uid),
+                )
+
+            cur.execute(
+                "UPDATE biomedical_concept SET code=? WHERE id=?",
+                (alias_uid, bc_id),
+            )
+            repaired += 1
+
+        conn.commit()
+        conn.close()
+        if repaired:
+            logger.info(
+                "_migrate_repair_broken_bc_code_chains: repaired %d BCs",
+                repaired,
+            )
+    except Exception as e:
+        logger.warning("_migrate_repair_broken_bc_code_chains failed: %s", e)
+
+
+def _migrate_add_organization_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS organization ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "organization_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "identifier TEXT,"
+            "identifier_scheme TEXT,"
+            "type_code_uid TEXT,"
+            "addr_text TEXT,"
+            "addr_lines TEXT,"
+            "addr_city TEXT,"
+            "addr_district TEXT,"
+            "addr_state TEXT,"
+            "addr_postal_code TEXT,"
+            "addr_country_code_uid TEXT,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, organization_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_organization_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_organization_table failed: %s", e)
+
+
+def _migrate_add_organization_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS organization_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "org_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_organization_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_organization_audit_table failed: %s", e)
+
+
+def _migrate_add_role_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS role ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "role_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "code_uid TEXT,"
+            "organization_ids TEXT,"
+            "masking INTEGER NOT NULL DEFAULT 0,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, role_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_role_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_role_table failed: %s", e)
+
+
+def _migrate_add_role_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS role_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "role_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_role_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_role_audit_table failed: %s", e)
+
+
+def _migrate_add_study_intervention_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS study_intervention ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "intervention_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "role_code_uid TEXT,"
+            "type_code_uid TEXT,"
+            "mrd_quantity_uid TEXT,"
+            "mrd_value REAL,"
+            "mrd_unit_alias_uid TEXT,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, intervention_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_intervention_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_intervention_table failed: %s", e)
+
+
+def _migrate_add_study_intervention_code_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS study_intervention_code ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "intervention_id INTEGER NOT NULL,"
+            "code_uid TEXT NOT NULL,"
+            "order_index INTEGER"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_intervention_code_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_intervention_code_table failed: %s", e)
+
+
+def _migrate_add_study_intervention_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS study_intervention_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "intervention_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_intervention_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_intervention_audit_table failed: %s", e)
+
+
+def _migrate_add_estimand_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS estimand ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "population_summary TEXT,"
+            "variable_of_interest_uid TEXT,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, estimand_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_estimand_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_estimand_table failed: %s", e)
+
+
+def _migrate_add_estimand_intervention_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS estimand_intervention ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_id INTEGER NOT NULL,"
+            "intervention_uid TEXT NOT NULL,"
+            "order_index INTEGER"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_estimand_intervention_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_estimand_intervention_table failed: %s", e)
+
+
+def _migrate_add_intercurrent_event_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS intercurrent_event ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_id INTEGER NOT NULL,"
+            "event_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "text TEXT,"
+            "strategy TEXT,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, event_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_intercurrent_event_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_intercurrent_event_table failed: %s", e)
+
+
+def _migrate_add_estimand_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS estimand_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_estimand_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_estimand_audit_table failed: %s", e)
+
+
+def _migrate_add_estimand_variable_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS estimand_variable ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "estimand_id INTEGER NOT NULL,"
+            "endpoint_uid TEXT NOT NULL,"
+            "order_index INTEGER"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_estimand_variable_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_estimand_variable_table failed: %s", e)
+
+
+def _migrate_add_indication_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS indication ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "indication_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "is_rare_disease INTEGER NOT NULL DEFAULT 0,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, indication_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_indication_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_indication_table failed: %s", e)
+
+
+def _migrate_add_indication_code_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS indication_code ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "indication_id INTEGER NOT NULL,"
+            "code_uid TEXT NOT NULL,"
+            "order_index INTEGER"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_indication_code_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_indication_code_table failed: %s", e)
+
+
+def _migrate_add_indication_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS indication_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "indication_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_indication_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_indication_audit_table failed: %s", e)
+
+
+def _migrate_add_person_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS person ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "person_uid TEXT NOT NULL,"
+            "person_name_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "job_title TEXT NOT NULL,"
+            "organization_uid TEXT,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, person_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_person_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_person_table failed: %s", e)
+
+
+def _migrate_add_person_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS person_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "person_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_person_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_person_audit_table failed: %s", e)
+
+
+def _migrate_add_role_person_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS role_person ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "role_id INTEGER NOT NULL,"
+            "person_id INTEGER NOT NULL,"
+            "UNIQUE(soa_id, role_id, person_id)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_role_person_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_role_person_table failed: %s", e)
+
+
+def _migrate_person_drop_job_title_notnull():
+    """Recreate person table without NOT NULL on job_title."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='person'"
+        )
+        row = cur.fetchone()
+        if not row or "job_title TEXT NOT NULL" not in (row[0] or ""):
+            conn.close()
+            return
+        cur.executescript(
+            "PRAGMA foreign_keys=OFF;"
+            "BEGIN;"
+            "CREATE TABLE IF NOT EXISTS person_new ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "person_uid TEXT NOT NULL,"
+            "person_name_uid TEXT NOT NULL,"
+            "name TEXT NOT NULL,"
+            "label TEXT,"
+            "description TEXT,"
+            "job_title TEXT,"
+            "organization_uid TEXT,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, person_uid)"
+            ");"
+            "INSERT INTO person_new SELECT"
+            " id,soa_id,person_uid,person_name_uid,name,label,"
+            " description,job_title,organization_uid,order_index"
+            " FROM person;"
+            "DROP TABLE person;"
+            "ALTER TABLE person_new RENAME TO person;"
+            "COMMIT;"
+            "PRAGMA foreign_keys=ON;"
+        )
+        conn.close()
+        logger.info("_migrate_person_drop_job_title_notnull complete")
+    except Exception as e:
+        logger.warning("_migrate_person_drop_job_title_notnull failed: %s", e)
+
+
+def _migrate_add_person_name_fields():
+    """Add PersonName structured fields to the person table."""
+    conn = _connect()
+    cur = conn.cursor()
+    cols = {
+        "text": "TEXT",
+        "family_name": "TEXT",
+        "given_names": "TEXT",
+        "prefixes": "TEXT",
+        "suffixes": "TEXT",
+    }
+    for col, col_type in cols.items():
+        try:
+            cur.execute(f"ALTER TABLE person ADD COLUMN {col} {col_type}")
+            conn.commit()
+            logger.info("_migrate_add_person_name_fields: added column %s", col)
+        except Exception:
+            pass
+    conn.close()
+
+
+def _migrate_add_study_identifier_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS study_identifier ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "study_identifier_uid TEXT NOT NULL,"
+            "text TEXT NOT NULL,"
+            "scope_org_uid TEXT NOT NULL DEFAULT '',"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, study_identifier_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_identifier_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_identifier_table failed: %s", e)
+
+
+def _migrate_add_study_identifier_audit_table():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS study_identifier_audit ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "si_id INTEGER,"
+            "action TEXT NOT NULL,"
+            "before_json TEXT,"
+            "after_json TEXT,"
+            "performed_at TEXT NOT NULL"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_study_identifier_audit_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_study_identifier_audit_table failed: %s", e)
+
+
+def _migrate_soa_add_tool_extension_uids():
+    """Create soa_tool_extension table for stable per-SOA USDM tool UIDs.
+
+    Also drops any stale tool_*_uid columns from the soa table that may
+    have been added by an earlier version of this migration.
+    """
+    stale_cols = [
+        "tool_ea_outer_uid",
+        "tool_ec_uid",
+        "tool_ea_name_uid",
+        "tool_ea_version_uid",
+        "tool_ea_date_uid",
+    ]
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS soa_tool_extension (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id         INTEGER NOT NULL UNIQUE,
+                ea_outer_uid   TEXT,
+                ec_uid         TEXT,
+                ea_name_uid    TEXT,
+                ea_version_uid TEXT,
+                ea_date_uid    TEXT
+            )
+            """
+        )
+        conn.commit()
+        cur.execute("PRAGMA table_info(soa)")
+        soa_cols = {r[1] for r in cur.fetchall()}
+        dropped = []
+        for col in stale_cols:
+            if col in soa_cols:
+                cur.execute(f"ALTER TABLE soa DROP COLUMN {col}")
+                dropped.append(col)
+        if dropped:
+            conn.commit()
+            logger.info(
+                "_migrate_soa_add_tool_extension_uids dropped stale soa columns: %s",
+                ", ".join(dropped),
+            )
+        logger.info("_migrate_soa_add_tool_extension_uids complete")
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_soa_add_tool_extension_uids failed: %s", e)

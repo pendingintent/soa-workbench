@@ -2,13 +2,14 @@ import io
 import json
 import logging
 import os
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from ..db import _connect
-from ..utils import soa_exists
+from ..utils import get_latest_sdtm_ct_href, soa_exists
 
 router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.usdm_json")
@@ -35,6 +36,7 @@ _COMPONENTS = [
     ("study_cells", "Study Cells", "usdm_study_cells.json"),
     ("objectives", "Objectives", "usdm_objectives.json"),
     ("endpoints", "Endpoints", "usdm_endpoints.json"),
+    ("amendments", "Study Amendments", "usdm_amendments.json"),
 ]
 
 
@@ -99,6 +101,10 @@ def _build(component: str, soa_id: int):
         from usdm.generate_endpoints import build_usdm_endpoints
 
         return build_usdm_endpoints(soa_id)
+    if component == "amendments":
+        from usdm.generate_amendments import build_usdm_amendments
+
+        return build_usdm_amendments(soa_id)
     raise ValueError(f"Unknown component: {component}")
 
 
@@ -124,6 +130,69 @@ def ui_usdm_json(request: Request, soa_id: int):
     )
 
 
+@router.get("/ui/soa/{soa_id}/define_json", response_class=HTMLResponse)
+def ui_define_json(request: Request, soa_id: int):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT name, study_id, study_label FROM soa WHERE id=?", (soa_id,))
+    row = cur.fetchone()
+    conn.close()
+    slug = get_latest_sdtm_ct_href() or ""
+    default_sdtmct = slug.replace("sdtmct-", "") if slug else ""
+    return templates.TemplateResponse(
+        request,
+        "define_json.html",
+        {
+            "soa_id": soa_id,
+            "study_name": row[0],
+            "study_id_value": row[1],
+            "study_label": row[2],
+            "default_sdtmct": default_sdtmct,
+            "default_sdtmig": "3.4",
+        },
+    )
+
+
+@router.get("/soa/{soa_id}/usdm_json/define_json")
+def download_define_json(
+    soa_id: int,
+    sdtmct: str,
+    sdtmig: str = "3.4",
+    cosmosversion: str = "v2",
+    studyversion: int = 0,
+    studydesign: int = 0,
+    docversion: int = 0,
+):
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    try:
+        from usdm.generate_define_json import build_define_json
+
+        data = build_define_json(
+            soa_id,
+            sdtmct=sdtmct,
+            sdtmig=sdtmig,
+            cosmosversion=cosmosversion,
+            studyversion=studyversion,
+            studydesign=studydesign,
+            docversion=docversion,
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Failed to generate Define-JSON for soa_id=%s", soa_id)
+        raise HTTPException(500, f"Failed to generate Define-JSON: {exc}") from exc
+    payload = json.dumps(data, indent=2) + "\n"
+    buf = io.BytesIO(payload.encode("utf-8"))
+    return StreamingResponse(
+        buf,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="define.json"'},
+    )
+
+
 @router.get("/soa/{soa_id}/usdm_json/{component}")
 def download_usdm_component(soa_id: int, component: str):
     if not soa_exists(soa_id):
@@ -132,13 +201,28 @@ def download_usdm_component(soa_id: int, component: str):
     if component not in valid_keys:
         raise HTTPException(400, f"Unknown component '{component}'")
     try:
-        data = _build(component, soa_id)
+        if component == "full":
+            from usdm.generate_usdm import build_usdm
+
+            now = datetime.now()
+            ts = now.strftime("%Y%m%dT%H:%M")
+            ts_filename = now.strftime("%Y%m%dT%H%M")
+            data = build_usdm(soa_id, timestamp=ts)
+            conn = _connect()
+            cur = conn.cursor()
+            cur.execute("SELECT study_id, name FROM soa WHERE id=?", (soa_id,))
+            row = cur.fetchone()
+            conn.close()
+            base = (row[0] or row[1] or "usdm") if row else "usdm"
+            filename = f"{base}-{ts_filename}.json"
+        else:
+            data = _build(component, soa_id)
+            filename = next(c[2] for c in _COMPONENTS if c[0] == component)
     except Exception as exc:
         logger.exception(
             "Failed to build USDM component %s for soa_id=%s", component, soa_id
         )
         raise HTTPException(500, f"Failed to generate {component}: {exc}") from exc
-    filename = next(c[2] for c in _COMPONENTS if c[0] == component)
     payload = json.dumps(data, indent=2) + "\n"
     buf = io.BytesIO(payload.encode("utf-8"))
     return StreamingResponse(

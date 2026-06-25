@@ -51,6 +51,30 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
     for act_uid, concept_uid in cur.fetchall():
         bc_map.setdefault(act_uid, []).append(concept_uid)
 
+    # Build bcCategoryIds per activity — same sort order as generate_bc_categories.py
+    # so BiomedicalConceptCategory_N IDs are consistent
+    act_category_map: dict[str, list[str]] = {}
+    cur.execute("PRAGMA table_info(activity_concept)")
+    if "bc_category_name" in {r[1] for r in cur.fetchall()}:
+        cur.execute(
+            "SELECT DISTINCT bc_category_name FROM activity_concept "
+            "WHERE soa_id=? AND bc_category_name IS NOT NULL AND bc_category_name!=''",
+            (soa_id,),
+        )
+        category_id_map = {
+            name: f"BiomedicalConceptCategory_{idx}"
+            for idx, name in enumerate(sorted(r[0] for r in cur.fetchall()), start=1)
+        }
+        cur.execute(
+            "SELECT DISTINCT activity_uid, bc_category_name FROM activity_concept "
+            "WHERE soa_id=? AND bc_category_name IS NOT NULL AND bc_category_name!=''",
+            (soa_id,),
+        )
+        for act_uid, cat_name in cur.fetchall():
+            cat_id = category_id_map.get(cat_name)
+            if cat_id:
+                act_category_map.setdefault(act_uid, []).append(cat_id)
+
     # Pre-fetch surrogate mappings
     cur.execute(
         "SELECT activity_uid, surrogate_uid FROM activity_surrogate WHERE soa_id=?",
@@ -84,7 +108,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
             "childIds": [],
             "definedProcedures": [],
             "biomedicalConceptIds": bcs,
-            "bcCategoryIds": [],
+            "bcCategoryIds": act_category_map.get(aid, []),
             "bcSurrogateIds": surrogate_map.get(aid, []),
             "timelineId": None,
             "notes": [],

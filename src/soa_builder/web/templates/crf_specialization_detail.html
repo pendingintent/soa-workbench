@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="am-page-title">CRF Specialization Detail</h2>
+
+<div style="margin-bottom:12px;">
+  <a href="/ui/crf/specializations" class="am-back-link">&larr; Back to CRF Specializations</a>
+</div>
+
+<p style="font-size:0.9em;color:var(--am-text-mid);">
+  <strong>Title:</strong> {{ title }}<br/>
+  {% if href %}
+    <strong>API HREF:</strong>
+    <a href="{{ href }}" target="_blank" rel="noopener"
+       style="font-size:0.85em;word-break:break-all;">{{ href }}</a>
+  {% else %}
+    <em>No href available</em>
+  {% endif %}
+</p>
+
+{% if missing_key %}
+<div style="padding:8px 12px;margin-bottom:12px;border:1px solid #cc9;background:#ffd;color:#660;font-size:0.85em;border-radius:4px;">
+  <strong>Notice:</strong> No API key detected; set <code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code> to retrieve live JSON.
+</div>
+{% endif %}
+
+{% if error %}
+<div style="padding:8px 12px;margin-bottom:12px;border:1px solid var(--am-danger,#c62828);background:#fee;color:var(--am-danger,#c62828);font-size:0.85em;border-radius:4px;">
+  <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{% if spec_data %}
+
+{# ── Scalar fields table ─────────────────────────────────────────────────── #}
+{% set scalar_items = [] %}
+{% for key, val in spec_data.items() %}
+  {% if not key.startswith('_') and val is not none and val != '' and val is not mapping and val is not iterable or val is string %}
+    {% if val is string or val is number or val is boolean %}
+      {% if scalar_items.append({'key': key, 'val': val}) %}{% endif %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% if scalar_items %}
+<h3 class="fz-section-heading">Summary</h3>
+<table class="fz-table" style="margin-bottom:16px;">
+  <tr class="fz-thead-row">
+    <th style="width:220px;">Field</th>
+    <th>Value</th>
+  </tr>
+  {% for item in scalar_items %}
+  <tr>
+    <td style="font-weight:600;white-space:nowrap;color:var(--am-text-mid);">{{ item.key }}</td>
+    <td>{{ item.val }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{# ── Items / fields sub-table ────────────────────────────────────────────── #}
+{% set items_list = [] %}
+{% set items_key = '' %}
+{% for candidate in ['items', 'fields', 'dataElementConcepts', 'crfFields',
+                     'questions', 'formFields', 'variables'] %}
+  {% if items_list | length == 0 and spec_data[candidate] is defined
+        and spec_data[candidate] is iterable
+        and spec_data[candidate] is not string
+        and spec_data[candidate] | length > 0 %}
+    {% for it in spec_data[candidate] %}
+      {% if items_list.append(it) %}{% endif %}
+    {% endfor %}
+    {% set items_key = candidate %}
+  {% endif %}
+{% endfor %}
+
+{% if items_list %}
+  {% set first = items_list[0] if items_list else {} %}
+  {% set col_keys = [] %}
+  {% if first is mapping %}
+    {% for k in first.keys() %}
+      {% if not k.startswith('_') and col_keys.append(k) %}{% endif %}
+    {% endfor %}
+  {% endif %}
+
+<h3 class="fz-section-heading">{{ items_key | title }}</h3>
+<div style="overflow-x:auto;">
+<table class="fz-table" style="margin-bottom:16px;font-size:0.85em;">
+  <tr class="fz-thead-row">
+    {% for col in col_keys %}
+    <th>{{ col }}</th>
+    {% endfor %}
+  </tr>
+  {% for item in items_list %}
+  <tr>
+    {% if item is mapping %}
+      {% for col in col_keys %}
+      <td>
+        {%- set v = item.get(col, '') -%}
+        {%- if v is mapping -%}
+          {{ v | tojson }}
+        {%- elif v is iterable and v is not string -%}
+          {{ v | join(', ') }}
+        {%- else -%}
+          {{ v }}
+        {%- endif -%}
+      </td>
+      {% endfor %}
+    {% else %}
+    <td colspan="{{ col_keys | length }}">{{ item }}</td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+
+{# ── Raw JSON dropdown ───────────────────────────────────────────────────── #}
+<details style="margin-top:8px;">
+  <summary style="cursor:pointer;font-weight:600;color:var(--am-text-mid);">Raw JSON</summary>
+  <pre style="overflow:auto;max-height:400px;font-size:0.8em;
+              background:var(--am-surface,#f8fafc);padding:0.75em;
+              border:1px solid var(--am-border,#ddd);border-radius:4px;
+              margin-top:6px;">{{ spec_json }}</pre>
+</details>
+
+{% elif not error %}
+<p style="color:var(--am-text-muted);">No data available for this CRF specialization.</p>
+{% endif %}
+
+{% endblock %}

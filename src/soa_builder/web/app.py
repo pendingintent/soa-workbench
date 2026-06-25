@@ -22,7 +22,6 @@ from typing import Any, List, Optional
 
 import pandas as pd
 import requests
-import threading as _threading
 from dotenv import load_dotenv
 from fastapi import (
     BackgroundTasks,
@@ -39,6 +38,7 @@ from fastapi.templating import Jinja2Templates
 from ..normalization import normalize_soa
 from .initialize_database import _connect, _init_db
 from .db import DB_PATH as _DB_PATH
+
 from .migrate_database import (
     _drop_unused_override_table,
     _migrate_activity_add_uid,
@@ -67,7 +67,6 @@ from .migrate_database import (
     _migrate_study_cell_add_order_index,
     _migrate_biomedical_concept_audit,
     _migrate_backfill_biomedical_concept_codes,
-    _migrate_truncate_biomedical_concept_property_data,
     _migrate_repoint_stale_bc_code_chains,
     _migrate_add_soa_id_indexes,
     _migrate_add_footnote_table,
@@ -80,9 +79,11 @@ from .migrate_database import (
     _migrate_activity_concept_add_concept_group_uid,
     _migrate_surrogate_add_concept_group_uid,
     _migrate_activity_surrogate_add_concept_group_uid,
+    _migrate_activity_concept_add_bc_category_name,
     _migrate_add_activity_concept_dss_table,
     _migrate_activity_concept_dss_add_display,
     _migrate_activity_concept_dss_add_extension_attribute_uid,
+    _migrate_add_activity_concept_crf_table,
     _migrate_drop_protocol_terminology_tables,
     _migrate_drop_ddf_terminology_tables,
     _migrate_add_objective_table,
@@ -100,6 +101,45 @@ from .migrate_database import (
     _migrate_add_document_content_reference_table,
     _migrate_add_document_content_reference_audit_table,
     _migrate_add_bcp_response_code_table,
+    _migrate_add_amendment_geographic_scope_table,
+    _migrate_add_amendment_geographic_scope_audit_table,
+    _migrate_add_amendment_subject_enrollment_table,
+    _migrate_add_amendment_subject_enrollment_audit_table,
+    _migrate_add_amendment_governance_date_table,
+    _migrate_add_amendment_governance_date_audit_table,
+    _migrate_add_governance_date_geographic_scope_table,
+    _migrate_add_decode_to_code_association,
+    _migrate_remap_code_association_codes,
+    _migrate_backfill_code_association_decode,
+    _migrate_create_country_codes_table,
+    _migrate_create_geographic_regions_table,
+    _migrate_add_location_code_uid_to_geo_scope,
+    _migrate_repair_broken_bc_code_chains,
+    _migrate_add_study_title_table,
+    _migrate_add_study_title_audit_table,
+    _migrate_add_organization_table,
+    _migrate_add_organization_audit_table,
+    _migrate_add_role_table,
+    _migrate_add_role_audit_table,
+    _migrate_add_study_intervention_table,
+    _migrate_add_study_intervention_code_table,
+    _migrate_add_study_intervention_audit_table,
+    _migrate_add_estimand_table,
+    _migrate_add_estimand_intervention_table,
+    _migrate_add_intercurrent_event_table,
+    _migrate_add_estimand_audit_table,
+    _migrate_add_estimand_variable_table,
+    _migrate_add_indication_table,
+    _migrate_add_indication_code_table,
+    _migrate_add_indication_audit_table,
+    _migrate_add_person_table,
+    _migrate_add_person_audit_table,
+    _migrate_add_role_person_table,
+    _migrate_add_person_name_fields,
+    _migrate_person_drop_job_title_notnull,
+    _migrate_add_study_identifier_table,
+    _migrate_add_study_identifier_audit_table,
+    _migrate_soa_add_tool_extension_uids,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -127,6 +167,7 @@ from .routers import condition_assignments as condition_assignments_router
 from .routers import footnotes as footnotes_router
 from .routers import bc_surrogates as bc_surrogates_router
 from .routers import concept_groups as concept_groups_router
+from .routers import bc_categories as bc_categories_router
 from .routers import sdtm_terminology as sdtm_terminology_router
 from .routers import cdash_terminology as cdash_terminology_router
 from .routers import define_xml_terminology as define_xml_terminology_router
@@ -137,9 +178,25 @@ from .routers import (
     ddf_controlled_terminology as ddf_controlled_terminology_router,
 )
 from .routers import objectives as objectives_router
+from .routers import study_titles as study_titles_router
 from .routers import endpoints as endpoints_router
 from .routers import amendments as amendments_router
+from .routers import organizations as organizations_router
+from .routers import roles as roles_router
+from .routers import study_interventions as study_interventions_router
+from .routers import estimands as estimands_router
+from .routers import indications as indications_router
+from .routers import persons as persons_router
+from .routers import soa_bundle as soa_bundle_router
+from .routers import study_identifiers as study_identifiers_router
+from .routers.organizations import (
+    _get_org_type_options,
+    _get_countries_options,
+    _list_organizations,
+)
+from .routers.roles import _get_role_type_options, _list_roles
 from .audit import _record_element_audit
+
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
 from .schemas import (
@@ -167,10 +224,6 @@ from .utils import (
     get_scheduled_activity_instance,
 )
 
-from usdm.generate_biomedical_concept_properties import (
-    populate_biomedical_concept_properties_for_all_soas as _bcp_backfill,
-)
-
 
 def _configure_logging():
     level = logging.INFO
@@ -186,30 +239,47 @@ def _configure_logging():
 
 logger = _configure_logging()
 
-load_dotenv()  # must come BEFORE reading env-based configuration so values are populated
+load_dotenv("config.env")  # must come BEFORE reading env-based config
 # Use the DB path resolved by db.py to keep consistency across modules
 DB_PATH = _DB_PATH
 NORMALIZED_ROOT = os.environ.get("SOA_BUILDER_NORMALIZED_ROOT", "normalized")
 
+# Server bind address / port (override via config.env)
+HTTP_LISTEN_PORT = int(os.environ.get("SOA_BUILDER_PORT", "8008"))
+HTTP_LISTEN_IP = os.environ.get("SOA_BUILDER_HOST", "0.0.0.0")
 
-# Set server listen port
-HTTP_LISTEN_PORT = 8008
-HTTP_LISTEN_IP = "0.0.0.0"
-
+# CDISC Library Cosmos v2 API base URL (override via config.env)
+CDISC_BC_API_BASE_URL = os.environ.get(
+    "CDISC_BC_API_BASE_URL",
+    "https://api.library.cdisc.org/api/cosmos/v2",
+)
+CDISC_CRF_API_BASE_URL = (
+    os.environ.get(
+        "CDISC_CRF_API_BASE_URL",
+    )
+    or CDISC_BC_API_BASE_URL
+)
 
 _concept_cache = {"data": None, "fetched_at": 0}
-_CONCEPT_CACHE_TTL = 60 * 60  # 1 hour TTL
+_CONCEPT_CACHE_TTL = int(os.environ.get("SOA_BUILDER_CACHE_TTL", "3600"))
 # SDTM dataset specializations cache (similar TTL)
 _sdtm_specializations_cache = {"data": None, "fetched_at": 0}
-_SDTM_SPECIALIZATIONS_CACHE_TTL = 60 * 60
+_SDTM_SPECIALIZATIONS_CACHE_TTL = _CONCEPT_CACHE_TTL
 # Per-code SDTM specializations cache: {code: (fetched_at, [results])}
 _sdtm_specializations_by_code_cache: dict[str, tuple[float, list]] = {}
+# CRF specializations cache (full list)
+_crf_specializations_cache = {"data": None, "fetched_at": 0}
+_CRF_SPECIALIZATIONS_CACHE_TTL = _CONCEPT_CACHE_TTL
 # Category-specific biomedical concepts cache (per category key)
 _category_concepts_cache: dict[str, dict] = {}
-_CATEGORY_CONCEPTS_CACHE_TTL = 60 * 60  # 1 hour
+_CATEGORY_CONCEPTS_CACHE_TTL = _CONCEPT_CACHE_TTL
 # Biomedical concept categories cache (whole list)
 _bc_categories_cache = {"data": None, "fetched_at": 0}
-_BC_CATEGORIES_CACHE_TTL = 60 * 60  # 1 hour
+_BC_CATEGORIES_CACHE_TTL = _CONCEPT_CACHE_TTL
+
+# Outbound HTTP timeout for CDISC Library API requests (seconds)
+_HTTP_TIMEOUT = int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15"))
+
 app = FastAPI(title="SoA Builder API", version="0.1.0")
 logger = logging.getLogger("soa_builder.concepts")
 if not logger.handlers:
@@ -258,7 +328,6 @@ _migrate_arm_add_type_fields()
 _migrate_element_audit_columns()
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
-_migrate_truncate_biomedical_concept_property_data()
 _migrate_repoint_stale_bc_code_chains()
 _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
@@ -271,11 +340,13 @@ _migrate_add_concept_group_table()
 _migrate_activity_concept_add_concept_group_uid()
 _migrate_surrogate_add_concept_group_uid()
 _migrate_activity_surrogate_add_concept_group_uid()
+_migrate_activity_concept_add_bc_category_name()
 _migrate_drop_protocol_terminology_tables()
 _migrate_drop_ddf_terminology_tables()
 _migrate_add_activity_concept_dss_table()
 _migrate_activity_concept_dss_add_display()
 _migrate_activity_concept_dss_add_extension_attribute_uid()
+_migrate_add_activity_concept_crf_table()
 _migrate_add_objective_table()
 _migrate_add_objective_audit_table()
 _migrate_add_endpoint_table()
@@ -291,10 +362,45 @@ _migrate_add_study_change_audit_table()
 _migrate_add_document_content_reference_table()
 _migrate_add_document_content_reference_audit_table()
 _migrate_add_bcp_response_code_table()
-
-# Backfill BCP rows for any SOA that pre-dates eager population
-_t = _threading.Thread(target=_bcp_backfill, daemon=True, name="bcp-backfill")
-_t.start()
+_migrate_add_amendment_geographic_scope_table()
+_migrate_add_amendment_geographic_scope_audit_table()
+_migrate_add_amendment_subject_enrollment_table()
+_migrate_add_amendment_subject_enrollment_audit_table()
+_migrate_add_amendment_governance_date_table()
+_migrate_add_amendment_governance_date_audit_table()
+_migrate_add_governance_date_geographic_scope_table()
+_migrate_add_decode_to_code_association()
+_migrate_remap_code_association_codes()
+_migrate_backfill_code_association_decode()
+_migrate_create_country_codes_table()
+_migrate_create_geographic_regions_table()
+_migrate_add_location_code_uid_to_geo_scope()
+_migrate_repair_broken_bc_code_chains()
+_migrate_add_study_title_table()
+_migrate_add_study_title_audit_table()
+_migrate_add_organization_table()
+_migrate_add_organization_audit_table()
+_migrate_add_role_table()
+_migrate_add_role_audit_table()
+_migrate_add_study_intervention_table()
+_migrate_add_study_intervention_code_table()
+_migrate_add_study_intervention_audit_table()
+_migrate_add_estimand_table()
+_migrate_add_estimand_intervention_table()
+_migrate_add_intercurrent_event_table()
+_migrate_add_estimand_audit_table()
+_migrate_add_estimand_variable_table()
+_migrate_add_indication_table()
+_migrate_add_indication_code_table()
+_migrate_add_indication_audit_table()
+_migrate_add_person_table()
+_migrate_add_person_audit_table()
+_migrate_add_role_person_table()
+_migrate_person_drop_job_title_notnull()
+_migrate_add_person_name_fields()
+_migrate_add_study_identifier_table()
+_migrate_add_study_identifier_audit_table()
+_migrate_soa_add_tool_extension_uids()
 
 
 # Include routers
@@ -322,6 +428,7 @@ app.include_router(bc_surrogates_router.router)
 app.include_router(bc_surrogates_router.ui_router)
 app.include_router(concept_groups_router.router)
 app.include_router(concept_groups_router.ui_router)
+app.include_router(bc_categories_router.ui_router)
 app.include_router(sdtm_terminology_router.router)
 app.include_router(cdash_terminology_router.router)
 app.include_router(define_xml_terminology_router.router)
@@ -329,10 +436,27 @@ app.include_router(protocol_controlled_terminology_router.router)
 app.include_router(ddf_controlled_terminology_router.router)
 app.include_router(objectives_router.router)
 app.include_router(objectives_router.ui_router)
+app.include_router(study_titles_router.router)
 app.include_router(endpoints_router.router)
 app.include_router(endpoints_router.ui_router)
 app.include_router(amendments_router.router)
 app.include_router(amendments_router.ui_router)
+app.include_router(organizations_router.router)
+app.include_router(organizations_router.ui_router)
+app.include_router(roles_router.router)
+app.include_router(roles_router.ui_router)
+app.include_router(study_interventions_router.router)
+app.include_router(study_interventions_router.ui_router)
+app.include_router(estimands_router.router)
+app.include_router(estimands_router.ui_router)
+app.include_router(indications_router.router)
+app.include_router(indications_router.ui_router)
+app.include_router(persons_router.router)
+app.include_router(persons_router.ui_router)
+app.include_router(soa_bundle_router.router)
+app.include_router(soa_bundle_router.ui_router)
+app.include_router(study_identifiers_router.router)
+app.include_router(study_identifiers_router.ui_router)
 
 
 def _record_visit_audit(
@@ -611,8 +735,8 @@ def fetch_biomedical_concept_categories(force: bool = False) -> list[dict]:
     Normalized shape:
       [{'name': <category_name>, 'title': <title>, 'href': <absolute_href>}]
     """
-    url = "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/categories"
-    base_prefix = "https://api.library.cdisc.org/api/cosmos/v2"
+    url = f"{CDISC_BC_API_BASE_URL}/mdr/bc/categories"
+    base_prefix = CDISC_BC_API_BASE_URL
     headers = {"Accept": "application/json"}
     api_key = _get_cdisc_api_key()
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
@@ -642,13 +766,9 @@ def fetch_biomedical_concept_categories(force: bool = False) -> list[dict]:
         return _bc_categories_cache.get("data") or []
 
     try:
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
-            logger.warning(
-                "BC categories fetch HTTP %s (snippet=%s)",
-                resp.status_code,
-                resp.text[:200],
-            )
+            logger.warning("BC categories fetch HTTP %s", resp.status_code)
             return []
         try:
             data = resp.json()
@@ -701,7 +821,7 @@ def fetch_biomedical_concepts_by_category(name: str, force: bool = False) -> lis
     if not name or not name.strip():
         return []
     category = name.strip()
-    base_prefix = "https://api.library.cdisc.org/api/cosmos/v2"
+    base_prefix = CDISC_BC_API_BASE_URL
     # Deterministic single encoding: unquote once then re-encode
     decoded_once = urllib.parse.unquote(category)
     encoded = requests.utils.quote(decoded_once, safe="")
@@ -734,21 +854,17 @@ def fetch_biomedical_concepts_by_category(name: str, force: bool = False) -> lis
 
     concepts: list[dict] = []
     try:
-        resp = requests.get(url, headers=headers, timeout=20)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             logger.warning(
-                "BC concepts by category fetch HTTP %s category=%s snippet=%s",
+                "BC concepts by category fetch HTTP %s",
                 resp.status_code,
-                category,
-                resp.text[:180],
             )
             return []
         try:
             data = resp.json()
         except ValueError:
-            logger.warning(
-                "BC concepts by category non-JSON response category=%s", category
-            )
+            logger.warning("BC concepts by category non-JSON response")
             return []
 
         # Strategy:
@@ -824,16 +940,14 @@ def fetch_biomedical_concepts_by_category(name: str, force: bool = False) -> lis
                 concepts.append({"code": str(code), "title": str(title), "href": href})
 
         if not concepts:
-            logger.info("No biomedical concepts parsed for category '%s'", category)
+            logger.info("No biomedical concepts parsed for this category")
         concepts.sort(key=lambda c: c["title"].lower())
-        logger.info(
-            "Fetched %d biomedical concepts for category '%s'", len(concepts), category
-        )
+        logger.info("Fetched %d biomedical concepts for category", len(concepts))
         # Populate cache
         _category_concepts_cache[ckey] = {"data": concepts, "fetched_at": now}
         return concepts
-    except Exception as e:  # pragma: no cover
-        logger.error("BC concepts by category fetch error for '%s': %s", category, e)
+    except Exception:  # pragma: no cover
+        logger.exception("BC concepts by category fetch error")
         return []
 
 
@@ -880,7 +994,7 @@ def fetch_biomedical_concepts(force: bool = False):
         _concept_cache.update(data=[], fetched_at=now)
         logger.warning("CDISC_SKIP_REMOTE=1; concept list empty")
         return []
-    url = "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts"
+    url = f"{CDISC_BC_API_BASE_URL}/mdr/bc/biomedicalconcepts"
     headers = {"Accept": "application/json"}
     api_key = _get_cdisc_api_key()
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
@@ -891,20 +1005,17 @@ def fetch_biomedical_concepts(force: bool = False):
         headers["Authorization"] = f"Bearer {api_key}"  # bearer token style
         headers["api-key"] = api_key  # fallback header name
     try:
-        resp = requests.get(url, headers=headers, timeout=15)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         _concept_cache["last_status"] = resp.status_code
         _concept_cache["last_url"] = url
         _concept_cache["last_error"] = None
-        _concept_cache["raw_snippet"] = resp.text[:400]
         if resp.status_code == 200:
             try:
                 data = resp.json()
             except ValueError:
                 # Not JSON, likely HTML error despite 200
                 _concept_cache["last_error"] = "200 but non-JSON response"
-                logger.error(
-                    "Concept fetch 200 but non-JSON body (snippet: %s)", resp.text[:200]
-                )
+                logger.error("Concept fetch 200 but non-JSON body (url: %s)", url)
                 return []
 
             # If JSON is a string, attempt second decode
@@ -979,13 +1090,28 @@ def fetch_biomedical_concepts(force: bool = False):
             logger.info("Fetched %d concepts from remote API", len(concepts))
             return concepts
         else:
-            _concept_cache["last_error"] = f"HTTP {resp.status_code}: {resp.text[:200]}"
+            _concept_cache["last_error"] = f"HTTP {resp.status_code}"
     except Exception as e:
         logger.error("Concept fetch error: %s", e)
         _concept_cache["last_error"] = str(e)
     _concept_cache.update(data=[], fetched_at=now)
     logger.warning("Concept list empty after fetch attempts")
     return []
+
+
+def _compute_unassigned_concepts() -> list[dict]:
+    """Return BC concepts not in any category, sorted by title."""
+    all_concepts = {c["code"]: c for c in fetch_biomedical_concepts()}
+    categories = fetch_biomedical_concept_categories()
+    assigned_codes: set[str] = set()
+    for cat in categories:
+        for c in fetch_biomedical_concepts_by_category(cat["name"]):
+            if c.get("code"):
+                assigned_codes.add(c["code"])
+    return sorted(
+        [c for code, c in all_concepts.items() if code not in assigned_codes],
+        key=lambda c: (c.get("title") or "").lower(),
+    )
 
 
 def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
@@ -1002,7 +1128,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
       - Do NOT use or update the main cache (code-specific result only).
     """
     now = time.time()
-    base_prefix = "https://api.library.cdisc.org/api/cosmos/v2"
+    base_prefix = CDISC_BC_API_BASE_URL
 
     def _normalize_href(h: Optional[str]) -> Optional[str]:
         if not h:
@@ -1038,15 +1164,12 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
             headers["api-key"] = api_key
 
         try:
-            resp = requests.get(url, headers=headers, timeout=20)
+            resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
             _sdtm_specializations_cache["last_status"] = resp.status_code
             _sdtm_specializations_cache["last_url"] = url
             _sdtm_specializations_cache["last_error"] = None
-            _sdtm_specializations_cache["raw_snippet"] = resp.text[:400]
             if resp.status_code != 200:
-                _sdtm_specializations_cache["last_error"] = (
-                    f"HTTP {resp.status_code}: {resp.text[:180]}"
-                )
+                _sdtm_specializations_cache["last_error"] = f"HTTP {resp.status_code}"
                 logger.warning(
                     "SDTM specializations by BC code fetch HTTP %s for code=%s",
                     resp.status_code,
@@ -1173,11 +1296,10 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
 
     packages: list[dict] = []
     try:
-        resp = requests.get(url, headers=headers, timeout=20)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         _sdtm_specializations_cache["last_status"] = resp.status_code
         _sdtm_specializations_cache["last_url"] = url
         _sdtm_specializations_cache["last_error"] = None
-        _sdtm_specializations_cache["raw_snippet"] = resp.text[:400]
         if resp.status_code == 200:
             try:
                 data = resp.json()
@@ -1251,18 +1373,195 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
                     href = _normalize_href(href)
                     packages.append({"title": title, "href": href})
         else:
-            _sdtm_specializations_cache["last_error"] = (
-                f"HTTP {resp.status_code}: {resp.text[:180]}"
-            )
+            _sdtm_specializations_cache["last_error"] = f"HTTP {resp.status_code}"
     except Exception as e:
         logger.error("SDTM dataset specializations fetch error: %s", e)
-        _sdtm_specializations_cache["last_error"] = str(e)
+        _sdtm_specializations_cache["last_error"] = "Fetch failed; see server logs"
 
     packages.sort(key=lambda p: p.get("title", "").lower())
     _sdtm_specializations_cache.update(data=packages, fetched_at=now)
     logger.info(
         "Fetched %d SDTM dataset specializations from remote API (full list)",
         len(packages),
+    )
+    return packages
+
+
+def fetch_crf_specializations(force: bool = False):
+    """Return list of CRF specializations as [{'title':..., 'href':...}].
+
+    Fetches the latest package from the CRF packages endpoint, then
+    retrieves specializations for that package. Sorted alphabetically
+    by title. Cached with the standard SOA_BUILDER_CACHE_TTL TTL.
+    """
+    now = time.time()
+    base_prefix = CDISC_CRF_API_BASE_URL
+
+    def _normalize_href(h):
+        if not h:
+            return None
+        if h.startswith("http://") or h.startswith("https://"):
+            return h
+        if h.startswith("/"):
+            return base_prefix + h
+        return base_prefix + "/" + h
+
+    # Return cached result if still fresh
+    if (
+        not force
+        and _crf_specializations_cache["data"] is not None
+        and now - _crf_specializations_cache["fetched_at"]
+        < _CRF_SPECIALIZATIONS_CACHE_TTL
+    ):
+        return _crf_specializations_cache["data"]
+
+    # Env override branch
+    override_json = os.environ.get("CDISC_CRF_SPECIALIZATIONS_JSON")
+    if override_json:
+        try:
+            raw = json.loads(override_json)
+            items = raw if isinstance(raw, list) else [raw]
+            packages = []
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                title = (
+                    it.get("title") or it.get("name") or it.get("label") or "(untitled)"
+                )
+                href = _normalize_href(it.get("href") or it.get("link"))
+                packages.append({"title": title, "href": href})
+            packages.sort(key=lambda p: (p.get("title") or "").lower())
+            _crf_specializations_cache.update(data=packages, fetched_at=now)
+            logger.info("Loaded %d CRF specializations from override", len(packages))
+            return packages
+        except Exception as e:
+            logger.warning("CRF specializations override parse failed: %s", e)
+
+    if os.environ.get("CDISC_SKIP_REMOTE") == "1":
+        _crf_specializations_cache.update(data=[], fetched_at=now)
+        logger.warning("CDISC_SKIP_REMOTE=1; CRF specializations list empty")
+        return []
+
+    headers = {"Accept": "application/json"}
+    api_key = _get_cdisc_api_key()
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+    if subscription_key:
+        headers["Ocp-Apim-Subscription-Key"] = subscription_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    # Step 1: fetch package list to determine the latest package href
+    latest_pkg_href = None
+    try:
+        pkg_url = f"{base_prefix}/mdr/specializations/crf/packages"
+        pkg_resp = requests.get(pkg_url, headers=headers, timeout=_HTTP_TIMEOUT)
+        _crf_specializations_cache["last_status"] = pkg_resp.status_code
+        _crf_specializations_cache["last_url"] = pkg_url
+        _crf_specializations_cache["last_error"] = None
+        if pkg_resp.status_code == 200:
+            try:
+                pkg_data = pkg_resp.json()
+            except ValueError:
+                pkg_data = None
+            # Collect hrefs only — never titles, which aren't valid URL segments
+            pkg_hrefs = []
+            if isinstance(pkg_data, dict) and "_links" in pkg_data:
+                links = pkg_data["_links"]
+                for key in ("packages", "crf", "items"):
+                    val = links.get(key)
+                    if isinstance(val, list):
+                        for lnk in val:
+                            if isinstance(lnk, dict):
+                                h = lnk.get("href") or ""
+                                if h:
+                                    pkg_hrefs.append(h)
+                        break
+            elif isinstance(pkg_data, list):
+                for item in pkg_data:
+                    if isinstance(item, dict):
+                        h = item.get("href") or item.get("packageDate") or ""
+                        if h:
+                            pkg_hrefs.append(str(h))
+            if pkg_hrefs:
+                # Sort descending — date-based hrefs sort lexicographically
+                pkg_hrefs.sort(reverse=True)
+                latest_pkg_href = pkg_hrefs[0]
+        else:
+            _crf_specializations_cache["last_error"] = (
+                f"Packages HTTP {pkg_resp.status_code}: {pkg_resp.text[:180]}"
+            )
+    except Exception as e:
+        logger.error("CRF packages fetch error: %s", e)
+        _crf_specializations_cache["last_error"] = str(e)
+        _crf_specializations_cache.update(data=[], fetched_at=now)
+        return []
+
+    if not latest_pkg_href:
+        logger.warning("CRF packages list returned no package hrefs")
+        _crf_specializations_cache.update(data=[], fetched_at=now)
+        return []
+
+    # Step 2: fetch specializations for the latest package.
+    # latest_pkg_href may already include "/specializations" as the terminal
+    # segment (the API returns it that way). Strip it before appending so we
+    # never produce ".../specializations/specializations".
+    norm_href = _normalize_href(latest_pkg_href) or latest_pkg_href
+    base_pkg = norm_href.rstrip("/")
+    if base_pkg.endswith("/specializations"):
+        base_pkg = base_pkg[: -len("/specializations")]
+    spec_url = base_pkg + "/specializations"
+    packages = []
+    try:
+        resp = requests.get(spec_url, headers=headers, timeout=_HTTP_TIMEOUT)
+        _crf_specializations_cache["last_status"] = resp.status_code
+        _crf_specializations_cache["last_url"] = spec_url
+        if resp.status_code == 200:
+            try:
+                data = resp.json()
+            except ValueError:
+                _crf_specializations_cache["last_error"] = "200 but non-JSON response"
+                data = None
+            if isinstance(data, dict) and "_links" in data:
+                links = data["_links"]
+                spec_links = links.get("specializations")
+                if isinstance(spec_links, list):
+                    for lnk in spec_links:
+                        if not isinstance(lnk, dict):
+                            continue
+                        href = _normalize_href(lnk.get("href"))
+                        title = lnk.get("title") or href
+                        packages.append({"title": title, "href": href})
+                elif isinstance(spec_links, dict):
+                    href = _normalize_href(spec_links.get("href"))
+                    title = spec_links.get("title") or href
+                    packages.append({"title": title, "href": href})
+            elif isinstance(data, list):
+                for it in data:
+                    if not isinstance(it, dict):
+                        continue
+                    title = (
+                        it.get("title")
+                        or it.get("name")
+                        or it.get("label")
+                        or "(untitled)"
+                    )
+                    href = _normalize_href(it.get("href") or it.get("link"))
+                    packages.append({"title": title, "href": href})
+        else:
+            _crf_specializations_cache["last_error"] = (
+                f"HTTP {resp.status_code}: {resp.text[:180]}"
+            )
+    except Exception as e:
+        logger.error("CRF specializations fetch error: %s", e)
+        _crf_specializations_cache["last_error"] = str(e)
+
+    packages.sort(key=lambda p: (p.get("title") or "").lower())
+    _crf_specializations_cache.update(data=packages, fetched_at=now, spec_url=spec_url)
+    logger.info(
+        "Fetched %d CRF specializations from remote API (package_href=%s)",
+        len(packages),
+        latest_pkg_href,
     )
     return packages
 
@@ -1285,6 +1584,11 @@ async def lifespan(app: FastAPI):
         logger.info("Lifespan preload SDTM specializations count=%d", len(sdtm_specs))
     except Exception as e:
         logger.error("Lifespan SDTM specializations preload failed: %s", e)
+    try:
+        crf_specs = fetch_crf_specializations(force=True)
+        logger.info("Lifespan preload CRF specializations count=%d", len(crf_specs))
+    except Exception as e:
+        logger.error("Lifespan CRF specializations preload failed: %s", e)
     try:
         import threading
         from concurrent.futures import ThreadPoolExecutor
@@ -1313,6 +1617,15 @@ async def lifespan(app: FastAPI):
             threading.Thread(target=_run_enrichment_pool, daemon=True).start()
     except Exception as e:
         logger.error("Lifespan code enrichment startup failed: %s", e)
+    try:
+        from usdm.generate_biomedical_concept_properties import (
+            sweep_orphaned_bcp_rows,
+        )
+
+        swept = sweep_orphaned_bcp_rows()
+        logger.info("Lifespan orphaned BCP sweep removed %s", swept)
+    except Exception as e:
+        logger.error("Lifespan orphaned BCP sweep failed: %s", e)
     yield
     # No shutdown actions required presently.
 
@@ -1389,7 +1702,6 @@ def concepts_status():
         ),
         "last_status": _concept_cache.get("last_status"),
         "last_error": _concept_cache.get("last_error"),
-        "raw_snippet": _concept_cache.get("raw_snippet"),
         "api_key_present": bool(_get_cdisc_api_key()),
         "override_present": bool(_get_concepts_override()),
         "skip_remote": os.environ.get("CDISC_SKIP_REMOTE") == "1",
@@ -1410,7 +1722,6 @@ def sdtm_specializations_status():
         "last_status": _sdtm_specializations_cache.get("last_status"),
         "last_error": _sdtm_specializations_cache.get("last_error"),
         "last_url": _sdtm_specializations_cache.get("last_url"),
-        "raw_snippet": _sdtm_specializations_cache.get("raw_snippet"),
         "api_key_present": bool(_get_cdisc_api_key()),
         "skip_remote": os.environ.get("CDISC_SKIP_REMOTE") == "1",
         "override_present": bool(os.environ.get("CDISC_SDTM_SPECIALIZATIONS_JSON")),
@@ -1437,6 +1748,73 @@ def ui_sdtm_specializations_refresh(request: Request):
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": "/ui/sdtm/specializations"})
     return HTMLResponse("<script>window.location='/ui/sdtm/specializations';</script>")
+
+
+@app.get("/ui/cdisc-api-status", response_class=HTMLResponse)
+def ui_cdisc_api_status(request: Request):
+    """Return HTML partial indicating CDISC Library API availability."""
+    api_key = os.environ.get("CDISC_API_KEY")
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    skip_remote = os.environ.get("CDISC_SKIP_REMOTE") == "1"
+    has_key = bool(api_key or subscription_key)
+
+    if skip_remote:
+        status, detail = (
+            "offline",
+            (
+                "CDISC API calls are disabled (CDISC_SKIP_REMOTE=1). "
+                "Local overrides are active."
+            ),
+        )
+    elif not has_key:
+        status, detail = (
+            "no_key",
+            (
+                "No CDISC API key configured. "
+                "Set CDISC_API_KEY or CDISC_SUBSCRIPTION_KEY in your "
+                "shell environment to enable Biomedical Concept features."
+            ),
+        )
+    else:
+        unified = subscription_key or api_key
+        headers = {}
+        if unified:
+            headers["Ocp-Apim-Subscription-Key"] = unified
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+            headers["api-key"] = api_key
+        try:
+            resp = requests.get(CDISC_BC_API_BASE_URL, headers=headers, timeout=5)
+            if resp.status_code < 500:
+                status, detail = "ok", "CDISC Library API is connected."
+            else:
+                status = "error"
+                detail = f"CDISC Library API returned HTTP {resp.status_code}."
+        except requests.exceptions.Timeout:
+            status, detail = (
+                "error",
+                (
+                    "CDISC Library API timed out. "
+                    "The service may be temporarily unavailable."
+                ),
+            )
+        except requests.exceptions.ConnectionError:
+            status, detail = (
+                "error",
+                ("CDISC Library API is not reachable. Check your network connection."),
+            )
+        except Exception as exc:
+            logger.warning("CDISC API connectivity check failed: %s", exc)
+            status, detail = (
+                "error",
+                "CDISC API check failed. See server logs for details.",
+            )
+
+    return templates.TemplateResponse(
+        request,
+        "cdisc_api_status.html",
+        {"status": status, "detail": detail},
+    )
 
 
 def _wide_csv_path(soa_id: int) -> str:
@@ -1929,6 +2307,25 @@ def _get_concept_groups_for_cell(soa_id: int, activity_id: int):
     return concept_groups, activity_group_uids
 
 
+def _get_bc_categories_for_cell(soa_id: int, activity_id: int):
+    """Return (bc_categories_list, activity_category_names) for concepts_cell rendering."""
+    bc_categories_list = fetch_biomedical_concept_categories()
+    conn = _connect()
+    cur = conn.cursor()
+    has_col = _table_has_columns(cur, "activity_concept", ("bc_category_name",))
+    if has_col:
+        cur.execute(
+            "SELECT DISTINCT bc_category_name FROM activity_concept "
+            "WHERE activity_id=? AND soa_id=? AND bc_category_name IS NOT NULL",
+            (activity_id, soa_id),
+        )
+        activity_category_names = [r[0] for r in cur.fetchall()]
+    else:
+        activity_category_names = []
+    conn.close()
+    return bc_categories_list, activity_category_names
+
+
 def _get_activity_surrogates(soa_id: int, activity_id: int):
     """Return (surrogates, selected_surrogate_list, selected_surrogate_uids) for concepts_cell render."""
     conn = _connect()
@@ -2052,10 +2449,18 @@ def _enrich_code_bg(concept_code: str, soa_id: int) -> None:
         headers["api-key"] = api_key
     try:
         url = (
-            "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/"
+            os.environ.get(
+                "CDISC_BC_API_BASE_URL",
+                "https://api.library.cdisc.org/api/cosmos/v2",
+            )
+            + "/mdr/bc/biomedicalconcepts/"
             + concept_code
         )
-        resp = _requests.get(url, headers=headers, timeout=15)
+        resp = _requests.get(
+            url,
+            headers=headers,
+            timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
+        )
         if resp.status_code != 200:
             return
         data = resp.json()
@@ -2191,10 +2596,18 @@ def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
     conn = None
     try:
         url = (
-            "https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/"
+            os.environ.get(
+                "CDISC_BC_API_BASE_URL",
+                "https://api.library.cdisc.org/api/cosmos/v2",
+            )
+            + "/mdr/bc/biomedicalconcepts/"
             + concept_code
         )
-        resp = _requests.get(url, headers=headers, timeout=15)
+        resp = _requests.get(
+            url,
+            headers=headers,
+            timeout=int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15")),
+        )
         if resp.status_code != 200:
             return
         data = resp.json()
@@ -2290,6 +2703,7 @@ def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
     so the orphan check reflects the final state of activity_concept.
     """
     from .audit import _record_biomedical_concept_audit
+    from usdm.generate_biomedical_concept_properties import delete_bc_cascade
 
     for concept_code, concept_uid in removed_pairs:
         if concept_uid:
@@ -2318,6 +2732,9 @@ def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
                     after=None,
                     cur=cur,
                 )
+            # Cascade: remove the BC's properties + response codes first so
+            # they never orphan when the biomedical_concept row is deleted.
+            delete_bc_cascade(cur, soa_id, concept_uid)
             cur.execute(
                 "DELETE FROM biomedical_concept"
                 " WHERE biomedical_concept_uid=? AND soa_id=?",
@@ -2369,6 +2786,8 @@ def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
                     after=None,
                     cur=cur,
                 )
+                # Cascade BCP/RC cleanup for this edge-case BC.
+                delete_bc_cascade(cur, soa_id, edge_bc_uid)
             cur.execute(
                 "DELETE FROM biomedical_concept WHERE code=? AND soa_id=?",
                 (alias_row[0], soa_id),
@@ -3107,6 +3526,83 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
         if concept_diff_df is not None:
             concept_diff_df.to_excel(writer, index=False, sheet_name="ConceptDiff")
 
+        if left and right:
+            try:
+                entity_diff_rows = []
+                _ent_diff = _diff_freezes_limited(soa_id, left, right, limit=None)
+                for ent_key, ent_data in _ent_diff.get("entities", {}).items():
+                    for e in ent_data.get("added", []):
+                        uid_val = (
+                            e.get("name")
+                            or e.get("amendment_uid")
+                            or e.get("study_cell_uid")
+                            or e.get("schedule_timeline_uid")
+                            or e.get("instance_uid")
+                            or e.get("surrogate_uid")
+                            or e.get("biomedical_concept_uid")
+                            or e.get("biomedical_concept_property_uid")
+                            or e.get("extension_attribute_uid")
+                            or e.get("epoch_uid")
+                            or e.get("arm_uid")
+                            or e.get("timing_uid")
+                            or e.get("objective_uid")
+                            or e.get("endpoint_uid")
+                            or e.get("encounter_uid")
+                            or ""
+                        )
+                        entity_diff_rows.append([ent_key, uid_val, "added", "", "", ""])
+                    for e in ent_data.get("removed", []):
+                        uid_val = (
+                            e.get("name")
+                            or e.get("amendment_uid")
+                            or e.get("study_cell_uid")
+                            or e.get("schedule_timeline_uid")
+                            or e.get("instance_uid")
+                            or e.get("surrogate_uid")
+                            or e.get("biomedical_concept_uid")
+                            or e.get("biomedical_concept_property_uid")
+                            or e.get("extension_attribute_uid")
+                            or e.get("epoch_uid")
+                            or e.get("arm_uid")
+                            or e.get("timing_uid")
+                            or e.get("objective_uid")
+                            or e.get("endpoint_uid")
+                            or e.get("encounter_uid")
+                            or ""
+                        )
+                        entity_diff_rows.append(
+                            [ent_key, uid_val, "removed", "", "", ""]
+                        )
+                    for e in ent_data.get("changed", []):
+                        uid_val = e.get("uid", "")
+                        for field, vals in (e.get("changes", {})).items():
+                            entity_diff_rows.append(
+                                [
+                                    ent_key,
+                                    uid_val,
+                                    "changed",
+                                    field,
+                                    str(vals.get("old", "")),
+                                    str(vals.get("new", "")),
+                                ]
+                            )
+                entity_diff_df = pd.DataFrame(
+                    entity_diff_rows,
+                    columns=[
+                        "EntityType",
+                        "UID",
+                        "ChangeType",
+                        "FieldName",
+                        "LeftValue",
+                        "RightValue",
+                    ],
+                )
+                entity_diff_df.to_excel(writer, index=False, sheet_name="EntityDiff")
+            except Exception as _e:
+                pd.DataFrame([[str(_e)]], columns=["EntityDiffError"]).to_excel(
+                    writer, index=False, sheet_name="EntityDiff"
+                )
+
         # Create a worksheet for each timeline
         if timelines:
             for timeline in timelines:
@@ -3210,6 +3706,178 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     return StreamingResponse(
         bio,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/soa/{soa_id}/export/html", response_class=HTMLResponse)
+def export_html(soa_id: int, timeline: Optional[str] = None):
+    """Export SoA Matrix as a self-contained interactive HTML file.
+
+    If ``timeline`` is provided only that timeline is included;
+    otherwise all timelines are exported.
+    """
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+
+    # Study metadata
+    conn_info = _connect()
+    cur_info = conn_info.cursor()
+    cur_info.execute(
+        "SELECT name, study_id, study_label, study_description FROM soa WHERE id=?",
+        (soa_id,),
+    )
+    row_info = cur_info.fetchone()
+    conn_info.close()
+    if not row_info:
+        raise HTTPException(404, "SOA not found")
+    study = {
+        "name": row_info[0],
+        "study_id": row_info[1],
+        "study_label": row_info[2],
+        "study_description": row_info[3],
+    }
+
+    # Matrix data
+    _instances, activities, cells = _fetch_matrix(soa_id)
+    cell_map = {(c["instance_id"], c["activity_id"]): c.get("status") for c in cells}
+    superscript_map = {
+        (c["instance_id"], c["activity_id"]): c.get("superscript") for c in cells
+    }
+
+    # Enriched instances (epoch/encounter/timing labels)
+    enriched_instances = _fetch_enriched_instances(soa_id)
+
+    # Timelines
+    conn_tl = _connect()
+    cur_tl = conn_tl.cursor()
+    cur_tl.execute(
+        "SELECT schedule_timeline_uid,name,main_timeline "
+        "FROM schedule_timelines WHERE soa_id=? ORDER BY main_timeline DESC, name",
+        (soa_id,),
+    )
+    timelines = [
+        {
+            "schedule_timeline_uid": r[0],
+            "name": r[1],
+            "main_timeline": bool(r[2]),
+        }
+        for r in cur_tl.fetchall()
+    ]
+    conn_tl.close()
+
+    # Group enriched instances by timeline
+    instances_by_tl: dict = {}
+    for inst in enriched_instances:
+        key = inst.get("member_of_timeline") or "unassigned"
+        instances_by_tl.setdefault(key, []).append(inst)
+
+    # Add unassigned pseudo-timeline entry so the template can render it
+    if "unassigned" in instances_by_tl and not any(
+        t["schedule_timeline_uid"] == "unassigned" for t in timelines
+    ):
+        timelines.append(
+            {
+                "schedule_timeline_uid": "unassigned",
+                "name": "Unassigned",
+                "main_timeline": False,
+            }
+        )
+
+    # Restrict to the requested timeline when one is specified
+    if timeline:
+        timelines = [t for t in timelines if t["schedule_timeline_uid"] == timeline]
+        instances_by_tl = {k: v for k, v in instances_by_tl.items() if k == timeline}
+
+    # Concepts per activity
+    conn_c = _connect()
+    cur_c = conn_c.cursor()
+    has_soa_col = _table_has_columns(cur_c, "activity_concept", ("soa_id",))
+    if has_soa_col:
+        cur_c.execute(
+            "SELECT activity_id, concept_code, concept_title "
+            "FROM activity_concept WHERE soa_id=?",
+            (soa_id,),
+        )
+    else:
+        cur_c.execute(
+            "SELECT ac.activity_id, ac.concept_code, ac.concept_title "
+            "FROM activity_concept ac "
+            "JOIN activity a ON ac.activity_id = a.id WHERE a.soa_id=?",
+            (soa_id,),
+        )
+    concepts_map: dict = {}
+    for aid, code, title in cur_c.fetchall():
+        concepts_map.setdefault(aid, []).append({"code": code, "title": title or code})
+    conn_c.close()
+
+    # Surrogates per activity
+    conn_s = _connect()
+    cur_s = conn_s.cursor()
+    cur_s.execute(
+        "SELECT a.id, bcs.surrogate_uid, bcs.name, bcs.label "
+        "FROM activity_surrogate asr "
+        "JOIN activity a "
+        "  ON a.activity_uid=asr.activity_uid AND a.soa_id=asr.soa_id "
+        "JOIN biomedical_concept_surrogate bcs "
+        "  ON bcs.surrogate_uid=asr.surrogate_uid AND bcs.soa_id=asr.soa_id "
+        "WHERE asr.soa_id=?",
+        (soa_id,),
+    )
+    surrogates_map: dict = {}
+    for aid, sur_uid, sur_name, sur_label in cur_s.fetchall():
+        surrogates_map.setdefault(aid, []).append(
+            {"surrogate_uid": sur_uid, "name": sur_name, "label": sur_label}
+        )
+    conn_s.close()
+
+    # Footnotes
+    conn_fn = _connect()
+    cur_fn = conn_fn.cursor()
+    cur_fn.execute(
+        "SELECT id,footnote_uid,name,label,text FROM footnote "
+        "WHERE soa_id=? ORDER BY id",
+        (soa_id,),
+    )
+    footnotes = [
+        {"id": r[0], "footnote_uid": r[1], "name": r[2], "label": r[3], "text": r[4]}
+        for r in cur_fn.fetchall()
+    ]
+    conn_fn.close()
+
+    # Embedded stylesheet
+    css_path = os.path.join(STATIC_DIR, "style.css")
+    try:
+        with open(css_path, encoding="utf-8") as _f:
+            css_content = _f.read()
+    except OSError:
+        css_content = ""
+
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    safe_study = _re.sub(r"[^A-Za-z0-9._-]+", "-", study.get("study_id") or str(soa_id))
+    filename = f"soa_{safe_study}_matrix.html"
+
+    # We need a dummy Request object for TemplateResponse; build an inline render
+    # using Jinja2 directly to avoid needing a real request.
+    env = templates.env
+    tmpl = env.get_template("soa_matrix_export.html")
+    html_content = tmpl.render(
+        soa_id=soa_id,
+        study=study,
+        timelines=timelines,
+        instances_by_tl=instances_by_tl,
+        activities=activities,
+        cell_map=cell_map,
+        superscript_map=superscript_map,
+        footnotes=footnotes,
+        concepts_map=concepts_map,
+        surrogates_map=surrogates_map,
+        css=css_content,
+        generated_at=generated_at,
+    )
+
+    return HTMLResponse(
+        content=html_content,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
@@ -3880,6 +4548,20 @@ def ui_edit(request: Request, soa_id: int):
     # Precompute next Code_N if needed for UI defaults (currently not displayed)
     _ = _get_next_code_uid(cur_codes, soa_id)
     conn_codes.close()
+    # Study Titles for the metadata card
+    from .routers.study_titles import (
+        _get_title_type_options,
+        _list_titles,
+    )
+    from .routers.study_identifiers import (
+        _list_identifiers as _list_study_identifiers,
+        _list_orgs as _list_identifier_orgs,
+    )
+
+    study_titles = _list_titles(soa_id)
+    title_type_options = _get_title_type_options()
+    study_identifiers = _list_study_identifiers(soa_id)
+    identifier_orgs = _list_identifier_orgs(soa_id)
     # Load Protocol Terminology (C174222) options from CDISC Library
     from .utils import get_protocol_ct_codelist_map as _get_protocol_ct_codelist_map
 
@@ -4188,6 +4870,15 @@ def ui_edit(request: Request, soa_id: int):
             "default_timeline": default_timeline,
             "footnotes": footnotes,
             "superscript_map": superscript_map,
+            "study_titles": study_titles,
+            "title_type_options": title_type_options,
+            "study_identifiers": study_identifiers,
+            "orgs": identifier_orgs,
+            "organizations": _list_organizations(soa_id),
+            "org_type_options": _get_org_type_options(),
+            "countries_options": _get_countries_options(),
+            "roles": _list_roles(soa_id),
+            "role_type_options": _get_role_type_options(),
         },
     )
 
@@ -4202,7 +4893,7 @@ def ui_concepts_list(request: Request):
         code = c.get("concept_code") or c.get("code")
         title = c.get("title") or c.get("concept_title") or c.get("name") or code
         href = (
-            f"https://api.library.cdisc.org/api/cosmos/v2/mdr/bc/biomedicalconcepts/{code}"
+            f"{CDISC_BC_API_BASE_URL}/mdr/bc/biomedicalconcepts/{code}"
             if code
             else None
         )
@@ -4215,6 +4906,46 @@ def ui_concepts_list(request: Request):
             "rows": rows,
             "count": len(rows),
             "missing_key": subscription_key is None,
+        },
+    )
+
+
+# UI endpoints for Unassigned Biomedical Concepts report
+@app.get("/ui/bc/unassigned-concepts", response_class=HTMLResponse)
+def ui_bc_unassigned_concepts(request: Request):
+    """Page for the Unassigned Biomedical Concepts report."""
+    return templates.TemplateResponse(
+        request,
+        "bc_unassigned_concepts.html",
+        {},
+    )
+
+
+@app.post("/ui/bc/unassigned-concepts/generate", response_class=HTMLResponse)
+def ui_bc_unassigned_concepts_generate(request: Request):
+    """HTMX endpoint — compute and return inline results partial."""
+    concepts = _compute_unassigned_concepts()
+    return templates.TemplateResponse(
+        request,
+        "bc_unassigned_results.html",
+        {"concepts": concepts, "count": len(concepts)},
+    )
+
+
+@app.get("/ui/bc/unassigned-concepts/export/csv")
+def ui_bc_unassigned_concepts_export_csv():
+    """Download unassigned concepts as CSV."""
+    concepts = _compute_unassigned_concepts()
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=["code", "title"])
+    writer.writeheader()
+    writer.writerows({"code": c["code"], "title": c.get("title", "")} for c in concepts)
+    buf = io.BytesIO(out.getvalue().encode("utf-8"))
+    return StreamingResponse(
+        buf,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": ('attachment; filename="bc_unassigned_concepts.csv"')
         },
     )
 
@@ -4346,7 +5077,7 @@ def ui_sdtm_specialization_detail(
     raw_text_snippet = None
     if href:
         try:
-            resp = requests.get(href, headers=headers, timeout=15)
+            resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
             status = resp.status_code
             raw_text_snippet = resp.text[:500]
             if resp.status_code == 200:
@@ -4385,6 +5116,112 @@ def ui_sdtm_specialization_detail(
     )
 
 
+@app.get("/ui/crf/specializations", response_class=HTMLResponse)
+def ui_crf_specializations_list(request: Request):
+    """List all available CRF specializations."""
+    packages = fetch_crf_specializations(force=True) or []
+    rows = [
+        {"title": p.get("title") or "(untitled)", "href": p.get("href")}
+        for p in packages
+    ]
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or _get_cdisc_api_key()
+    last_status = _crf_specializations_cache.get("last_status")
+    last_error = _crf_specializations_cache.get("last_error")
+    last_url = _crf_specializations_cache.get("last_url")
+    # Extract the /mdr/... path from the resolved specializations URL for display
+    spec_url = _crf_specializations_cache.get("spec_url") or ""
+    from urllib.parse import urlparse as _up
+
+    _p = _up(spec_url)
+    spec_path = (
+        _p.path
+        if spec_url
+        else "/mdr/specializations/crf/packages/{package}/specializations"
+    )
+    return templates.TemplateResponse(
+        request,
+        "crf_specializations.html",
+        {
+            "rows": rows,
+            "count": len(rows),
+            "missing_key": subscription_key is None,
+            "last_status": last_status,
+            "last_error": last_error,
+            "last_url": last_url,
+            "spec_path": spec_path,
+        },
+    )
+
+
+@app.post("/ui/crf/specializations/refresh", response_class=HTMLResponse)
+def ui_crf_specializations_refresh(request: Request):
+    """Force refresh of CRF specializations cache and redirect back to list."""
+    fetch_crf_specializations(force=True)
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": "/ui/crf/specializations"})
+    return HTMLResponse("<script>window.location='/ui/crf/specializations';</script>")
+
+
+@app.get("/ui/crf/specializations/{idx}", response_class=HTMLResponse)
+def ui_crf_specialization_detail(idx: int, request: Request):
+    """Detail page for a single CRF specialization (tabular + raw JSON)."""
+    packages = fetch_crf_specializations() or []
+    if idx < 0 or idx >= len(packages):
+        raise HTTPException(
+            status_code=404, detail="CRF specialization index out of range"
+        )
+    spec = packages[idx]
+    title = spec.get("title") or "(untitled)"
+    href = spec.get("href")
+
+    api_key = _get_cdisc_api_key()
+    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    unified_key = subscription_key or api_key
+    headers: dict[str, str] = {}
+    if unified_key:
+        headers["Ocp-Apim-Subscription-Key"] = unified_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["api-key"] = api_key
+
+    spec_data = None
+    spec_json = None
+    error = None
+    status = None
+    if href:
+        try:
+            resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
+            status = resp.status_code
+            if resp.status_code == 200:
+                try:
+                    spec_data = resp.json()
+                    spec_json = json.dumps(spec_data, indent=2, sort_keys=True)
+                except ValueError:
+                    error = "200 OK but response was not valid JSON"
+            else:
+                error = f"HTTP {resp.status_code} retrieving CRF specialization"
+        except Exception as e:
+            error = f"Fetch error: {e}"[:300]
+    else:
+        error = "No href available for this CRF specialization entry."
+
+    return templates.TemplateResponse(
+        request,
+        "crf_specialization_detail.html",
+        {
+            "index": idx,
+            "title": title,
+            "href": href,
+            "status": status,
+            "error": error,
+            "spec_data": spec_data,
+            "spec_json": spec_json,
+            "missing_key": unified_key is None,
+            "total": len(packages),
+        },
+    )
+
+
 # UI endpoint for displaying a selected BC
 @app.get("/ui/concepts/{code}", response_class=HTMLResponse)
 def ui_concept_detail(code: str, request: Request):
@@ -4412,7 +5249,7 @@ def ui_concept_detail(code: str, request: Request):
     parent_pkg_name = None
     status = None
     try:
-        resp = requests.get(api_href, headers=headers, timeout=10)
+        resp = requests.get(api_href, headers=headers, timeout=_HTTP_TIMEOUT)
         status = resp.status_code
         if resp.status_code == 200:
             concept_json = resp.json()
@@ -5142,6 +5979,9 @@ def ui_activity_concepts_cell(
     concept_groups, activity_group_uids = _get_concept_groups_for_cell(
         soa_id, activity_id
     )
+    bc_categories_list, activity_category_names = _get_bc_categories_for_cell(
+        soa_id, activity_id
+    )
     return HTMLResponse(
         templates.get_template("concepts_cell.html").render(
             request=request,
@@ -5155,6 +5995,8 @@ def ui_activity_concepts_cell(
             selected_surrogate_uids=selected_surrogate_uids,
             concept_groups=concept_groups,
             activity_group_uids=activity_group_uids,
+            bc_categories_list=bc_categories_list,
+            activity_category_names=activity_category_names,
             edit=bool(edit),
         )
     )
@@ -5611,6 +6453,112 @@ def ui_set_timing(
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
     )
+
+
+_SOA_CASCADE_TABLES = [
+    "matrix_cells",
+    "activity_concept",
+    "activity_concept_dss",
+    "activity_surrogate",
+    "activity_audit",
+    "activity",
+    "alias_code",
+    "amendment_geographic_scope",
+    "amendment_geographic_scope_audit",
+    "amendment_governance_date",
+    "amendment_governance_date_audit",
+    "amendment_subject_enrollment",
+    "amendment_subject_enrollment_audit",
+    "arm_audit",
+    "arm",
+    "bcp_response_code",
+    "biomedical_concept_property",
+    "biomedical_concept_surrogate_audit",
+    "biomedical_concept_surrogate",
+    "biomedical_concept_audit",
+    "biomedical_concept",
+    "code_association",
+    "code",
+    "condition_assignment",
+    "decision_instances",
+    "document_content_reference_audit",
+    "document_content_reference",
+    "element_audit",
+    "element",
+    "endpoint_audit",
+    "endpoint",
+    "epoch_audit",
+    "epoch",
+    "footnote_audit",
+    "footnote",
+    "governance_date_geographic_scope",
+    "instance_audit",
+    "instances",
+    "objective_audit",
+    "objective",
+    "reorder_audit",
+    "rollback_audit",
+    "schedule_timelines_audit",
+    "schedule_timelines",
+    "soa_freeze",
+    "study_amendment_impact_audit",
+    "study_amendment_impact",
+    "study_amendment_reason_audit",
+    "study_amendment_reason",
+    "study_amendment_audit",
+    "study_amendment",
+    "study_cell_audit",
+    "study_cell",
+    "study_change_audit",
+    "study_change",
+    "timing_audit",
+    "timing",
+    "transition_rule_audit",
+    "transition_rule",
+    "visit_audit",
+    "visit",
+]
+
+
+@app.post("/ui/soa/{soa_id}/delete", response_class=HTMLResponse)
+def ui_delete_soa(
+    request: Request,
+    soa_id: int,
+    confirm_study_id: str = Form(...),
+):
+    """Permanently delete a study and all its related records."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT study_id, name FROM soa WHERE id=?", (soa_id,))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(404, "SOA not found")
+
+    study_id_db, name_db = row[0], row[1]
+    # Studies without a study_id (e.g. imported bundles) confirm by name
+    if study_id_db is None:
+        if confirm_study_id != name_db:
+            raise HTTPException(
+                400,
+                f"Study name '{confirm_study_id}' does not match.",
+            )
+    elif study_id_db != confirm_study_id:
+        raise HTTPException(
+            400,
+            f"Study ID '{confirm_study_id}' does not match.",
+        )
+
+    conn = _connect()
+    cur = conn.cursor()
+    for table in _SOA_CASCADE_TABLES:
+        cur.execute(f"DELETE FROM {table} WHERE soa_id=?", (soa_id,))
+    cur.execute("DELETE FROM soa WHERE id=?", (soa_id,))
+    conn.commit()
+    conn.close()
+
+    return HTMLResponse("<script>window.location='/';</script>")
 
 
 # UI endpoint for deleting an Activity
