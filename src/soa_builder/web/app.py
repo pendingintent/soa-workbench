@@ -4342,6 +4342,7 @@ def ui_create_soa(
 def ui_update_meta(
     request: Request,
     soa_id: int,
+    name: Optional[str] = Form(None),
     study_id: Optional[str] = Form(None),
     study_label: Optional[str] = Form(None),
     study_description: Optional[str] = Form(None),
@@ -4376,8 +4377,10 @@ def ui_update_meta(
             % soa_id
         )
     cur.execute(
-        "UPDATE soa SET study_id=?, study_label=?, study_description=? WHERE id=?",
+        "UPDATE soa SET name=?, study_id=?, study_label=?,"
+        " study_description=? WHERE id=?",
         (
+            (name or "").strip() or None,
             new_study_id,
             (study_label or "").strip() or None,
             (study_description or "").strip() or None,

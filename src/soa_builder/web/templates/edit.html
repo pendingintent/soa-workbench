@@ -5,6 +5,10 @@
   <h3>Study Metadata</h3>
   <form method="post" action="/ui/soa/{{ soa_id }}/update_meta" class="am-grid-2">
     <div class="am-field">
+      <label class="am-field-label" for="soa_name">Study Name</label>
+      <input id="soa_name" name="name" value="{{ soa_name or '' }}" placeholder="Study Name" class="am-input" />
+    </div>
+    <div class="am-field">
       <label class="am-field-label" for="study_id">Study ID <span class="am-required">*</span></label>
       <input id="study_id" name="study_id" value="{{ study_id or '' }}" placeholder="Unique Study ID" required class="am-input" />
     </div>
