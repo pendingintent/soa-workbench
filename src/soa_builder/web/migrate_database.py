@@ -3203,6 +3203,28 @@ def _migrate_add_study_identifier_audit_table():
         logger.warning("_migrate_add_study_identifier_audit_table failed: %s", e)
 
 
+def _migrate_add_element_intervention_table():
+    """Create element_intervention junction table for StudyElement ↔ StudyIntervention."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS element_intervention ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "element_id INTEGER NOT NULL,"
+            "intervention_uid TEXT NOT NULL,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, element_id, intervention_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_element_intervention_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_element_intervention_table failed: %s", e)
+
+
 def _migrate_soa_add_tool_extension_uids():
     """Create soa_tool_extension table for stable per-SOA USDM tool UIDs.
 

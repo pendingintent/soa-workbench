@@ -207,6 +207,80 @@ def test_bulk_create_elements():
     assert len(list_resp.json()) == 5
 
 
+def test_element_intervention_assignment():
+    """Create an element with an intervention; verify intervention_ids returned."""
+    r = client.post("/soa", json={"name": "Intervention Assignment Test"})
+    soa_id = r.json()["id"]
+
+    # Create a study intervention via JSON API
+    iv_resp = client.post(
+        f"/soa/{soa_id}/study-interventions",
+        json={"name": "Drug A"},
+    )
+    assert iv_resp.status_code == 201
+    iv_uid = iv_resp.json()["intervention_uid"]
+
+    # Create element with that intervention via UI form
+    resp = client.post(
+        f"/ui/soa/{soa_id}/elements/create",
+        data={"name": "Treatment Period", "intervention_ids": iv_uid},
+    )
+    assert resp.status_code == 200
+
+    elements = client.get(f"/soa/{soa_id}/elements").json()
+    assert len(elements) == 1
+    assert iv_uid in elements[0]["intervention_ids"]
+
+
+def test_element_intervention_update():
+    """Update element intervention selection; verify replacement."""
+    r = client.post("/soa", json={"name": "Intervention Update Test"})
+    soa_id = r.json()["id"]
+
+    iv1 = client.post(
+        f"/soa/{soa_id}/study-interventions", json={"name": "Drug A"}
+    ).json()["intervention_uid"]
+    iv2 = client.post(
+        f"/soa/{soa_id}/study-interventions", json={"name": "Drug B"}
+    ).json()["intervention_uid"]
+
+    client.post(
+        f"/ui/soa/{soa_id}/elements/create",
+        data={"name": "Elem", "intervention_ids": iv1},
+    )
+    element_id = client.get(f"/soa/{soa_id}/elements").json()[0]["id"]
+
+    # Replace with iv2 only
+    client.post(
+        f"/ui/soa/{soa_id}/elements/{element_id}/update",
+        data={"name": "Elem", "intervention_ids": iv2},
+    )
+
+    elements = client.get(f"/soa/{soa_id}/elements").json()
+    assert elements[0]["intervention_ids"] == [iv2]
+
+
+def test_element_usdm_intervention_ids():
+    """USDM export includes studyInterventionIds for assigned interventions."""
+    from usdm.generate_elements import build_usdm_elements
+
+    r = client.post("/soa", json={"name": "USDM Intervention Test"})
+    soa_id = r.json()["id"]
+
+    iv_uid = client.post(
+        f"/soa/{soa_id}/study-interventions", json={"name": "Drug X"}
+    ).json()["intervention_uid"]
+
+    client.post(
+        f"/ui/soa/{soa_id}/elements/create",
+        data={"name": "Screening", "intervention_ids": iv_uid},
+    )
+
+    elements = build_usdm_elements(soa_id)
+    assert len(elements) == 1
+    assert elements[0]["studyInterventionIds"] == [iv_uid]
+
+
 def test_element_immutable_uid():
     """Test that element_uid cannot be changed after creation."""
     r = client.post("/soa", json={"name": "Immutable UID Test"})

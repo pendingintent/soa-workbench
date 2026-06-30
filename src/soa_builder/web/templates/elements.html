@@ -41,6 +41,16 @@
         {% endfor %}
       </select>
     </div>
+    {% if interventions %}
+    <div class="am-field">
+      <label class="am-field-label">Interventions</label>
+      <select name="intervention_ids" multiple class="fz-version-input" style="min-height:80px;">
+        {% for iv in interventions %}
+        <option value="{{ iv.intervention_uid }}">{{ iv.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
     <button type="submit" class="am-btn am-btn-info">Create Element</button>
   </form>
 </div>
@@ -55,6 +65,7 @@
     <th>Description</th>
     <th>Transition Start Rule</th>
     <th>Transition End Rule</th>
+    <th>Interventions</th>
     <th>Save</th>
     <th>Delete</th>
   </tr>
@@ -81,6 +92,15 @@
           {% endfor %}
         </select>
       </td>
+      <td>
+        <select name="intervention_ids" multiple class="am-select-compact" style="min-height:60px;min-width:140px;">
+          {% for iv in (interventions or []) %}
+          <option value="{{ iv.intervention_uid }}"
+            {% if iv.intervention_uid in (e.intervention_ids or []) %}selected{% endif %}>
+            {{ iv.name }}</option>
+          {% endfor %}
+        </select>
+      </td>
       <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
     </form>
     <td>
@@ -90,7 +110,7 @@
     </td>
   </tr>
   {% else %}
-  <tr class="fz-empty-row"><td colspan="8">No elements yet.</td></tr>
+  <tr class="fz-empty-row"><td colspan="9">No elements yet.</td></tr>
   {% endfor %}
 </table>
 

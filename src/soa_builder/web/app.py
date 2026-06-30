@@ -140,6 +140,7 @@ from .migrate_database import (
     _migrate_add_study_identifier_table,
     _migrate_add_study_identifier_audit_table,
     _migrate_soa_add_tool_extension_uids,
+    _migrate_add_element_intervention_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -401,6 +402,7 @@ _migrate_add_person_name_fields()
 _migrate_add_study_identifier_table()
 _migrate_add_study_identifier_audit_table()
 _migrate_soa_add_tool_extension_uids()
+_migrate_add_element_intervention_table()
 
 
 # Include routers

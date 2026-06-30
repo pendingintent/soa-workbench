@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Request, Form
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
@@ -28,6 +28,32 @@ def _nz(s: Optional[str]) -> Optional[str]:
     return s or None
 
 
+def _get_element_interventions(cur, soa_id: int, element_id: int) -> List[str]:
+    cur.execute(
+        "SELECT intervention_uid FROM element_intervention"
+        " WHERE soa_id=? AND element_id=?"
+        " ORDER BY order_index, id",
+        (soa_id, element_id),
+    )
+    return [r[0] for r in cur.fetchall()]
+
+
+def _set_element_interventions(
+    cur, soa_id: int, element_id: int, intervention_ids: List[str]
+) -> None:
+    cur.execute(
+        "DELETE FROM element_intervention WHERE soa_id=? AND element_id=?",
+        (soa_id, element_id),
+    )
+    for idx, iuid in enumerate(intervention_ids, start=1):
+        cur.execute(
+            "INSERT INTO element_intervention"
+            " (soa_id, element_id, intervention_uid, order_index)"
+            " VALUES (?,?,?,?)",
+            (soa_id, element_id, iuid, idx),
+        )
+
+
 # APi endpoint for listing elements
 @router.get("/soa/{soa_id}/elements", response_class=JSONResponse, response_model=None)
 def list_elements(soa_id: int):
@@ -37,7 +63,8 @@ def list_elements(soa_id: int):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id,element_id,name,label,description,order_index,testrl,teenrl FROM element WHERE soa_id=? ORDER BY order_index",
+        "SELECT id,element_id,name,label,description,order_index,testrl,teenrl"
+        " FROM element WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
     rows = [
@@ -50,6 +77,7 @@ def list_elements(soa_id: int):
             "order_index": r[5],
             "testrl": r[6],
             "teenrl": r[7],
+            "intervention_ids": _get_element_interventions(cur, soa_id, r[0]),
         }
         for r in cur.fetchall()
     ]
@@ -66,7 +94,6 @@ def ui_list_elements(request: Request, soa_id: int):
     elements = list_elements(soa_id)
     transition_rule_options = get_study_transition_rules(soa_id)
 
-    # Study metadata
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
@@ -74,6 +101,12 @@ def ui_list_elements(request: Request, soa_id: int):
         (soa_id,),
     )
     meta_row = cur.fetchone()
+    cur.execute(
+        "SELECT intervention_uid, name FROM study_intervention"
+        " WHERE soa_id=? ORDER BY name COLLATE NOCASE",
+        (soa_id,),
+    )
+    interventions = [{"intervention_uid": r[0], "name": r[1]} for r in cur.fetchall()]
     conn.close()
     study_id, study_label, study_description, study_name, study_created_at = meta_row
     study_meta = {
@@ -92,6 +125,7 @@ def ui_list_elements(request: Request, soa_id: int):
             "soa_id": soa_id,
             "elements": elements,
             "transition_rule_options": transition_rule_options,
+            "interventions": interventions,
             **study_meta,
         },
     )
@@ -161,6 +195,8 @@ def add_element(soa_id: int, payload: ElementCreate):
         ),
     )
     id = cur.lastrowid
+    if payload.intervention_ids:
+        _set_element_interventions(cur, soa_id, id, payload.intervention_ids)
     conn.commit()
     conn.close()
     after = {
@@ -171,6 +207,7 @@ def add_element(soa_id: int, payload: ElementCreate):
         "description": (payload.description or "").strip() or None,
         "testrl": (payload.testrl or "").strip() or None,
         "teenrl": (payload.teenrl or "").strip() or None,
+        "intervention_ids": payload.intervention_ids,
     }
     _record_element_audit(soa_id, "create", id, before=None, after=after)
     return after
@@ -186,6 +223,7 @@ def ui_create_element(
     description: Optional[str] = Form(None),
     testrl: Optional[str] = Form(None),
     teenrl: Optional[str] = Form(None),
+    intervention_ids: List[str] = Form(default=[]),
 ):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -196,6 +234,7 @@ def ui_create_element(
         description=description,
         testrl=testrl,
         teenrl=teenrl,
+        intervention_ids=intervention_ids,
     )
     add_element(soa_id, payload)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/elements", status_code=303)
@@ -228,6 +267,7 @@ def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
         "description": row[4],
         "testrl": row[5],
         "teenrl": row[6],
+        "intervention_ids": _get_element_interventions(cur, soa_id, element_id),
     }
 
     new_name = (payload.name if payload.name is not None else before["name"]) or ""
@@ -255,6 +295,8 @@ def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
             soa_id,
         ),
     )
+    if payload.intervention_ids is not None:
+        _set_element_interventions(cur, soa_id, element_id, payload.intervention_ids)
     conn.commit()
     cur.execute(
         """
@@ -264,6 +306,7 @@ def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
         (element_id, soa_id),
     )
     r = cur.fetchone()
+    current_interventions = _get_element_interventions(cur, soa_id, element_id)
     conn.close()
     after = {
         "id": r[0],
@@ -273,6 +316,7 @@ def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
         "description": r[4],
         "testrl": r[5],
         "teenrl": r[6],
+        "intervention_ids": current_interventions,
     }
     mutable = [
         "name",
@@ -280,6 +324,7 @@ def update_element(soa_id: int, element_id: int, payload: ElementUpdate):
         "description",
         "testrl",
         "teenrl",
+        "intervention_ids",
     ]
     updated_fields = [
         f for f in mutable if (before.get(f) or None) != (after.get(f) or None)
@@ -305,6 +350,7 @@ def ui_update_element(
     description: Optional[str] = Form(None),
     testrl: Optional[str] = Form(None),
     teenrl: Optional[str] = Form(None),
+    intervention_ids: List[str] = Form(default=[]),
 ):
     payload = ElementUpdate(
         name=name,
@@ -312,6 +358,7 @@ def ui_update_element(
         description=description,
         testrl=testrl,
         teenrl=teenrl,
+        intervention_ids=intervention_ids,
     )
     update_element(soa_id, element_id, payload)
     return RedirectResponse(url=f"/ui/soa/{int(soa_id)}/elements", status_code=303)
@@ -343,6 +390,10 @@ def delete_element(soa_id: int, element_id: int):
         "name": row[2],
         "label": row[3],
     }
+    cur.execute(
+        "DELETE FROM element_intervention WHERE soa_id=? AND element_id=?",
+        (soa_id, element_id),
+    )
     cur.execute(
         "DELETE FROM element WHERE soa_id=? AND id=?",
         (soa_id, element_id),
