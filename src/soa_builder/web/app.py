@@ -163,6 +163,7 @@ from .routers import cells as cells_router
 from .routers import instances as instances_router
 from .routers import usdm_json as usdm_json_router
 from .routers import tdd as tdd_router
+from .routers import dair as dair_router
 from .routers import decision_instances as decision_instances_router
 from .routers import condition_assignments as condition_assignments_router
 from .routers import footnotes as footnotes_router
@@ -422,6 +423,7 @@ app.include_router(rules_router.router)
 app.include_router(cells_router.router)
 app.include_router(usdm_json_router.router)
 app.include_router(tdd_router.router)
+app.include_router(dair_router.router)
 app.include_router(decision_instances_router.router)
 app.include_router(condition_assignments_router.router)
 app.include_router(footnotes_router.router)

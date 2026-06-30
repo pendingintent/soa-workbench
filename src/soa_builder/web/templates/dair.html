@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="am-page-title">Generate Digital Amendment Impact Report (DAIR)
+  {% if study_label %}— {{ study_label }}{% elif study_name %}— {{ study_name }}{% endif %}
+</h2>
+
+<div style="margin-bottom:12px;">
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
+</div>
+{% if study_id_value %}
+<p style="color:var(--am-text-mid);">Study ID: <strong>{{ study_id_value }}</strong></p>
+{% endif %}
+
+<hr class="fz-section-divider" />
+
+<p style="max-width:680px;color:var(--am-text-mid);margin-bottom:20px;">
+  A DAIR compares two snapshots of your study and surfaces every structural change to
+  the protocol model — study design, endpoints, Schedule of Activities, and Biomedical
+  Concept linkages — along with inferred downstream impact signals for eCRF, SDTM,
+  ADaM, and TLFs. Select a base version and a revised version below.
+</p>
+
+<div class="fz-info-box" style="margin-bottom:20px;padding:10px 14px;background:#FFF3CD;border-left:4px solid #FFA000;border-radius:4px;max-width:680px;">
+  <strong>Note:</strong> This is a machine-generated change intelligence artifact.
+  It is not a regulatory submission document. Study team review is required before
+  acting on inferred impacts.
+</div>
+
+{% if freezes | length < 2 %}
+<div class="fz-info-box" style="padding:12px 16px;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:6px;max-width:540px;">
+  <strong>No comparison available.</strong><br>
+  You need at least two snapshots to generate a DAIR. Create snapshots via
+  <a href="/ui/soa/{{ soa_id }}/freezes">Snapshots and Amendments</a>.
+</div>
+{% else %}
+<div class="study-meta-card" style="max-width:540px;">
+  <h3>Select Versions to Compare</h3>
+  <form method="get" action="/soa/{{ soa_id }}/dair/download" class="am-grid-2">
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">
+        Base Version (earlier) <span class="am-required">*</span>
+      </label>
+      <select class="am-input" name="base_freeze_id" required>
+        {% for f in freezes %}
+        <option value="{{ f.id }}">
+          {{ f.version_label }} ({{ f.created_at[:10] }})
+          {% if f.amendment_uid %} — Amendment{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="am-field am-field-span">
+      <label class="am-field-label">
+        Revised Version (later) <span class="am-required">*</span>
+      </label>
+      <select class="am-input" name="revised_freeze_id" required>
+        {% for f in freezes %}
+        <option value="{{ f.id }}"
+          {% if loop.first %}selected{% endif %}>
+          {{ f.version_label }} ({{ f.created_at[:10] }})
+          {% if f.amendment_uid %} — Amendment{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+      <button type="submit" class="am-btn am-btn-info">
+        &#8595; Download DAIR (.docx)
+      </button>
+    </div>
+  </form>
+</div>
+
+<div style="margin-top:20px;max-width:680px;">
+  <h4 style="margin-bottom:8px;">Available Snapshots</h4>
+  <table class="am-table" style="width:100%;">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Version Label</th>
+        <th>Created</th>
+        <th>Amendment</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in freezes %}
+      <tr>
+        <td>{{ f.id }}</td>
+        <td>{{ f.version_label }}</td>
+        <td>{{ f.created_at[:16] }}</td>
+        <td>{{ f.amendment_uid or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
