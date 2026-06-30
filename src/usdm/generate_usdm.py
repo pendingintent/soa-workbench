@@ -275,7 +275,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
     }
 
     study = {
-        "id": None,
+        "id": f"Study_{soa_id}",
         "extensionAttributes": [],
         "name": meta["study_id"] or meta["name"] or "",
         "description": _nz(meta["study_description"]),
