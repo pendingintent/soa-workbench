@@ -407,7 +407,7 @@ def delete_condition_assignment(soa_id: int, condition_id: int):
 
 
 # UI endpoint to delete a condition
-@router.post("/soa/{soa_id}/condition_assignments/{condition_id}/delete")
+@router.post("/ui/soa/{soa_id}/condition_assignments/{condition_id}/delete")
 def ui_delete_condition_assignment(request: Request, soa_id: int, condition_id: int):
     delete_condition_assignment(soa_id, condition_id)
     return RedirectResponse(
