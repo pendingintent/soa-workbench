@@ -131,6 +131,9 @@
 </div>
 {% endif %}
 
+{% macro epoch_th(soa_id, epoch_id, value, colspan, superscript) %}
+<th style="text-align:center;font-size:0.50em;" colspan="{{ colspan }}">{{ value }}{% if superscript %}<sup>{{ superscript }}</sup>{% endif %}{% if epoch_id %}<span class="sup-edit" hx-get="/ui/soa/{{ soa_id }}/epoch_superscript_edit/{{ epoch_id }}?colspan={{ colspan }}" hx-swap="outerHTML" hx-target="closest th" onclick="event.stopPropagation()" title="Edit superscript">&#9998;</span>{% endif %}</th>
+{% endmacro %}
 <!-- Matrix Container shown/hidden based on timeline selection -->
 {% for timeline_uid, timeline_instances in instances_by_timeline.items() %}
 <div class="matrix-container" 
@@ -148,7 +151,7 @@
   <tr class="matrix-epoch-row">
     <th></th>
     <th style="text-align:right;font-size:0.50em;">Epoch:-></th>
-    {% set prev_epoch = namespace(value=None, count=0) %}
+    {% set prev_epoch = namespace(value=None, count=0, id=None, superscript=None) %}
     {% for inst in timeline_instances %}
       {% set current_epoch = inst.epoch_label if inst.epoch_label else inst.epoch_name %}
       {% if prev_epoch.value == current_epoch %}
@@ -157,15 +160,17 @@
       {% else %}
         {# Different epoch, output previous if exists #}
         {% if prev_epoch.value is not none %}
-          <th style="text-align:center;font-size:0.50em;" colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}</th>
+          {{ epoch_th(soa_id, prev_epoch.id, prev_epoch.value, prev_epoch.count, prev_epoch.superscript) }}
         {% endif %}
         {# Start tracking new epoch #}
         {% set prev_epoch.value = current_epoch %}
         {% set prev_epoch.count = 1 %}
+        {% set prev_epoch.id = inst.epoch_id %}
+        {% set prev_epoch.superscript = inst.epoch_superscript %}
       {% endif %}
       {# On last iteration, output the accumulated cell #}
       {% if loop.last %}
-        <th style="text-align:center;font-size:0.50em;" colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}</th>
+        {{ epoch_th(soa_id, prev_epoch.id, prev_epoch.value, prev_epoch.count, prev_epoch.superscript) }}
       {% endif %}
     {% endfor %}
   </tr>
@@ -175,7 +180,7 @@
     <th style="text-align:right;font-size:0.50em;">Encounter:-></th>
     {% for inst in timeline_instances %}
     <th style="text-align:center;font-size:0.50em;">
-      {% if inst.encounter_label %}{{ inst.encounter_label }}{% else %}{{ inst.encounter_name }}{% endif %}
+      {% if inst.encounter_label %}{{ inst.encounter_label }}{% else %}{{ inst.encounter_name }}{% endif %}{% if inst.encounter_superscript %}<sup>{{ inst.encounter_superscript }}</sup>{% endif %}{% if inst.encounter_id %}<span class="sup-edit" hx-get="/ui/soa/{{ soa_id }}/encounter_superscript_edit/{{ inst.encounter_id }}" hx-swap="outerHTML" hx-target="closest th" onclick="event.stopPropagation()" title="Edit superscript">&#9998;</span>{% endif %}
     </th>
     {% endfor %}
   </tr>

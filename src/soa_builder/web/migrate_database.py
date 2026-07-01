@@ -1450,6 +1450,36 @@ def _migrate_activity_add_superscript():
         logger.warning("activity superscript migration failed: %s", e)
 
 
+def _migrate_epoch_add_superscript():
+    """Add superscript TEXT column to epoch if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(epoch)")
+        if "superscript" not in {r[1] for r in cur.fetchall()}:
+            cur.execute("ALTER TABLE epoch ADD COLUMN superscript TEXT")
+            conn.commit()
+            logger.info("Added superscript column to epoch")
+        conn.close()
+    except Exception as e:
+        logger.warning("epoch superscript migration failed: %s", e)
+
+
+def _migrate_visit_add_superscript():
+    """Add superscript TEXT column to visit if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(visit)")
+        if "superscript" not in {r[1] for r in cur.fetchall()}:
+            cur.execute("ALTER TABLE visit ADD COLUMN superscript TEXT")
+            conn.commit()
+            logger.info("Added superscript column to visit")
+        conn.close()
+    except Exception as e:
+        logger.warning("visit superscript migration failed: %s", e)
+
+
 def _migrate_add_bc_surrogate_table():
     """Create biomedical_concept_surrogate table if missing."""
     try:

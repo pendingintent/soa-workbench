@@ -73,6 +73,8 @@ from .migrate_database import (
     _migrate_add_footnote_audit_table,
     _migrate_matrix_cells_add_superscript,
     _migrate_activity_add_superscript,
+    _migrate_epoch_add_superscript,
+    _migrate_visit_add_superscript,
     _migrate_add_bc_surrogate_table,
     _migrate_add_activity_surrogate_table,
     _migrate_add_bc_surrogate_audit_table,
@@ -337,6 +339,8 @@ _migrate_add_footnote_table()
 _migrate_add_footnote_audit_table()
 _migrate_matrix_cells_add_superscript()
 _migrate_activity_add_superscript()
+_migrate_epoch_add_superscript()
+_migrate_visit_add_superscript()
 _migrate_add_bc_surrogate_table()
 _migrate_add_activity_surrogate_table()
 _migrate_add_bc_surrogate_audit_table()
@@ -1887,8 +1891,8 @@ def _fetch_enriched_instances(soa_id: int):
     cur.execute(
         """
         SELECT i.id,i.name,i.instance_uid,i.label,i.member_of_timeline,
-        v.name AS encounter_name,v.label AS encounter_label,
-        e.name AS epoch_name,e.epoch_label as epoch_label,
+        v.id AS encounter_id,v.name AS encounter_name,v.label AS encounter_label,v.superscript AS encounter_superscript,
+        e.id AS epoch_id,e.name AS epoch_name,e.epoch_label as epoch_label,e.superscript AS epoch_superscript,
         tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
         FROM instances i
         LEFT JOIN visit v ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id
@@ -1906,14 +1910,18 @@ def _fetch_enriched_instances(soa_id: int):
             "instance_uid": r[2],
             "label": r[3],
             "member_of_timeline": r[4],
-            "encounter_name": r[5],
-            "encounter_label": r[6],
-            "epoch_name": r[7],
-            "epoch_label": r[8],
-            "window_label": r[9],
-            "timing_label": r[10],
-            "timing_name": r[11],
-            "study_day": r[12],
+            "encounter_id": r[5],
+            "encounter_name": r[6],
+            "encounter_label": r[7],
+            "encounter_superscript": r[8],
+            "epoch_id": r[9],
+            "epoch_name": r[10],
+            "epoch_label": r[11],
+            "epoch_superscript": r[12],
+            "window_label": r[13],
+            "timing_label": r[14],
+            "timing_name": r[15],
+            "study_day": r[16],
         }
         for r in cur.fetchall()
     ]
@@ -3182,6 +3190,54 @@ def _render_activity_td(
         f' onclick="event.stopPropagation()" title="Edit superscript">✎</span>'
     )
     return f"<td>{name_safe}{sup_html}{edit_btn}</td>"
+
+
+def _render_encounter_th(
+    soa_id: int,
+    encounter_id: int,
+    display_name: str,
+    superscript: str | None,
+) -> str:
+    """Build the <th> HTML for an encounter column header, including superscript and edit button."""
+    soa_id_safe = _html.escape(str(soa_id), quote=True)
+    encounter_id_safe = _html.escape(str(encounter_id), quote=True)
+    name_safe = _html.escape(display_name or "")
+    sup_html = f"<sup>{_html.escape(superscript)}</sup>" if superscript else ""
+    edit_btn = (
+        f'<span class="sup-edit"'
+        f' hx-get="/ui/soa/{soa_id_safe}/encounter_superscript_edit/{encounter_id_safe}"'
+        f' hx-swap="outerHTML" hx-target="closest th"'
+        f' onclick="event.stopPropagation()" title="Edit superscript">✎</span>'
+    )
+    return (
+        f'<th style="text-align:center;font-size:0.50em;">'
+        f"{name_safe}{sup_html}{edit_btn}</th>"
+    )
+
+
+def _render_epoch_th(
+    soa_id: int,
+    epoch_id: int,
+    display_value: str,
+    colspan: int,
+    superscript: str | None,
+) -> str:
+    """Build the <th> HTML for a (possibly multi-column) epoch header, including superscript and edit button."""
+    soa_id_safe = _html.escape(str(soa_id), quote=True)
+    epoch_id_safe = _html.escape(str(epoch_id), quote=True)
+    colspan_safe = _html.escape(str(colspan), quote=True)
+    value_safe = _html.escape(display_value or "")
+    sup_html = f"<sup>{_html.escape(superscript)}</sup>" if superscript else ""
+    edit_btn = (
+        f'<span class="sup-edit"'
+        f' hx-get="/ui/soa/{soa_id_safe}/epoch_superscript_edit/{epoch_id_safe}?colspan={colspan_safe}"'
+        f' hx-swap="outerHTML" hx-target="closest th"'
+        f' onclick="event.stopPropagation()" title="Edit superscript">✎</span>'
+    )
+    return (
+        f'<th style="text-align:center;font-size:0.50em;" colspan="{colspan_safe}">'
+        f"{value_safe}{sup_html}{edit_btn}</th>"
+    )
 
 
 @app.post("/ui/soa/{soa_id}/toggle_cell_instance", response_class=HTMLResponse)
@@ -4733,7 +4789,9 @@ def ui_edit(request: Request, soa_id: int):
     cur_inst.execute(
         """
         SELECT i.id,i.name,i.instance_uid,i.label,i.member_of_timeline,st.name AS timeline_name,st.label AS timeline_label,
-        v.name AS encounter_name,v.label AS encounter_label,e.name AS epoch_name,e.epoch_label as epoch_label,tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
+        v.id AS encounter_id,v.name AS encounter_name,v.label AS encounter_label,v.superscript AS encounter_superscript,
+        e.id AS epoch_id,e.name AS epoch_name,e.epoch_label as epoch_label,e.superscript AS epoch_superscript,
+        tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
         FROM instances i
         LEFT JOIN schedule_timelines st ON st.schedule_timeline_uid = i.member_of_timeline AND st.soa_id = i.soa_id
         LEFT JOIN visit v ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id
@@ -4753,14 +4811,18 @@ def ui_edit(request: Request, soa_id: int):
             "member_of_timeline": r[4],
             "timeline_name": r[5],
             "timeline_label": r[6],
-            "encounter_name": r[7],
-            "encounter_label": r[8],
-            "epoch_name": r[9],
-            "epoch_label": r[10],
-            "window_label": r[11],
-            "timing_label": r[12],
-            "timing_name": r[13],
-            "study_day": iso_duration_to_days(r[14]),
+            "encounter_id": r[7],
+            "encounter_name": r[8],
+            "encounter_label": r[9],
+            "encounter_superscript": r[10],
+            "epoch_id": r[11],
+            "epoch_name": r[12],
+            "epoch_label": r[13],
+            "epoch_superscript": r[14],
+            "window_label": r[15],
+            "timing_label": r[16],
+            "timing_name": r[17],
+            "study_day": iso_duration_to_days(r[18]),
         }
         for r in cur_inst.fetchall()
     ]
@@ -6337,6 +6399,229 @@ def ui_activity_superscript_view(
     name, label, sup_val = row
     display_name = label or name
     return HTMLResponse(_render_activity_td(soa_id, activity_id, display_name, sup_val))
+
+
+@app.get(
+    "/ui/soa/{soa_id}/encounter_superscript_edit/{encounter_id}",
+    response_class=HTMLResponse,
+)
+def ui_encounter_superscript_edit(
+    request: Request,
+    soa_id: int,
+    encounter_id: int,
+):
+    """Return edit-mode <th> for encounter superscript inline editing."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT superscript FROM visit WHERE soa_id=? AND id=?",
+        (soa_id, encounter_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Encounter not found")
+    sup_val = _html.escape(row[0] or "", quote=True)
+    html = (
+        f'<th class="cell-editing" style="background:#fffde7;">'
+        f'<form style="display:inline;"'
+        f' hx-post="/ui/soa/{soa_id}/encounter_superscript/{encounter_id}"'
+        f' hx-swap="outerHTML" hx-target="closest th">'
+        f'<input name="superscript" value="{sup_val}" size="5"'
+        f' style="width:45px;font-size:0.8em;" autofocus />'
+        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
+        f"</form>"
+        f'<span hx-get="/ui/soa/{soa_id}/encounter_superscript_view/{encounter_id}"'
+        f' hx-swap="outerHTML" hx-target="closest th"'
+        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
+        f"</th>"
+    )
+    return HTMLResponse(html)
+
+
+@app.post(
+    "/ui/soa/{soa_id}/encounter_superscript/{encounter_id}",
+    response_class=HTMLResponse,
+)
+def ui_encounter_superscript_save(
+    request: Request,
+    soa_id: int,
+    encounter_id: int,
+    superscript: Optional[str] = Form(None),
+):
+    """Save superscript value for an encounter (visit) and return rendered <th>."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    sup_val = superscript.strip() if superscript else None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE visit SET superscript=? WHERE soa_id=? AND id=?",
+        (sup_val, soa_id, encounter_id),
+    )
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(404, "Encounter not found")
+    cur.execute(
+        "SELECT name, label, superscript FROM visit WHERE soa_id=? AND id=?",
+        (soa_id, encounter_id),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    conn.close()
+    name, label, sup_val_db = row
+    display_name = label or name
+    return HTMLResponse(
+        _render_encounter_th(soa_id, encounter_id, display_name, sup_val_db)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/encounter_superscript_view/{encounter_id}",
+    response_class=HTMLResponse,
+)
+def ui_encounter_superscript_view(
+    request: Request,
+    soa_id: int,
+    encounter_id: int,
+):
+    """Return rendered (view-mode) <th> — used for cancel."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name, label, superscript FROM visit WHERE soa_id=? AND id=?",
+        (soa_id, encounter_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Encounter not found")
+    name, label, sup_val = row
+    display_name = label or name
+    return HTMLResponse(
+        _render_encounter_th(soa_id, encounter_id, display_name, sup_val)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/epoch_superscript_edit/{epoch_id}",
+    response_class=HTMLResponse,
+)
+def ui_epoch_superscript_edit(
+    request: Request,
+    soa_id: int,
+    epoch_id: int,
+    colspan: int = 1,
+):
+    """Return edit-mode <th> for epoch superscript inline editing.
+
+    ``colspan`` is a render-time pass-through (how many matrix columns
+    the epoch header currently spans) — it is not stored in the
+    database and must be preserved across the edit/save/view swaps so
+    the table stays aligned.
+    """
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT superscript FROM epoch WHERE soa_id=? AND id=?",
+        (soa_id, epoch_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Epoch not found")
+    sup_val = _html.escape(row[0] or "", quote=True)
+    colspan_safe = _html.escape(str(colspan), quote=True)
+    html = (
+        f'<th class="cell-editing" style="background:#fffde7;" colspan="{colspan_safe}">'
+        f'<form style="display:inline;"'
+        f' hx-post="/ui/soa/{soa_id}/epoch_superscript/{epoch_id}"'
+        f' hx-swap="outerHTML" hx-target="closest th">'
+        f'<input type="hidden" name="colspan" value="{colspan_safe}" />'
+        f'<input name="superscript" value="{sup_val}" size="5"'
+        f' style="width:45px;font-size:0.8em;" autofocus />'
+        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
+        f"</form>"
+        f'<span hx-get="/ui/soa/{soa_id}/epoch_superscript_view/{epoch_id}?colspan={colspan_safe}"'
+        f' hx-swap="outerHTML" hx-target="closest th"'
+        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
+        f"</th>"
+    )
+    return HTMLResponse(html)
+
+
+@app.post(
+    "/ui/soa/{soa_id}/epoch_superscript/{epoch_id}",
+    response_class=HTMLResponse,
+)
+def ui_epoch_superscript_save(
+    request: Request,
+    soa_id: int,
+    epoch_id: int,
+    superscript: Optional[str] = Form(None),
+    colspan: int = Form(1),
+):
+    """Save superscript value for an epoch and return rendered <th>."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    sup_val = superscript.strip() if superscript else None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE epoch SET superscript=? WHERE soa_id=? AND id=?",
+        (sup_val, soa_id, epoch_id),
+    )
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(404, "Epoch not found")
+    cur.execute(
+        "SELECT epoch_label, name, superscript FROM epoch WHERE soa_id=? AND id=?",
+        (soa_id, epoch_id),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    conn.close()
+    epoch_label, name, sup_val_db = row
+    display_value = epoch_label or name
+    return HTMLResponse(
+        _render_epoch_th(soa_id, epoch_id, display_value, colspan, sup_val_db)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/epoch_superscript_view/{epoch_id}",
+    response_class=HTMLResponse,
+)
+def ui_epoch_superscript_view(
+    request: Request,
+    soa_id: int,
+    epoch_id: int,
+    colspan: int = 1,
+):
+    """Return rendered (view-mode) <th> — used for cancel."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT epoch_label, name, superscript FROM epoch WHERE soa_id=? AND id=?",
+        (soa_id, epoch_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Epoch not found")
+    epoch_label, name, sup_val = row
+    display_value = epoch_label or name
+    return HTMLResponse(
+        _render_epoch_th(soa_id, epoch_id, display_value, colspan, sup_val)
+    )
 
 
 # UI endpoint for associating a Transition Start Rule with Visit/Encounter (visit.transitionStartRule)
