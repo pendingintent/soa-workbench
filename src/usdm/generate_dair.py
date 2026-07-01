@@ -1330,6 +1330,7 @@ def _build_docx(
         c_rows = []
         for cc in concepts:
             aid = cc.get("activity_id", "?")
+            activity_name = cc.get("activity_name") or f"Activity {aid}"
             titles = cc.get("titles", {})
             for code in cc.get("added", []):
                 bc_ref = _bc_ref(titles.get(code, code), code)
@@ -1338,7 +1339,7 @@ def _build_docx(
                         "+ ADD",
                         "BiomedicalConcept",
                         f"activity[{aid}].bc[{code}]",
-                        [f"BC {bc_ref} linked to activity {aid}"],
+                        [f'BC {bc_ref} linked to activity "{activity_name}"'],
                         _IMPACT_MED,
                         "Direct",
                     )
@@ -1350,7 +1351,7 @@ def _build_docx(
                         "- REM",
                         "BiomedicalConcept",
                         f"activity[{aid}].bc[{code}]",
-                        [f"BC {bc_ref} unlinked from activity {aid}"],
+                        [f'BC {bc_ref} unlinked from activity "{activity_name}"'],
                         _IMPACT_MED,
                         "Direct",
                     )

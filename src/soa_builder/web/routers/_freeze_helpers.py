@@ -772,6 +772,11 @@ def _diff_freezes_limited(
             concept_changes_all.append(
                 {
                     "activity_id": aid,
+                    "activity_name": (
+                        r_act.get(aid, {}).get("name")
+                        or l_act.get(aid, {}).get("name")
+                        or f"Activity {aid}"
+                    ),
                     "added": added,
                     "removed": removed,
                     "title_changes": title_changes,
