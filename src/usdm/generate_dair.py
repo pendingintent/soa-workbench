@@ -1071,9 +1071,11 @@ def _build_docx(
     spacer()
 
     # ── Section 2: Amendment Record (conditional) ──────────────────────────
-    sect_num = 2
+    # Section numbers are fixed regardless of whether Amendment Record is
+    # rendered, so numbering is identical across every SoA/freeze pair.
+    sect_num = 3
+    h1("2. Amendment Record")
     if amendment:
-        h1(f"{sect_num}. Amendment Record")
         body(
             f"Amendment {amendment.get('number', '—')}: {amendment.get('name', '')}",
         )
@@ -1176,8 +1178,11 @@ def _build_docx(
                 )
             _set_table_col_widths(enr_tbl, _ENR2)
             spacer()
-
-        sect_num = 3
+    else:
+        body(
+            "No amendment record is associated with this version comparison.",
+            italic=True,
+        )
 
     # ── Section §N: USDM Diff ──────────────────────────────────────────────
     h1(f"{sect_num}. USDM Diff — What Changed")
@@ -1324,53 +1329,54 @@ def _build_docx(
         spacer()
 
     # BC concept linkage changes
+    h2(f"{sect_num}.5 BC Concept Linkage Changes")
     concepts = diff.get("concepts", [])
-    if concepts:
-        h2(f"{sect_num}.5 BC Concept Linkage Changes")
-        c_rows = []
-        for cc in concepts:
-            aid = cc.get("activity_id", "?")
-            activity_name = cc.get("activity_name") or f"Activity {aid}"
-            titles = cc.get("titles", {})
-            for code in cc.get("added", []):
-                bc_ref = _bc_ref(titles.get(code, code), code)
-                c_rows.append(
-                    (
-                        "+ ADD",
-                        "BiomedicalConcept",
-                        f"activity[{aid}].bc[{code}]",
-                        [f'BC {bc_ref} linked to activity "{activity_name}"'],
-                        _IMPACT_MED,
-                        "Direct",
-                    )
+    c_rows = []
+    for cc in concepts:
+        aid = cc.get("activity_id", "?")
+        activity_name = cc.get("activity_name") or f"Activity {aid}"
+        titles = cc.get("titles", {})
+        for code in cc.get("added", []):
+            bc_ref = _bc_ref(titles.get(code, code), code)
+            c_rows.append(
+                (
+                    "+ ADD",
+                    "BiomedicalConcept",
+                    f"activity[{aid}].bc[{code}]",
+                    [f'BC {bc_ref} linked to activity "{activity_name}"'],
+                    _IMPACT_MED,
+                    "Direct",
                 )
-            for code in cc.get("removed", []):
-                bc_ref = _bc_ref(titles.get(code, code), code)
-                c_rows.append(
-                    (
-                        "- REM",
-                        "BiomedicalConcept",
-                        f"activity[{aid}].bc[{code}]",
-                        [f'BC {bc_ref} unlinked from activity "{activity_name}"'],
-                        _IMPACT_MED,
-                        "Direct",
-                    )
+            )
+        for code in cc.get("removed", []):
+            bc_ref = _bc_ref(titles.get(code, code), code)
+            c_rows.append(
+                (
+                    "- REM",
+                    "BiomedicalConcept",
+                    f"activity[{aid}].bc[{code}]",
+                    [f'BC {bc_ref} unlinked from activity "{activity_name}"'],
+                    _IMPACT_MED,
+                    "Direct",
                 )
-        if c_rows:
-            tbl = doc.add_table(rows=1 + len(c_rows), cols=6)
-            tbl.style = "Table Grid"
-            _header_row(tbl, diff_hdrs)
-            for i, row_data in enumerate(c_rows):
-                r = tbl.rows[i + 1]
-                chg, elem, path, detail_lines, impact, src = row_data
-                _add_cell_text(r.cells[0], chg, size_pt=8)
-                _add_cell_text(r.cells[1], elem, size_pt=8)
-                _add_cell_text(r.cells[2], path, size_pt=8)
-                _add_cell_lines(r.cells[3], detail_lines, size_pt=8)
-                _add_cell_text(r.cells[4], impact, size_pt=8)
-                _add_cell_text(r.cells[5], src, size_pt=8)
-            _set_table_col_widths(tbl, _DIFF6)
-            spacer()
+            )
+    if not c_rows:
+        body("No changes detected in this section.", italic=True)
+    else:
+        tbl = doc.add_table(rows=1 + len(c_rows), cols=6)
+        tbl.style = "Table Grid"
+        _header_row(tbl, diff_hdrs)
+        for i, row_data in enumerate(c_rows):
+            r = tbl.rows[i + 1]
+            chg, elem, path, detail_lines, impact, src = row_data
+            _add_cell_text(r.cells[0], chg, size_pt=8)
+            _add_cell_text(r.cells[1], elem, size_pt=8)
+            _add_cell_text(r.cells[2], path, size_pt=8)
+            _add_cell_lines(r.cells[3], detail_lines, size_pt=8)
+            _add_cell_text(r.cells[4], impact, size_pt=8)
+            _add_cell_text(r.cells[5], src, size_pt=8)
+        _set_table_col_widths(tbl, _DIFF6)
+        spacer()
 
     # ── Section §N+1: Downstream Thread Impact ────────────────────────────
     ds_num = sect_num + 1
