@@ -229,7 +229,7 @@
   </tr>
   {% for a in activities_by_timeline.get(timeline_uid, []) %}
   <tr data-activity-id="{{ a.id }}">
-    <td>{% if a.label %}{{ a.label }}{% else %}{{ a.name }}{% endif %}</td>
+    <td>{% if a.label %}{{ a.label }}{% else %}{{ a.name }}{% endif %}{% if a.superscript %}<sup>{{ a.superscript }}</sup>{% endif %}<span class="sup-edit" hx-get="/ui/soa/{{ soa_id }}/activity_superscript_edit/{{ a.id }}" hx-swap="outerHTML" hx-target="closest td" onclick="event.stopPropagation()" title="Edit superscript">&#9998;</span></td>
     {% set concepts_list = activity_concepts.get(a.id, []) %}
     {% set selected_list = concepts_list %}
     {% set selected_codes = concepts_list | map(attribute='code') | list %}

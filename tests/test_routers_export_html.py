@@ -119,6 +119,71 @@ def test_export_html_superscript_rendered():
     assert b"<sup>a</sup>" in resp.content
 
 
+def test_export_html_activity_superscript_rendered():
+    """Activity superscripts appear as <sup> tags in the exported HTML."""
+    soa_id = _make_soa("Activity Superscript Export Test")
+    client.post(
+        f"/soa/{soa_id}/instances",
+        json={"name": "Day 1", "instance_uid": "SI_asup_1"},
+    )
+    act_r = client.post(f"/soa/{soa_id}/activities", json={"name": "Vitals"})
+    assert act_r.status_code in (200, 201), act_r.text
+    act_id = act_r.json()["activity_id"]
+
+    client.post(
+        f"/ui/soa/{soa_id}/activity_superscript/{act_id}",
+        data={"superscript": "b"},
+    )
+
+    resp = client.get(f"/soa/{soa_id}/export/html")
+    assert resp.status_code == 200
+    assert b"<sup>b</sup>" in resp.content
+
+
+def test_activity_superscript_edit_save_view():
+    """Full edit/save/cancel cycle for an activity-level superscript."""
+    soa_id = _make_soa("Activity Superscript Cycle Test")
+    act_r = client.post(f"/soa/{soa_id}/activities", json={"name": "ECG"})
+    assert act_r.status_code in (200, 201), act_r.text
+    act_id = act_r.json()["activity_id"]
+
+    # Edit mode returns an inline input form
+    edit_resp = client.get(f"/ui/soa/{soa_id}/activity_superscript_edit/{act_id}")
+    assert edit_resp.status_code == 200
+    assert b'name="superscript"' in edit_resp.content
+
+    # Save persists and returns the rendered <sup> marker
+    save_resp = client.post(
+        f"/ui/soa/{soa_id}/activity_superscript/{act_id}",
+        data={"superscript": "c"},
+    )
+    assert save_resp.status_code == 200
+    assert b"<sup>c</sup>" in save_resp.content
+    assert b"ECG" in save_resp.content
+
+    # View mode (cancel path) re-renders the same persisted value
+    view_resp = client.get(f"/ui/soa/{soa_id}/activity_superscript_view/{act_id}")
+    assert view_resp.status_code == 200
+    assert b"<sup>c</sup>" in view_resp.content
+
+    # Clearing the value removes the marker
+    clear_resp = client.post(
+        f"/ui/soa/{soa_id}/activity_superscript/{act_id}",
+        data={"superscript": ""},
+    )
+    assert clear_resp.status_code == 200
+    assert b"<sup>" not in clear_resp.content
+
+
+def test_activity_superscript_unknown_activity_returns_404():
+    soa_id = _make_soa("Activity Superscript 404 Test")
+    resp = client.post(
+        f"/ui/soa/{soa_id}/activity_superscript/999999",
+        data={"superscript": "a"},
+    )
+    assert resp.status_code == 404
+
+
 def test_export_html_footnotes_rendered():
     """Footnotes section appears at the bottom of the exported HTML."""
     soa_id = _make_soa("Footnote Test")

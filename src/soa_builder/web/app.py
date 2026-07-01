@@ -72,6 +72,7 @@ from .migrate_database import (
     _migrate_add_footnote_table,
     _migrate_add_footnote_audit_table,
     _migrate_matrix_cells_add_superscript,
+    _migrate_activity_add_superscript,
     _migrate_add_bc_surrogate_table,
     _migrate_add_activity_surrogate_table,
     _migrate_add_bc_surrogate_audit_table,
@@ -335,6 +336,7 @@ _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
 _migrate_add_footnote_audit_table()
 _migrate_matrix_cells_add_superscript()
+_migrate_activity_add_superscript()
 _migrate_add_bc_surrogate_table()
 _migrate_add_activity_surrogate_table()
 _migrate_add_bc_surrogate_audit_table()
@@ -649,12 +651,15 @@ def _fetch_matrix(soa_id: int):
         )
         for r in cur.fetchall()
     ]
-    # Activities: include optional label/description if schema supports them
+    # Activities: include optional label/description/superscript if schema supports them
     cur.execute("PRAGMA table_info(activity)")
     act_cols = {r[1] for r in cur.fetchall()}
+    has_superscript = "superscript" in act_cols
     if "label" in act_cols and "description" in act_cols:
+        sup_select = ",superscript" if has_superscript else ""
         cur.execute(
-            "SELECT id,name,order_index,activity_uid,label,description FROM activity WHERE soa_id=? ORDER BY order_index",
+            f"SELECT id,name,order_index,activity_uid,label,description{sup_select}"
+            " FROM activity WHERE soa_id=? ORDER BY order_index",
             (soa_id,),
         )
         activities = [
@@ -665,6 +670,7 @@ def _fetch_matrix(soa_id: int):
                 activity_uid=r[3],
                 label=r[4],
                 description=r[5],
+                superscript=r[6] if has_superscript else None,
             )
             for r in cur.fetchall()
         ]
@@ -681,6 +687,7 @@ def _fetch_matrix(soa_id: int):
                 activity_uid=r[3],
                 label=None,
                 description=None,
+                superscript=None,
             )
             for r in cur.fetchall()
         ]
@@ -3155,6 +3162,26 @@ def _render_cell_td(
         f" hx-vals='{hx_vals_attr}'"
         f' hx-swap="outerHTML" class="cell">{content}</td>'
     )
+
+
+def _render_activity_td(
+    soa_id: int,
+    activity_id: int,
+    display_name: str,
+    superscript: str | None,
+) -> str:
+    """Build the <td> HTML for an activity row header, including superscript and edit button."""
+    soa_id_safe = _html.escape(str(soa_id), quote=True)
+    activity_id_safe = _html.escape(str(activity_id), quote=True)
+    name_safe = _html.escape(display_name or "")
+    sup_html = f"<sup>{_html.escape(superscript)}</sup>" if superscript else ""
+    edit_btn = (
+        f'<span class="sup-edit"'
+        f' hx-get="/ui/soa/{soa_id_safe}/activity_superscript_edit/{activity_id_safe}"'
+        f' hx-swap="outerHTML" hx-target="closest td"'
+        f' onclick="event.stopPropagation()" title="Edit superscript">✎</span>'
+    )
+    return f"<td>{name_safe}{sup_html}{edit_btn}</td>"
 
 
 @app.post("/ui/soa/{soa_id}/toggle_cell_instance", response_class=HTMLResponse)
@@ -6205,6 +6232,111 @@ def ui_cell_superscript_view(
     return HTMLResponse(
         _render_cell_td(soa_id, instance_id, activity_id, status or "", sup_val)
     )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/activity_superscript_edit/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_activity_superscript_edit(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+):
+    """Return edit-mode <td> for activity superscript inline editing."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT superscript FROM activity WHERE soa_id=? AND id=?",
+        (soa_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Activity not found")
+    sup_val = _html.escape(row[0] or "", quote=True)
+    html = (
+        f'<td class="cell-editing" style="background:#fffde7;">'
+        f'<form style="display:inline;"'
+        f' hx-post="/ui/soa/{soa_id}/activity_superscript/{activity_id}"'
+        f' hx-swap="outerHTML" hx-target="closest td">'
+        f'<input name="superscript" value="{sup_val}" size="5"'
+        f' style="width:45px;font-size:0.8em;" autofocus />'
+        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
+        f"</form>"
+        f'<span hx-get="/ui/soa/{soa_id}/activity_superscript_view/{activity_id}"'
+        f' hx-swap="outerHTML" hx-target="closest td"'
+        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
+        f"</td>"
+    )
+    return HTMLResponse(html)
+
+
+@app.post(
+    "/ui/soa/{soa_id}/activity_superscript/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_activity_superscript_save(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    superscript: Optional[str] = Form(None),
+):
+    """Save superscript value for an activity and return rendered <td>."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    # Normalise empty string to NULL
+    sup_val = superscript.strip() if superscript else None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE activity SET superscript=? WHERE soa_id=? AND id=?",
+        (sup_val, soa_id, activity_id),
+    )
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(404, "Activity not found")
+    cur.execute(
+        "SELECT name, label, superscript FROM activity WHERE soa_id=? AND id=?",
+        (soa_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    conn.close()
+    name, label, sup_val_db = row
+    display_name = label or name
+    return HTMLResponse(
+        _render_activity_td(soa_id, activity_id, display_name, sup_val_db)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/activity_superscript_view/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_activity_superscript_view(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+):
+    """Return rendered (view-mode) <td> — used for cancel."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name, label, superscript FROM activity WHERE soa_id=? AND id=?",
+        (soa_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Activity not found")
+    name, label, sup_val = row
+    display_name = label or name
+    return HTMLResponse(_render_activity_td(soa_id, activity_id, display_name, sup_val))
 
 
 # UI endpoint for associating a Transition Start Rule with Visit/Encounter (visit.transitionStartRule)

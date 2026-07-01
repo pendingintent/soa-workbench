@@ -128,7 +128,7 @@
       <!-- Activity rows -->
       {% for act in activities %}
       <tr>
-        <td>{{ act.label or act.name }}</td>
+        <td>{{ act.label or act.name }}{% if act.superscript %}<sup>{{ act.superscript }}</sup>{% endif %}</td>
         <td>
           {% set act_concepts = concepts_map.get(act.id, []) %}
           {% set act_surrogates = surrogates_map.get(act.id, []) %}

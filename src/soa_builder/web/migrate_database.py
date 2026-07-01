@@ -1435,6 +1435,21 @@ def _migrate_matrix_cells_add_superscript():
         logger.warning("matrix_cells superscript migration failed: %s", e)
 
 
+def _migrate_activity_add_superscript():
+    """Add superscript TEXT column to activity if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity)")
+        if "superscript" not in {r[1] for r in cur.fetchall()}:
+            cur.execute("ALTER TABLE activity ADD COLUMN superscript TEXT")
+            conn.commit()
+            logger.info("Added superscript column to activity")
+        conn.close()
+    except Exception as e:
+        logger.warning("activity superscript migration failed: %s", e)
+
+
 def _migrate_add_bc_surrogate_table():
     """Create biomedical_concept_surrogate table if missing."""
     try:
