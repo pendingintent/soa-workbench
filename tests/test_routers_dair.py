@@ -2,6 +2,7 @@
 
 import os
 import sqlite3
+from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
@@ -110,7 +111,9 @@ def test_download_dair_invalid_freeze():
 
 
 def test_download_dair_returns_docx():
-    r = client.post("/soa", json={"name": "DAIR Download Test"})
+    r = client.post(
+        "/soa", json={"name": "DAIR Download Test", "study_id": "NCT99999999"}
+    )
     soa_id = r.json()["id"]
 
     # Create base freeze
@@ -128,11 +131,29 @@ def test_download_dair_returns_docx():
     ct = resp.headers.get("content-type", "")
     assert "wordprocessingml" in ct or "octet-stream" in ct
     assert "attachment" in resp.headers.get("content-disposition", "")
-    assert f"DAIR_{soa_id}_{fid1}_vs_{fid2}.docx" in resp.headers.get(
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    assert f"NCT99999999-DAIR-{date_str}.docx" in resp.headers.get(
         "content-disposition", ""
     )
     # DOCX starts with PK (ZIP magic bytes)
     assert resp.content[:2] == b"PK"
+
+
+def test_download_dair_filename_falls_back_without_study_id():
+    """SoAs without a study_id still get a safe, predictable filename."""
+    r = client.post("/soa", json={"name": "DAIR No Study Id"})
+    soa_id = r.json()["id"]
+    fid1 = _create_freeze(soa_id, "baseline")
+    fid2 = _create_freeze(soa_id, "revised")
+
+    resp = client.get(
+        f"/soa/{soa_id}/dair/download?base_freeze_id={fid1}&revised_freeze_id={fid2}"
+    )
+    assert resp.status_code == 200
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    assert f"SoA{soa_id}-DAIR-{date_str}.docx" in resp.headers.get(
+        "content-disposition", ""
+    )
 
 
 def test_download_dair_no_changes():

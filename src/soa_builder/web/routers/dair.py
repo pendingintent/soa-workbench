@@ -4,6 +4,8 @@ Impact Reports."""
 import io
 import logging
 import os
+import re
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -22,6 +24,11 @@ templates = Jinja2Templates(
 _DOCX_MEDIA_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
+
+
+def _safe_filename_component(value: str) -> str:
+    """Strip characters unsafe for filenames/HTTP headers from ``value``."""
+    return re.sub(r"[^A-Za-z0-9._-]", "_", value)
 
 
 @router.get(
@@ -72,7 +79,14 @@ def download_dair(
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
 
-    filename = f"DAIR_{soa_id}_{base_freeze_id}_vs_{revised_freeze_id}.docx"
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT study_id FROM soa WHERE id=?", (soa_id,))
+    row = cur.fetchone()
+    conn.close()
+    study_id = (row[0] if row else None) or f"SoA{soa_id}"
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    filename = f"{_safe_filename_component(study_id)}-DAIR-{date_str}.docx"
     return StreamingResponse(
         io.BytesIO(docx_bytes),
         media_type=_DOCX_MEDIA_TYPE,

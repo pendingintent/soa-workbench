@@ -293,8 +293,13 @@ def _capture_biomedical_concepts(cur, soa_id: int) -> list:
     if not _table_has_columns(cur, "biomedical_concept", ("biomedical_concept_uid",)):
         return []
     cur.execute(
-        "SELECT biomedical_concept_uid,name,label,code"
-        " FROM biomedical_concept WHERE soa_id=? ORDER BY id",
+        "SELECT bc.biomedical_concept_uid, bc.name, bc.label, bc.code, c.code"
+        " FROM biomedical_concept bc"
+        " LEFT JOIN alias_code a"
+        "   ON bc.code = a.alias_code_uid AND bc.soa_id = a.soa_id"
+        " LEFT JOIN code c"
+        "   ON a.standard_code = c.code_uid AND a.soa_id = c.soa_id"
+        " WHERE bc.soa_id=? ORDER BY bc.id",
         (soa_id,),
     )
     return [
@@ -303,6 +308,7 @@ def _capture_biomedical_concepts(cur, soa_id: int) -> list:
             "name": r[1],
             "label": r[2],
             "code": r[3],
+            "concept_id": r[4],
         }
         for r in cur.fetchall()
     ]
@@ -757,6 +763,11 @@ def _diff_freezes_limited(
                 title_changes.append(
                     {"code": code, "old_title": l_title, "new_title": r_title}
                 )
+        titles = {
+            c["code"]: c.get("title") or c["code"]
+            for c in la + ra
+            if isinstance(c, dict) and c.get("code")
+        }
         if added or removed or title_changes:
             concept_changes_all.append(
                 {
@@ -764,6 +775,7 @@ def _diff_freezes_limited(
                     "added": added,
                     "removed": removed,
                     "title_changes": title_changes,
+                    "titles": titles,
                 }
             )
 
@@ -832,7 +844,7 @@ def _diff_freezes_limited(
         (
             "biomedical_concepts",
             "biomedical_concept_uid",
-            ["name", "label", "code"],
+            ["name", "label", "code", "concept_id"],
         ),
         (
             "bc_properties",
@@ -860,6 +872,7 @@ def _diff_freezes_limited(
             "added": ea,
             "removed": er,
             "changed": ec,
+            "data_unavailable": snap_key not in l_snap or snap_key not in r_snap,
         }
 
     def _truncate(lst):
@@ -887,6 +900,7 @@ def _diff_freezes_limited(
             "added": ea,
             "removed": er,
             "changed": ec,
+            "data_unavailable": raw["data_unavailable"],
         }
         entity_meta[snap_key] = {
             "added_total": len(raw["added"]),

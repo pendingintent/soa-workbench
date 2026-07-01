@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from docx import Document
+from docx.enum.table import WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -80,7 +81,7 @@ def _set_table_col_widths(table, col_widths_dxa: List[int]):
         gc.set(qn("w:w"), str(w))
         tblGrid.append(gc)
 
-    # Set explicit tcW on every cell
+    # Set explicit tcW on every cell, and middle-align all cell text
     for row in table.rows:
         for i, cell in enumerate(row.cells):
             if i >= len(col_widths_dxa):
@@ -92,6 +93,7 @@ def _set_table_col_widths(table, col_widths_dxa: List[int]):
                 tcPr.append(tcW)
             tcW.set(qn("w:type"), "dxa")
             tcW.set(qn("w:w"), str(col_widths_dxa[i]))
+            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
 
 
 def _set_cell_shading(cell, hex_color: str):
@@ -208,6 +210,12 @@ def _confidence_label(confidence: str) -> str:
     if confidence == "inferred_med":
         return "Medium (Inferred)"
     return "Low (Inferred)"
+
+
+def _bc_ref(name: str, concept_id: Optional[str]) -> str:
+    """Format a BiomedicalConcept reference as '"shortName" (conceptId)'."""
+    label = f'"{name}"' if name else '""'
+    return f"{label} ({concept_id})" if concept_id else label
 
 
 # ---------------------------------------------------------------------------
@@ -1213,6 +1221,7 @@ def _build_docx(
     for section_title, entity_specs in diff_sections:
         h2(section_title)
         rows_data: List[tuple] = []
+        unavailable_labels: List[str] = []
 
         for entity_key, uid_key in entity_specs:
             if entity_key in ("visits", "activities"):
@@ -1221,16 +1230,22 @@ def _build_docx(
                 entity_data = entities.get(entity_key, {})
 
             elem_lbl = _entity_label(entity_key)
+            if entity_data.get("data_unavailable"):
+                unavailable_labels.append(elem_lbl)
 
             for item in entity_data.get("added", []):
                 name = _item_name(item)
                 uid = (item.get(uid_key) if uid_key else name) or name
+                if entity_key == "biomedical_concepts":
+                    name_ref = _bc_ref(name, item.get("concept_id"))
+                else:
+                    name_ref = name
                 rows_data.append(
                     (
                         "+ ADD",
                         elem_lbl,
                         f"{entity_key}[{uid}]",
-                        [f"New {elem_lbl} added: {name}"],
+                        [f"New {elem_lbl} added: {name_ref}"],
                         _classify_impact(entity_key, "added"),
                         "Direct",
                     )
@@ -1238,12 +1253,16 @@ def _build_docx(
             for item in entity_data.get("removed", []):
                 name = _item_name(item)
                 uid = (item.get(uid_key) if uid_key else name) or name
+                if entity_key == "biomedical_concepts":
+                    name_ref = _bc_ref(name, item.get("concept_id"))
+                else:
+                    name_ref = name
                 rows_data.append(
                     (
                         "- REM",
                         elem_lbl,
                         f"{entity_key}[{uid}]",
-                        [f"{elem_lbl} removed: {name}"],
+                        [f"{elem_lbl} removed: {name_ref}"],
                         _classify_impact(entity_key, "removed"),
                         "Direct",
                     )
@@ -1261,8 +1280,17 @@ def _build_docx(
                     )
                 )
 
+        if unavailable_labels:
+            body(
+                f"Data not available for: {', '.join(unavailable_labels)} — "
+                "one or both of the compared freezes were created before "
+                "this data began being captured. Create a new freeze to "
+                "enable comparison for these elements.",
+                italic=True,
+            )
         if not rows_data:
-            body("No changes detected in this section.", italic=True)
+            if len(unavailable_labels) < len(entity_specs):
+                body("No changes detected in this section.", italic=True)
             continue
 
         tbl = doc.add_table(rows=1 + len(rows_data), cols=6)
@@ -1302,24 +1330,27 @@ def _build_docx(
         c_rows = []
         for cc in concepts:
             aid = cc.get("activity_id", "?")
+            titles = cc.get("titles", {})
             for code in cc.get("added", []):
+                bc_ref = _bc_ref(titles.get(code, code), code)
                 c_rows.append(
                     (
                         "+ ADD",
                         "BiomedicalConcept",
                         f"activity[{aid}].bc[{code}]",
-                        [f"BC {code} linked to activity {aid}"],
+                        [f"BC {bc_ref} linked to activity {aid}"],
                         _IMPACT_MED,
                         "Direct",
                     )
                 )
             for code in cc.get("removed", []):
+                bc_ref = _bc_ref(titles.get(code, code), code)
                 c_rows.append(
                     (
                         "- REM",
                         "BiomedicalConcept",
                         f"activity[{aid}].bc[{code}]",
-                        [f"BC {code} unlinked from activity {aid}"],
+                        [f"BC {bc_ref} unlinked from activity {aid}"],
                         _IMPACT_MED,
                         "Direct",
                     )
