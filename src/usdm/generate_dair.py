@@ -218,6 +218,24 @@ def _bc_ref(name: str, concept_id: Optional[str]) -> str:
     return f"{label} ({concept_id})" if concept_id else label
 
 
+def _impact_color(impact: str) -> str:
+    """Shading for an Impact column value (used across every table)."""
+    if impact == _IMPACT_HIGH:
+        return "FFD7D7"
+    if impact == _IMPACT_MED:
+        return "FFF3CD"
+    return "F5F5F5"
+
+
+def _change_color(chg: str) -> str:
+    """Shading for a Change column value (+ ADD / - REM / D MOD)."""
+    if "ADD" in chg:
+        return _COLOR_DIRECT
+    if "REM" in chg:
+        return "FCE4EC"
+    return "FFF9C4"
+
+
 # ---------------------------------------------------------------------------
 # Change classification helpers
 # ---------------------------------------------------------------------------
@@ -1303,26 +1321,12 @@ def _build_docx(
         _header_row(tbl, diff_hdrs)
         for i, (chg, elem, path, detail_lines, impact, src) in enumerate(rows_data):
             row = tbl.rows[i + 1]
-            chg_color = (
-                _COLOR_DIRECT
-                if "ADD" in chg
-                else "FCE4EC"
-                if "REM" in chg
-                else "FFF9C4"
-            )
-            _set_cell_shading(row.cells[0], chg_color)
+            _set_cell_shading(row.cells[0], _change_color(chg))
             _add_cell_text(row.cells[0], chg, size_pt=9, bold=True)
             _add_cell_text(row.cells[1], elem, size_pt=9)
             _add_cell_text(row.cells[2], path, size_pt=8, italic=True)
             _add_cell_lines(row.cells[3], detail_lines, size_pt=8)
-            impact_color = (
-                "FFD7D7"
-                if impact == _IMPACT_HIGH
-                else "FFF3CD"
-                if impact == _IMPACT_MED
-                else "F5F5F5"
-            )
-            _set_cell_shading(row.cells[4], impact_color)
+            _set_cell_shading(row.cells[4], _impact_color(impact))
             _add_cell_text(row.cells[4], impact, size_pt=8, bold=True)
             _add_cell_text(row.cells[5], src, size_pt=8)
         _set_table_col_widths(tbl, _DIFF6)
@@ -1369,11 +1373,13 @@ def _build_docx(
         for i, row_data in enumerate(c_rows):
             r = tbl.rows[i + 1]
             chg, elem, path, detail_lines, impact, src = row_data
-            _add_cell_text(r.cells[0], chg, size_pt=8)
+            _set_cell_shading(r.cells[0], _change_color(chg))
+            _add_cell_text(r.cells[0], chg, size_pt=8, bold=True)
             _add_cell_text(r.cells[1], elem, size_pt=8)
             _add_cell_text(r.cells[2], path, size_pt=8)
             _add_cell_lines(r.cells[3], detail_lines, size_pt=8)
-            _add_cell_text(r.cells[4], impact, size_pt=8)
+            _set_cell_shading(r.cells[4], _impact_color(impact))
+            _add_cell_text(r.cells[4], impact, size_pt=8, bold=True)
             _add_cell_text(r.cells[5], src, size_pt=8)
         _set_table_col_widths(tbl, _DIFF6)
         spacer()
@@ -1409,11 +1415,13 @@ def _build_docx(
         for i, sig_item in enumerate(sigs):
             r = ds_tbl.rows[i + 1]
             conf = sig_item.get("confidence", "inferred_low")
+            impact = sig_item.get("impact", "")
             _set_cell_shading(r.cells[4], _confidence_color(conf))
             _add_cell_text(r.cells[0], sig_item.get("usdm_change", ""), size_pt=8)
             _add_cell_text(r.cells[1], sig_item.get("module", ""), size_pt=8)
             _add_cell_text(r.cells[2], sig_item.get("action", ""), size_pt=8)
-            _add_cell_text(r.cells[3], sig_item.get("impact", ""), size_pt=8, bold=True)
+            _set_cell_shading(r.cells[3], _impact_color(impact))
+            _add_cell_text(r.cells[3], impact, size_pt=8, bold=True)
             _add_cell_text(r.cells[4], _confidence_label(conf), size_pt=8)
         _set_table_col_widths(ds_tbl, _DS5)
         spacer()
@@ -1435,12 +1443,14 @@ def _build_docx(
         for i, act in enumerate(actions):
             r = act_tbl.rows[i + 1]
             src = act.get("source", "Inferred")
+            impact = act.get("impact", "")
             conf = "direct" if src == "Direct" else "inferred_med"
             _set_cell_shading(r.cells[4], _confidence_color(conf))
             _add_cell_text(r.cells[0], act.get("action", ""), size_pt=8)
             _add_cell_text(r.cells[1], act.get("owner", ""), size_pt=8)
             _add_cell_text(r.cells[2], act.get("basis", ""), size_pt=8)
-            _add_cell_text(r.cells[3], act.get("impact", ""), size_pt=8, bold=True)
+            _set_cell_shading(r.cells[3], _impact_color(impact))
+            _add_cell_text(r.cells[3], impact, size_pt=8, bold=True)
             _add_cell_text(r.cells[4], src, size_pt=8)
         _set_table_col_widths(act_tbl, _ACT5)
     else:
