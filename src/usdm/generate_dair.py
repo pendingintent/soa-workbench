@@ -227,6 +227,16 @@ def _impact_color(impact: str) -> str:
     return "F5F5F5"
 
 
+def _reason_label(reason: Dict) -> str:
+    """Format an amendment reason as its decode, plus other-text if OTHER."""
+    label = reason.get("decode") or reason["code_uid"]
+    if (reason.get("decode") or "").strip().upper() == "OTHER" and reason.get(
+        "other_reason"
+    ):
+        label += f" — {reason['other_reason']}"
+    return label
+
+
 def _change_color(chg: str) -> str:
     """Shading for a Change column value (+ ADD / - REM / D MOD)."""
     if "ADD" in chg:
@@ -727,12 +737,16 @@ def _load_amendment_for_freeze(soa_id: int, revised_freeze_id: int) -> Optional[
     }
 
     cur.execute(
-        "SELECT role, code_uid, other_reason FROM study_amendment_reason"
-        " WHERE soa_id=? AND amendment_uid=?",
+        "SELECT r.role, r.code_uid, r.other_reason, ca.decode"
+        " FROM study_amendment_reason r"
+        " LEFT JOIN code_association ca"
+        " ON ca.code_uid = r.code_uid AND ca.soa_id = r.soa_id"
+        " WHERE r.soa_id=? AND r.amendment_uid=?",
         (soa_id, amend_uid),
     )
     amendment["reasons"] = [
-        {"role": r[0], "code_uid": r[1], "other_reason": r[2]} for r in cur.fetchall()
+        {"role": r[0], "code_uid": r[1], "other_reason": r[2], "decode": r[3]}
+        for r in cur.fetchall()
     ]
 
     cur.execute(
@@ -1095,7 +1109,7 @@ def _build_docx(
     h1("2. Amendment Record")
     if amendment:
         body(
-            f"Amendment {amendment.get('number', '—')}: {amendment.get('name', '')}",
+            f"Amendment #{amendment.get('number', '—')}: {amendment.get('name', '')}",
         )
         if amendment.get("summary"):
             body(f"Summary: {amendment['summary']}")
@@ -1106,22 +1120,12 @@ def _build_docx(
         secondary = [r for r in amendment.get("reasons", []) if r["role"] != "primary"]
         if primary:
             body(
-                f"Primary reason: {primary[0]['code_uid']}"
-                + (
-                    f" — {primary[0]['other_reason']}"
-                    if primary[0].get("other_reason")
-                    else ""
-                ),
+                f"Primary reason: {_reason_label(primary[0])}",
                 italic=True,
             )
         if secondary:
             body(
-                "Secondary reasons: "
-                + "; ".join(
-                    r["code_uid"]
-                    + (f" ({r['other_reason']})" if r.get("other_reason") else "")
-                    for r in secondary
-                ),
+                "Secondary reasons: " + "; ".join(_reason_label(r) for r in secondary),
                 italic=True,
             )
 
