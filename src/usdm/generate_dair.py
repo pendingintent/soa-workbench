@@ -759,8 +759,11 @@ def _load_amendment_for_freeze(soa_id: int, revised_freeze_id: int) -> Optional[
     ]
 
     cur.execute(
-        "SELECT impact_uid, type_code_uid, text, is_substantial"
-        " FROM study_amendment_impact WHERE soa_id=? AND amendment_uid=?",
+        "SELECT i.impact_uid, i.type_code_uid, i.text, i.is_substantial, ca.decode"
+        " FROM study_amendment_impact i"
+        " LEFT JOIN code_association ca"
+        " ON ca.code_uid = i.type_code_uid AND ca.soa_id = i.soa_id"
+        " WHERE i.soa_id=? AND i.amendment_uid=?",
         (soa_id, amend_uid),
     )
     amendment["impacts"] = [
@@ -769,6 +772,7 @@ def _load_amendment_for_freeze(soa_id: int, revised_freeze_id: int) -> Optional[
             "type_code_uid": r[1],
             "text": r[2],
             "is_substantial": bool(r[3]),
+            "type_decode": r[4],
         }
         for r in cur.fetchall()
     ]
@@ -823,12 +827,21 @@ def _load_amendment_for_freeze(soa_id: int, revised_freeze_id: int) -> Optional[
     ]
 
     cur.execute(
-        "SELECT date_uid, name, type_code_uid, date_value"
-        " FROM amendment_governance_date WHERE soa_id=? AND amendment_uid=?",
+        "SELECT g.date_uid, g.name, g.type_code_uid, g.date_value, ca.decode"
+        " FROM amendment_governance_date g"
+        " LEFT JOIN code_association ca"
+        " ON ca.code_uid = g.type_code_uid AND ca.soa_id = g.soa_id"
+        " WHERE g.soa_id=? AND g.amendment_uid=?",
         (soa_id, amend_uid),
     )
     amendment["governance_dates"] = [
-        {"date_uid": r[0], "name": r[1], "type_code_uid": r[2], "date_value": r[3]}
+        {
+            "date_uid": r[0],
+            "name": r[1],
+            "type_code_uid": r[2],
+            "date_value": r[3],
+            "type_decode": r[4],
+        }
         for r in cur.fetchall()
     ]
 
@@ -1146,7 +1159,11 @@ def _build_docx(
             _header_row(imp_tbl, ["Type", "Impact Text", "Substantial?"])
             for i, imp in enumerate(imp_data):
                 r = imp_tbl.rows[i + 1]
-                _add_cell_text(r.cells[0], imp.get("type_code_uid", "—"), size_pt=9)
+                _add_cell_text(
+                    r.cells[0],
+                    imp.get("type_decode") or imp.get("type_code_uid", "—"),
+                    size_pt=9,
+                )
                 _add_cell_text(r.cells[1], imp.get("text", ""), size_pt=9)
                 _add_cell_text(
                     r.cells[2],
@@ -1189,7 +1206,11 @@ def _build_docx(
             _header_row(gd_tbl, ["Date Type", "Name", "Date"])
             for i, gd in enumerate(gd_data):
                 r = gd_tbl.rows[i + 1]
-                _add_cell_text(r.cells[0], gd.get("type_code_uid", "—"), size_pt=9)
+                _add_cell_text(
+                    r.cells[0],
+                    gd.get("type_decode") or gd.get("type_code_uid", "—"),
+                    size_pt=9,
+                )
                 _add_cell_text(r.cells[1], gd.get("name", "—"), size_pt=9)
                 _add_cell_text(r.cells[2], gd.get("date_value", "—"), size_pt=9)
             _set_table_col_widths(gd_tbl, _GD3)
@@ -1329,8 +1350,8 @@ def _build_docx(
         if unavailable_labels:
             body(
                 f"Data not available for: {', '.join(unavailable_labels)} — "
-                "one or both of the compared freezes were created before "
-                "this data began being captured. Create a new freeze to "
+                "one or both of the compared snapshots were created before "
+                "this data began being captured. Create a new snapshots to "
                 "enable comparison for these elements.",
                 italic=True,
             )
@@ -1495,7 +1516,7 @@ def _build_docx(
     scope_rows = [
         (
             "Source of truth",
-            "Generated entirely from a structural comparison of two SoA freeze "
+            "Generated entirely from a structural comparison of two SoA "
             "snapshots. No downstream specification files were consulted.",
         ),
         (
@@ -1520,7 +1541,7 @@ def _build_docx(
         ),
         (
             "USDM version",
-            "Generated from SoA Workbench freeze snapshots aligned to USDM v4.0. "
+            "Generated from SoA Workbench snapshots aligned to USDM v4.0. "
             "Schema version changes may affect element path references.",
         ),
     ]
