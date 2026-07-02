@@ -1227,10 +1227,12 @@ def _build_docx(
         (
             f"{sect_num}.1 Study Design",
             [("epochs", "epoch_uid"), ("arms", "arm_uid"), ("elements", "name")],
+            None,
         ),
         (
             f"{sect_num}.2 Objectives & Endpoints",
             [("objectives", "objective_uid"), ("endpoints", "endpoint_uid")],
+            None,
         ),
         (
             f"{sect_num}.3 Schedule of Activities",
@@ -1241,6 +1243,7 @@ def _build_docx(
                 ("timings", "timing_uid"),
                 ("schedule_timelines", "schedule_timeline_uid"),
             ],
+            None,
         ),
         (
             f"{sect_num}.4 Biomedical Concept Linkages",
@@ -1249,13 +1252,20 @@ def _build_docx(
                 ("bc_surrogates", "surrogate_uid"),
                 ("bc_properties", "biomedical_concept_property_uid"),
             ],
+            "Tracks changes to Biomedical Concepts, surrogates, and "
+            "properties as standalone entities — a concept added, removed, "
+            "or having its own definition (name, label, code, property "
+            "value) edited. This reflects whether the concept itself "
+            "changed, independent of which activities it is attached to.",
         ),
     ]
 
     diff_hdrs = ["Change", "USDM Element", "Element Path", "Detail", "Impact", "Type"]
 
-    for section_title, entity_specs in diff_sections:
+    for section_title, entity_specs, section_desc in diff_sections:
         h2(section_title)
+        if section_desc:
+            body(section_desc, italic=True)
         rows_data: List[tuple] = []
         unavailable_labels: List[str] = []
 
@@ -1347,6 +1357,15 @@ def _build_docx(
 
     # BC concept linkage changes
     h2(f"{sect_num}.5 BC Concept Linkage Changes")
+    body(
+        "Tracks changes to the association between an activity and a "
+        "Biomedical Concept — a concept linked to or unlinked from an "
+        "activity in the Schedule of Activities. This reflects whether "
+        "the activity–concept mapping changed, independent of "
+        "whether the concept's own definition changed (see "
+        f"{sect_num}.4).",
+        italic=True,
+    )
     concepts = diff.get("concepts", [])
     c_rows = []
     for cc in concepts:
