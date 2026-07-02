@@ -1,0 +1,4 @@
+repo: https://github.com/cdisc-org/DataExchange-DDS
+path: model/define.yaml
+ref: main
+commit: 710f6df84fdfbdc11b369b69b68c3db294478781
