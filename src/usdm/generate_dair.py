@@ -168,11 +168,20 @@ def _add_cell_lines(
         _set_font(run, size_pt, bold=bold, italic=italic, color_hex=color_hex)
 
 
+def _set_repeat_header(row):
+    """Mark a row to repeat as a header on every page a table spans."""
+    trPr = row._tr.get_or_add_trPr()
+    tblHeader = OxmlElement("w:tblHeader")
+    tblHeader.set(qn("w:val"), "true")
+    trPr.append(tblHeader)
+
+
 def _header_row(
     table, headers: List[str], bg_hex: str = _COLOR_HEADER, text_color: str = "FFFFFF"
 ):
-    """Fill table row 0 as a coloured header."""
+    """Fill table row 0 as a coloured header that repeats across page breaks."""
     row = table.rows[0]
+    _set_repeat_header(row)
     for i, hdr in enumerate(headers):
         cell = row.cells[i]
         _set_cell_shading(cell, bg_hex)
