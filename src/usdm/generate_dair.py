@@ -1153,6 +1153,13 @@ def _build_docx(
 
         if amendment.get("impacts"):
             h2("Stated Amendment Impacts")
+            body(
+                "A USDM relationship between the StudyAmendment and "
+                "StudyAmendmentImpact classes which identifies the set of "
+                "impacts that the study amendment has on the study or study "
+                "subjects.",
+                italic=True,
+            )
             imp_data = amendment["impacts"]
             imp_tbl = doc.add_table(rows=1 + len(imp_data), cols=3)
             imp_tbl.style = "Table Grid"
@@ -1176,6 +1183,12 @@ def _build_docx(
 
         if amendment.get("changes"):
             h2("Documented Study Changes")
+            body(
+                "A USDM relationship between the StudyAmendment and "
+                "StudyChange classes which identifies the set of "
+                "changes associated with the study amendment.",
+                italic=True,
+            )
             for chg in amendment["changes"]:
                 sections_str = (
                     "; ".join(
@@ -1200,6 +1213,12 @@ def _build_docx(
 
         if amendment.get("governance_dates"):
             h2("Governance Dates")
+            body(
+                "A USDM relationship between the StudyAmendment and "
+                "GovernanceDate classes which provides the set of "
+                "governance dates associated with the study amendment.",
+                italic=True,
+            )
             gd_data = amendment["governance_dates"]
             gd_tbl = doc.add_table(rows=1 + len(gd_data), cols=3)
             gd_tbl.style = "Table Grid"
@@ -1218,6 +1237,12 @@ def _build_docx(
 
         if amendment.get("enrollments"):
             h2("Subject Enrollment Changes")
+            body(
+                "A USDM relationship between the StudyAmendment and "
+                "SubjectEnrollment classes which provides the set of "
+                "subject enrollments associated with the study amendment.",
+                italic=True,
+            )
             enr_data = amendment["enrollments"]
             enr_tbl = doc.add_table(rows=1 + len(enr_data), cols=2)
             enr_tbl.style = "Table Grid"
