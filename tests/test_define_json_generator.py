@@ -35,7 +35,7 @@ def test_ui_define_json_page_200():
 
     assert resp.status_code == 200
     assert "text/html" in resp.headers.get("content-type", "")
-    assert "Define-JSON" in resp.text
+    assert "Data Definition Specification" in resp.text
 
 
 def test_ui_define_json_page_contains_form_fields():

@@ -1,11 +1,13 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2 class="am-page-title">Generate Define-JSON for Study:
-  {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
-
 <div style="margin-bottom:12px;">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
+
+<h2 class="am-page-title">Generate Data Definition Specification for Study:
+  {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
+
+
 {% if study_id_value %}
 <p style="color:var(--am-text-mid);">Study ID: <strong>{{ study_id_value }}</strong></p>
 {% endif %}
@@ -15,7 +17,7 @@
 <em><strong>EXPERIMENTAL</strong></em>
 
 <p style="max-width:560px;color:var(--am-text-mid);margin-bottom:20px;">
-  Define-JSON is a metadata contract that describes which datasets and variables
+  The Data Definition Specification (DDS) JSON is a metadata contract that describes which datasets and variables
   this study produces. It complements USDM and is suitable for inclusion in a
   regulatory submission package alongside Dataset-JSON.
 </p>
@@ -41,7 +43,7 @@
       <input class="am-input" type="text" name="cosmosversion" value="v2" />
     </div>
     <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
-      <button type="submit" class="am-btn am-btn-info">Download define.json</button>
+      <button type="submit" class="am-btn am-btn-info">Download DDS JSON</button>
     </div>
   </form>
 </div>

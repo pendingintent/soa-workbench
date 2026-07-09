@@ -35,6 +35,7 @@ src/soa_builder/web/routers/cdash_terminology.py
 src/soa_builder/web/routers/cells.py
 src/soa_builder/web/routers/concept_groups.py
 src/soa_builder/web/routers/condition_assignments.py
+src/soa_builder/web/routers/dair.py
 src/soa_builder/web/routers/ddf_controlled_terminology.py
 src/soa_builder/web/routers/decision_instances.py
 src/soa_builder/web/routers/define_xml_terminology.py
@@ -71,6 +72,7 @@ src/usdm/generate_bc_categories.py
 src/usdm/generate_bc_surrogates.py
 src/usdm/generate_biomedical_concept_properties.py
 src/usdm/generate_biomedical_concepts.py
+src/usdm/generate_dair.py
 src/usdm/generate_define_json.py
 src/usdm/generate_elements.py
 src/usdm/generate_encounters.py
@@ -93,6 +95,7 @@ src/usdm/generate_study_titles.py
 src/usdm/generate_usdm.py
 src/usdm/usdm_utils.py
 tests/test_bc_unassigned_report.py
+tests/test_bcp_response_code_cleanup.py
 tests/test_bulk_import.py
 tests/test_categories_cache.py
 tests/test_categories_ui_force.py
@@ -101,6 +104,7 @@ tests/test_code_uid_generation.py
 tests/test_concept_categories.py
 tests/test_concept_category_force_refresh.py
 tests/test_concepts_by_category_ui_force.py
+tests/test_define_json_concepts.py
 tests/test_define_json_generator.py
 tests/test_element_audit_endpoint.py
 tests/test_element_id_generation.py
@@ -113,6 +117,7 @@ tests/test_generate_endpoints.py
 tests/test_generate_extension_attributes.py
 tests/test_generate_objectives.py
 tests/test_instances_audit.py
+tests/test_mcp_server.py
 tests/test_routers_activities.py
 tests/test_routers_activities_crf.py
 tests/test_routers_amendments.py
@@ -120,6 +125,7 @@ tests/test_routers_arms.py
 tests/test_routers_audits.py
 tests/test_routers_bc_categories.py
 tests/test_routers_bc_surrogates.py
+tests/test_routers_dair.py
 tests/test_routers_decision_instances.py
 tests/test_routers_delete_soa.py
 tests/test_routers_elements.py
