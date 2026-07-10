@@ -6,6 +6,10 @@ import logging
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 
 from ..audit import _record_reorder_audit, _record_visit_audit
+from ..codelist_config import (
+    ENCOUNTER_CONTACT_MODE_CODELIST,
+    ENCOUNTER_ENVIRONMENTAL_SETTING_CODELIST,
+)
 from ..db import _connect
 from ..utils import (
     soa_exists,
@@ -260,7 +264,7 @@ def add_visit(soa_id: int, payload: VisitCreate):
                 soa_id,
                 environmentalSettings,
                 env_codelist_table,
-                "C127262",
+                ENCOUNTER_ENVIRONMENTAL_SETTING_CODELIST,
                 env_code_value,
             ),
         )
@@ -283,7 +287,7 @@ def add_visit(soa_id: int, payload: VisitCreate):
                 soa_id,
                 contactModes,
                 contact_mode_codelist_table,
-                "C171445",
+                ENCOUNTER_CONTACT_MODE_CODELIST,
                 contact_mode_value,
             ),
         )
@@ -467,7 +471,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
                     soa_id,
                     env_code_uid,
                     env_codelist_table,
-                    "C127262",
+                    ENCOUNTER_ENVIRONMENTAL_SETTING_CODELIST,
                     new_environmental_value,
                 ),
             )
@@ -488,7 +492,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
                         soa_id,
                         env_code_uid,
                         env_codelist_table,
-                        "C127262",
+                        ENCOUNTER_ENVIRONMENTAL_SETTING_CODELIST,
                         new_environmental_value,
                     ),
                 )
@@ -506,7 +510,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
                     soa_id,
                     contact_mode_code_uid,
                     contact_mode_codelist_table,
-                    "C171445",
+                    ENCOUNTER_CONTACT_MODE_CODELIST,
                     new_contact_mode,
                 ),
             )
@@ -527,7 +531,7 @@ def update_visit(soa_id: int, visit_id: int, payload: VisitUpdate):
                         soa_id,
                         contact_mode_code_uid,
                         contact_mode_codelist_table,
-                        "C171445",
+                        ENCOUNTER_CONTACT_MODE_CODELIST,
                         new_contact_mode,
                     ),
                 )

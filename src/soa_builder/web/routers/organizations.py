@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_organization_audit
+from ..codelist_config import ORGANIZATION_TYPE_CODELIST
 from ..db import _connect
 from ..utils import (
     get_ddf_ct_rows,
@@ -21,8 +22,6 @@ logger = logging.getLogger("soa_builder.web.routers.organizations")
 templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "..", "templates")
 )
-
-_ORG_TYPE_CODELIST = "C215480"
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +76,7 @@ def _get_org_type_options() -> list:
             ),
         }
         for r in rows
-        if r.get("codelist_code") == _ORG_TYPE_CODELIST and r.get("code")
+        if r.get("codelist_code") == ORGANIZATION_TYPE_CODELIST and r.get("code")
     ]
     return sorted(options, key=lambda o: o["label"].lower())
 

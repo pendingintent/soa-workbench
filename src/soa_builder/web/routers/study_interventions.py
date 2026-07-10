@@ -8,6 +8,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_study_intervention_audit
+from ..codelist_config import (
+    INTERVENTION_ROLE_CODELIST,
+    INTERVENTION_TYPE_CODELIST,
+    INTERVENTION_UNIT_CODELIST,
+)
 from ..db import _connect
 from ..utils import (
     get_ddf_ct_rows,
@@ -28,10 +33,6 @@ logger = logging.getLogger("soa_builder.web.routers.study_interventions")
 templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "..", "templates")
 )
-
-_ROLE_CODELIST = "C207417"
-_TYPE_CODELIST = "C99078"
-_UNIT_CODELIST = "C66781"
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +110,7 @@ def _get_role_options() -> List[Dict[str, str]]:
             ),
         }
         for r in rows
-        if r.get("codelist_code") == _ROLE_CODELIST and r.get("code")
+        if r.get("codelist_code") == INTERVENTION_ROLE_CODELIST and r.get("code")
     ]
     return sorted(options, key=lambda o: o["label"].lower())
 
@@ -125,7 +126,7 @@ def _get_type_options() -> List[Dict[str, str]]:
             ),
         }
         for r in rows
-        if r.get("codelist_code") == _TYPE_CODELIST and r.get("code")
+        if r.get("codelist_code") == INTERVENTION_TYPE_CODELIST and r.get("code")
     ]
     return sorted(options, key=lambda o: o["label"].lower())
 
@@ -141,7 +142,7 @@ def _get_unit_options() -> List[Dict[str, str]]:
             ),
         }
         for r in rows
-        if r.get("codelist_code") == _UNIT_CODELIST and r.get("code")
+        if r.get("codelist_code") == INTERVENTION_UNIT_CODELIST and r.get("code")
     ]
     return sorted(options, key=lambda o: o["label"].lower())
 

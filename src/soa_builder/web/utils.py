@@ -7,6 +7,13 @@ import time
 from urllib.parse import urlparse, urlunparse
 from fastapi import Request
 from .db import _connect
+from .codelist_config import (
+    ARM_DATA_ORIGIN_TYPE_CODELIST,
+    ARM_TYPE_CODELIST,
+    ENCOUNTER_CONTACT_MODE_CODELIST,
+    ENCOUNTER_ENVIRONMENTAL_SETTING_CODELIST,
+    EPOCH_TYPE_CODELIST,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +195,10 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
     ):
         return _epoch_type_cache["data"] or []
     # Use only the specified CDISC Library endpoint (per user requirement)
-    url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
+    url = (
+        "https://library.cdisc.org/api/mdr/ct/packages/"
+        f"sdtmct-2025-09-26/codelists/{EPOCH_TYPE_CODELIST}"
+    )
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     api_key = os.environ.get("CDISC_API_KEY") or os.environ.get(
@@ -273,13 +283,13 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
 # Function for creating {code: submission_value} for Arm type selector
 def load_arm_type_map() -> Dict[str, str]:
     """Fetch Arm Type (C174222) term mapping from CDISC Library Protocol CT."""
-    return get_protocol_ct_codelist_map("C174222")
+    return get_protocol_ct_codelist_map(ARM_TYPE_CODELIST)
 
 
 # Function for creating {code: submission_value} for Arm dataOriginType selector
 def load_arm_data_origin_type_map() -> Dict[str, str]:
     """Fetch Arm Data Origin Type (C188727) mapping from CDISC Library DDF CT."""
-    return get_ddf_ct_codelist_map("C188727")
+    return get_ddf_ct_codelist_map(ARM_DATA_ORIGIN_TYPE_CODELIST)
 
 
 def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
@@ -309,7 +319,10 @@ def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
         headers["Authorization"] = f"Bearer {api_key}"
         headers["api-key"] = api_key
 
-    url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
+    url = (
+        "https://library.cdisc.org/api/mdr/ct/packages/"
+        f"sdtmct-2025-09-26/codelists/{EPOCH_TYPE_CODELIST}"
+    )
     code_to_submission: Dict[str, str] = {}
     last_status = None
     try:
@@ -1476,7 +1489,7 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
 
     url = (
         f"https://library.cdisc.org/api/mdr/ct/packages/"
-        f"{package_slug}/codelists/C127262"
+        f"{package_slug}/codelists/{ENCOUNTER_ENVIRONMENTAL_SETTING_CODELIST}"
     )
 
     headers: dict[str, str] = {"Accept": "application/json"}
@@ -1682,7 +1695,10 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
         _env_setting_cache.update(options=[], fetched_at=now, last_error="missing slug")
         return []
 
-    url = f"https://library.cdisc.org/api/mdr/ct/packages/{slug}/codelists/C127262"
+    url = (
+        f"https://library.cdisc.org/api/mdr/ct/packages/{slug}"
+        f"/codelists/{ENCOUNTER_ENVIRONMENTAL_SETTING_CODELIST}"
+    )
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     api_key = os.environ.get("CDISC_API_KEY") or subscription_key
@@ -1774,7 +1790,10 @@ def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
         )
         return []
 
-    url = f"https://library.cdisc.org/api/mdr/ct/packages/{slug}/codelists/C171445"
+    url = (
+        f"https://library.cdisc.org/api/mdr/ct/packages/{slug}"
+        f"/codelists/{ENCOUNTER_CONTACT_MODE_CODELIST}"
+    )
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     api_key = os.environ.get("CDISC_API_KEY") or subscription_key

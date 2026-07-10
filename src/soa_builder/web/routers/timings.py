@@ -10,6 +10,10 @@ from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_timing_audit
+from ..codelist_config import (
+    TIMING_RELATIVE_TO_FROM_CODELIST,
+    TIMING_TYPE_CODELIST,
+)
 from ..db import _connect
 from ..schemas import TimingCreate, TimingUpdate
 from ..utils import (
@@ -81,12 +85,12 @@ def ui_list_timings(request: Request, soa_id: int):
     timings = list_timings(soa_id)
     # Build mapping: submissionValue -> code and reverse
     try:
-        sv_to_code = get_study_timing_type("C201264")
+        sv_to_code = get_study_timing_type(TIMING_TYPE_CODELIST)
     except Exception:
         sv_to_code = {}
     # Mapping for Relative To/From (C201265)
     try:
-        sv_to_code_rtf = get_study_timing_type("C201265")
+        sv_to_code_rtf = get_study_timing_type(TIMING_RELATIVE_TO_FROM_CODELIST)
     except Exception:
         sv_to_code_rtf = {}
     code_to_sv = {v: k for k, v in (sv_to_code or {}).items()}
@@ -268,7 +272,7 @@ def ui_create_timing(
     sv = (type_submission_value or "").strip()
     if sv:
         try:
-            sv_to_code = get_study_timing_type("C201264")
+            sv_to_code = get_study_timing_type(TIMING_TYPE_CODELIST)
             code_val = sv_to_code.get(sv)
             if code_val:
                 conn_c = _connect()
@@ -280,7 +284,7 @@ def ui_create_timing(
                         soa_id,
                         code_uid,
                         "http://www.cdisc.org",
-                        "C201264",
+                        TIMING_TYPE_CODELIST,
                         str(code_val),
                     ),
                 )
@@ -293,7 +297,7 @@ def ui_create_timing(
     rsv = (relative_to_from_submission_value or "").strip()
     if rsv:
         try:
-            sv_to_code_rtf = get_study_timing_type("C201265")
+            sv_to_code_rtf = get_study_timing_type(TIMING_RELATIVE_TO_FROM_CODELIST)
             rtf_code_val = sv_to_code_rtf.get(rsv)
             if rtf_code_val:
                 conn_c2 = _connect()
@@ -305,7 +309,7 @@ def ui_create_timing(
                         soa_id,
                         rtf_code_uid,
                         "http://www.cdisc.org",
-                        "C201265",
+                        TIMING_RELATIVE_TO_FROM_CODELIST,
                         str(rtf_code_val),
                     ),
                 )
@@ -594,7 +598,7 @@ def ui_update_timing(
             if sv == "":
                 mapped_type = ""  # clear field
             else:
-                sv_to_code = get_study_timing_type("C201264")
+                sv_to_code = get_study_timing_type(TIMING_TYPE_CODELIST)
                 new_code_val = sv_to_code.get(sv)
                 current_code_val = (
                     code_uid_to_code.get(existing_type_uid)
@@ -614,7 +618,7 @@ def ui_update_timing(
                             soa_id,
                             mapped_type,
                             "http://www.cdisc.org",
-                            "C201264",
+                            TIMING_TYPE_CODELIST,
                             str(new_code_val),
                         ),
                     )
@@ -624,7 +628,7 @@ def ui_update_timing(
             if rsv == "":
                 mapped_rtf = ""  # clear field
             else:
-                sv_to_code_rtf = get_study_timing_type("C201265")
+                sv_to_code_rtf = get_study_timing_type(TIMING_RELATIVE_TO_FROM_CODELIST)
                 new_rtf_code_val = sv_to_code_rtf.get(rsv)
                 current_rtf_code_val = (
                     code_uid_to_code.get(existing_rtf_uid) if existing_rtf_uid else None
@@ -641,7 +645,7 @@ def ui_update_timing(
                             soa_id,
                             mapped_rtf,
                             "http://www.cdisc.org",
-                            "C201265",
+                            TIMING_RELATIVE_TO_FROM_CODELIST,
                             str(new_rtf_code_val),
                         ),
                     )

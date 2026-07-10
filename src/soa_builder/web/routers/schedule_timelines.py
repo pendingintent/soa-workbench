@@ -7,6 +7,10 @@ from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_schedule_timeline_audit
+from ..codelist_config import (
+    TIMING_RELATIVE_TO_FROM_CODELIST,
+    TIMING_TYPE_CODELIST,
+)
 from ..db import _connect
 from ..schemas import ScheduleTimelineUpdate, ScheduleTimelineCreate
 from ..utils import (
@@ -154,11 +158,11 @@ def ui_study_timing(request: Request, soa_id: int):
     # Timings data (with code_uid -> submission_value decoding)
     timings = list_timings(soa_id)
     try:
-        sv_to_code = get_study_timing_type("C201264")
+        sv_to_code = get_study_timing_type(TIMING_TYPE_CODELIST)
     except Exception:
         sv_to_code = {}
     try:
-        sv_to_code_rtf = get_study_timing_type("C201265")
+        sv_to_code_rtf = get_study_timing_type(TIMING_RELATIVE_TO_FROM_CODELIST)
     except Exception:
         sv_to_code_rtf = {}
     code_to_sv = {v: k for k, v in (sv_to_code or {}).items()}

@@ -20,10 +20,10 @@ from ._freeze_helpers import (
     _rollback_preview,
 )
 from .amendments import (
+    AMENDMENT_REASON_CODELIST,
     _insert_code,
     _next_amendment_uid,
     _next_reason_uid,
-    _REASON_CODELIST,
 )
 from ..audit import _record_amendment_audit, _record_reason_audit
 from ..schemas import StudyAmendmentCreate
@@ -115,7 +115,10 @@ def ui_freeze_soa(
             amendment_uid = _next_amendment_uid(cur, soa_id)
             reason_uid = _next_reason_uid(cur, soa_id)
             code_uid = _insert_code(
-                cur, soa_id, amendment_body.primary_reason_code, _REASON_CODELIST
+                cur,
+                soa_id,
+                amendment_body.primary_reason_code,
+                AMENDMENT_REASON_CODELIST,
             )
             cur.execute(
                 "INSERT INTO study_amendment "

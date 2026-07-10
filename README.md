@@ -101,6 +101,64 @@ SOA_EAGER_BCP_POPULATION=1
 | `CDISC_API_KEY` | _(shell env)_ | CDISC Library API key — set in shell, not `config.env` |
 | `CDISC_SUBSCRIPTION_KEY` | _(shell env)_ | CDISC Library subscription key — set in shell, not `config.env` |
 
+### Configurable CT codelist codes (dropdowns)
+
+Many dropdowns in the UI (Epoch Type, Arm Type, Role Type, Timing Type,
+etc.) present CDISC controlled terminology preferred terms while storing
+the underlying codelist C-code in the database. The C-code that backs
+each dropdown is itself configurable via `config.env` — edit the value
+and restart the server to point that dropdown at an alternate/custom
+codelist. Defaults are read by
+[`src/soa_builder/web/codelist_config.py`](src/soa_builder/web/codelist_config.py).
+
+```ini
+CODELIST_EPOCH_TYPE=C99079
+CODELIST_ARM_TYPE=C174222
+CODELIST_ARM_DATA_ORIGIN_TYPE=C188727
+CODELIST_ROLE_TYPE=C215480
+CODELIST_ORGANIZATION_TYPE=C215480
+CODELIST_AMENDMENT_REASON=C207415
+CODELIST_AMENDMENT_IMPACT_TYPE=C215481
+CODELIST_GEOGRAPHIC_SCOPE_TYPE=C207412
+CODELIST_GOVERNANCE_DATE_TYPE=C207413
+CODELIST_STUDY_TITLE_TYPE=C207419
+CODELIST_INTERVENTION_ROLE=C207417
+CODELIST_INTERVENTION_TYPE=C99078
+CODELIST_INTERVENTION_UNIT=C66781
+CODELIST_OBJECTIVE_LEVEL=C188725
+CODELIST_ENDPOINT_LEVEL=C188726
+CODELIST_ENCOUNTER_ENVIRONMENTAL_SETTING=C127262
+CODELIST_ENCOUNTER_CONTACT_MODE=C171445
+CODELIST_TIMING_TYPE=C201264
+CODELIST_TIMING_RELATIVE_TO_FROM=C201265
+```
+
+| Variable | Default | Dropdown / feature |
+|---|---|---|
+| `CODELIST_EPOCH_TYPE` | `C99079` | Epoch Type |
+| `CODELIST_ARM_TYPE` | `C174222` | Arm Type |
+| `CODELIST_ARM_DATA_ORIGIN_TYPE` | `C188727` | Arm Data Origin Type |
+| `CODELIST_ROLE_TYPE` | `C215480` | Study Role Type |
+| `CODELIST_ORGANIZATION_TYPE` | `C215480` | Organization Type |
+| `CODELIST_AMENDMENT_REASON` | `C207415` | Amendment Reason |
+| `CODELIST_AMENDMENT_IMPACT_TYPE` | `C215481` | Amendment Impact Type |
+| `CODELIST_GEOGRAPHIC_SCOPE_TYPE` | `C207412` | Geographic Scope Type |
+| `CODELIST_GOVERNANCE_DATE_TYPE` | `C207413` | Governance Date Type |
+| `CODELIST_STUDY_TITLE_TYPE` | `C207419` | Study Title Type |
+| `CODELIST_INTERVENTION_ROLE` | `C207417` | Study Intervention Role |
+| `CODELIST_INTERVENTION_TYPE` | `C99078` | Study Intervention Type |
+| `CODELIST_INTERVENTION_UNIT` | `C66781` | Study Intervention Dose Unit |
+| `CODELIST_OBJECTIVE_LEVEL` | `C188725` | Objective Level |
+| `CODELIST_ENDPOINT_LEVEL` | `C188726` | Endpoint Level |
+| `CODELIST_ENCOUNTER_ENVIRONMENTAL_SETTING` | `C127262` | Encounter Environmental Setting |
+| `CODELIST_ENCOUNTER_CONTACT_MODE` | `C171445` | Encounter Contact Mode |
+| `CODELIST_TIMING_TYPE` | `C201264` | Timing Type |
+| `CODELIST_TIMING_RELATIVE_TO_FROM` | `C201265` | Timing Relative To/From |
+
+> These codes identify which CDISC CT *codelist* populates a dropdown's
+> options — they are unrelated to `CDISC_API_KEY`/`CDISC_SUBSCRIPTION_KEY`
+> (API credentials) or `CDISC_CONCEPTS_JSON` (Biomedical Concept overrides).
+
 ---
 
 ## Start web server

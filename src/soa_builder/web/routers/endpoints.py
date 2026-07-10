@@ -5,6 +5,7 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from ..audit import _record_endpoint_audit
+from ..codelist_config import ENDPOINT_LEVEL_CODELIST
 from ..db import _connect
 from ..schemas import EndpointCreate, EndpointUpdate
 from ..utils import (
@@ -16,8 +17,6 @@ from ..utils import (
 router = APIRouter(prefix="/soa/{soa_id}")
 ui_router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.endpoints")
-
-_ENDPOINT_LEVEL_CODELIST = "C188726"
 
 
 def _next_endpoint_uid(cur, soa_id: int) -> str:
@@ -92,7 +91,7 @@ def _insert_level_code(cur, soa_id: int, submission_value: str) -> str:
             soa_id,
             code_uid,
             codelist_table,
-            _ENDPOINT_LEVEL_CODELIST,
+            ENDPOINT_LEVEL_CODELIST,
             submission_value,
         ),
     )

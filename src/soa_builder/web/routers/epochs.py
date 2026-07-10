@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request, Form, Body
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from ..codelist_config import EPOCH_TYPE_CODELIST
 from ..schemas import EpochCreate, EpochUpdate
 from ..utils import (
     load_epoch_type_map,
@@ -106,8 +107,9 @@ def ui_list_epochs(request: Request, soa_id: int):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT code_uid, code FROM code_association WHERE soa_id=? AND codelist_code='C99079'",
-        (soa_id,),
+        "SELECT code_uid, code FROM code_association WHERE soa_id=? "
+        "AND codelist_code=?",
+        (soa_id, EPOCH_TYPE_CODELIST),
     )
     type_rows = cur.fetchall()
     conn.close()
@@ -220,7 +222,7 @@ def add_epoch(soa_id: int, payload: EpochCreate):
                 soa_id,
                 epoch_type,
                 epoch_type_codelist_table,
-                "C99079",
+                EPOCH_TYPE_CODELIST,
                 epoch_type_value,
             ),
         )
@@ -351,7 +353,7 @@ def update_epoch(soa_id: int, epoch_id: int, payload: EpochUpdate):
                     soa_id,
                     type_uid,
                     type_codelist_table,
-                    "C99079",
+                    EPOCH_TYPE_CODELIST,
                     new_type,
                 ),
             )
@@ -372,7 +374,7 @@ def update_epoch(soa_id: int, epoch_id: int, payload: EpochUpdate):
                         soa_id,
                         type_uid,
                         type_codelist_table,
-                        "C99079",
+                        EPOCH_TYPE_CODELIST,
                         new_type,
                     ),
                 )
