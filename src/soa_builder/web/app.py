@@ -4378,6 +4378,17 @@ def ui_help(request: Request):
     )
 
 
+# UI endpoint for the USDM logical model explorer
+@app.get("/ui/usdm-model-explorer", response_class=HTMLResponse)
+def ui_usdm_model_explorer(request: Request):
+    """Render the USDM logical model explorer page."""
+    return templates.TemplateResponse(
+        request,
+        "usdm_model_explorer.html",
+        {},
+    )
+
+
 # UI endpoint for adding an Activity
 @app.post("/ui/soa/{soa_id}/add_activity", response_class=HTMLResponse)
 def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):

@@ -1,0 +1,430 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>USDM 4.0 &mdash; Logical Model Explorer</h2>
+
+<div style="margin-bottom:12px;">
+  <a href="/" class="am-back-link">&larr; Home</a>
+</div>
+
+<div class="usdm-explorer">
+<style>
+.usdm-explorer{
+  --bg:#0d1220; --panel:#121a2c; --panel2:#0f1626; --line:rgba(255,255,255,.09);
+  --text:#e8ecf4; --muted:#8b94a8; --faint:#5b6478;
+  --blue:#5aa9e6; --amber:#e8b44a; --green:#6fc493; --violet:#b58ae6; --rose:#e07a92;
+  --mono:ui-monospace,'SFMono-Regular','Cascadia Mono','JetBrains Mono',Menlo,Consolas,monospace;
+  --sans:-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+}
+.usdm-explorer *{box-sizing:border-box;margin:0;padding:0}
+.usdm-explorer{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;overflow:hidden;height:80vh;min-height:600px;border-radius:10px;box-shadow:0 0 0 1px var(--line);position:relative}
+.usdm-explorer button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+
+/* ---------- header ---------- */
+.usdm-explorer .usdm-header{display:flex;align-items:center;gap:18px;height:58px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--panel2);position:relative;z-index:30}
+.brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+.brand .t{font-size:15px;font-weight:650;letter-spacing:.02em}
+.brand .v{font-family:var(--mono);font-size:11px;color:var(--bg);background:var(--amber);padding:2px 7px;border-radius:3px;font-weight:700}
+.brand .sub{font-size:11px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+.stats{font-family:var(--mono);font-size:11px;color:var(--faint);white-space:nowrap}
+.spacer{flex:1}
+.search{position:relative}
+.search input{width:280px;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);font:13px var(--mono);padding:7px 10px 7px 30px;outline:none}
+.search input:focus{border-color:var(--blue)}
+.search::before{content:'⌕';position:absolute;left:10px;top:50%;transform:translateY(-52%);color:var(--faint);font-size:15px}
+.results{position:absolute;top:calc(100% + 6px);right:0;width:340px;max-height:380px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 40px rgba(0,0,0,.5);display:none}
+.results.open{display:block}
+.results button{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+.results button:last-child{border-bottom:none}
+.results button:hover{background:#1a2440}
+.results .cn{font-family:var(--mono);font-size:12.5px}
+.results .dm{margin-left:auto;font-size:10.5px;color:var(--faint)}
+.modes{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.modes button{padding:7px 14px;font-size:12px;color:var(--muted);letter-spacing:.04em}
+.modes button.on{background:#1d2740;color:var(--text)}
+
+/* ---------- layout ---------- */
+.app{display:flex;height:calc(100% - 58px)}
+.usdm-explorer .usdm-nav{width:248px;flex:none;overflow-y:auto;border-right:1px solid var(--line);background:var(--panel2);padding:10px 0 30px}
+.dom{padding:10px 16px 2px}
+.dom h3{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:7px}
+.dom h3 .dot{width:7px;height:7px;border-radius:2px;flex:none}
+.dom button{display:block;width:100%;text-align:left;font:12.5px var(--mono);color:var(--muted);padding:3px 8px 3px 14px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dom button:hover{color:var(--text);background:#182138}
+.dom button.on{color:var(--text);background:#1d2a4a}
+.dom button.abs{font-style:italic}
+.dom button.abs::before{content:'◇ ';color:var(--violet);font-style:normal}
+.dom button.api{opacity:.55}
+.usdm-explorer .usdm-main{flex:1;position:relative;overflow:hidden}
+
+/* ---------- ego view ---------- */
+#egoView{display:flex;height:100%;position:relative}
+#wires{position:absolute;inset:0;pointer-events:none;z-index:1}
+.col{position:relative;z-index:2;overflow-y:auto;padding:22px 14px}
+.col.side{width:252px;flex:none}
+.col.mid{flex:1;display:flex;flex-direction:column;align-items:center;padding:22px 26px}
+.colh{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin:0 6px 10px;font-weight:600}
+.ref{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:8px 11px;margin-bottom:7px}
+.ref:hover{border-color:var(--blue)}
+.ref .cn{font:12.5px var(--mono)}
+.ref .cn.abs{font-style:italic;color:var(--violet)}
+.ref .via{display:block;font-size:11px;color:var(--faint);margin-top:2px}
+.ref .via b{color:var(--muted);font-weight:500;font-family:var(--mono)}
+
+/* inheritance strip */
+.inh{display:flex;flex-direction:column;align-items:center;gap:0;width:100%}
+.inh .link{display:flex;flex-direction:column;align-items:center}
+.inh .stem{width:0;height:16px;border-left:2px dashed var(--violet);opacity:.75}
+.inh .tri{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:9px solid var(--violet)}
+.chip{font:12px var(--mono);background:rgba(181,138,230,.12);border:1px solid rgba(181,138,230,.45);color:var(--violet);border-radius:6px;padding:5px 12px;font-style:italic}
+.chip:hover{background:rgba(181,138,230,.22)}
+.kids{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;max-width:560px}
+
+/* class card */
+.card{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 10px 34px rgba(0,0,0,.35)}
+.card .head{padding:16px 20px 13px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#182138,#121a2c)}
+.card .stereo{font:11px var(--mono);color:var(--violet);letter-spacing:.06em}
+.card h2{font-size:19px;font-weight:650;font-family:var(--mono)}
+.card h2.abs{font-style:italic}
+.badge{display:inline-block;font:10px var(--mono);letter-spacing:.08em;text-transform:uppercase;border-radius:4px;padding:2px 7px;margin-left:9px;vertical-align:3px}
+.badge.api{background:rgba(232,180,74,.14);border:1px solid rgba(232,180,74,.5);color:var(--amber)}
+.badge.dom{background:rgba(90,169,230,.12);border:1px solid rgba(90,169,230,.4);color:var(--blue)}
+.card .desc{font-size:13px;color:var(--muted);line-height:1.55;margin-top:8px;max-height:105px;overflow:auto}
+.sec{padding:12px 20px 14px;border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:none}
+.sec h4{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:8px}
+.row{display:flex;align-items:baseline;gap:10px;font-family:var(--mono);font-size:12.5px;padding:3px 0}
+.row .n{color:var(--text)}
+.row .ty{color:var(--green)}
+.row .req{color:var(--rose);font-size:11px}
+.row .card-mult{color:var(--faint);font-size:11px}
+.row .inhm{font-size:10.5px;color:var(--violet);border:1px solid rgba(181,138,230,.4);border-radius:4px;padding:0 5px;margin-left:auto;flex:none}
+.row button.tgt{color:var(--blue);font-family:var(--mono);text-decoration:none}
+.row button.tgt:hover{text-decoration:underline}
+.empty{font-size:12.5px;color:var(--faint);font-style:italic}
+
+/* ---------- map view ---------- */
+#mapView{display:none;height:100%;flex-direction:column}
+.maptools{display:flex;align-items:center;gap:16px;padding:9px 18px;border-bottom:1px solid var(--line);background:var(--panel2);font-size:12px;color:var(--muted)}
+.maptools label{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.maptools input{accent-color:var(--blue)}
+.legend{margin-left:auto;display:flex;gap:16px;font-size:11px;color:var(--faint);align-items:center}
+.legend .sw{display:inline-block;width:22px;height:0;margin-right:5px;vertical-align:middle}
+.legend .assoc{border-top:1.6px solid #4b5a7d}
+.legend .gen{border-top:2px dashed var(--violet)}
+#mapWrap{flex:1;overflow:hidden;cursor:grab}
+#mapWrap:active{cursor:grabbing}
+#mapSvg{width:100%;height:100%;display:block}
+.gbox{fill:rgba(255,255,255,.025);stroke:rgba(255,255,255,.10);rx:12}
+.glab{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;fill:var(--faint)}
+.node rect{fill:#1c2745;stroke:rgba(255,255,255,.14);rx:6}
+.node text{font:11.5px var(--mono);fill:var(--text)}
+.node.abs rect{stroke:var(--violet);stroke-dasharray:4 3;fill:#1d1930}
+.node.abs text{font-style:italic;fill:var(--violet)}
+.node.api rect{stroke:rgba(232,180,74,.5);fill:#241f12}
+.node.api text{fill:var(--amber)}
+.node.hl rect{stroke:var(--blue);stroke-width:2;fill:#22335c}
+.node{cursor:pointer}
+.edge{stroke:#4b5a7d;stroke-width:1;fill:none;opacity:.28}
+.edge.gen{stroke:var(--violet);stroke-width:1.6;stroke-dasharray:5 4;opacity:.85}
+.edge.hl{stroke:var(--blue);opacity:1;stroke-width:1.8}
+
+@media (max-width:900px){ .usdm-explorer .usdm-nav{display:none} .usdm-explorer .col.side{display:none} }
+</style>
+<div class="usdm-header">
+  <div class="brand">
+    <span class="t">USDM</span><span class="v">v4.0</span>
+    <span class="sub">Logical Model Explorer</span>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <input id="q" type="text" placeholder="Find a class…" autocomplete="off">
+    <div class="results" id="qres"></div>
+  </div>
+  <div class="modes">
+    <button id="mClass" class="on">Class</button>
+    <button id="mMap">Map</button>
+  </div>
+</div>
+
+<div class="app">
+<div class="usdm-nav" id="nav"></div>
+<div class="usdm-main">
+    <div id="egoView">
+      <svg id="wires"></svg>
+      <div class="col side" id="inCol"></div>
+      <div class="col mid" id="midCol"></div>
+      <div class="col side" id="outCol"></div>
+    </div>
+    <div id="mapView">
+      <div class="maptools">
+        <label><input type="checkbox" id="ckAssoc" checked> Associations</label>
+        <label><input type="checkbox" id="ckGen" checked> Inheritance</label>
+        <span style="color:var(--faint)">Scroll to zoom · drag to pan · click a class to open it</span>
+        <div class="legend">
+          <span><span class="sw assoc"></span>association</span>
+          <span><span class="sw gen"></span>generalization</span>
+          <span style="color:var(--violet);font-style:italic">◇ abstract</span>
+        </div>
+      </div>
+      <div id="mapWrap"><svg id="mapSvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    </div>
+</div>
+</div>
+
+</div>
+
+<script>
+const MODEL = {"domains":{"Study Core":["Study","StudyVersion","StudyTitle","StudyIdentifier","ReferenceIdentifier","Identifier","GovernanceDate","StudyAmendment","StudyAmendmentImpact","StudyAmendmentReason","StudyChange","SubjectEnrollment","Wrapper"],"Design & Structure":["StudyDesign","InterventionalStudyDesign","ObservationalStudyDesign","StudyArm","StudyCell","StudyElement","StudyEpoch","Masking","BiospecimenRetention","Indication"],"Objectives & Estimands":["SyntaxTemplate","Objective","Endpoint","Estimand","IntercurrentEvent","AnalysisPopulation"],"Population & Eligibility":["PopulationDefinition","StudyDesignPopulation","StudyCohort","EligibilityCriterion","EligibilityCriterionItem","Characteristic"],"Schedule & Timeline":["ScheduleTimeline","ScheduleTimelineExit","ScheduledInstance","ScheduledActivityInstance","ScheduledDecisionInstance","Timing","Encounter","Activity","Procedure","Condition","ConditionAssignment","TransitionRule","ResponseCode","Duration"],"Biomedical Concepts":["BiomedicalConcept","BiomedicalConceptCategory","BiomedicalConceptProperty","BiomedicalConceptSurrogate"],"Interventions & Products":["StudyIntervention","AdministrableProduct","AdministrableProductIdentifier","AdministrableProductProperty","Administration","MedicalDevice","MedicalDeviceIdentifier","Ingredient","Substance","Strength","ProductOrganizationRole"],"Documents & Narrative":["StudyDefinitionDocument","StudyDefinitionDocumentVersion","NarrativeContent","NarrativeContentItem","Abbreviation","CommentAnnotation","DocumentContentReference","SyntaxTemplateDictionary","ParameterMap"],"People & Organizations":["Organization","StudySite","StudyRole","AssignedPerson","PersonName","Address","GeographicScope"],"Foundational Types":["Code","AliasCode","QuantityRange","Quantity","Range","ExtensionAttribute","ExtensionClass"]},"classes":{"Abbreviation":{"attrs":[{"name":"id","type":"string","req":true},{"name":"abbreviatedText","type":"string","req":true},{"name":"expandedText","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Activity":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"previousId","type":"string","req":false},{"name":"nextId","type":"string","req":false},{"name":"childIds","type":"array","req":false},{"name":"biomedicalConceptIds","type":"array","req":false},{"name":"bcCategoryIds","type":"array","req":false},{"name":"bcSurrogateIds","type":"array","req":false},{"name":"timelineId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"definedProcedures","target":"Procedure","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Address":{"attrs":[{"name":"id","type":"string","req":true},{"name":"text","type":"string","req":false},{"name":"lines","type":"array","req":false},{"name":"city","type":"string","req":false},{"name":"district","type":"string","req":false},{"name":"state","type":"string","req":false},{"name":"postalCode","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"country","target":"Code","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"AdministrableProduct":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"pharmacologicClass","target":"Code","card":"1","req":false},{"name":"administrableDoseForm","target":"AliasCode","card":"1","req":true},{"name":"productDesignation","target":"Code","card":"1","req":true},{"name":"sourcing","target":"Code","card":"1","req":false},{"name":"properties","target":"AdministrableProductProperty","card":"*","req":false},{"name":"identifiers","target":"AdministrableProductIdentifier","card":"*","req":false},{"name":"ingredients","target":"Ingredient","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"AdministrableProductIdentifier":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"scopeId","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":"Identifier"},"AdministrableProductProperty":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"text","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true},{"name":"quantity","target":"Quantity","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Administration":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"administrableProductId","type":"string","req":false},{"name":"medicalDeviceId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"duration","target":"Duration","card":"1","req":true},{"name":"dose","target":"Quantity","card":"1","req":false},{"name":"route","target":"AliasCode","card":"1","req":false},{"name":"frequency","target":"AliasCode","card":"1","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"AliasCode":{"attrs":[{"name":"id","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"standardCode","target":"Code","card":"1","req":true},{"name":"standardCodeAliases","target":"Code","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"AnalysisPopulation":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"text","type":"string","req":true},{"name":"subsetOfIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"AssignedPerson":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"jobTitle","type":"string","req":true},{"name":"organizationId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"personName","target":"PersonName","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"BiomedicalConcept":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"synonyms","type":"array","req":false},{"name":"reference","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"properties","target":"BiomedicalConceptProperty","card":"*","req":false},{"name":"code","target":"AliasCode","card":"1","req":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"BiomedicalConceptCategory":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"childIds","type":"array","req":false},{"name":"memberIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"code","target":"AliasCode","card":"1","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"BiomedicalConceptProperty":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"isRequired","type":"boolean","req":true},{"name":"isEnabled","type":"boolean","req":true},{"name":"datatype","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"responseCodes","target":"ResponseCode","card":"*","req":false},{"name":"code","target":"AliasCode","card":"1","req":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"BiomedicalConceptSurrogate":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"reference","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"BiospecimenRetention":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"isRetained","type":"boolean","req":true},{"name":"includesDNA","type":"boolean","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Characteristic":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"dictionaryId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true}],"desc":"","abstract":false,"apiOnly":false,"extends":"SyntaxTemplate"},"Code":{"attrs":[{"name":"id","type":"string","req":true},{"name":"code","type":"string","req":true},{"name":"codeSystem","type":"string","req":true},{"name":"codeSystemVersion","type":"string","req":true},{"name":"decode","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"CommentAnnotation":{"attrs":[{"name":"id","type":"string","req":true},{"name":"text","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"codes","target":"Code","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Condition":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"dictionaryId","type":"string","req":false},{"name":"contextIds","type":"array","req":false},{"name":"appliesToIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true}],"desc":"","abstract":false,"apiOnly":false,"extends":"SyntaxTemplate"},"ConditionAssignment":{"attrs":[{"name":"id","type":"string","req":true},{"name":"condition","type":"string","req":true},{"name":"conditionTargetId","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"DocumentContentReference":{"attrs":[{"name":"id","type":"string","req":true},{"name":"sectionNumber","type":"string","req":true},{"name":"sectionTitle","type":"string","req":true},{"name":"appliesToId","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Duration":{"attrs":[{"name":"id","type":"string","req":true},{"name":"text","type":"string","req":false},{"name":"durationWillVary","type":"boolean","req":true},{"name":"reasonDurationWillVary","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"quantity","target":"Quantity","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"EligibilityCriterion":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"identifier","type":"string","req":true},{"name":"criterionItemId","type":"string","req":true},{"name":"nextId","type":"string","req":false},{"name":"previousId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"category","target":"Code","card":"1","req":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"EligibilityCriterionItem":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"dictionaryId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true}],"desc":"","abstract":false,"apiOnly":false,"extends":"SyntaxTemplate"},"Encounter":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"previousId","type":"string","req":false},{"name":"nextId","type":"string","req":false},{"name":"scheduledAtId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true},{"name":"environmentalSettings","target":"Code","card":"*","req":false},{"name":"contactModes","target":"Code","card":"*","req":false},{"name":"transitionStartRule","target":"TransitionRule","card":"1","req":false},{"name":"transitionEndRule","target":"TransitionRule","card":"1","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Endpoint":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"dictionaryId","type":"string","req":false},{"name":"purpose","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true},{"name":"level","target":"Code","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":"SyntaxTemplate"},"Estimand":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"populationSummary","type":"string","req":true},{"name":"analysisPopulationId","type":"string","req":true},{"name":"interventionIds","type":"array","req":true},{"name":"variableOfInterestId","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"intercurrentEvents","target":"IntercurrentEvent","card":"*","req":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"ExtensionAttribute":{"attrs":[{"name":"id","type":"string","req":true},{"name":"url","type":"string","req":true},{"name":"valueString","type":"string","req":false},{"name":"valueBoolean","type":"boolean","req":false},{"name":"valueInteger","type":"integer","req":false},{"name":"valueId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"valueQuantity","target":"Quantity","card":"1","req":false},{"name":"valueRange","target":"Range","card":"1","req":false},{"name":"valueCode","target":"Code","card":"1","req":false},{"name":"valueAliasCode","target":"AliasCode","card":"1","req":false},{"name":"valueExtensionClass","target":"ExtensionClass","card":"1","req":false},{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":true,"extends":null},"ExtensionClass":{"attrs":[{"name":"id","type":"string","req":true},{"name":"url","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":true}],"desc":"","abstract":false,"apiOnly":true,"extends":null},"GeographicScope":{"attrs":[{"name":"id","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true},{"name":"code","target":"AliasCode","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"GovernanceDate":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"dateValue","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true},{"name":"geographicScopes","target":"GeographicScope","card":"*","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Indication":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"isRareDisease","type":"boolean","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"codes","target":"Code","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Ingredient":{"attrs":[{"name":"id","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"role","target":"Code","card":"1","req":true},{"name":"substance","target":"Substance","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"IntercurrentEvent":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"dictionaryId","type":"string","req":false},{"name":"strategy","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true}],"desc":"","abstract":false,"apiOnly":false,"extends":"SyntaxTemplate"},"InterventionalStudyDesign":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"rationale","type":"string","req":true,"inh":true},{"name":"studyInterventionIds","type":"array","req":false},{"name":"documentVersionIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"studyType","target":"Code","card":"1","req":false,"inh":true},{"name":"studyPhase","target":"AliasCode","card":"1","req":false,"inh":true},{"name":"therapeuticAreas","target":"Code","card":"*","req":false,"inh":true},{"name":"characteristics","target":"Code","card":"*","req":false,"inh":true},{"name":"encounters","target":"Encounter","card":"*","req":false},{"name":"activities","target":"Activity","card":"*","req":false},{"name":"arms","target":"StudyArm","card":"*","req":true},{"name":"studyCells","target":"StudyCell","card":"*","req":true},{"name":"epochs","target":"StudyEpoch","card":"*","req":true},{"name":"elements","target":"StudyElement","card":"*","req":false},{"name":"estimands","target":"Estimand","card":"*","req":false},{"name":"indications","target":"Indication","card":"*","req":false},{"name":"objectives","target":"Objective","card":"*","req":false},{"name":"population","target":"StudyDesignPopulation","card":"1","req":true},{"name":"scheduleTimelines","target":"ScheduleTimeline","card":"*","req":false},{"name":"biospecimenRetentions","target":"BiospecimenRetention","card":"*","req":false},{"name":"eligibilityCriteria","target":"EligibilityCriterion","card":"*","req":true},{"name":"analysisPopulations","target":"AnalysisPopulation","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true},{"name":"subTypes","target":"Code","card":"*","req":false},{"name":"model","target":"Code","card":"1","req":true},{"name":"intentTypes","target":"Code","card":"*","req":false},{"name":"blindingSchema","target":"AliasCode","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":"StudyDesign"},"Masking":{"attrs":[{"name":"id","type":"string","req":true},{"name":"text","type":"string","req":true},{"name":"isMasked","type":"boolean","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"MedicalDevice":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"hardwareVersion","type":"string","req":false},{"name":"softwareVersion","type":"string","req":false},{"name":"embeddedProductId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"sourcing","target":"Code","card":"1","req":false},{"name":"identifiers","target":"MedicalDeviceIdentifier","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"MedicalDeviceIdentifier":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"scopeId","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":"Identifier"},"NarrativeContent":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"sectionNumber","type":"string","req":false},{"name":"sectionTitle","type":"string","req":false},{"name":"displaySectionNumber","type":"boolean","req":true},{"name":"displaySectionTitle","type":"boolean","req":true},{"name":"childIds","type":"array","req":false},{"name":"previousId","type":"string","req":false},{"name":"nextId","type":"string","req":false},{"name":"contentItemId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"NarrativeContentItem":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"text","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Objective":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"dictionaryId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true},{"name":"level","target":"Code","card":"1","req":true},{"name":"endpoints","target":"Endpoint","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":"SyntaxTemplate"},"ObservationalStudyDesign":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"rationale","type":"string","req":true,"inh":true},{"name":"studyInterventionIds","type":"array","req":false},{"name":"documentVersionIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"studyType","target":"Code","card":"1","req":false,"inh":true},{"name":"studyPhase","target":"AliasCode","card":"1","req":false,"inh":true},{"name":"therapeuticAreas","target":"Code","card":"*","req":false,"inh":true},{"name":"characteristics","target":"Code","card":"*","req":false,"inh":true},{"name":"encounters","target":"Encounter","card":"*","req":false},{"name":"activities","target":"Activity","card":"*","req":false},{"name":"arms","target":"StudyArm","card":"*","req":true},{"name":"studyCells","target":"StudyCell","card":"*","req":true},{"name":"epochs","target":"StudyEpoch","card":"*","req":true},{"name":"elements","target":"StudyElement","card":"*","req":false},{"name":"estimands","target":"Estimand","card":"*","req":false},{"name":"indications","target":"Indication","card":"*","req":false},{"name":"objectives","target":"Objective","card":"*","req":false},{"name":"population","target":"StudyDesignPopulation","card":"1","req":true},{"name":"scheduleTimelines","target":"ScheduleTimeline","card":"*","req":false},{"name":"biospecimenRetentions","target":"BiospecimenRetention","card":"*","req":false},{"name":"eligibilityCriteria","target":"EligibilityCriterion","card":"*","req":true},{"name":"analysisPopulations","target":"AnalysisPopulation","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true},{"name":"subTypes","target":"Code","card":"*","req":false},{"name":"model","target":"Code","card":"1","req":true},{"name":"timePerspective","target":"Code","card":"1","req":true},{"name":"samplingMethod","target":"Code","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":"StudyDesign"},"Organization":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"identifierScheme","type":"string","req":true},{"name":"identifier","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true},{"name":"legalAddress","target":"Address","card":"1","req":false},{"name":"managedSites","target":"StudySite","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"ParameterMap":{"attrs":[{"name":"id","type":"string","req":true},{"name":"tag","type":"string","req":true},{"name":"reference","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"PersonName":{"attrs":[{"name":"id","type":"string","req":true},{"name":"text","type":"string","req":false},{"name":"familyName","type":"string","req":false},{"name":"givenNames","type":"array","req":false},{"name":"prefixes","type":"array","req":false},{"name":"suffixes","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Procedure":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"procedureType","type":"string","req":true},{"name":"studyInterventionId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"code","target":"Code","card":"1","req":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"ProductOrganizationRole":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"appliesToIds","type":"array","req":false},{"name":"organizationId","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"code","target":"Code","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Quantity":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"value","type":"number","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"unit","target":"AliasCode","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":"QuantityRange"},"Range":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"isApproximate","type":"boolean","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"minValue","target":"Quantity","card":"1","req":true},{"name":"maxValue","target":"Quantity","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":"QuantityRange"},"ReferenceIdentifier":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"scopeId","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":"Identifier"},"ResponseCode":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"isEnabled","type":"boolean","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"code","target":"Code","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"ScheduleTimeline":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"mainTimeline","type":"boolean","req":true},{"name":"entryCondition","type":"string","req":true},{"name":"entryId","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"exits","target":"ScheduleTimelineExit","card":"*","req":false},{"name":"timings","target":"Timing","card":"*","req":false},{"name":"instances","target":"ScheduledActivityInstance","card":"*","req":false},{"name":"plannedDuration","target":"Duration","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"ScheduleTimelineExit":{"attrs":[{"name":"id","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"ScheduledActivityInstance":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"defaultConditionId","type":"string","req":false},{"name":"epochId","type":"string","req":false},{"name":"timelineId","type":"string","req":false},{"name":"timelineExitId","type":"string","req":false},{"name":"activityIds","type":"array","req":false},{"name":"encounterId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":"ScheduledInstance"},"ScheduledDecisionInstance":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"defaultConditionId","type":"string","req":false},{"name":"epochId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"conditionAssignments","target":"ConditionAssignment","card":"*","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":"ScheduledInstance"},"Strength":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"numerator","target":"Quantity","card":"1","req":true},{"name":"denominator","target":"Quantity","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Study":{"attrs":[{"name":"id","type":"string","req":false},{"name":"name","type":"string","req":true},{"name":"description","type":"string","req":false},{"name":"label","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"versions","target":"StudyVersion","card":"*","req":false},{"name":"documentedBy","target":"StudyDefinitionDocument","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyAmendment":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"number","type":"string","req":true},{"name":"summary","type":"string","req":true},{"name":"previousId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"primaryReason","target":"StudyAmendmentReason","card":"1","req":true},{"name":"secondaryReasons","target":"StudyAmendmentReason","card":"*","req":false},{"name":"changes","target":"StudyChange","card":"*","req":true},{"name":"impacts","target":"StudyAmendmentImpact","card":"*","req":false},{"name":"geographicScopes","target":"GeographicScope","card":"*","req":true},{"name":"enrollments","target":"SubjectEnrollment","card":"*","req":false},{"name":"dateValues","target":"GovernanceDate","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyAmendmentImpact":{"attrs":[{"name":"id","type":"string","req":true},{"name":"text","type":"string","req":true},{"name":"isSubstantial","type":"boolean","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyAmendmentReason":{"attrs":[{"name":"id","type":"string","req":true},{"name":"otherReason","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"code","target":"Code","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyArm":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"dataOriginDescription","type":"string","req":true},{"name":"populationIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true},{"name":"dataOriginType","target":"Code","card":"1","req":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyCell":{"attrs":[{"name":"id","type":"string","req":true},{"name":"armId","type":"string","req":true},{"name":"epochId","type":"string","req":true},{"name":"elementIds","type":"array","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyChange":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"summary","type":"string","req":true},{"name":"rationale","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"changedSections","target":"DocumentContentReference","card":"*","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyCohort":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"includesHealthySubjects","type":"boolean","req":true,"inh":true},{"name":"criterionIds","type":"array","req":false},{"name":"indicationIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"plannedEnrollmentNumber","target":"Quantity","card":"1","req":false,"inh":true},{"name":"plannedCompletionNumber","target":"Quantity","card":"1","req":false,"inh":true},{"name":"plannedSex","target":"Code","card":"*","req":false,"inh":true},{"name":"plannedAge","target":"Range","card":"1","req":false,"inh":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true},{"name":"characteristics","target":"Characteristic","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":"PopulationDefinition"},"StudyDefinitionDocument":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"templateName","type":"string","req":true},{"name":"childIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"language","target":"Code","card":"1","req":true},{"name":"type","target":"Code","card":"1","req":true},{"name":"versions","target":"StudyDefinitionDocumentVersion","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyDefinitionDocumentVersion":{"attrs":[{"name":"id","type":"string","req":true},{"name":"version","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"status","target":"Code","card":"1","req":true},{"name":"dateValues","target":"GovernanceDate","card":"*","req":false},{"name":"contents","target":"NarrativeContent","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyDesignPopulation":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"name","type":"string","req":true,"inh":true},{"name":"label","type":"string","req":false,"inh":true},{"name":"description","type":"string","req":false,"inh":true},{"name":"includesHealthySubjects","type":"boolean","req":true,"inh":true},{"name":"criterionIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"plannedEnrollmentNumber","target":"Quantity","card":"1","req":false,"inh":true},{"name":"plannedCompletionNumber","target":"Quantity","card":"1","req":false,"inh":true},{"name":"plannedSex","target":"Code","card":"*","req":false,"inh":true},{"name":"plannedAge","target":"Range","card":"1","req":false,"inh":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false,"inh":true},{"name":"cohorts","target":"StudyCohort","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":"PopulationDefinition"},"StudyElement":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"studyInterventionIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"transitionStartRule","target":"TransitionRule","card":"1","req":false},{"name":"transitionEndRule","target":"TransitionRule","card":"1","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyEpoch":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"previousId","type":"string","req":false},{"name":"nextId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyIdentifier":{"attrs":[{"name":"id","type":"string","req":true,"inh":true},{"name":"text","type":"string","req":true,"inh":true},{"name":"scopeId","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":"Identifier"},"StudyIntervention":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"role","target":"Code","card":"1","req":true},{"name":"type","target":"Code","card":"1","req":true},{"name":"minimumResponseDuration","target":"Quantity","card":"1","req":false},{"name":"codes","target":"Code","card":"*","req":false},{"name":"administrations","target":"Administration","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyRole":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"appliesToIds","type":"array","req":false},{"name":"organizationIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"code","target":"Code","card":"1","req":true},{"name":"assignedPersons","target":"AssignedPerson","card":"*","req":false},{"name":"masking","target":"Masking","card":"1","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudySite":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"country","target":"Code","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyTitle":{"attrs":[{"name":"id","type":"string","req":true},{"name":"text","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"StudyVersion":{"attrs":[{"name":"id","type":"string","req":true},{"name":"versionIdentifier","type":"string","req":true},{"name":"rationale","type":"string","req":true},{"name":"documentVersionIds","type":"array","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"dateValues","target":"GovernanceDate","card":"*","req":false},{"name":"amendments","target":"StudyAmendment","card":"*","req":false},{"name":"businessTherapeuticAreas","target":"Code","card":"*","req":false},{"name":"studyIdentifiers","target":"StudyIdentifier","card":"*","req":true},{"name":"referenceIdentifiers","target":"ReferenceIdentifier","card":"*","req":false},{"name":"studyDesigns","target":"InterventionalStudyDesign","card":"*","req":false},{"name":"titles","target":"StudyTitle","card":"*","req":true},{"name":"eligibilityCriterionItems","target":"EligibilityCriterionItem","card":"*","req":false},{"name":"narrativeContentItems","target":"NarrativeContentItem","card":"*","req":false},{"name":"abbreviations","target":"Abbreviation","card":"*","req":false},{"name":"roles","target":"StudyRole","card":"*","req":false},{"name":"organizations","target":"Organization","card":"*","req":false},{"name":"studyInterventions","target":"StudyIntervention","card":"*","req":false},{"name":"administrableProducts","target":"AdministrableProduct","card":"*","req":false},{"name":"medicalDevices","target":"MedicalDevice","card":"*","req":false},{"name":"productOrganizationRoles","target":"ProductOrganizationRole","card":"*","req":false},{"name":"biomedicalConcepts","target":"BiomedicalConcept","card":"*","req":false},{"name":"bcCategories","target":"BiomedicalConceptCategory","card":"*","req":false},{"name":"bcSurrogates","target":"BiomedicalConceptSurrogate","card":"*","req":false},{"name":"dictionaries","target":"SyntaxTemplateDictionary","card":"*","req":false},{"name":"conditions","target":"Condition","card":"*","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"SubjectEnrollment":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"forStudyCohortId","type":"string","req":false},{"name":"forStudySiteId","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"quantity","target":"Quantity","card":"1","req":true},{"name":"forGeographicScope","target":"GeographicScope","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Substance":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"codes","target":"Code","card":"*","req":false},{"name":"strengths","target":"Strength","card":"*","req":true},{"name":"referenceSubstance","target":"Substance","card":"1","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"SyntaxTemplateDictionary":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"parameterMaps","target":"ParameterMap","card":"*","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Timing":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"value","type":"string","req":true},{"name":"valueLabel","type":"string","req":true},{"name":"relativeFromScheduledInstanceId","type":"string","req":true},{"name":"relativeToScheduledInstanceId","type":"string","req":false},{"name":"windowLower","type":"string","req":false},{"name":"windowUpper","type":"string","req":false},{"name":"windowLabel","type":"string","req":false},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false},{"name":"type","target":"Code","card":"1","req":true},{"name":"relativeToFrom","target":"Code","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"TransitionRule":{"attrs":[{"name":"id","type":"string","req":true},{"name":"name","type":"string","req":true},{"name":"label","type":"string","req":false},{"name":"description","type":"string","req":false},{"name":"text","type":"string","req":true},{"name":"instanceType","type":"string","req":true}],"rels":[{"name":"extensionAttributes","target":"ExtensionAttribute","card":"*","req":false}],"desc":"","abstract":false,"apiOnly":false,"extends":null},"Wrapper":{"attrs":[{"name":"usdmVersion","type":"string","req":true},{"name":"systemName","type":"string","req":false},{"name":"systemVersion","type":"string","req":false}],"rels":[{"name":"study","target":"Study","card":"1","req":true}],"desc":"","abstract":false,"apiOnly":true,"extends":null},"Identifier":{"attrs":[{"name":"id","type":"String","req":true},{"name":"text","type":"String","req":true}],"rels":[],"desc":"Abstract parent for scoped identifiers issued by an organization.","abstract":true,"apiOnly":false,"extends":null},"PopulationDefinition":{"attrs":[{"name":"id","type":"String","req":true},{"name":"name","type":"String","req":true},{"name":"label","type":"String","req":false},{"name":"description","type":"String","req":false},{"name":"includesHealthySubjects","type":"Boolean","req":true}],"rels":[{"name":"plannedSex","target":"Code","card":"1","req":false},{"name":"plannedAge","target":"Range","card":"1","req":false},{"name":"plannedCompletionNumber","target":"QuantityRange","card":"1","req":false},{"name":"plannedEnrollmentNumber","target":"QuantityRange","card":"1","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"Abstract parent for study populations and cohorts.","abstract":true,"apiOnly":false,"extends":null},"QuantityRange":{"attrs":[{"name":"id","type":"String","req":true}],"rels":[],"desc":"Abstract parent for single quantities and value ranges.","abstract":true,"apiOnly":false,"extends":null},"ScheduledInstance":{"attrs":[{"name":"id","type":"String","req":true},{"name":"name","type":"String","req":true},{"name":"label","type":"String","req":false},{"name":"description","type":"String","req":false}],"rels":[],"desc":"Abstract parent for timeline entries \u2014 scheduled activities and scheduled decisions.","abstract":true,"apiOnly":false,"extends":null},"StudyDesign":{"attrs":[{"name":"id","type":"String","req":true},{"name":"name","type":"String","req":true},{"name":"label","type":"String","req":false},{"name":"description","type":"String","req":false},{"name":"rationale","type":"String","req":true}],"rels":[{"name":"therapeuticAreas","target":"Code","card":"*","req":false},{"name":"studyType","target":"Code","card":"1","req":false},{"name":"characteristics","target":"Code","card":"*","req":false},{"name":"studyPhase","target":"AliasCode","card":"1","req":false},{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"Abstract parent capturing what is common to interventional and observational study designs.","abstract":true,"apiOnly":false,"extends":null},"SyntaxTemplate":{"attrs":[{"name":"id","type":"String","req":true},{"name":"name","type":"String","req":true},{"name":"label","type":"String","req":false},{"name":"description","type":"String","req":false},{"name":"text","type":"String","req":true}],"rels":[{"name":"notes","target":"CommentAnnotation","card":"*","req":false}],"desc":"Abstract parent for structured, parameterized text elements (objectives, endpoints, criteria, conditions).","abstract":true,"apiOnly":false,"extends":null}},"children":{"Identifier":["AdministrableProductIdentifier","MedicalDeviceIdentifier","ReferenceIdentifier","StudyIdentifier"],"SyntaxTemplate":["Characteristic","Condition","EligibilityCriterionItem","Endpoint","IntercurrentEvent","Objective"],"StudyDesign":["InterventionalStudyDesign","ObservationalStudyDesign"],"QuantityRange":["Quantity","Range"],"ScheduledInstance":["ScheduledActivityInstance","ScheduledDecisionInstance"],"PopulationDefinition":["StudyCohort","StudyDesignPopulation"]},"stats":{"cls":87,"rels":310,"gens":18,"abs":6}};
+const C = MODEL.classes, DOMAINS = MODEL.domains, KIDS = MODEL.children || {};
+const DCOLORS = ['#5aa9e6','#e8b44a','#6fc493','#b58ae6','#e07a92','#6ad2c9','#d9a06b','#8fa8ff','#c6d16a','#9aa3b5'];
+const domOf = {}; Object.entries(DOMAINS).forEach(([d,list],i)=>list.forEach(c=>domOf[c]={d,i}));
+
+// incoming index
+const incoming = {};
+for (const [c,d] of Object.entries(C)) d.rels.forEach(r=>{
+  (incoming[r.target] = incoming[r.target] || []).push({from:c, name:r.name, card:r.card});
+});
+
+let mode='class', current='Study';
+
+document.getElementById('stats').textContent =
+  `${MODEL.stats.cls} classes · ${MODEL.stats.rels} associations · ${MODEL.stats.gens} generalizations · ${MODEL.stats.abs} abstract`;
+
+/* ---------- sidebar ---------- */
+const nav = document.getElementById('nav');
+Object.entries(DOMAINS).forEach(([d,list],i)=>{
+  const box = document.createElement('div'); box.className='dom';
+  box.innerHTML = `<h3><span class="dot" style="background:${DCOLORS[i]}"></span>${d}</h3>`;
+  list.forEach(c=>{
+    const b = document.createElement('button');
+    b.textContent = c; b.dataset.c = c;
+    if (C[c].abstract) b.classList.add('abs');
+    if (C[c].apiOnly) b.classList.add('api');
+    b.onclick = ()=>select(c,true);
+    box.appendChild(b);
+  });
+  nav.appendChild(box);
+});
+function markNav(){ nav.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.c===current)); }
+
+/* ---------- search ---------- */
+const q = document.getElementById('q'), qres = document.getElementById('qres');
+q.addEventListener('input', ()=>{
+  const s = q.value.trim().toLowerCase();
+  if (!s){ qres.classList.remove('open'); return; }
+  const hits = Object.keys(C).filter(c=>c.toLowerCase().includes(s)).sort((a,b)=>a.toLowerCase().indexOf(s)-b.toLowerCase().indexOf(s)).slice(0,14);
+  qres.innerHTML = hits.map(c=>`<button data-c="${c}"><span class="cn ${C[c].abstract?'abs':''}" ${C[c].abstract?'style="font-style:italic;color:var(--violet)"':''}>${c}</span><span class="dm">${domOf[c].d}</span></button>`).join('') || '<button disabled><span class="cn" style="color:var(--faint)">No matches</span></button>';
+  qres.classList.add('open');
+  qres.querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{ qres.classList.remove('open'); q.value=''; select(b.dataset.c,true); });
+});
+document.addEventListener('click', e=>{ if(!e.target.closest('.search')) qres.classList.remove('open'); });
+q.addEventListener('keydown', e=>{ if(e.key==='Enter'){ const b=qres.querySelector('button[data-c]'); if(b) b.click(); }});
+
+/* ---------- ego view ---------- */
+function fmtRow(r, kind){
+  const inh = r.inh ? '<span class="inhm">inherited</span>' : '';
+  if (kind==='attr')
+    return `<div class="row"><span class="n">${r.name}</span><span class="ty">${r.type}</span>${r.req?'<span class="req">required</span>':''}${inh}</div>`;
+  const mult = r.card==='*' ? '0..*' : (r.req ? '1' : '0..1');
+  return `<div class="row"><span class="n">${r.name}</span><button class="tgt" data-c="${r.target}">${C[r.target]&&C[r.target].abstract?'<i>'+r.target+'</i>':r.target}</button><span class="card-mult">[${mult}]</span>${inh}</div>`;
+}
+
+function select(c, scroll){
+  current = c; markNav();
+  if (mode==='map'){ setMode('class'); }
+  const d = C[c];
+  const mid = document.getElementById('midCol');
+
+  // inheritance above (parent) and below (children)
+  const parent = d.extends;
+  const kids = KIDS[c] || [];
+  let inhTop = '', inhBot = '';
+  if (parent) inhTop = `<div class="inh"><button class="chip" data-c="${parent}">◇ ${parent}</button><div class="link"><div class="tri"></div><div class="stem"></div></div></div>`;
+  if (kids.length) inhBot = `<div class="inh"><div class="link"><div class="stem"></div></div><div class="kids">${kids.map(k=>`<button class="chip" style="font-style:normal;color:var(--text);border-color:var(--line);background:var(--panel)" data-c="${k}">${k}</button>`).join('')}</div><div style="font-size:10.5px;color:var(--violet);margin-top:6px;letter-spacing:.1em;text-transform:uppercase">specialized by</div></div>`;
+
+  const attrs = d.attrs.length ? d.attrs.map(a=>fmtRow(a,'attr')).join('') : '<div class="empty">No scalar attributes</div>';
+  const rels  = d.rels.length ? d.rels.map(r=>fmtRow(r,'rel')).join('')  : '<div class="empty">No outgoing relationships</div>';
+
+  mid.innerHTML = `
+    ${inhTop}
+    <div class="card" id="egoCard">
+      <div class="head">
+        ${d.abstract?'<div class="stereo">«abstract»</div>':''}
+        <h2 class="${d.abstract?'abs':''}">${c}
+          ${d.apiOnly?'<span class="badge api">API layer</span>':''}
+          <span class="badge dom" style="border-color:${DCOLORS[domOf[c].i]}66;color:${DCOLORS[domOf[c].i]};background:${DCOLORS[domOf[c].i]}14">${domOf[c].d}</span>
+        </h2>
+        ${d.desc?`<div class="desc">${d.desc}</div>`:''}
+      </div>
+      <div class="sec"><h4>Attributes</h4>${attrs}</div>
+      <div class="sec"><h4>Relationships</h4>${rels}</div>
+    </div>
+    ${inhBot}`;
+
+  // referenced by
+  const inc = (incoming[c]||[]).slice().sort((a,b)=>a.from.localeCompare(b.from));
+  document.getElementById('inCol').innerHTML = `<div class="colh">Referenced by · ${inc.length}</div>` +
+    (inc.map(r=>`<button class="ref" data-c="${r.from}"><span class="cn ${C[r.from].abstract?'abs':''}">${r.from}</span><span class="via">via <b>${r.name}</b>${r.card==='*'?' [*]':''}</span></button>`).join('') || '<div class="empty" style="padding:0 6px">Nothing references this class</div>');
+
+  // references
+  const out = d.rels.slice().sort((a,b)=>a.target.localeCompare(b.target));
+  const seen = {};
+  document.getElementById('outCol').innerHTML = `<div class="colh">References · ${out.length}</div>` +
+    (out.map(r=>`<button class="ref" data-c="${r.target}"><span class="cn ${C[r.target]&&C[r.target].abstract?'abs':''}">${r.target}</span><span class="via">via <b>${r.name}</b>${r.card==='*'?' [*]':''}</span></button>`).join('') || '<div class="empty" style="padding:0 6px">No outgoing references</div>');
+
+  document.querySelectorAll('#egoView [data-c]').forEach(b=>b.onclick=()=>select(b.dataset.c,true));
+  if (scroll){ document.getElementById('inCol').scrollTop=0; document.getElementById('outCol').scrollTop=0; mid.scrollTop=0; }
+  requestAnimationFrame(drawWires);
+}
+
+function drawWires(){
+  const svg = document.getElementById('wires');
+  const ego = document.getElementById('egoView');
+  if (!ego.offsetParent && mode!=='class') return;
+  const R = ego.getBoundingClientRect();
+  svg.setAttribute('width', R.width); svg.setAttribute('height', R.height);
+  svg.innerHTML = '';
+  const card = document.getElementById('egoCard');
+  if (!card) return;
+  const cb = card.getBoundingClientRect();
+  const cx = {L: cb.left - R.left, R: cb.right - R.left, y: cb.top - R.top + Math.min(90, cb.height/2)};
+  function wire(el, side){
+    const b = el.getBoundingClientRect();
+    if (b.bottom < R.top || b.top > R.bottom) return;
+    const y1 = b.top - R.top + b.height/2;
+    const x1 = side==='in' ? b.right - R.left : b.left - R.left;
+    const x2 = side==='in' ? cx.L : cx.R;
+    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const mx = (x1+x2)/2;
+    p.setAttribute('d', `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${cx.y}, ${x2} ${cx.y}`);
+    p.setAttribute('fill','none'); p.setAttribute('stroke','rgba(90,169,230,.28)'); p.setAttribute('stroke-width','1.2');
+    svg.appendChild(p);
+  }
+  document.querySelectorAll('#inCol .ref').forEach(el=>wire(el,'in'));
+  document.querySelectorAll('#outCol .ref').forEach(el=>wire(el,'out'));
+}
+document.getElementById('inCol').addEventListener('scroll', ()=>requestAnimationFrame(drawWires));
+document.getElementById('outCol').addEventListener('scroll', ()=>requestAnimationFrame(drawWires));
+window.addEventListener('resize', ()=>requestAnimationFrame(drawWires));
+
+/* ---------- map view ---------- */
+const mapSvg = document.getElementById('mapSvg');
+const wrap = document.getElementById('mapWrap');
+let vb = null, mapBuilt = false, nodePos = {};
+
+function buildMap(){
+  const NW = 158, NH = 26, GX = 14, GY = 10, PAD = 26, COLS_PER_GROUP = 3;
+  const groups = Object.entries(DOMAINS).map(([d,list],i)=>{
+    const cols = Math.min(COLS_PER_GROUP, list.length);
+    const rows = Math.ceil(list.length/cols);
+    return {d, i, list, w: cols*NW + (cols-1)*GX + PAD*2, h: rows*NH + (rows-1)*GY + PAD*2 + 18, cols};
+  });
+  // pack groups into 3 columns
+  const LANES = 3, laneY = [0,0,0], laneX = [0,0,0], LW = Math.max(...groups.map(g=>g.w)) + 46;
+  for (let l=0;l<LANES;l++) laneX[l] = l*LW + 30;
+  groups.forEach(g=>{
+    let l = laneY.indexOf(Math.min(...laneY));
+    g.x = laneX[l]; g.y = laneY[l] + 30;
+    laneY[l] = g.y + g.h + 26;
+  });
+  const totW = LANES*LW + 60, totH = Math.max(...laneY) + 40;
+
+  let els = '';
+  groups.forEach(g=>{
+    els += `<rect class="gbox" x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="12"/>`;
+    els += `<text class="glab" x="${g.x+PAD}" y="${g.y+22}" fill="${DCOLORS[g.i]}" style="fill:${DCOLORS[g.i]}">${g.d.toUpperCase()}</text>`;
+    g.list.forEach((c,k)=>{
+      const col = k % g.cols, row = Math.floor(k / g.cols);
+      const x = g.x + PAD + col*(NW+GX), y = g.y + PAD + 18 + row*(NH+GY);
+      nodePos[c] = {x: x+NW/2, y: y+NH/2, l:x, r:x+NW, t:y, b:y+NH};
+    });
+  });
+
+  // edges under nodes
+  let edges = '';
+  const drawn = new Set();
+  for (const [c,d] of Object.entries(C)){
+    d.rels.forEach(r=>{
+      if (!nodePos[r.target]) return;
+      const key = c+'>'+r.target;
+      if (drawn.has(key) || c===r.target) return; drawn.add(key);
+      const a = nodePos[c], b = nodePos[r.target];
+      edges += `<path class="edge assoc-e" data-a="${c}" data-b="${r.target}" d="M ${a.x} ${a.y} Q ${(a.x+b.x)/2} ${(a.y+b.y)/2 - 24}, ${b.x} ${b.y}"/>`;
+    });
+    if (d.extends && nodePos[d.extends]){
+      const a = nodePos[c], b = nodePos[d.extends];
+      edges += `<path class="edge gen gen-e" data-a="${c}" data-b="${d.extends}" d="M ${a.x} ${a.y} Q ${(a.x+b.x)/2} ${(a.y+b.y)/2 - 24}, ${b.x} ${b.y}" marker-end="url(#triangle)"/>`;
+    }
+  }
+
+  let nodes = '';
+  for (const [c,p] of Object.entries(nodePos)){
+    const cl = 'node' + (C[c].abstract?' abs':'') + (C[c].apiOnly?' api':'');
+    const label = c.length > 24 ? c.slice(0,23)+'…' : c;
+    nodes += `<g class="${cl}" data-c="${c}"><rect x="${p.l}" y="${p.t}" width="${p.r-p.l}" height="${p.b-p.t}" rx="6"/><text x="${p.x}" y="${p.y+4}" text-anchor="middle">${(C[c].abstract?'◇ ':'')+label}</text></g>`;
+  }
+
+  mapSvg.innerHTML = `<defs><marker id="triangle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="none" stroke="#b58ae6" stroke-width="1.4"/></marker></defs><g id="mapRoot">${els}${edges}${nodes}</g>`;
+  vb = [0,0,totW,totH];
+  mapSvg.setAttribute('viewBox', vb.join(' '));
+  mapSvg.querySelectorAll('.node').forEach(n=>{
+    n.addEventListener('click', ()=>select(n.dataset.c,true));
+    n.addEventListener('mouseenter', ()=>hlNode(n.dataset.c,true));
+    n.addEventListener('mouseleave', ()=>hlNode(n.dataset.c,false));
+  });
+  mapBuilt = true;
+  applyEdgeToggles();
+}
+function hlNode(c, on){
+  mapSvg.querySelectorAll(`.edge[data-a="${c}"],.edge[data-b="${c}"]`).forEach(e=>e.classList.toggle('hl',on));
+  mapSvg.querySelectorAll('.node').forEach(n=>{
+    if (n.dataset.c===c) n.classList.toggle('hl',on);
+  });
+}
+function applyEdgeToggles(){
+  const a = document.getElementById('ckAssoc').checked, g = document.getElementById('ckGen').checked;
+  mapSvg.querySelectorAll('.assoc-e').forEach(e=>e.style.display = a?'':'none');
+  mapSvg.querySelectorAll('.gen-e').forEach(e=>e.style.display = g?'':'none');
+}
+document.getElementById('ckAssoc').onchange = applyEdgeToggles;
+document.getElementById('ckGen').onchange = applyEdgeToggles;
+
+function paintMap(){ if(!mapBuilt) buildMap(); }
+
+/* pan + zoom */
+let panning = null;
+wrap.addEventListener('mousedown', e=>{ panning = {x:e.clientX, y:e.clientY, vb:[...vb]}; });
+window.addEventListener('mousemove', e=>{
+  if (!panning) return;
+  const r = wrap.getBoundingClientRect();
+  vb[0] = panning.vb[0] - (e.clientX-panning.x)/r.width*vb[2];
+  vb[1] = panning.vb[1] - (e.clientY-panning.y)/r.height*vb[3];
+  mapSvg.setAttribute('viewBox', vb.join(' '));
+});
+window.addEventListener('mouseup', ()=>panning=null);
+wrap.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const f = e.deltaY > 0 ? 1.12 : 0.89;
+  const r = wrap.getBoundingClientRect();
+  const mx = vb[0] + (e.clientX - r.left)/r.width*vb[2];
+  const my = vb[1] + (e.clientY - r.top)/r.height*vb[3];
+  vb = [mx-(mx-vb[0])*f, my-(my-vb[1])*f, vb[2]*f, vb[3]*f];
+  mapSvg.setAttribute('viewBox', vb.join(' '));
+}, {passive:false});
+
+/* ---------- mode switch ---------- */
+function setMode(m){
+  mode = m;
+  document.getElementById('egoView').style.display = m==='class' ? 'flex' : 'none';
+  document.getElementById('mapView').style.display = m==='map' ? 'flex' : 'none';
+  document.getElementById('mClass').classList.toggle('on', m==='class');
+  document.getElementById('mMap').classList.toggle('on', m==='map');
+  if (m==='map') paintMap(); else requestAnimationFrame(drawWires);
+}
+document.getElementById('mClass').onclick = ()=>setMode('class');
+document.getElementById('mMap').onclick = ()=>setMode('map');
+
+select('Study', false);
+</script>
+{% endblock %}
