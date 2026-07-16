@@ -8,7 +8,12 @@ NarrativeContentItem objects hold the XHTML text body for each section
 (StudyVersion.narrativeContentItems[]).
 
 Both are derived from ``files/NCT01797120_sections.json``, which was
-produced by extracting section text from the protocol PDF.
+produced by extracting section text from the protocol PDF. That
+extraction only exists for study NCT01797120, so every builder here
+takes a ``soa_id`` and only returns data when the requested SOA's
+``study_id`` matches ``_NARRATIVE_CONTENT_STUDY_ID`` -- otherwise it
+returns empty results without touching the data file, so this
+study-specific content never leaks into another SOA's export.
 
 Reference: USDM-IG v4.0 §4.20 Unstructured Content.
 """
@@ -20,7 +25,12 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from usdm.usdm_utils import _get_soa_metadata
+
 logger = logging.getLogger("usdm.generate_narrative_content")
+
+# The only study for which section text has been extracted.
+_NARRATIVE_CONTENT_STUDY_ID = "NCT01797120"
 
 # Path to the pre-extracted section data relative to this file.
 _DATA_FILE = (
@@ -28,6 +38,12 @@ _DATA_FILE = (
     / "files"
     / "NCT01797120_sections.json"
 )
+
+
+def _soa_has_narrative_content(soa_id: int) -> bool:
+    """Return True if *soa_id* is the study the section data covers."""
+    meta = _get_soa_metadata(soa_id)
+    return meta.get("study_id") == _NARRATIVE_CONTENT_STUDY_ID
 
 
 # ---------------------------------------------------------------------------
@@ -75,12 +91,16 @@ def _siblings_of(
 # ---------------------------------------------------------------------------
 
 
-def build_usdm_narrative_content_items() -> List[Dict[str, Any]]:
+def build_usdm_narrative_content_items(soa_id: int) -> List[Dict[str, Any]]:
     """Return NarrativeContentItem-Output objects for StudyVersion.
 
     Each item carries the XHTML text for a protocol section and is
     referenced by the corresponding NarrativeContent via contentItemId.
+    Returns an empty list for any SOA other than NCT01797120, since
+    section data has only been extracted for that study.
     """
+    if not _soa_has_narrative_content(soa_id):
+        return []
     sections = _load_sections()
     _, nci_ids = _build_ids(sections)
 
@@ -99,12 +119,15 @@ def build_usdm_narrative_content_items() -> List[Dict[str, Any]]:
     return items
 
 
-def build_usdm_narrative_contents() -> List[Dict[str, Any]]:
+def build_usdm_narrative_contents(soa_id: int) -> List[Dict[str, Any]]:
     """Return NarrativeContent-Output objects.
 
-    These are intended for
-    StudyDefinitionDocumentVersion.contents[].
+    These are intended for StudyDefinitionDocumentVersion.contents[].
+    Returns an empty list for any SOA other than NCT01797120, since
+    section data has only been extracted for that study.
     """
+    if not _soa_has_narrative_content(soa_id):
+        return []
     sections = _load_sections()
     nc_ids, nci_ids = _build_ids(sections)
 
@@ -151,19 +174,25 @@ def build_usdm_narrative_contents() -> List[Dict[str, Any]]:
 
 
 def build_usdm_study_definition_document(
+    soa_id: int,
     document_version_id: str = "StudyDefinitionDocumentVersion_1",
     document_id: str = "StudyDefinitionDocument_1",
-) -> Dict[str, Any]:
+) -> Optional[Dict[str, Any]]:
     """Return a StudyDefinitionDocument-Output object for Study.documentedBy[].
 
     The document wraps a single StudyDefinitionDocumentVersion whose
-    ``contents`` array holds all NarrativeContent objects.
+    ``contents`` array holds all NarrativeContent objects. Returns
+    None for any SOA other than NCT01797120, since section data has
+    only been extracted for that study.
 
     Args:
+        soa_id: The SOA to build the document for.
         document_version_id: Stable id for the document version entity.
         document_id: Stable id for the document entity.
     """
-    contents = build_usdm_narrative_contents()
+    if not _soa_has_narrative_content(soa_id):
+        return None
+    contents = build_usdm_narrative_contents(soa_id)
 
     version: Dict[str, Any] = {
         "id": document_version_id,
@@ -266,6 +295,12 @@ if __name__ == "__main__":
         ),
     )
     parser.add_argument(
+        "--soa-id",
+        type=int,
+        required=True,
+        help="SOA id to build narrative content for (must be NCT01797120)",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         default="-",
@@ -277,16 +312,18 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     if args.mode == "items":
-        payload = build_usdm_narrative_content_items()
+        payload = build_usdm_narrative_content_items(args.soa_id)
     elif args.mode == "contents":
-        payload = build_usdm_narrative_contents()
+        payload = build_usdm_narrative_contents(args.soa_id)
     elif args.mode == "document":
-        payload = build_usdm_study_definition_document()
+        payload = build_usdm_study_definition_document(args.soa_id)
     else:
         payload = {
-            "narrativeContentItems": build_usdm_narrative_content_items(),
-            "narrativeContents": build_usdm_narrative_contents(),
-            "studyDefinitionDocument": build_usdm_study_definition_document(),
+            "narrativeContentItems": build_usdm_narrative_content_items(args.soa_id),
+            "narrativeContents": build_usdm_narrative_contents(args.soa_id),
+            "studyDefinitionDocument": build_usdm_study_definition_document(
+                args.soa_id
+            ),
         }
 
     text = json.dumps(payload, indent=args.indent, ensure_ascii=False)

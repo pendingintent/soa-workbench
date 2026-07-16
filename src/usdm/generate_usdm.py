@@ -245,15 +245,20 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         "instanceType": "InterventionalStudyDesign",
     }
 
-    # Build narrative content (only available when the data file exists)
+    # Build narrative content (only available for NCT01797120's SOA)
     documented_by = _safe(
         "documentedBy",
-        lambda: [build_usdm_study_definition_document()],
+        lambda: [
+            doc
+            for doc in [build_usdm_study_definition_document(soa_id)]
+            if doc is not None
+        ],
     )
     doc_version_ids = ["StudyDefinitionDocumentVersion_1"] if documented_by else []
     narrative_content_items = _safe(
         "narrativeContentItems",
         build_usdm_narrative_content_items,
+        soa_id,
     )
 
     study_version = {

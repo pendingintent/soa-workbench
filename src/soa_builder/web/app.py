@@ -202,7 +202,9 @@ from .routers.organizations import (
 )
 from .routers.roles import _get_role_type_options, _list_roles
 from .audit import _record_element_audit
-
+from usdm.generate_biomedical_concept_properties import (
+    populate_biomedical_concept_properties_for_all_soas as _bcp_backfill,
+)
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
 from .schemas import (
@@ -337,6 +339,7 @@ _migrate_element_audit_columns()
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
 _migrate_repoint_stale_bc_code_chains()
+_bcp_backfill()
 _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
 _migrate_add_footnote_audit_table()
