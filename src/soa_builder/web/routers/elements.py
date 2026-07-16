@@ -38,6 +38,18 @@ def _get_element_interventions(cur, soa_id: int, element_id: int) -> List[str]:
     return [r[0] for r in cur.fetchall()]
 
 
+def _get_element_interventions_by_element(cur, soa_id: int) -> dict[int, List[str]]:
+    cur.execute(
+        "SELECT element_id, intervention_uid FROM element_intervention"
+        " WHERE soa_id=? ORDER BY element_id, order_index, id",
+        (soa_id,),
+    )
+    by_element: dict[int, List[str]] = {}
+    for element_id, intervention_uid in cur.fetchall():
+        by_element.setdefault(element_id, []).append(intervention_uid)
+    return by_element
+
+
 def _set_element_interventions(
     cur, soa_id: int, element_id: int, intervention_ids: List[str]
 ) -> None:
@@ -67,6 +79,8 @@ def list_elements(soa_id: int):
         " FROM element WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
+    element_rows = cur.fetchall()
+    interventions_by_element = _get_element_interventions_by_element(cur, soa_id)
     rows = [
         {
             "id": r[0],
@@ -77,9 +91,9 @@ def list_elements(soa_id: int):
             "order_index": r[5],
             "testrl": r[6],
             "teenrl": r[7],
-            "intervention_ids": _get_element_interventions(cur, soa_id, r[0]),
+            "intervention_ids": interventions_by_element.get(r[0], []),
         }
-        for r in cur.fetchall()
+        for r in element_rows
     ]
     conn.close()
     return rows
