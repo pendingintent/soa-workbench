@@ -59,3 +59,60 @@ def test_ui_study_timing_with_data():
     assert "My Test Timeline" in resp.text
     assert "My Test Instance" in resp.text
     assert "My Test Timing" in resp.text
+
+
+def test_study_timing_shows_add_timing_form():
+    """The study_timing page renders the Add Timing form and create action."""
+    r = client.post("/soa", json={"name": "Timing Form Visibility Test"})
+    soa_id = r.json()["id"]
+
+    resp = client.get(f"/ui/soa/{soa_id}/study_timing")
+    assert resp.status_code == 200
+    assert "Add Timing" in resp.text
+    assert f"/ui/soa/{soa_id}/timings/create" in resp.text
+
+
+def test_study_timing_shows_save_delete_when_timing_exists():
+    """Save and Delete buttons appear in the timings table when a timing exists."""
+    r = client.post("/soa", json={"name": "Timing Table Buttons Test"})
+    soa_id = r.json()["id"]
+
+    client.post(f"/soa/{soa_id}/timings", json={"name": "Row Timing"})
+
+    resp = client.get(f"/ui/soa/{soa_id}/study_timing")
+    assert resp.status_code == 200
+    assert "Save" in resp.text
+    assert "Delete" in resp.text
+    assert f"/ui/soa/{soa_id}/timings" in resp.text
+
+
+def test_ui_create_timing_from_study_timing_redirects_back():
+    """POSTing the create form with study_timing Referer redirects back there."""
+    r = client.post("/soa", json={"name": "Create Redirect Test"})
+    soa_id = r.json()["id"]
+
+    resp = client.post(
+        f"/ui/soa/{soa_id}/timings/create",
+        data={"name": "Redirect Timing"},
+        headers={"referer": f"http://testserver/ui/soa/{soa_id}/study_timing"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/ui/soa/{soa_id}/study_timing"
+
+
+def test_ui_delete_timing_from_study_timing_redirects_back():
+    """POSTing the delete form with study_timing Referer redirects back there."""
+    r = client.post("/soa", json={"name": "Delete Redirect Test"})
+    soa_id = r.json()["id"]
+
+    t = client.post(f"/soa/{soa_id}/timings", json={"name": "To Be Deleted"}).json()
+    timing_id = t["id"]
+
+    resp = client.post(
+        f"/ui/soa/{soa_id}/timings/{timing_id}/delete",
+        headers={"referer": f"http://testserver/ui/soa/{soa_id}/study_timing"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == f"/ui/soa/{soa_id}/study_timing"

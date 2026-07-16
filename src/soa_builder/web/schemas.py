@@ -169,6 +169,7 @@ class ElementCreate(BaseModel):
     description: Optional[str] = None
     testrl: Optional[str] = None
     teenrl: Optional[str] = None
+    intervention_ids: List[str] = []
 
 
 class ElementUpdate(BaseModel):
@@ -177,6 +178,7 @@ class ElementUpdate(BaseModel):
     description: Optional[str] = None
     testrl: Optional[str] = None
     teenrl: Optional[str] = None
+    intervention_ids: Optional[List[str]] = None
 
 
 class EpochCreate(BaseModel):

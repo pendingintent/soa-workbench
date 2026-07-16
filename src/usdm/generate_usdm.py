@@ -37,6 +37,10 @@ from usdm.generate_study_interventions import build_usdm_study_interventions
 from usdm.generate_estimands import build_usdm_estimands
 from usdm.generate_indications import build_usdm_indications
 from usdm.generate_study_identifiers import build_usdm_study_identifiers
+from usdm.generate_narrative_content import (
+    build_usdm_narrative_content_items,
+    build_usdm_study_definition_document,
+)
 
 logger = logging.getLogger("usdm.generate_usdm")
 
@@ -241,6 +245,22 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         "instanceType": "InterventionalStudyDesign",
     }
 
+    # Build narrative content (only available for NCT01797120's SOA)
+    documented_by = _safe(
+        "documentedBy",
+        lambda: [
+            doc
+            for doc in [build_usdm_study_definition_document(soa_id)]
+            if doc is not None
+        ],
+    )
+    doc_version_ids = ["StudyDefinitionDocumentVersion_1"] if documented_by else []
+    narrative_content_items = _safe(
+        "narrativeContentItems",
+        build_usdm_narrative_content_items,
+        soa_id,
+    )
+
     study_version = {
         "id": "StudyVersion_1",
         "extensionAttributes": [_tool_extension_attribute(tool_uids, timestamp)],
@@ -252,7 +272,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         "referenceIdentifiers": [],
         "studyDesigns": [study_design],
         "titles": build_usdm_titles(soa_id),
-        "documentVersionIds": [],
+        "documentVersionIds": doc_version_ids,
         "dateValues": [],
         "amendments": _safe("amendments", build_usdm_amendments, soa_id),
         "organizations": _safe("organizations", build_usdm_organizations, soa_id),
@@ -263,7 +283,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         "bcSurrogates": _safe("bcSurrogates", build_usdm_bc_surrogates, soa_id),
         "bcCategories": build_usdm_bc_categories(soa_id),
         "eligibilityCriterionItems": [],
-        "narrativeContentItems": [],
+        "narrativeContentItems": narrative_content_items,
         "abbreviations": [],
         "administrableProducts": [],
         "medicalDevices": [],
@@ -275,13 +295,13 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
     }
 
     study = {
-        "id": None,
+        "id": f"Study_{soa_id}",
         "extensionAttributes": [],
         "name": meta["study_id"] or meta["name"] or "",
         "description": _nz(meta["study_description"]),
         "label": _nz(meta["study_label"]),
         "versions": [study_version],
-        "documentedBy": [],
+        "documentedBy": documented_by,
         "instanceType": "Study",
     }
 

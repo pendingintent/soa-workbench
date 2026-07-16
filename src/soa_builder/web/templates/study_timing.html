@@ -15,20 +15,28 @@
   {% include '_schedule_timelines_section.html' %}
 </details>
 
+<hr class="fz-section-divider" />
+
 <details id="study-timing-instances" open class="collapsible">
   <summary>Scheduled Activity Instances</summary>
   {% include '_instances_section.html' %}
 </details>
+
+<hr class="fz-section-divider" />
 
 <details id="study-timing-decision-instances" open class="collapsible">
   <summary>Scheduled Decision Instances</summary>
   {% include '_decision_instances_section.html' %}
 </details>
 
+<hr class="fz-section-divider" />
+
 <details id="study-condition-assignments" open class="collapsible">
   <summary>Condition Assignments</summary>
   {% include '_condition_assignments_section.html' %}
 </details>
+
+<hr class="fz-section-divider" />
 
 <details id="study-timing-timings" open class="collapsible">
   <summary>Timings</summary>
@@ -47,8 +55,8 @@ function persistSection(sectionId) {
 }
 persistSection('study-timing-schedule-timelines');
 persistSection('study-timing-instances');
-persistSection('study-timing-timings');
 persistSection('study-timing-decision-instances');
 persistSection('study-condition-assignments');
+persistSection('study-timing-timings');
 </script>
 {% endblock %}

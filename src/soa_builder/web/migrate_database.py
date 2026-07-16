@@ -2,6 +2,7 @@ import csv
 import logging
 import os
 import pathlib
+import re
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
@@ -1433,6 +1434,51 @@ def _migrate_matrix_cells_add_superscript():
         conn.close()
     except Exception as e:
         logger.warning("matrix_cells superscript migration failed: %s", e)
+
+
+def _migrate_activity_add_superscript():
+    """Add superscript TEXT column to activity if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(activity)")
+        if "superscript" not in {r[1] for r in cur.fetchall()}:
+            cur.execute("ALTER TABLE activity ADD COLUMN superscript TEXT")
+            conn.commit()
+            logger.info("Added superscript column to activity")
+        conn.close()
+    except Exception as e:
+        logger.warning("activity superscript migration failed: %s", e)
+
+
+def _migrate_epoch_add_superscript():
+    """Add superscript TEXT column to epoch if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(epoch)")
+        if "superscript" not in {r[1] for r in cur.fetchall()}:
+            cur.execute("ALTER TABLE epoch ADD COLUMN superscript TEXT")
+            conn.commit()
+            logger.info("Added superscript column to epoch")
+        conn.close()
+    except Exception as e:
+        logger.warning("epoch superscript migration failed: %s", e)
+
+
+def _migrate_visit_add_superscript():
+    """Add superscript TEXT column to visit if missing."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(visit)")
+        if "superscript" not in {r[1] for r in cur.fetchall()}:
+            cur.execute("ALTER TABLE visit ADD COLUMN superscript TEXT")
+            conn.commit()
+            logger.info("Added superscript column to visit")
+        conn.close()
+    except Exception as e:
+        logger.warning("visit superscript migration failed: %s", e)
 
 
 def _migrate_add_bc_surrogate_table():
@@ -3203,6 +3249,28 @@ def _migrate_add_study_identifier_audit_table():
         logger.warning("_migrate_add_study_identifier_audit_table failed: %s", e)
 
 
+def _migrate_add_element_intervention_table():
+    """Create element_intervention junction table for StudyElement ↔ StudyIntervention."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS element_intervention ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "soa_id INTEGER NOT NULL,"
+            "element_id INTEGER NOT NULL,"
+            "intervention_uid TEXT NOT NULL,"
+            "order_index INTEGER,"
+            "UNIQUE(soa_id, element_id, intervention_uid)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_element_intervention_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_element_intervention_table failed: %s", e)
+
+
 def _migrate_soa_add_tool_extension_uids():
     """Create soa_tool_extension table for stable per-SOA USDM tool UIDs.
 
@@ -3250,3 +3318,45 @@ def _migrate_soa_add_tool_extension_uids():
         conn.close()
     except Exception as e:
         logger.warning("_migrate_soa_add_tool_extension_uids failed: %s", e)
+
+
+def _migrate_backfill_crf_href_latest_version():
+    """Rewrite activity_concept_crf.crf_href from the dated-package
+    format to the latest-version format, e.g.:
+      /mdr/specializations/crf/packages/2026-06-30/specializations/TEMP
+      -> /mdr/specializations/crf/specializations/TEMP
+    Idempotent: rows already in the new format are left untouched."""
+    pattern = re.compile(r"/mdr/specializations/crf/packages/[^/]+/specializations/")
+    replacement = "/mdr/specializations/crf/specializations/"
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+            " AND name='activity_concept_crf'"
+        )
+        if not cur.fetchone():
+            conn.close()
+            return
+        cur.execute(
+            "SELECT id, crf_href FROM activity_concept_crf"
+            " WHERE crf_href LIKE '%/mdr/specializations/crf/packages/%'"
+        )
+        rows = cur.fetchall()
+        updated = 0
+        for row_id, href in rows:
+            new_href = pattern.sub(replacement, href)
+            if new_href != href:
+                cur.execute(
+                    "UPDATE activity_concept_crf SET crf_href=? WHERE id=?",
+                    (new_href, row_id),
+                )
+                updated += 1
+        if updated:
+            conn.commit()
+            logger.info(
+                "_migrate_backfill_crf_href_latest_version updated %d rows", updated
+            )
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_backfill_crf_href_latest_version failed: %s", e)

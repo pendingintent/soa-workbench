@@ -17,6 +17,7 @@
   <form hx-post="/ui/soa/{{ soa_id }}/study-interventions-add"
         hx-target="#interventions-container"
         hx-swap="outerHTML"
+        hx-on::after-request="this.reset()"
         class="am-grid-2">
 
     <div class="am-field">

@@ -20,6 +20,12 @@ from ..audit import (
     _record_reason_audit,
     _record_ref_audit,
 )
+from ..codelist_config import (
+    AMENDMENT_IMPACT_TYPE_CODELIST,
+    AMENDMENT_REASON_CODELIST,
+    GEOGRAPHIC_SCOPE_TYPE_CODELIST,
+    GOVERNANCE_DATE_TYPE_CODELIST,
+)
 from ..db import _connect
 from ..schemas import (
     DocumentContentReferenceCreate,
@@ -45,11 +51,6 @@ logger = logging.getLogger("soa_builder.web.routers.amendments")
 templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "..", "templates")
 )
-
-_REASON_CODELIST = "C207415"
-_IMPACT_TYPE_CODELIST = "C215481"
-_GEO_SCOPE_TYPE_CODELIST = "C207412"
-_GOV_DATE_TYPE_CODELIST = "C207413"
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +204,7 @@ _REGION_SUBMISSION_VALUE = "Region"
 
 def _geo_scope_category(type_code: str) -> Optional[str]:
     """Return 'country', 'region', or None for the given type C-code."""
-    terms = get_ddf_ct_codelist_map(_GEO_SCOPE_TYPE_CODELIST)
+    terms = get_ddf_ct_codelist_map(GEOGRAPHIC_SCOPE_TYPE_CODELIST)
     sv = terms.get(type_code, "")
     if sv.lower() == _COUNTRY_SUBMISSION_VALUE.lower():
         return "country"
@@ -497,10 +498,12 @@ def _load_amendment_context(soa_id: int, amendment_id: int) -> dict:
     ctx = _load_amendment_data(soa_id, amendment_id)
     if not ctx:
         return {}
-    ctx["reason_terms"] = get_ddf_ct_codelist_map(_REASON_CODELIST)
-    ctx["impact_terms"] = get_ddf_ct_codelist_map(_IMPACT_TYPE_CODELIST)
-    ctx["geo_scope_type_terms"] = get_ddf_ct_codelist_map(_GEO_SCOPE_TYPE_CODELIST)
-    ctx["gov_date_type_terms"] = get_ddf_ct_codelist_map(_GOV_DATE_TYPE_CODELIST)
+    ctx["reason_terms"] = get_ddf_ct_codelist_map(AMENDMENT_REASON_CODELIST)
+    ctx["impact_terms"] = get_ddf_ct_codelist_map(AMENDMENT_IMPACT_TYPE_CODELIST)
+    ctx["geo_scope_type_terms"] = get_ddf_ct_codelist_map(
+        GEOGRAPHIC_SCOPE_TYPE_CODELIST
+    )
+    ctx["gov_date_type_terms"] = get_ddf_ct_codelist_map(GOVERNANCE_DATE_TYPE_CODELIST)
     return ctx
 
 
@@ -535,7 +538,9 @@ def create_amendment(soa_id: int, freeze_id: int, body: StudyAmendmentCreate):
 
     amendment_uid = _next_amendment_uid(cur, soa_id)
     reason_uid = _next_reason_uid(cur, soa_id)
-    code_uid = _insert_code(cur, soa_id, body.primary_reason_code, _REASON_CODELIST)
+    code_uid = _insert_code(
+        cur, soa_id, body.primary_reason_code, AMENDMENT_REASON_CODELIST
+    )
 
     cur.execute(
         "INSERT INTO study_amendment "
@@ -738,7 +743,7 @@ def add_secondary_reason(
         conn.close()
         raise HTTPException(404, "Amendment not found")
     reason_uid = _next_reason_uid(cur, soa_id)
-    code_uid = _insert_code(cur, soa_id, body.code, _REASON_CODELIST)
+    code_uid = _insert_code(cur, soa_id, body.code, AMENDMENT_REASON_CODELIST)
     cur.execute(
         "INSERT INTO study_amendment_reason "
         "(soa_id,amendment_uid,reason_uid,role,code_uid,other_reason) "
@@ -821,7 +826,9 @@ def add_impact(soa_id: int, amendment_id: int, body: StudyAmendmentImpactCreate)
         conn.close()
         raise HTTPException(404, "Amendment not found")
     impact_uid = _next_impact_uid(cur, soa_id)
-    type_code_uid = _insert_code(cur, soa_id, body.type_code, _IMPACT_TYPE_CODELIST)
+    type_code_uid = _insert_code(
+        cur, soa_id, body.type_code, AMENDMENT_IMPACT_TYPE_CODELIST
+    )
     cur.execute(
         "INSERT INTO study_amendment_impact "
         "(soa_id,amendment_uid,impact_uid,type_code_uid,text,is_substantial)"
@@ -1036,7 +1043,9 @@ def add_geographic_scope(soa_id: int, amendment_id: int, body: GeographicScopeCr
         conn.close()
         raise HTTPException(404, "Amendment not found")
     scope_uid = _next_scope_uid(cur, soa_id)
-    type_code_uid = _insert_code(cur, soa_id, body.type_code, _GEO_SCOPE_TYPE_CODELIST)
+    type_code_uid = _insert_code(
+        cur, soa_id, body.type_code, GEOGRAPHIC_SCOPE_TYPE_CODELIST
+    )
     cur.execute(
         "INSERT INTO amendment_geographic_scope "
         "(soa_id,amendment_uid,scope_uid,type_code_uid) VALUES (?,?,?,?)",
@@ -1182,7 +1191,9 @@ def add_governance_date(soa_id: int, amendment_id: int, body: GovernanceDateCrea
         conn.close()
         raise HTTPException(404, "Amendment not found")
     date_uid = _next_gov_date_uid(cur, soa_id)
-    type_code_uid = _insert_code(cur, soa_id, body.type_code, _GOV_DATE_TYPE_CODELIST)
+    type_code_uid = _insert_code(
+        cur, soa_id, body.type_code, GOVERNANCE_DATE_TYPE_CODELIST
+    )
     cur.execute(
         "INSERT INTO amendment_governance_date "
         "(soa_id,amendment_uid,date_uid,name,label,description,"
@@ -1286,7 +1297,7 @@ def ui_amendment_edit(request: Request, soa_id: int, freeze_id: int):
     response_class=HTMLResponse,
 )
 def ui_amendment_form_fields(request: Request, soa_id: int):
-    reason_terms = get_ddf_ct_codelist_map(_REASON_CODELIST)
+    reason_terms = get_ddf_ct_codelist_map(AMENDMENT_REASON_CODELIST)
     return templates.TemplateResponse(
         request,
         "amendment_form_fields.html",
@@ -1360,7 +1371,9 @@ def ui_create_amendment(
 
     amendment_uid = _next_amendment_uid(cur, soa_id)
     reason_uid = _next_reason_uid(cur, soa_id)
-    code_uid = _insert_code(cur, soa_id, body.primary_reason_code, _REASON_CODELIST)
+    code_uid = _insert_code(
+        cur, soa_id, body.primary_reason_code, AMENDMENT_REASON_CODELIST
+    )
     cur.execute(
         "INSERT INTO study_amendment "
         "(soa_id,freeze_id,amendment_uid,name,number,summary,label,"
@@ -1426,7 +1439,7 @@ def _ui_reasons_partial(
     ctx = _load_amendment_data(soa_id, amendment_id)
     if not ctx:
         raise HTTPException(404, "Amendment not found")
-    ctx["reason_terms"] = get_ddf_ct_codelist_map(_REASON_CODELIST)
+    ctx["reason_terms"] = get_ddf_ct_codelist_map(AMENDMENT_REASON_CODELIST)
     return templates.TemplateResponse(
         request,
         "amendment_reasons_partial.html",
@@ -1440,7 +1453,7 @@ def _ui_impacts_partial(
     ctx = _load_amendment_data(soa_id, amendment_id)
     if not ctx:
         raise HTTPException(404, "Amendment not found")
-    ctx["impact_terms"] = get_ddf_ct_codelist_map(_IMPACT_TYPE_CODELIST)
+    ctx["impact_terms"] = get_ddf_ct_codelist_map(AMENDMENT_IMPACT_TYPE_CODELIST)
     return templates.TemplateResponse(
         request,
         "amendment_impacts_partial.html",
@@ -1489,7 +1502,7 @@ def ui_add_secondary_reason(
         conn.close()
         raise HTTPException(404, "Amendment not found")
     reason_uid = _next_reason_uid(cur, soa_id)
-    code_uid = _insert_code(cur, soa_id, body.code, _REASON_CODELIST)
+    code_uid = _insert_code(cur, soa_id, body.code, AMENDMENT_REASON_CODELIST)
     cur.execute(
         "INSERT INTO study_amendment_reason "
         "(soa_id,amendment_uid,reason_uid,role,code_uid,other_reason) "
@@ -1581,7 +1594,7 @@ def ui_update_reason(
         conn.close()
         raise HTTPException(404, "Reason not found")
     before = {"reason_uid": row[1], "code_uid": row[2]}
-    _update_code_value(cur, soa_id, row[2], code, _REASON_CODELIST)
+    _update_code_value(cur, soa_id, row[2], code, AMENDMENT_REASON_CODELIST)
     cur.execute(
         "UPDATE study_amendment_reason SET other_reason=? WHERE id=? AND soa_id=?",
         (other_reason.strip() or None, reason_id, soa_id),
@@ -1627,7 +1640,9 @@ def ui_add_impact(
         conn.close()
         raise HTTPException(404, "Amendment not found")
     impact_uid = _next_impact_uid(cur, soa_id)
-    type_code_uid = _insert_code(cur, soa_id, body.type_code, _IMPACT_TYPE_CODELIST)
+    type_code_uid = _insert_code(
+        cur, soa_id, body.type_code, AMENDMENT_IMPACT_TYPE_CODELIST
+    )
     cur.execute(
         "INSERT INTO study_amendment_impact "
         "(soa_id,amendment_uid,impact_uid,type_code_uid,text,is_substantial)"
@@ -1713,7 +1728,7 @@ def ui_update_impact(
         conn.close()
         raise HTTPException(404, "Impact not found")
     before = {"impact_uid": row[1]}
-    _update_code_value(cur, soa_id, row[2], type_code, _IMPACT_TYPE_CODELIST)
+    _update_code_value(cur, soa_id, row[2], type_code, AMENDMENT_IMPACT_TYPE_CODELIST)
     cur.execute(
         "UPDATE study_amendment_impact SET text=?, is_substantial=? "
         "WHERE id=? AND soa_id=?",
@@ -1979,7 +1994,9 @@ def _ui_geo_scopes_partial(
     ctx = _load_amendment_data(soa_id, amendment_id)
     if not ctx:
         raise HTTPException(404, "Amendment not found")
-    ctx["geo_scope_type_terms"] = get_ddf_ct_codelist_map(_GEO_SCOPE_TYPE_CODELIST)
+    ctx["geo_scope_type_terms"] = get_ddf_ct_codelist_map(
+        GEOGRAPHIC_SCOPE_TYPE_CODELIST
+    )
     return templates.TemplateResponse(
         request,
         "amendment_geo_scopes_partial.html",
@@ -1994,13 +2011,15 @@ def _ui_geo_scopes_and_deps(
     ctx = _load_amendment_data(soa_id, amendment_id)
     if not ctx:
         raise HTTPException(404, "Amendment not found")
-    ctx["geo_scope_type_terms"] = get_ddf_ct_codelist_map(_GEO_SCOPE_TYPE_CODELIST)
+    ctx["geo_scope_type_terms"] = get_ddf_ct_codelist_map(
+        GEOGRAPHIC_SCOPE_TYPE_CODELIST
+    )
     geo_html = templates.get_template("amendment_geo_scopes_partial.html").render(ctx)
     ctx["oob"] = True
     enroll_html = templates.get_template("amendment_enrollments_partial.html").render(
         ctx
     )
-    ctx["gov_date_type_terms"] = get_ddf_ct_codelist_map(_GOV_DATE_TYPE_CODELIST)
+    ctx["gov_date_type_terms"] = get_ddf_ct_codelist_map(GOVERNANCE_DATE_TYPE_CODELIST)
     gov_html = templates.get_template("amendment_gov_dates_partial.html").render(ctx)
     return HTMLResponse(geo_html + enroll_html + gov_html)
 
@@ -2024,7 +2043,7 @@ def _ui_gov_dates_partial(
     ctx = _load_amendment_data(soa_id, amendment_id)
     if not ctx:
         raise HTTPException(404, "Amendment not found")
-    ctx["gov_date_type_terms"] = get_ddf_ct_codelist_map(_GOV_DATE_TYPE_CODELIST)
+    ctx["gov_date_type_terms"] = get_ddf_ct_codelist_map(GOVERNANCE_DATE_TYPE_CODELIST)
     return templates.TemplateResponse(
         request,
         "amendment_gov_dates_partial.html",
@@ -2076,7 +2095,7 @@ def ui_add_geographic_scope(
         conn.close()
         raise HTTPException(404, "Amendment not found")
     scope_uid = _next_scope_uid(cur, soa_id)
-    type_code_uid = _insert_code(cur, soa_id, type_code, _GEO_SCOPE_TYPE_CODELIST)
+    type_code_uid = _insert_code(cur, soa_id, type_code, GEOGRAPHIC_SCOPE_TYPE_CODELIST)
     cur.execute(
         "INSERT INTO amendment_geographic_scope "
         "(soa_id,amendment_uid,scope_uid,type_code_uid) VALUES (?,?,?,?)",
@@ -2168,7 +2187,7 @@ def ui_update_geographic_scope(
         conn.close()
         raise HTTPException(404, "Geographic scope not found")
     before = {"scope_uid": row[1]}
-    _update_code_value(cur, soa_id, row[2], type_code, _GEO_SCOPE_TYPE_CODELIST)
+    _update_code_value(cur, soa_id, row[2], type_code, GEOGRAPHIC_SCOPE_TYPE_CODELIST)
     old_location_uid = row[3]
     category = _geo_scope_category(type_code)
     if old_location_uid:
@@ -2402,7 +2421,9 @@ def ui_add_governance_date(
         conn.close()
         raise HTTPException(404, "Amendment not found")
     date_uid = _next_gov_date_uid(cur, soa_id)
-    type_code_uid = _insert_code(cur, soa_id, body.type_code, _GOV_DATE_TYPE_CODELIST)
+    type_code_uid = _insert_code(
+        cur, soa_id, body.type_code, GOVERNANCE_DATE_TYPE_CODELIST
+    )
     cur.execute(
         "INSERT INTO amendment_governance_date "
         "(soa_id,amendment_uid,date_uid,name,label,description,"
@@ -2504,7 +2525,7 @@ def ui_update_governance_date(
         conn.close()
         raise HTTPException(404, "Governance date not found")
     before = {"date_uid": row[1]}
-    _update_code_value(cur, soa_id, row[2], type_code, _GOV_DATE_TYPE_CODELIST)
+    _update_code_value(cur, soa_id, row[2], type_code, GOVERNANCE_DATE_TYPE_CODELIST)
     cur.execute(
         "UPDATE amendment_governance_date "
         "SET name=?, label=?, description=?, date_value=? "

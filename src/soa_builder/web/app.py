@@ -72,6 +72,9 @@ from .migrate_database import (
     _migrate_add_footnote_table,
     _migrate_add_footnote_audit_table,
     _migrate_matrix_cells_add_superscript,
+    _migrate_activity_add_superscript,
+    _migrate_epoch_add_superscript,
+    _migrate_visit_add_superscript,
     _migrate_add_bc_surrogate_table,
     _migrate_add_activity_surrogate_table,
     _migrate_add_bc_surrogate_audit_table,
@@ -140,6 +143,8 @@ from .migrate_database import (
     _migrate_add_study_identifier_table,
     _migrate_add_study_identifier_audit_table,
     _migrate_soa_add_tool_extension_uids,
+    _migrate_add_element_intervention_table,
+    _migrate_backfill_crf_href_latest_version,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -162,6 +167,7 @@ from .routers import cells as cells_router
 from .routers import instances as instances_router
 from .routers import usdm_json as usdm_json_router
 from .routers import tdd as tdd_router
+from .routers import dair as dair_router
 from .routers import decision_instances as decision_instances_router
 from .routers import condition_assignments as condition_assignments_router
 from .routers import footnotes as footnotes_router
@@ -196,7 +202,9 @@ from .routers.organizations import (
 )
 from .routers.roles import _get_role_type_options, _list_roles
 from .audit import _record_element_audit
-
+from usdm.generate_biomedical_concept_properties import (
+    populate_biomedical_concept_properties_for_all_soas as _bcp_backfill,
+)
 
 # Avoid binding visit helpers directly to allow fresh reloads in tests
 from .schemas import (
@@ -270,6 +278,8 @@ _sdtm_specializations_by_code_cache: dict[str, tuple[float, list]] = {}
 # CRF specializations cache (full list)
 _crf_specializations_cache = {"data": None, "fetched_at": 0}
 _CRF_SPECIALIZATIONS_CACHE_TTL = _CONCEPT_CACHE_TTL
+# Per-code CRF specializations cache: {code: (fetched_at, [results])}
+_crf_specializations_by_code_cache: dict[str, tuple[float, list]] = {}
 # Category-specific biomedical concepts cache (per category key)
 _category_concepts_cache: dict[str, dict] = {}
 _CATEGORY_CONCEPTS_CACHE_TTL = _CONCEPT_CACHE_TTL
@@ -329,10 +339,15 @@ _migrate_element_audit_columns()
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
 _migrate_repoint_stale_bc_code_chains()
+if os.environ.get("SOA_EAGER_BCP_POPULATION", "1").strip().lower() not in ("0", "false"):
+    _bcp_backfill()
 _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
 _migrate_add_footnote_audit_table()
 _migrate_matrix_cells_add_superscript()
+_migrate_activity_add_superscript()
+_migrate_epoch_add_superscript()
+_migrate_visit_add_superscript()
 _migrate_add_bc_surrogate_table()
 _migrate_add_activity_surrogate_table()
 _migrate_add_bc_surrogate_audit_table()
@@ -401,6 +416,8 @@ _migrate_add_person_name_fields()
 _migrate_add_study_identifier_table()
 _migrate_add_study_identifier_audit_table()
 _migrate_soa_add_tool_extension_uids()
+_migrate_add_element_intervention_table()
+_migrate_backfill_crf_href_latest_version()
 
 
 # Include routers
@@ -420,6 +437,7 @@ app.include_router(rules_router.router)
 app.include_router(cells_router.router)
 app.include_router(usdm_json_router.router)
 app.include_router(tdd_router.router)
+app.include_router(dair_router.router)
 app.include_router(decision_instances_router.router)
 app.include_router(condition_assignments_router.router)
 app.include_router(footnotes_router.router)
@@ -645,12 +663,15 @@ def _fetch_matrix(soa_id: int):
         )
         for r in cur.fetchall()
     ]
-    # Activities: include optional label/description if schema supports them
+    # Activities: include optional label/description/superscript if schema supports them
     cur.execute("PRAGMA table_info(activity)")
     act_cols = {r[1] for r in cur.fetchall()}
+    has_superscript = "superscript" in act_cols
     if "label" in act_cols and "description" in act_cols:
+        sup_select = ",superscript" if has_superscript else ""
         cur.execute(
-            "SELECT id,name,order_index,activity_uid,label,description FROM activity WHERE soa_id=? ORDER BY order_index",
+            f"SELECT id,name,order_index,activity_uid,label,description{sup_select}"
+            " FROM activity WHERE soa_id=? ORDER BY order_index",
             (soa_id,),
         )
         activities = [
@@ -661,6 +682,7 @@ def _fetch_matrix(soa_id: int):
                 activity_uid=r[3],
                 label=r[4],
                 description=r[5],
+                superscript=r[6] if has_superscript else None,
             )
             for r in cur.fetchall()
         ]
@@ -677,6 +699,7 @@ def _fetch_matrix(soa_id: int):
                 activity_uid=r[3],
                 label=None,
                 description=None,
+                superscript=None,
             )
             for r in cur.fetchall()
         ]
@@ -1387,12 +1410,18 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
     return packages
 
 
-def fetch_crf_specializations(force: bool = False):
+def fetch_crf_specializations(force: bool = False, code: Optional[str] = None):
     """Return list of CRF specializations as [{'title':..., 'href':...}].
 
-    Fetches the latest package from the CRF packages endpoint, then
-    retrieves specializations for that package. Sorted alphabetically
-    by title. Cached with the standard SOA_BUILDER_CACHE_TTL TTL.
+    When `code` is None:
+      - Fetch the full "latest version" CRF specializations list.
+      - Cache the normalized list in _crf_specializations_cache.
+
+    When `code` is provided (e.g. 'C105585'):
+      - Call the generic dataset specializations endpoint with
+        ?biomedicalconcept={code}, which returns a HAL-style document.
+      - Extract the CRF subset from _links.datasetSpecializations.crf.
+      - Do NOT use or update the main cache (code-specific result only).
     """
     now = time.time()
     base_prefix = CDISC_CRF_API_BASE_URL
@@ -1406,7 +1435,85 @@ def fetch_crf_specializations(force: bool = False):
             return base_prefix + h
         return base_prefix + "/" + h
 
-    # Return cached result if still fresh
+    # --------- code-specific branch (use generic endpoint) ----------
+    if code:
+        # Return cached result if still fresh
+        cached = _crf_specializations_by_code_cache.get(code)
+        if (
+            not force
+            and cached is not None
+            and (now - cached[0]) < _CRF_SPECIALIZATIONS_CACHE_TTL
+        ):
+            return cached[1]
+
+        url = (
+            f"{base_prefix}/mdr/specializations/datasetspecializations"
+            f"?biomedicalconcept={code}"
+        )
+        headers = {"Accept": "application/json"}
+        api_key = _get_cdisc_api_key()
+        subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+        if subscription_key:
+            headers["Ocp-Apim-Subscription-Key"] = subscription_key
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+            headers["api-key"] = api_key
+
+        try:
+            resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
+            _crf_specializations_cache["last_status"] = resp.status_code
+            _crf_specializations_cache["last_url"] = url
+            _crf_specializations_cache["last_error"] = None
+            if resp.status_code != 200:
+                _crf_specializations_cache["last_error"] = f"HTTP {resp.status_code}"
+                logger.warning(
+                    "CRF specializations by BC code fetch HTTP %s for code=%s",
+                    resp.status_code,
+                    code,
+                )
+                return []
+            try:
+                data = resp.json()
+            except ValueError:
+                _crf_specializations_cache["last_error"] = "200 but non-JSON response"
+                logger.warning(
+                    "CRF specializations by BC code non-JSON body for code=%s", code
+                )
+                return []
+
+            # Expect HAL-style: _links.datasetSpecializations.crf is list of links
+            packages: list[dict] = []
+            if (
+                isinstance(data, dict)
+                and "_links" in data
+                and isinstance(data["_links"], dict)
+            ):
+                ds = data["_links"].get("datasetSpecializations")
+                if isinstance(ds, dict):
+                    crf_links = ds.get("crf")
+                    if isinstance(crf_links, list):
+                        for link in crf_links:
+                            if not isinstance(link, dict):
+                                continue
+                            href = _normalize_href(link.get("href"))
+                            title = link.get("title") or href
+                            packages.append({"title": title, "href": href})
+            packages.sort(key=lambda p: p.get("title", "").lower())
+            logger.info(
+                "Fetched %d CRF specializations for biomedical concept %s",
+                len(packages),
+                code,
+            )
+            _crf_specializations_by_code_cache[code] = (now, packages)
+            return packages
+        except Exception as e:
+            logger.error(
+                "CRF specializations by BC code fetch error for %s: %s", code, e
+            )
+            _crf_specializations_cache["last_error"] = str(e)
+            return []
+
+    # Cache only applies to full list
     if (
         not force
         and _crf_specializations_cache["data"] is not None
@@ -1451,71 +1558,14 @@ def fetch_crf_specializations(force: bool = False):
         headers["Authorization"] = f"Bearer {api_key}"
         headers["api-key"] = api_key
 
-    # Step 1: fetch package list to determine the latest package href
-    latest_pkg_href = None
+    # Remote full-list branch: latest-version CRF specializations
+    url = f"{base_prefix}/mdr/specializations/crf/specializations"
+    packages: list[dict] = []
     try:
-        pkg_url = f"{base_prefix}/mdr/specializations/crf/packages"
-        pkg_resp = requests.get(pkg_url, headers=headers, timeout=_HTTP_TIMEOUT)
-        _crf_specializations_cache["last_status"] = pkg_resp.status_code
-        _crf_specializations_cache["last_url"] = pkg_url
-        _crf_specializations_cache["last_error"] = None
-        if pkg_resp.status_code == 200:
-            try:
-                pkg_data = pkg_resp.json()
-            except ValueError:
-                pkg_data = None
-            # Collect hrefs only — never titles, which aren't valid URL segments
-            pkg_hrefs = []
-            if isinstance(pkg_data, dict) and "_links" in pkg_data:
-                links = pkg_data["_links"]
-                for key in ("packages", "crf", "items"):
-                    val = links.get(key)
-                    if isinstance(val, list):
-                        for lnk in val:
-                            if isinstance(lnk, dict):
-                                h = lnk.get("href") or ""
-                                if h:
-                                    pkg_hrefs.append(h)
-                        break
-            elif isinstance(pkg_data, list):
-                for item in pkg_data:
-                    if isinstance(item, dict):
-                        h = item.get("href") or item.get("packageDate") or ""
-                        if h:
-                            pkg_hrefs.append(str(h))
-            if pkg_hrefs:
-                # Sort descending — date-based hrefs sort lexicographically
-                pkg_hrefs.sort(reverse=True)
-                latest_pkg_href = pkg_hrefs[0]
-        else:
-            _crf_specializations_cache["last_error"] = (
-                f"Packages HTTP {pkg_resp.status_code}: {pkg_resp.text[:180]}"
-            )
-    except Exception as e:
-        logger.error("CRF packages fetch error: %s", e)
-        _crf_specializations_cache["last_error"] = str(e)
-        _crf_specializations_cache.update(data=[], fetched_at=now)
-        return []
-
-    if not latest_pkg_href:
-        logger.warning("CRF packages list returned no package hrefs")
-        _crf_specializations_cache.update(data=[], fetched_at=now)
-        return []
-
-    # Step 2: fetch specializations for the latest package.
-    # latest_pkg_href may already include "/specializations" as the terminal
-    # segment (the API returns it that way). Strip it before appending so we
-    # never produce ".../specializations/specializations".
-    norm_href = _normalize_href(latest_pkg_href) or latest_pkg_href
-    base_pkg = norm_href.rstrip("/")
-    if base_pkg.endswith("/specializations"):
-        base_pkg = base_pkg[: -len("/specializations")]
-    spec_url = base_pkg + "/specializations"
-    packages = []
-    try:
-        resp = requests.get(spec_url, headers=headers, timeout=_HTTP_TIMEOUT)
+        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         _crf_specializations_cache["last_status"] = resp.status_code
-        _crf_specializations_cache["last_url"] = spec_url
+        _crf_specializations_cache["last_url"] = url
+        _crf_specializations_cache["last_error"] = None
         if resp.status_code == 200:
             try:
                 data = resp.json()
@@ -1557,11 +1607,10 @@ def fetch_crf_specializations(force: bool = False):
         _crf_specializations_cache["last_error"] = str(e)
 
     packages.sort(key=lambda p: (p.get("title") or "").lower())
-    _crf_specializations_cache.update(data=packages, fetched_at=now, spec_url=spec_url)
+    _crf_specializations_cache.update(data=packages, fetched_at=now)
     logger.info(
-        "Fetched %d CRF specializations from remote API (package_href=%s)",
+        "Fetched %d CRF specializations from remote API (latest version list)",
         len(packages),
-        latest_pkg_href,
     )
     return packages
 
@@ -1876,8 +1925,8 @@ def _fetch_enriched_instances(soa_id: int):
     cur.execute(
         """
         SELECT i.id,i.name,i.instance_uid,i.label,i.member_of_timeline,
-        v.name AS encounter_name,v.label AS encounter_label,
-        e.name AS epoch_name,e.epoch_label as epoch_label,
+        v.id AS encounter_id,v.name AS encounter_name,v.label AS encounter_label,v.superscript AS encounter_superscript,
+        e.id AS epoch_id,e.name AS epoch_name,e.epoch_label as epoch_label,e.superscript AS epoch_superscript,
         tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
         FROM instances i
         LEFT JOIN visit v ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id
@@ -1895,14 +1944,18 @@ def _fetch_enriched_instances(soa_id: int):
             "instance_uid": r[2],
             "label": r[3],
             "member_of_timeline": r[4],
-            "encounter_name": r[5],
-            "encounter_label": r[6],
-            "epoch_name": r[7],
-            "epoch_label": r[8],
-            "window_label": r[9],
-            "timing_label": r[10],
-            "timing_name": r[11],
-            "study_day": r[12],
+            "encounter_id": r[5],
+            "encounter_name": r[6],
+            "encounter_label": r[7],
+            "encounter_superscript": r[8],
+            "epoch_id": r[9],
+            "epoch_name": r[10],
+            "epoch_label": r[11],
+            "epoch_superscript": r[12],
+            "window_label": r[13],
+            "timing_label": r[14],
+            "timing_name": r[15],
+            "study_day": r[16],
         }
         for r in cur.fetchall()
     ]
@@ -3153,6 +3206,74 @@ def _render_cell_td(
     )
 
 
+def _render_activity_td(
+    soa_id: int,
+    activity_id: int,
+    display_name: str,
+    superscript: str | None,
+) -> str:
+    """Build the <td> HTML for an activity row header, including superscript and edit button."""
+    soa_id_safe = _html.escape(str(soa_id), quote=True)
+    activity_id_safe = _html.escape(str(activity_id), quote=True)
+    name_safe = _html.escape(display_name or "")
+    sup_html = f"<sup>{_html.escape(superscript)}</sup>" if superscript else ""
+    edit_btn = (
+        f'<span class="sup-edit"'
+        f' hx-get="/ui/soa/{soa_id_safe}/activity_superscript_edit/{activity_id_safe}"'
+        f' hx-swap="outerHTML" hx-target="closest td"'
+        f' onclick="event.stopPropagation()" title="Edit superscript">✎</span>'
+    )
+    return f"<td>{name_safe}{sup_html}{edit_btn}</td>"
+
+
+def _render_encounter_th(
+    soa_id: int,
+    encounter_id: int,
+    display_name: str,
+    superscript: str | None,
+) -> str:
+    """Build the <th> HTML for an encounter column header, including superscript and edit button."""
+    soa_id_safe = _html.escape(str(soa_id), quote=True)
+    encounter_id_safe = _html.escape(str(encounter_id), quote=True)
+    name_safe = _html.escape(display_name or "")
+    sup_html = f"<sup>{_html.escape(superscript)}</sup>" if superscript else ""
+    edit_btn = (
+        f'<span class="sup-edit"'
+        f' hx-get="/ui/soa/{soa_id_safe}/encounter_superscript_edit/{encounter_id_safe}"'
+        f' hx-swap="outerHTML" hx-target="closest th"'
+        f' onclick="event.stopPropagation()" title="Edit superscript">✎</span>'
+    )
+    return (
+        f'<th style="text-align:center;font-size:0.50em;">'
+        f"{name_safe}{sup_html}{edit_btn}</th>"
+    )
+
+
+def _render_epoch_th(
+    soa_id: int,
+    epoch_id: int,
+    display_value: str,
+    colspan: int,
+    superscript: str | None,
+) -> str:
+    """Build the <th> HTML for a (possibly multi-column) epoch header, including superscript and edit button."""
+    soa_id_safe = _html.escape(str(soa_id), quote=True)
+    epoch_id_safe = _html.escape(str(epoch_id), quote=True)
+    colspan_safe = _html.escape(str(colspan), quote=True)
+    value_safe = _html.escape(display_value or "")
+    sup_html = f"<sup>{_html.escape(superscript)}</sup>" if superscript else ""
+    edit_btn = (
+        f'<span class="sup-edit"'
+        f' hx-get="/ui/soa/{soa_id_safe}/epoch_superscript_edit/{epoch_id_safe}?colspan={colspan_safe}"'
+        f' hx-swap="outerHTML" hx-target="closest th"'
+        f' onclick="event.stopPropagation()" title="Edit superscript">✎</span>'
+    )
+    return (
+        f'<th style="text-align:center;font-size:0.50em;" colspan="{colspan_safe}">'
+        f"{value_safe}{sup_html}{edit_btn}</th>"
+    )
+
+
 @app.post("/ui/soa/{soa_id}/toggle_cell_instance", response_class=HTMLResponse)
 def ui_toggle_cell_instance(
     request: Request,
@@ -4261,6 +4382,17 @@ def ui_help(request: Request):
     )
 
 
+# UI endpoint for the USDM logical model explorer
+@app.get("/ui/usdm-model-explorer", response_class=HTMLResponse)
+def ui_usdm_model_explorer(request: Request):
+    """Render the USDM logical model explorer page."""
+    return templates.TemplateResponse(
+        request,
+        "usdm_model_explorer.html",
+        {},
+    )
+
+
 # UI endpoint for adding an Activity
 @app.post("/ui/soa/{soa_id}/add_activity", response_class=HTMLResponse)
 def ui_add_activity(request: Request, soa_id: int, name: str = Form(...)):
@@ -4342,6 +4474,7 @@ def ui_create_soa(
 def ui_update_meta(
     request: Request,
     soa_id: int,
+    name: Optional[str] = Form(None),
     study_id: Optional[str] = Form(None),
     study_label: Optional[str] = Form(None),
     study_description: Optional[str] = Form(None),
@@ -4376,8 +4509,10 @@ def ui_update_meta(
             % soa_id
         )
     cur.execute(
-        "UPDATE soa SET study_id=?, study_label=?, study_description=? WHERE id=?",
+        "UPDATE soa SET name=?, study_id=?, study_label=?,"
+        " study_description=? WHERE id=?",
         (
+            (name or "").strip() or None,
             new_study_id,
             (study_label or "").strip() or None,
             (study_description or "").strip() or None,
@@ -4699,7 +4834,9 @@ def ui_edit(request: Request, soa_id: int):
     cur_inst.execute(
         """
         SELECT i.id,i.name,i.instance_uid,i.label,i.member_of_timeline,st.name AS timeline_name,st.label AS timeline_label,
-        v.name AS encounter_name,v.label AS encounter_label,e.name AS epoch_name,e.epoch_label as epoch_label,tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
+        v.id AS encounter_id,v.name AS encounter_name,v.label AS encounter_label,v.superscript AS encounter_superscript,
+        e.id AS epoch_id,e.name AS epoch_name,e.epoch_label as epoch_label,e.superscript AS epoch_superscript,
+        tm.window_label,tm.label AS timing_label,tm.name AS timing_name,tm.value AS study_day
         FROM instances i
         LEFT JOIN schedule_timelines st ON st.schedule_timeline_uid = i.member_of_timeline AND st.soa_id = i.soa_id
         LEFT JOIN visit v ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id
@@ -4719,14 +4856,18 @@ def ui_edit(request: Request, soa_id: int):
             "member_of_timeline": r[4],
             "timeline_name": r[5],
             "timeline_label": r[6],
-            "encounter_name": r[7],
-            "encounter_label": r[8],
-            "epoch_name": r[9],
-            "epoch_label": r[10],
-            "window_label": r[11],
-            "timing_label": r[12],
-            "timing_name": r[13],
-            "study_day": iso_duration_to_days(r[14]),
+            "encounter_id": r[7],
+            "encounter_name": r[8],
+            "encounter_label": r[9],
+            "encounter_superscript": r[10],
+            "epoch_id": r[11],
+            "epoch_name": r[12],
+            "epoch_label": r[13],
+            "epoch_superscript": r[14],
+            "window_label": r[15],
+            "timing_label": r[16],
+            "timing_name": r[17],
+            "study_day": iso_duration_to_days(r[18]),
         }
         for r in cur_inst.fetchall()
     ]
@@ -5129,15 +5270,10 @@ def ui_crf_specializations_list(request: Request):
     last_error = _crf_specializations_cache.get("last_error")
     last_url = _crf_specializations_cache.get("last_url")
     # Extract the /mdr/... path from the resolved specializations URL for display
-    spec_url = _crf_specializations_cache.get("spec_url") or ""
     from urllib.parse import urlparse as _up
 
-    _p = _up(spec_url)
-    spec_path = (
-        _p.path
-        if spec_url
-        else "/mdr/specializations/crf/packages/{package}/specializations"
-    )
+    _p = _up(last_url or "")
+    spec_path = _p.path or "/mdr/specializations/crf/specializations"
     return templates.TemplateResponse(
         request,
         "crf_specializations.html",
@@ -6197,6 +6333,334 @@ def ui_cell_superscript_view(
     sup_val = row[1] if row else None
     return HTMLResponse(
         _render_cell_td(soa_id, instance_id, activity_id, status or "", sup_val)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/activity_superscript_edit/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_activity_superscript_edit(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+):
+    """Return edit-mode <td> for activity superscript inline editing."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT superscript FROM activity WHERE soa_id=? AND id=?",
+        (soa_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Activity not found")
+    sup_val = _html.escape(row[0] or "", quote=True)
+    html = (
+        f'<td class="cell-editing" style="background:#fffde7;">'
+        f'<form style="display:inline;"'
+        f' hx-post="/ui/soa/{soa_id}/activity_superscript/{activity_id}"'
+        f' hx-swap="outerHTML" hx-target="closest td">'
+        f'<input name="superscript" value="{sup_val}" size="5"'
+        f' style="width:45px;font-size:0.8em;" autofocus />'
+        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
+        f"</form>"
+        f'<span hx-get="/ui/soa/{soa_id}/activity_superscript_view/{activity_id}"'
+        f' hx-swap="outerHTML" hx-target="closest td"'
+        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
+        f"</td>"
+    )
+    return HTMLResponse(html)
+
+
+@app.post(
+    "/ui/soa/{soa_id}/activity_superscript/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_activity_superscript_save(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+    superscript: Optional[str] = Form(None),
+):
+    """Save superscript value for an activity and return rendered <td>."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    # Normalise empty string to NULL
+    sup_val = superscript.strip() if superscript else None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE activity SET superscript=? WHERE soa_id=? AND id=?",
+        (sup_val, soa_id, activity_id),
+    )
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(404, "Activity not found")
+    cur.execute(
+        "SELECT name, label, superscript FROM activity WHERE soa_id=? AND id=?",
+        (soa_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    conn.close()
+    name, label, sup_val_db = row
+    display_name = label or name
+    return HTMLResponse(
+        _render_activity_td(soa_id, activity_id, display_name, sup_val_db)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/activity_superscript_view/{activity_id}",
+    response_class=HTMLResponse,
+)
+def ui_activity_superscript_view(
+    request: Request,
+    soa_id: int,
+    activity_id: int,
+):
+    """Return rendered (view-mode) <td> — used for cancel."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name, label, superscript FROM activity WHERE soa_id=? AND id=?",
+        (soa_id, activity_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Activity not found")
+    name, label, sup_val = row
+    display_name = label or name
+    return HTMLResponse(_render_activity_td(soa_id, activity_id, display_name, sup_val))
+
+
+@app.get(
+    "/ui/soa/{soa_id}/encounter_superscript_edit/{encounter_id}",
+    response_class=HTMLResponse,
+)
+def ui_encounter_superscript_edit(
+    request: Request,
+    soa_id: int,
+    encounter_id: int,
+):
+    """Return edit-mode <th> for encounter superscript inline editing."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT superscript FROM visit WHERE soa_id=? AND id=?",
+        (soa_id, encounter_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Encounter not found")
+    sup_val = _html.escape(row[0] or "", quote=True)
+    html = (
+        f'<th class="cell-editing" style="background:#fffde7;">'
+        f'<form style="display:inline;"'
+        f' hx-post="/ui/soa/{soa_id}/encounter_superscript/{encounter_id}"'
+        f' hx-swap="outerHTML" hx-target="closest th">'
+        f'<input name="superscript" value="{sup_val}" size="5"'
+        f' style="width:45px;font-size:0.8em;" autofocus />'
+        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
+        f"</form>"
+        f'<span hx-get="/ui/soa/{soa_id}/encounter_superscript_view/{encounter_id}"'
+        f' hx-swap="outerHTML" hx-target="closest th"'
+        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
+        f"</th>"
+    )
+    return HTMLResponse(html)
+
+
+@app.post(
+    "/ui/soa/{soa_id}/encounter_superscript/{encounter_id}",
+    response_class=HTMLResponse,
+)
+def ui_encounter_superscript_save(
+    request: Request,
+    soa_id: int,
+    encounter_id: int,
+    superscript: Optional[str] = Form(None),
+):
+    """Save superscript value for an encounter (visit) and return rendered <th>."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    sup_val = superscript.strip() if superscript else None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE visit SET superscript=? WHERE soa_id=? AND id=?",
+        (sup_val, soa_id, encounter_id),
+    )
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(404, "Encounter not found")
+    cur.execute(
+        "SELECT name, label, superscript FROM visit WHERE soa_id=? AND id=?",
+        (soa_id, encounter_id),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    conn.close()
+    name, label, sup_val_db = row
+    display_name = label or name
+    return HTMLResponse(
+        _render_encounter_th(soa_id, encounter_id, display_name, sup_val_db)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/encounter_superscript_view/{encounter_id}",
+    response_class=HTMLResponse,
+)
+def ui_encounter_superscript_view(
+    request: Request,
+    soa_id: int,
+    encounter_id: int,
+):
+    """Return rendered (view-mode) <th> — used for cancel."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name, label, superscript FROM visit WHERE soa_id=? AND id=?",
+        (soa_id, encounter_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Encounter not found")
+    name, label, sup_val = row
+    display_name = label or name
+    return HTMLResponse(
+        _render_encounter_th(soa_id, encounter_id, display_name, sup_val)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/epoch_superscript_edit/{epoch_id}",
+    response_class=HTMLResponse,
+)
+def ui_epoch_superscript_edit(
+    request: Request,
+    soa_id: int,
+    epoch_id: int,
+    colspan: int = 1,
+):
+    """Return edit-mode <th> for epoch superscript inline editing.
+
+    ``colspan`` is a render-time pass-through (how many matrix columns
+    the epoch header currently spans) — it is not stored in the
+    database and must be preserved across the edit/save/view swaps so
+    the table stays aligned.
+    """
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT superscript FROM epoch WHERE soa_id=? AND id=?",
+        (soa_id, epoch_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Epoch not found")
+    sup_val = _html.escape(row[0] or "", quote=True)
+    colspan_safe = _html.escape(str(colspan), quote=True)
+    html = (
+        f'<th class="cell-editing" style="background:#fffde7;" colspan="{colspan_safe}">'
+        f'<form style="display:inline;"'
+        f' hx-post="/ui/soa/{soa_id}/epoch_superscript/{epoch_id}"'
+        f' hx-swap="outerHTML" hx-target="closest th">'
+        f'<input type="hidden" name="colspan" value="{colspan_safe}" />'
+        f'<input name="superscript" value="{sup_val}" size="5"'
+        f' style="width:45px;font-size:0.8em;" autofocus />'
+        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
+        f"</form>"
+        f'<span hx-get="/ui/soa/{soa_id}/epoch_superscript_view/{epoch_id}?colspan={colspan_safe}"'
+        f' hx-swap="outerHTML" hx-target="closest th"'
+        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
+        f"</th>"
+    )
+    return HTMLResponse(html)
+
+
+@app.post(
+    "/ui/soa/{soa_id}/epoch_superscript/{epoch_id}",
+    response_class=HTMLResponse,
+)
+def ui_epoch_superscript_save(
+    request: Request,
+    soa_id: int,
+    epoch_id: int,
+    superscript: Optional[str] = Form(None),
+    colspan: int = Form(1),
+):
+    """Save superscript value for an epoch and return rendered <th>."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    sup_val = superscript.strip() if superscript else None
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE epoch SET superscript=? WHERE soa_id=? AND id=?",
+        (sup_val, soa_id, epoch_id),
+    )
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(404, "Epoch not found")
+    cur.execute(
+        "SELECT epoch_label, name, superscript FROM epoch WHERE soa_id=? AND id=?",
+        (soa_id, epoch_id),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    conn.close()
+    epoch_label, name, sup_val_db = row
+    display_value = epoch_label or name
+    return HTMLResponse(
+        _render_epoch_th(soa_id, epoch_id, display_value, colspan, sup_val_db)
+    )
+
+
+@app.get(
+    "/ui/soa/{soa_id}/epoch_superscript_view/{epoch_id}",
+    response_class=HTMLResponse,
+)
+def ui_epoch_superscript_view(
+    request: Request,
+    soa_id: int,
+    epoch_id: int,
+    colspan: int = 1,
+):
+    """Return rendered (view-mode) <th> — used for cancel."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT epoch_label, name, superscript FROM epoch WHERE soa_id=? AND id=?",
+        (soa_id, epoch_id),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(404, "Epoch not found")
+    epoch_label, name, sup_val = row
+    display_value = epoch_label or name
+    return HTMLResponse(
+        _render_epoch_th(soa_id, epoch_id, display_value, colspan, sup_val)
     )
 
 

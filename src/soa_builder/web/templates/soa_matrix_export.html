@@ -48,7 +48,7 @@
       <tr class="matrix-epoch-row">
         <th></th>
         <th style="text-align:right;font-size:0.50em;">Epoch:-&gt;</th>
-        {% set prev_epoch = namespace(value=None, count=0) %}
+        {% set prev_epoch = namespace(value=None, count=0, superscript=None) %}
         {% for inst in tl_instances %}
           {% set cur_epoch = inst.epoch_label if inst.epoch_label else inst.epoch_name %}
           {% if prev_epoch.value == cur_epoch %}
@@ -56,14 +56,15 @@
           {% else %}
             {% if prev_epoch.value is not none %}
               <th style="text-align:center;font-size:0.50em;"
-                  colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}</th>
+                  colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}{% if prev_epoch.superscript %}<sup>{{ prev_epoch.superscript }}</sup>{% endif %}</th>
             {% endif %}
             {% set prev_epoch.value = cur_epoch %}
             {% set prev_epoch.count = 1 %}
+            {% set prev_epoch.superscript = inst.epoch_superscript %}
           {% endif %}
           {% if loop.last %}
             <th style="text-align:center;font-size:0.50em;"
-                colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}</th>
+                colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}{% if prev_epoch.superscript %}<sup>{{ prev_epoch.superscript }}</sup>{% endif %}</th>
           {% endif %}
         {% endfor %}
       </tr>
@@ -73,7 +74,7 @@
         <th style="text-align:right;font-size:0.50em;">Encounter:-&gt;</th>
         {% for inst in tl_instances %}
         <th style="text-align:center;font-size:0.50em;">
-          {{ inst.encounter_label or inst.encounter_name or '' }}
+          {{ inst.encounter_label or inst.encounter_name or '' }}{% if inst.encounter_superscript %}<sup>{{ inst.encounter_superscript }}</sup>{% endif %}
         </th>
         {% endfor %}
       </tr>
@@ -128,7 +129,7 @@
       <!-- Activity rows -->
       {% for act in activities %}
       <tr>
-        <td>{{ act.label or act.name }}</td>
+        <td>{{ act.label or act.name }}{% if act.superscript %}<sup>{{ act.superscript }}</sup>{% endif %}</td>
         <td>
           {% set act_concepts = concepts_map.get(act.id, []) %}
           {% set act_surrogates = surrogates_map.get(act.id, []) %}

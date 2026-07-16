@@ -4427,9 +4427,13 @@ def main():
     parser.add_argument(
         "--validate",
         nargs="?",
-        const="define.yaml",
+        const="schema/define.yaml",
         default=None,
-        help="Validate output against YAML schema file (default: define.yaml)",
+        help=(
+            "Validate output against YAML schema file "
+            "(default: schema/define.yaml, refreshed via "
+            "scripts/fetch_define_schema.py)"
+        ),
     )
     parser.add_argument(
         "--validation_report",

@@ -1350,7 +1350,7 @@ def ui_crf_options(
     """Return <option> elements for unassigned CRF specializations (lazy load)."""
     from ..app import fetch_crf_specializations as _app_fetch_crf
 
-    available = _app_fetch_crf()
+    available = _app_fetch_crf(code=concept_code)
 
     conn = _connect()
     cur = conn.cursor()

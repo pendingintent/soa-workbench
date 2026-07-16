@@ -31,7 +31,8 @@
             <li><a href="{{ url_for('ui_list_freezes', soa_id=soa_id) }}">Snapshots and Amendments</a></li>
             <li><a href="{{ url_for('ui_usdm_json', soa_id=soa_id) }}">Generate USDM JSON</a></li>
             <li><a href="{{ url_for('ui_tdd', soa_id=soa_id) }}">Generate Trial Design Domains</a></li>
-            <li><a href="{{ url_for('ui_define_json', soa_id=soa_id) }}">Generate Define-JSON</a></li>
+            <li><a href="{{ url_for('ui_define_json', soa_id=soa_id) }}">Generate Data Definition Specification</a></li>
+            <li><a href="{{ url_for('ui_dair', soa_id=soa_id) }}">Generate DAIR</a></li>
           </ul>
         </li>
       </ul>
@@ -65,7 +66,9 @@
           </ul>
         </li>
       </ul>
-      
+
+      <a href="{{ url_for('ui_usdm_model_explorer') }}">🧭 USDM Model Explorer</a>
+
       <a href="/ui/help">🤔 Help</a>
     </div>
     

@@ -6,6 +6,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from soa_builder.web.app import app
+from soa_builder.web.routers import study_interventions as si_router
 
 client = TestClient(app)
 
@@ -325,3 +326,30 @@ def test_delete_intervention_cascades_codes():
 
     resp = client.get(f"/soa/{soa_id}/study-interventions")
     assert resp.json() == []
+
+
+def test_role_options_use_configured_codelist(monkeypatch):
+    """Overriding INTERVENTION_ROLE_CODELIST repoints the Role dropdown."""
+    alt_rows = [
+        {
+            "codelist_code": "C999999",
+            "code": "C1909",
+            "preferred_term": "Alt Investigational Product",
+            "submission_value": "ALT INVESTIGATIONAL PRODUCT",
+        }
+    ]
+    monkeypatch.setattr(si_router, "INTERVENTION_ROLE_CODELIST", "C999999")
+    with patch(
+        "soa_builder.web.routers.study_interventions.get_ddf_ct_rows",
+        return_value={"rows": alt_rows},
+    ):
+        options = si_router._get_role_options()
+    assert options == [{"code": "C1909", "label": "ALT INVESTIGATIONAL PRODUCT"}]
+
+    # The default codelist's rows are no longer matched once overridden.
+    with patch(
+        "soa_builder.web.routers.study_interventions.get_ddf_ct_rows",
+        return_value={"rows": _MOCK_DDF_ROWS},
+    ):
+        options = si_router._get_role_options()
+    assert options == []

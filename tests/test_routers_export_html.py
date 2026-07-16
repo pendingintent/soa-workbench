@@ -119,6 +119,237 @@ def test_export_html_superscript_rendered():
     assert b"<sup>a</sup>" in resp.content
 
 
+def test_export_html_activity_superscript_rendered():
+    """Activity superscripts appear as <sup> tags in the exported HTML."""
+    soa_id = _make_soa("Activity Superscript Export Test")
+    client.post(
+        f"/soa/{soa_id}/instances",
+        json={"name": "Day 1", "instance_uid": "SI_asup_1"},
+    )
+    act_r = client.post(f"/soa/{soa_id}/activities", json={"name": "Vitals"})
+    assert act_r.status_code in (200, 201), act_r.text
+    act_id = act_r.json()["activity_id"]
+
+    client.post(
+        f"/ui/soa/{soa_id}/activity_superscript/{act_id}",
+        data={"superscript": "b"},
+    )
+
+    resp = client.get(f"/soa/{soa_id}/export/html")
+    assert resp.status_code == 200
+    assert b"<sup>b</sup>" in resp.content
+
+
+def test_activity_superscript_edit_save_view():
+    """Full edit/save/cancel cycle for an activity-level superscript."""
+    soa_id = _make_soa("Activity Superscript Cycle Test")
+    act_r = client.post(f"/soa/{soa_id}/activities", json={"name": "ECG"})
+    assert act_r.status_code in (200, 201), act_r.text
+    act_id = act_r.json()["activity_id"]
+
+    # Edit mode returns an inline input form
+    edit_resp = client.get(f"/ui/soa/{soa_id}/activity_superscript_edit/{act_id}")
+    assert edit_resp.status_code == 200
+    assert b'name="superscript"' in edit_resp.content
+
+    # Save persists and returns the rendered <sup> marker
+    save_resp = client.post(
+        f"/ui/soa/{soa_id}/activity_superscript/{act_id}",
+        data={"superscript": "c"},
+    )
+    assert save_resp.status_code == 200
+    assert b"<sup>c</sup>" in save_resp.content
+    assert b"ECG" in save_resp.content
+
+    # View mode (cancel path) re-renders the same persisted value
+    view_resp = client.get(f"/ui/soa/{soa_id}/activity_superscript_view/{act_id}")
+    assert view_resp.status_code == 200
+    assert b"<sup>c</sup>" in view_resp.content
+
+    # Clearing the value removes the marker
+    clear_resp = client.post(
+        f"/ui/soa/{soa_id}/activity_superscript/{act_id}",
+        data={"superscript": ""},
+    )
+    assert clear_resp.status_code == 200
+    assert b"<sup>" not in clear_resp.content
+
+
+def test_activity_superscript_unknown_activity_returns_404():
+    soa_id = _make_soa("Activity Superscript 404 Test")
+    resp = client.post(
+        f"/ui/soa/{soa_id}/activity_superscript/999999",
+        data={"superscript": "a"},
+    )
+    assert resp.status_code == 404
+
+
+def _make_epoch_encounter_instance(soa_name):
+    """Create a SoA with one epoch, one visit, and one instance linking both.
+
+    Returns (soa_id, epoch_id, encounter_id).
+    """
+    soa_id = _make_soa(soa_name)
+
+    epoch_r = client.post(f"/soa/{soa_id}/epochs", json={"name": "Screening"})
+    assert epoch_r.status_code in (200, 201), epoch_r.text
+    epoch_data = epoch_r.json()
+    epoch_id = epoch_data["id"]
+    epoch_uid = epoch_data["epoch_uid"]
+
+    visit_r = client.post(f"/soa/{soa_id}/visits", json={"name": "Visit 1"})
+    assert visit_r.status_code in (200, 201), visit_r.text
+    encounter_id = visit_r.json()["id"]
+    detail_r = client.get(f"/soa/visits/{encounter_id}?soa_id={soa_id}")
+    assert detail_r.status_code == 200
+    encounter_uid = detail_r.json()["encounter_uid"]
+
+    inst_r = client.post(
+        f"/soa/{soa_id}/instances",
+        json={
+            "name": "V1",
+            "instance_uid": "SI_epenc_1",
+            "epoch_uid": epoch_uid,
+            "encounter_uid": encounter_uid,
+        },
+    )
+    assert inst_r.status_code in (200, 201), inst_r.text
+
+    return soa_id, epoch_id, encounter_id
+
+
+def test_epoch_superscript_edit_save_view():
+    """Full edit/save/cancel cycle for an epoch superscript, colspan preserved."""
+    soa_id, epoch_id, _encounter_id = _make_epoch_encounter_instance(
+        "Epoch Superscript Cycle Test"
+    )
+
+    # Edit mode returns an inline input form and preserves colspan
+    edit_resp = client.get(
+        f"/ui/soa/{soa_id}/epoch_superscript_edit/{epoch_id}?colspan=3"
+    )
+    assert edit_resp.status_code == 200
+    assert b'name="superscript"' in edit_resp.content
+    assert b'colspan="3"' in edit_resp.content
+
+    # Save persists and returns the rendered <sup> marker, colspan preserved
+    save_resp = client.post(
+        f"/ui/soa/{soa_id}/epoch_superscript/{epoch_id}",
+        data={"superscript": "1", "colspan": "3"},
+    )
+    assert save_resp.status_code == 200
+    assert b"<sup>1</sup>" in save_resp.content
+    assert b'colspan="3"' in save_resp.content
+    assert b"Screening" in save_resp.content
+
+    # View mode (cancel path) re-renders the same persisted value + colspan
+    view_resp = client.get(
+        f"/ui/soa/{soa_id}/epoch_superscript_view/{epoch_id}?colspan=3"
+    )
+    assert view_resp.status_code == 200
+    assert b"<sup>1</sup>" in view_resp.content
+    assert b'colspan="3"' in view_resp.content
+
+    # Clearing the value removes the marker but keeps colspan
+    clear_resp = client.post(
+        f"/ui/soa/{soa_id}/epoch_superscript/{epoch_id}",
+        data={"superscript": "", "colspan": "3"},
+    )
+    assert clear_resp.status_code == 200
+    assert b"<sup>" not in clear_resp.content
+    assert b'colspan="3"' in clear_resp.content
+
+
+def test_epoch_superscript_unknown_epoch_returns_404():
+    soa_id = _make_soa("Epoch Superscript 404 Test")
+    resp = client.post(
+        f"/ui/soa/{soa_id}/epoch_superscript/999999",
+        data={"superscript": "a"},
+    )
+    assert resp.status_code == 404
+
+
+def test_encounter_superscript_edit_save_view():
+    """Full edit/save/cancel cycle for an encounter (visit) superscript."""
+    soa_id, _epoch_id, encounter_id = _make_epoch_encounter_instance(
+        "Encounter Superscript Cycle Test"
+    )
+
+    edit_resp = client.get(
+        f"/ui/soa/{soa_id}/encounter_superscript_edit/{encounter_id}"
+    )
+    assert edit_resp.status_code == 200
+    assert b'name="superscript"' in edit_resp.content
+
+    save_resp = client.post(
+        f"/ui/soa/{soa_id}/encounter_superscript/{encounter_id}",
+        data={"superscript": "2"},
+    )
+    assert save_resp.status_code == 200
+    assert b"<sup>2</sup>" in save_resp.content
+    assert b"Visit 1" in save_resp.content
+
+    view_resp = client.get(
+        f"/ui/soa/{soa_id}/encounter_superscript_view/{encounter_id}"
+    )
+    assert view_resp.status_code == 200
+    assert b"<sup>2</sup>" in view_resp.content
+
+    clear_resp = client.post(
+        f"/ui/soa/{soa_id}/encounter_superscript/{encounter_id}",
+        data={"superscript": ""},
+    )
+    assert clear_resp.status_code == 200
+    assert b"<sup>" not in clear_resp.content
+
+
+def test_encounter_superscript_unknown_encounter_returns_404():
+    soa_id = _make_soa("Encounter Superscript 404 Test")
+    resp = client.post(
+        f"/ui/soa/{soa_id}/encounter_superscript/999999",
+        data={"superscript": "a"},
+    )
+    assert resp.status_code == 404
+
+
+def test_export_html_epoch_and_encounter_superscript_rendered():
+    """Epoch and encounter superscripts appear as <sup> tags in the exported HTML."""
+    soa_id, epoch_id, encounter_id = _make_epoch_encounter_instance(
+        "Epoch Encounter Export Test"
+    )
+
+    client.post(
+        f"/ui/soa/{soa_id}/epoch_superscript/{epoch_id}",
+        data={"superscript": "x", "colspan": "1"},
+    )
+    client.post(
+        f"/ui/soa/{soa_id}/encounter_superscript/{encounter_id}",
+        data={"superscript": "y"},
+    )
+
+    resp = client.get(f"/soa/{soa_id}/export/html")
+    assert resp.status_code == 200
+    assert b"<sup>x</sup>" in resp.content
+    assert b"<sup>y</sup>" in resp.content
+
+
+def test_edit_page_shows_epoch_and_encounter_edit_affordance():
+    """The matrix edit page renders pencil-icon affordances for epoch/encounter headers."""
+    soa_id, epoch_id, encounter_id = _make_epoch_encounter_instance(
+        "Epoch Encounter Edit Page Test"
+    )
+
+    resp = client.get(f"/ui/soa/{soa_id}/edit")
+    assert resp.status_code == 200
+    assert (
+        f"/ui/soa/{soa_id}/epoch_superscript_edit/{epoch_id}".encode() in resp.content
+    )
+    assert (
+        f"/ui/soa/{soa_id}/encounter_superscript_edit/{encounter_id}".encode()
+        in resp.content
+    )
+
+
 def test_export_html_footnotes_rendered():
     """Footnotes section appears at the bottom of the exported HTML."""
     soa_id = _make_soa("Footnote Test")

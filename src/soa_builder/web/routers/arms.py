@@ -7,6 +7,10 @@ from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_arm_audit, _record_reorder_audit
+from ..codelist_config import (
+    ARM_DATA_ORIGIN_TYPE_CODELIST,
+    ARM_TYPE_CODELIST,
+)
 from ..db import _connect
 from ..schemas import ArmCreate, ArmUpdate
 from ..utils import (
@@ -69,14 +73,14 @@ def ui_list_arms(request: Request, soa_id: int):
     cur = conn.cursor()
     # Map arm.type (code_uid) -> conceptId for Arm type (C174222)
     cur.execute(
-        "SELECT code_uid,code FROM code_association WHERE soa_id=? AND codelist_code='C174222'",
-        (soa_id,),
+        "SELECT code_uid,code FROM code_association WHERE soa_id=? AND codelist_code=?",
+        (soa_id, ARM_TYPE_CODELIST),
     )
     type_rows = cur.fetchall()
     # Map arm.data_origin_type (code_uid) -> conceptId for Arm Data Origin Type (C188727)
     cur.execute(
-        "SELECT code_uid,code FROM code_association WHERE soa_id=? AND codelist_code='C188727'",
-        (soa_id,),
+        "SELECT code_uid,code FROM code_association WHERE soa_id=? AND codelist_code=?",
+        (soa_id, ARM_DATA_ORIGIN_TYPE_CODELIST),
     )
     data_origin_rows = cur.fetchall()
     conn.close()
@@ -186,7 +190,7 @@ def create_arm(soa_id: int, payload: ArmCreate):
                 soa_id,
                 arm_type,
                 arm_type_codelist_table,
-                "C174222",
+                ARM_TYPE_CODELIST,
                 arm_type_value,
             ),
         )
@@ -203,7 +207,7 @@ def create_arm(soa_id: int, payload: ArmCreate):
                 soa_id,
                 arm_data_origin_type,
                 arm_data_origin_type_codelist_table,
-                "C188727",
+                ARM_DATA_ORIGIN_TYPE_CODELIST,
                 arm_data_origin_type_value,
             ),
         )
@@ -324,7 +328,7 @@ def update_arm(soa_id: int, arm_id: int, payload: ArmUpdate):
                     soa_id,
                     type_uid,
                     type_codelist_table,
-                    "C174222",
+                    ARM_TYPE_CODELIST,
                     new_type,
                 ),
             )
@@ -346,7 +350,7 @@ def update_arm(soa_id: int, arm_id: int, payload: ArmUpdate):
                         soa_id,
                         type_uid,
                         type_codelist_table,
-                        "C174222",
+                        ARM_TYPE_CODELIST,
                         new_type,
                     ),
                 )
@@ -368,7 +372,7 @@ def update_arm(soa_id: int, arm_id: int, payload: ArmUpdate):
                     soa_id,
                     data_origin_type_uid,
                     data_origin_type_codelist_table,
-                    "C188727",
+                    ARM_DATA_ORIGIN_TYPE_CODELIST,
                     new_data_origin_type,
                 ),
             )
@@ -389,7 +393,7 @@ def update_arm(soa_id: int, arm_id: int, payload: ArmUpdate):
                         soa_id,
                         data_origin_type_uid,
                         data_origin_type_codelist_table,
-                        "C188727",
+                        ARM_DATA_ORIGIN_TYPE_CODELIST,
                         new_data_origin_type,
                     ),
                 )

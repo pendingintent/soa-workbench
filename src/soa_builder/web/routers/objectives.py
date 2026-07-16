@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_endpoint_audit, _record_objective_audit
+from ..codelist_config import ENDPOINT_LEVEL_CODELIST, OBJECTIVE_LEVEL_CODELIST
 from ..db import _connect
 from ..schemas import ObjectiveCreate, ObjectiveUpdate
 from ..utils import (
@@ -27,8 +28,8 @@ templates = Jinja2Templates(
 
 def _load_objectives_context(soa_id: int) -> dict:
     """Build template context for objectives + endpoints UI page."""
-    c188725_map = get_ddf_ct_codelist_map("C188725")
-    c188726_map = get_ddf_ct_codelist_map("C188726")
+    c188725_map = get_ddf_ct_codelist_map(OBJECTIVE_LEVEL_CODELIST)
+    c188726_map = get_ddf_ct_codelist_map(ENDPOINT_LEVEL_CODELIST)
     objective_level_options = sorted({v for v in c188725_map.values() if v})
     endpoint_level_options = sorted({v for v in c188726_map.values() if v})
 
@@ -36,8 +37,8 @@ def _load_objectives_context(soa_id: int) -> dict:
     cur = conn.cursor()
     cur.execute(
         "SELECT code_uid, code FROM code_association "
-        "WHERE soa_id=? AND codelist_code IN ('C188725','C188726')",
-        (soa_id,),
+        "WHERE soa_id=? AND codelist_code IN (?, ?)",
+        (soa_id, OBJECTIVE_LEVEL_CODELIST, ENDPOINT_LEVEL_CODELIST),
     )
     level_code_to_sv = {
         code_uid: (code_val or "") for code_uid, code_val in cur.fetchall()
@@ -97,9 +98,6 @@ def _load_objectives_context(soa_id: int) -> dict:
         "objective_level_options": objective_level_options,
         "endpoint_level_options": endpoint_level_options,
     }
-
-
-_OBJECTIVE_LEVEL_CODELIST = "C188725"
 
 
 def _next_objective_uid(cur, soa_id: int) -> str:
@@ -166,7 +164,7 @@ def _insert_level_code(cur, soa_id: int, submission_value: str) -> str:
             soa_id,
             code_uid,
             codelist_table,
-            _OBJECTIVE_LEVEL_CODELIST,
+            OBJECTIVE_LEVEL_CODELIST,
             submission_value,
         ),
     )
