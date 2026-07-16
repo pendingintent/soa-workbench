@@ -43,7 +43,7 @@
       </label>
       <select class="am-input" name="base_freeze_id" required>
         {% for f in freezes %}
-        <option value="{{ f.id }}">
+        <option value="{{ f.id }}" {% if loop.last %}selected{% endif %}>
           {{ f.version_label }} ({{ f.created_at[:10] }})
           {% if f.amendment_uid %} — Amendment{% endif %}
         </option>
