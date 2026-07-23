@@ -176,6 +176,27 @@ def get_cdisc_api_key():
     return os.environ.get("CDISC_API_KEY")
 
 
+def get_cdisc_crf_api_key():
+    """Return the API key for the CDISC Library CRF Specializations API.
+
+    Falls back to `CDISC_API_KEY` when `CDISC_CRF_API_KEY` is unset,
+    since the CRF Specializations API may share credentials with the
+    main CDISC Library API in some environments.
+    """
+    return os.environ.get("CDISC_CRF_API_KEY") or os.environ.get("CDISC_API_KEY")
+
+
+def get_cdisc_crf_subscription_key():
+    """Return the subscription key for the CDISC Library CRF API.
+
+    Falls back to `CDISC_SUBSCRIPTION_KEY` when
+    `CDISC_CRF_SUBSCRIPTION_KEY` is unset.
+    """
+    return os.environ.get("CDISC_CRF_SUBSCRIPTION_KEY") or os.environ.get(
+        "CDISC_SUBSCRIPTION_KEY"
+    )
+
+
 def get_concepts_override():
     return os.environ.get("CDISC_CONCEPTS_JSON")
 

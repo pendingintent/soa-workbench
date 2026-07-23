@@ -18,6 +18,8 @@ from ..utils import (
     table_has_columns as _table_has_columns,
     get_next_concept_uid as _get_next_concept_uid,
     get_cdisc_api_key as _get_cdisc_api_key,
+    get_cdisc_crf_api_key as _get_cdisc_crf_api_key,
+    get_cdisc_crf_subscription_key as _get_cdisc_crf_subscription_key,
 )
 import html as _html
 
@@ -1524,8 +1526,8 @@ def ui_crf_detail_from_activity(
     import requests as _requests
     import json as _json
 
-    api_key = _get_cdisc_api_key()
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = _get_cdisc_crf_api_key()
+    subscription_key = _get_cdisc_crf_subscription_key()
     unified_key = subscription_key or api_key
     headers: dict = {}
     if unified_key:

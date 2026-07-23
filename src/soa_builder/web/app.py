@@ -218,6 +218,8 @@ from .schemas import (
 )
 from .utils import (
     get_cdisc_api_key as _get_cdisc_api_key,
+    get_cdisc_crf_api_key as _get_cdisc_crf_api_key,
+    get_cdisc_crf_subscription_key as _get_cdisc_crf_subscription_key,
     get_concepts_override as _get_concepts_override,
     get_next_code_uid as _get_next_code_uid,
     get_next_concept_uid as _get_next_concept_uid,
@@ -339,7 +341,10 @@ _migrate_element_audit_columns()
 _migrate_biomedical_concept_audit()
 _migrate_backfill_biomedical_concept_codes()
 _migrate_repoint_stale_bc_code_chains()
-if os.environ.get("SOA_EAGER_BCP_POPULATION", "1").strip().lower() not in ("0", "false"):
+if os.environ.get("SOA_EAGER_BCP_POPULATION", "1").strip().lower() not in (
+    "0",
+    "false",
+):
     _bcp_backfill()
 _migrate_add_soa_id_indexes()
 _migrate_add_footnote_table()
@@ -1451,8 +1456,8 @@ def fetch_crf_specializations(force: bool = False, code: Optional[str] = None):
             f"?biomedicalconcept={code}"
         )
         headers = {"Accept": "application/json"}
-        api_key = _get_cdisc_api_key()
-        subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+        api_key = _get_cdisc_crf_api_key()
+        subscription_key = _get_cdisc_crf_subscription_key() or api_key
         if subscription_key:
             headers["Ocp-Apim-Subscription-Key"] = subscription_key
         if api_key:
@@ -1550,8 +1555,8 @@ def fetch_crf_specializations(force: bool = False, code: Optional[str] = None):
         return []
 
     headers = {"Accept": "application/json"}
-    api_key = _get_cdisc_api_key()
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY") or api_key
+    api_key = _get_cdisc_crf_api_key()
+    subscription_key = _get_cdisc_crf_subscription_key() or api_key
     if subscription_key:
         headers["Ocp-Apim-Subscription-Key"] = subscription_key
     if api_key:
