@@ -1,7 +1,9 @@
 import logging
 import os
+import time
 from typing import List, Optional
 
+import requests
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -868,3 +870,154 @@ def ui_remove_group_from_activity(
     from .bc_surrogates import _render_concepts_cell
 
     return _render_concepts_cell(request, soa_id, activity_id)
+
+
+# ---------------------------------------------------------------------------
+# BC Grouping Explorer — proxy to the cdisc-biomedical-concept-groupings
+# service. This section is independent of the Custom Concept Groups
+# code above: it makes no changes to ui_list_concept_groups and adds
+# no data to its response.
+# ---------------------------------------------------------------------------
+
+_BC_GROUPING_SERVICE_URL = os.environ.get(
+    "BC_GROUPING_SERVICE_URL", "http://127.0.0.1:8901"
+)
+_BC_GROUPING_REQUEST_TIMEOUT = float(os.environ.get("BC_GROUPING_REQUEST_TIMEOUT", "3"))
+_BC_GROUPING_CACHE_TTL = int(os.environ.get("BC_GROUPING_CACHE_TTL", "300"))
+_BC_GROUPING_PAGE_LIMIT = 500
+
+_bc_grouping_cache = {"data": None, "fetched_at": 0}
+
+
+def _bc_grouping_fetch_all(path: str, limit: int = _BC_GROUPING_PAGE_LIMIT) -> list:
+    """GET every page of a paginated bc-grouping-service list endpoint."""
+    items = []
+    offset = 0
+    while True:
+        resp = requests.get(
+            f"{_BC_GROUPING_SERVICE_URL}{path}",
+            params={"limit": limit, "offset": offset},
+            timeout=_BC_GROUPING_REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        page = resp.json()
+        items.extend(page.get("items", []))
+        offset += limit
+        if offset >= page.get("total", 0):
+            break
+    return items
+
+
+def fetch_bc_grouping_data(force: bool = False) -> dict:
+    """Fetch (and cache) BC/scheme/value/assignment data from the
+    bc-grouping service. Never raises — on any failure, returns
+    available=False with a human-readable detail message.
+    """
+    now = time.time()
+    if (
+        not force
+        and _bc_grouping_cache.get("data")
+        and now - _bc_grouping_cache.get("fetched_at", 0) < _BC_GROUPING_CACHE_TTL
+    ):
+        return _bc_grouping_cache["data"]
+
+    try:
+        data = {
+            "bcs": _bc_grouping_fetch_all("/biomedical-concepts"),
+            "schemes": _bc_grouping_fetch_all("/classification-schemes"),
+            "values": _bc_grouping_fetch_all("/classification-values"),
+            "assignments": _bc_grouping_fetch_all("/classification-assignments"),
+        }
+        result = {"available": True, "detail": "", "data": data}
+    except requests.exceptions.Timeout:
+        result = {
+            "available": False,
+            "detail": (
+                "BC Grouping service timed out. It may be slow to start "
+                "or temporarily unavailable."
+            ),
+            "data": None,
+        }
+    except requests.exceptions.ConnectionError:
+        result = {
+            "available": False,
+            "detail": (
+                "BC Grouping service is not reachable at "
+                f"{_BC_GROUPING_SERVICE_URL}. Make sure it is running "
+                "(python run.py in cdisc-biomedical-concept-groupings)."
+            ),
+            "data": None,
+        }
+    except Exception as exc:
+        logger.warning("BC Grouping service fetch failed: %s", exc)
+        result = {
+            "available": False,
+            "detail": "BC Grouping service request failed. See server logs.",
+            "data": None,
+        }
+
+    if result["available"]:
+        _bc_grouping_cache["data"] = result
+        _bc_grouping_cache["fetched_at"] = now
+    return result
+
+
+@ui_router.get("/ui/concept-groups/bc-status", response_class=HTMLResponse)
+def ui_bc_grouping_status(request: Request):
+    """Return HTML partial indicating BC Grouping service availability."""
+    try:
+        resp = requests.get(
+            f"{_BC_GROUPING_SERVICE_URL}/health",
+            timeout=_BC_GROUPING_REQUEST_TIMEOUT,
+        )
+        if resp.status_code < 500:
+            status, detail = "ok", "BC Grouping service is connected."
+        else:
+            status = "error"
+            detail = f"BC Grouping service returned HTTP {resp.status_code}."
+    except requests.exceptions.Timeout:
+        status, detail = (
+            "error",
+            "BC Grouping service timed out. It may be temporarily unavailable.",
+        )
+    except requests.exceptions.ConnectionError:
+        status, detail = (
+            "error",
+            (f"BC Grouping service is not reachable at {_BC_GROUPING_SERVICE_URL}."),
+        )
+    except Exception as exc:
+        logger.warning("BC Grouping service health check failed: %s", exc)
+        status, detail = (
+            "error",
+            "BC Grouping service check failed. See server logs.",
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "bc_status.html",
+        {"status": status, "detail": detail},
+    )
+
+
+@ui_router.get("/ui/concept-groups/bc-explorer", response_class=HTMLResponse)
+def ui_bc_explorer(request: Request):
+    """Return the BC Grouping Explorer partial (or an unavailable card)."""
+    result = fetch_bc_grouping_data()
+    return templates.TemplateResponse(
+        request,
+        "bc_explorer.html",
+        {
+            "available": result["available"],
+            "detail": result["detail"],
+            "data": result["data"],
+        },
+    )
+
+
+@ui_router.post("/ui/concept-groups/bc-explorer/refresh", response_class=HTMLResponse)
+def ui_bc_explorer_refresh(request: Request):
+    """Force refresh of the BC Grouping cache and redirect back to the list."""
+    fetch_bc_grouping_data(force=True)
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": "/ui/concept-groups"})
+    return HTMLResponse("<script>window.location='/ui/concept-groups';</script>")
