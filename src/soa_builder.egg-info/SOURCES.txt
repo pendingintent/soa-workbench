@@ -19,6 +19,7 @@ src/soa_builder/mcp/__init__.py
 src/soa_builder/mcp/server.py
 src/soa_builder/web/app.py
 src/soa_builder/web/audit.py
+src/soa_builder/web/codelist_config.py
 src/soa_builder/web/db.py
 src/soa_builder/web/initialize_database.py
 src/soa_builder/web/migrate_database.py
@@ -80,6 +81,7 @@ src/usdm/generate_endpoints.py
 src/usdm/generate_estimands.py
 src/usdm/generate_extension_attributes.py
 src/usdm/generate_indications.py
+src/usdm/generate_narrative_content.py
 src/usdm/generate_objectives.py
 src/usdm/generate_organizations.py
 src/usdm/generate_roles.py
@@ -101,6 +103,7 @@ tests/test_categories_cache.py
 tests/test_categories_ui_force.py
 tests/test_cdisc_api_status.py
 tests/test_code_uid_generation.py
+tests/test_codelist_config.py
 tests/test_concept_categories.py
 tests/test_concept_category_force_refresh.py
 tests/test_concepts_by_category_ui_force.py
@@ -111,13 +114,16 @@ tests/test_element_id_generation.py
 tests/test_element_id_monotonic.py
 tests/test_epoch_reorder_audit_api.py
 tests/test_epoch_type_options.py
+tests/test_fetch_crf_specializations.py
 tests/test_fetch_sdtm_specializations.py
 tests/test_generate_biomedical_concept_properties.py
 tests/test_generate_endpoints.py
 tests/test_generate_extension_attributes.py
+tests/test_generate_narrative_content.py
 tests/test_generate_objectives.py
 tests/test_instances_audit.py
 tests/test_mcp_server.py
+tests/test_migrate_backfill_crf_href.py
 tests/test_routers_activities.py
 tests/test_routers_activities_crf.py
 tests/test_routers_amendments.py
