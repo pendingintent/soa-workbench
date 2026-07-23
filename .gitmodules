@@ -1,3 +1,6 @@
 [submodule "cdisc-json-validation"]
 	path = cdisc-json-validation
 	url = https://github.com/pendingintent/cdisc-json-validation.git
+[submodule "cdisc-biomedical-concept-groupings"]
+	path = cdisc-biomedical-concept-groupings
+	url = https://github.com/pendingintent/cdisc-biomedical-concept-groupings.git
