@@ -94,7 +94,7 @@
             {% if ac.concept_group_uid not in _seen_group_uids %}
               {% set _ = _seen_group_uids.append(ac.concept_group_uid) %}
               <div style="font-size:0.75em;color:#2e7d32;font-weight:600;margin:4px 0 1px 0;">
-                [G] {{ ac.group_name or ac.concept_group_uid }}
+                [G] {% if ac.cdisc_scheme_name %}{{ ac.cdisc_scheme_name }}: {% endif %}{{ ac.group_name or ac.concept_group_uid }}
                 {% if not readonly %}
                 <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept-groups/remove"
                       hx-target="#concepts-cell-{{ cell_id_suffix }}"
@@ -142,7 +142,7 @@
           {% if s.concept_group_uid not in _seen_group_uids %}
             {% set _ = _seen_group_uids.append(s.concept_group_uid) %}
             <div style="font-size:0.75em;color:#2e7d32;font-weight:600;margin:4px 0 1px 0;">
-              [G] {{ s.group_name or s.concept_group_uid }}
+              [G] {% if s.cdisc_scheme_name %}{{ s.cdisc_scheme_name }}: {% endif %}{{ s.group_name or s.concept_group_uid }}
               {% if not readonly %}
               <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept-groups/remove"
                     hx-target="#concepts-cell-{{ cell_id_suffix }}"
@@ -263,10 +263,14 @@
             style="display:flex;align-items:center;gap:4px;margin:0;">
         <select name="concept_group_uid" class="cell-add-select" style="background:#f1f8e9;">
           <option value="" disabled selected>Add group...</option>
-          {% for g in (_groups_list | sort(attribute='name')) %}
-            {% if g.concept_group_uid not in _activity_group_uids %}
-              <option value="{{ g.concept_group_uid }}">{{ g.label or g.name }}</option>
-            {% endif %}
+          {% for section in _groups_list %}
+            <optgroup label="{{ section.heading }}">
+              {% for g in (section.groups | sort(attribute='name')) %}
+                {% if g.concept_group_uid not in _activity_group_uids %}
+                  <option value="{{ g.concept_group_uid }}">{{ g.label or g.name }}</option>
+                {% endif %}
+              {% endfor %}
+            </optgroup>
           {% endfor %}
         </select>
         <button type="submit" class="cell-add-btn">+</button>

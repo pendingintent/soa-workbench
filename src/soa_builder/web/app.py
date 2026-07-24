@@ -79,6 +79,7 @@ from .migrate_database import (
     _migrate_add_activity_surrogate_table,
     _migrate_add_bc_surrogate_audit_table,
     _migrate_add_concept_group_table,
+    _migrate_concept_group_add_cdisc_source_columns,
     _migrate_activity_concept_add_concept_group_uid,
     _migrate_surrogate_add_concept_group_uid,
     _migrate_activity_surrogate_add_concept_group_uid,
@@ -357,6 +358,7 @@ _migrate_add_bc_surrogate_table()
 _migrate_add_activity_surrogate_table()
 _migrate_add_bc_surrogate_audit_table()
 _migrate_add_concept_group_table()
+_migrate_concept_group_add_cdisc_source_columns()
 _migrate_activity_concept_add_concept_group_uid()
 _migrate_surrogate_add_concept_group_uid()
 _migrate_activity_surrogate_add_concept_group_uid()
@@ -1644,6 +1646,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("Lifespan CRF specializations preload failed: %s", e)
     try:
+        from .routers.concept_groups import sync_cdisc_concept_groups
+
+        summary = sync_cdisc_concept_groups(force=True)
+        logger.info("Lifespan CDISC concept-group sync: %s", summary)
+    except Exception as e:
+        logger.error("Lifespan CDISC concept-group sync failed: %s", e)
+    try:
         import threading
         from concurrent.futures import ThreadPoolExecutor
 
@@ -2340,17 +2349,65 @@ def _get_activity_concepts(activity_id: int):
     return rows
 
 
-def _get_concept_groups_for_cell(soa_id: int, activity_id: int):
-    """Return (concept_groups, activity_group_uids) for concepts_cell rendering."""
+_CDISC_SCHEME_HEADING_ORDER = [
+    "COA Type",
+    "Collection Method",
+    "Concept Group",
+    "Implementation Domain Code",
+    "Age Category",
+    "Therapeutic Area",
+]
+
+
+def _get_concept_group_sections():
+    """Return concept_group rows organized into "Add group" dropdown
+    sections: one per CDISC classification scheme (in a fixed display
+    order), then "Custom Concept Groups" last. Only non-empty sections
+    are included. Each group dict has {id, concept_group_uid, name,
+    label} — unchanged shape from before CDISC groups existed.
+    """
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, concept_group_uid, name, label FROM concept_group ORDER BY id"
+        "SELECT id, concept_group_uid, name, label, source, cdisc_scheme_name "
+        "FROM concept_group ORDER BY id"
     )
-    concept_groups = [
-        {"id": r[0], "concept_group_uid": r[1], "name": r[2], "label": r[3]}
-        for r in cur.fetchall()
+    rows = cur.fetchall()
+    conn.close()
+
+    by_heading = {}
+    for r in rows:
+        source, cdisc_scheme_name = r[4], r[5]
+        heading = (
+            cdisc_scheme_name
+            if source == "cdisc" and cdisc_scheme_name
+            else "Custom Concept Groups"
+        )
+        by_heading.setdefault(heading, []).append(
+            {"id": r[0], "concept_group_uid": r[1], "name": r[2], "label": r[3]}
+        )
+
+    sections = [
+        {"heading": heading, "groups": by_heading[heading]}
+        for heading in _CDISC_SCHEME_HEADING_ORDER
+        if heading in by_heading
     ]
+    if "Custom Concept Groups" in by_heading:
+        sections.append(
+            {
+                "heading": "Custom Concept Groups",
+                "groups": by_heading["Custom Concept Groups"],
+            }
+        )
+    return sections
+
+
+def _get_concept_groups_for_cell(soa_id: int, activity_id: int):
+    """Return (concept_group_sections, activity_group_uids) for
+    concepts_cell rendering."""
+    concept_groups = _get_concept_group_sections()
+    conn = _connect()
+    cur = conn.cursor()
     has_group = _table_has_columns(cur, "activity_concept", ("concept_group_uid",))
     if has_group:
         cur.execute(
