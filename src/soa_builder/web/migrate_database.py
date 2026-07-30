@@ -1581,6 +1581,36 @@ def _migrate_add_concept_group_table():
         logger.warning("_migrate_add_concept_group_table failed: %s", e)
 
 
+def _migrate_concept_group_add_cdisc_source_columns():
+    """Add columns to concept_group distinguishing CDISC-sourced rows
+    (materialized from the cdisc-biomedical-concept-groupings service)
+    from user-created Custom Concept Groups.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(concept_group)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "source" not in cols:
+            cur.execute(
+                "ALTER TABLE concept_group ADD COLUMN source TEXT DEFAULT 'custom'"
+            )
+            logger.info("Added source column to concept_group")
+        if "cdisc_scheme_id" not in cols:
+            cur.execute("ALTER TABLE concept_group ADD COLUMN cdisc_scheme_id TEXT")
+            logger.info("Added cdisc_scheme_id column to concept_group")
+        if "cdisc_scheme_name" not in cols:
+            cur.execute("ALTER TABLE concept_group ADD COLUMN cdisc_scheme_name TEXT")
+            logger.info("Added cdisc_scheme_name column to concept_group")
+        if "cdisc_value_id" not in cols:
+            cur.execute("ALTER TABLE concept_group ADD COLUMN cdisc_value_id TEXT")
+            logger.info("Added cdisc_value_id column to concept_group")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_concept_group_add_cdisc_source_columns failed: %s", e)
+
+
 def _migrate_activity_concept_add_concept_group_uid():
     """Add concept_group_uid column to activity_concept if missing."""
     try:

@@ -220,3 +220,26 @@ def test_surrogate_appears_in_usdm_output():
     matching = next(s for s in surrogates if s["id"] == sur_uid)
     assert matching["name"] == "PupilDilation"
     assert matching["instanceType"] == "BiomedicalConceptSurrogate"
+
+
+def test_unlinked_surrogate_excluded_from_usdm_output():
+    soa_id = _make_soa()
+    act_id = _make_activity(soa_id, "SoA Activity")
+
+    create_r = client.post(
+        f"/soa/{soa_id}/bc-surrogates", json={"name": "OrphanSurrogate"}
+    )
+    sur_id = create_r.json()["id"]
+    sur_uid = create_r.json()["surrogate_uid"]
+
+    from usdm.generate_bc_surrogates import build_usdm_bc_surrogates
+
+    # Never linked to an activity — must not appear in the USDM export.
+    surrogates = build_usdm_bc_surrogates(soa_id)
+    assert not any(s["id"] == sur_uid for s in surrogates)
+
+    # Link then unlink — still must not appear.
+    client.post(f"/soa/{soa_id}/activities/{act_id}/bc-surrogates/{sur_id}")
+    client.delete(f"/soa/{soa_id}/activities/{act_id}/bc-surrogates/{sur_id}")
+    surrogates = build_usdm_bc_surrogates(soa_id)
+    assert not any(s["id"] == sur_uid for s in surrogates)

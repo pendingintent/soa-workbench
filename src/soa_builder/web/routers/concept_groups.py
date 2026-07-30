@@ -1,7 +1,10 @@
 import logging
 import os
+import re
+import time
 from typing import List, Optional
 
+import requests
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -45,16 +48,37 @@ def _next_group_uid(cur) -> str:
     return f"{prefix}{max_n + 1}"
 
 
-def _fetch_group_row(cur, group_id: int):
-    """Return (id, concept_group_uid, name) or raise 404."""
+def _fetch_group_row(cur, group_id: int, require_custom: bool = False):
+    """Return (id, concept_group_uid, name, source) or raise 404/400.
+
+    When require_custom is True, reject (400) a CDISC-sourced group —
+    those are materialized from the bc-grouping service and must not
+    be edited/deleted through the Custom Concept Groups admin routes
+    (they'd just be overwritten by the next sync anyway).
+    """
     cur.execute(
-        "SELECT id, concept_group_uid, name FROM concept_group WHERE id=?",
+        "SELECT id, concept_group_uid, name, source FROM concept_group WHERE id=?",
         (group_id,),
     )
     row = cur.fetchone()
     if not row:
         raise HTTPException(404, "Group not found")
+    if require_custom and row[3] == "cdisc":
+        raise HTTPException(
+            400,
+            "This group is sourced from CDISC classification data "
+            "and cannot be edited or deleted here.",
+        )
     return row
+
+
+def _fetch_custom_group_uid(cur, group_id: int) -> str:
+    """Return concept_group_uid for a group_id, rejecting CDISC-sourced
+    rows (400) and unknown ids (404). For routes that mutate a group's
+    definition (member concepts/surrogates) rather than assign it.
+    """
+    row = _fetch_group_row(cur, group_id, require_custom=True)
+    return row[1]
 
 
 def _expand_group_to_activity(
@@ -162,7 +186,7 @@ def list_concept_groups():
     cur = conn.cursor()
     cur.execute(
         "SELECT id, concept_group_uid, name, label, description "
-        "FROM concept_group ORDER BY id"
+        "FROM concept_group WHERE source='custom' OR source IS NULL ORDER BY id"
     )
     groups = [
         {
@@ -229,7 +253,7 @@ def update_concept_group(group_id: int, payload: ConceptGroupUpdate):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, concept_group_uid, name, label, description "
+        "SELECT id, concept_group_uid, name, label, description, source "
         "FROM concept_group WHERE id=?",
         (group_id,),
     )
@@ -237,6 +261,13 @@ def update_concept_group(group_id: int, payload: ConceptGroupUpdate):
     if not row:
         conn.close()
         raise HTTPException(404, "Group not found")
+    if row[5] == "cdisc":
+        conn.close()
+        raise HTTPException(
+            400,
+            "This group is sourced from CDISC classification data "
+            "and cannot be edited or deleted here.",
+        )
     new_name = _nz(payload.name) if payload.name is not None else row[2]
     new_label = _nz(payload.label) if payload.label is not None else row[3]
     new_desc = _nz(payload.description) if payload.description is not None else row[4]
@@ -268,7 +299,7 @@ def update_concept_group(group_id: int, payload: ConceptGroupUpdate):
 def delete_concept_group(group_id: int):
     conn = _connect()
     cur = conn.cursor()
-    row = _fetch_group_row(cur, group_id)
+    row = _fetch_group_row(cur, group_id, require_custom=True)
     uid = row[1]
     cur.execute("DELETE FROM concept_group_concept WHERE concept_group_uid=?", (uid,))
     cur.execute("PRAGMA table_info(activity_concept)")
@@ -293,7 +324,7 @@ def delete_concept_group(group_id: int):
 def add_concepts_to_group(group_id: int, payload: ConceptsAdd):
     conn = _connect()
     cur = conn.cursor()
-    row = _fetch_group_row(cur, group_id)
+    row = _fetch_group_row(cur, group_id, require_custom=True)
     uid = row[1]
     from ..app import fetch_biomedical_concepts as _fetch_concepts
 
@@ -324,7 +355,7 @@ def add_concepts_to_group(group_id: int, payload: ConceptsAdd):
 def remove_concept_from_group(group_id: int, concept_code: str):
     conn = _connect()
     cur = conn.cursor()
-    row = _fetch_group_row(cur, group_id)
+    row = _fetch_group_row(cur, group_id, require_custom=True)
     uid = row[1]
     cur.execute(
         "DELETE FROM concept_group_concept "
@@ -349,7 +380,7 @@ def remove_concept_from_group(group_id: int, concept_code: str):
 def add_category_to_group(group_id: int, payload: CategoryAdd):
     conn = _connect()
     cur = conn.cursor()
-    row = _fetch_group_row(cur, group_id)
+    row = _fetch_group_row(cur, group_id, require_custom=True)
     uid = row[1]
     from ..app import (
         fetch_biomedical_concepts_by_category as _fetch_by_cat,
@@ -437,7 +468,7 @@ def ui_list_concept_groups(request: Request):
     cur = conn.cursor()
     cur.execute(
         "SELECT id, concept_group_uid, name, label, description "
-        "FROM concept_group ORDER BY id"
+        "FROM concept_group WHERE source='custom' OR source IS NULL ORDER BY id"
     )
     groups = [
         {
@@ -573,12 +604,8 @@ def ui_update_concept_group(
 ):
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT id, name FROM concept_group WHERE id=?", (group_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Group not found")
-    new_name = name.strip() or row[1]
+    row = _fetch_group_row(cur, group_id, require_custom=True)
+    new_name = name.strip() or row[2]
     cur.execute(
         "UPDATE concept_group SET name=?, label=?, description=? WHERE id=?",
         (new_name, _nz(label), _nz(description), group_id),
@@ -592,14 +619,7 @@ def ui_update_concept_group(
 def ui_delete_concept_group(request: Request, group_id: int):
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT id, concept_group_uid FROM concept_group WHERE id=?",
-        (group_id,),
-    )
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Group not found")
+    row = _fetch_group_row(cur, group_id, require_custom=True)
     uid = row[1]
     cur.execute("DELETE FROM concept_group_concept WHERE concept_group_uid=?", (uid,))
     cur.execute("PRAGMA table_info(activity_concept)")
@@ -629,12 +649,7 @@ def ui_add_concept_to_group(
         raise HTTPException(400, "concept_code required")
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT concept_group_uid FROM concept_group WHERE id=?", (group_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Group not found")
-    uid = row[0]
+    uid = _fetch_custom_group_uid(cur, group_id)
     from ..app import fetch_biomedical_concepts as _fetch_concepts
 
     lookup = {c["code"]: c["title"] for c in _fetch_concepts()}
@@ -660,12 +675,7 @@ def ui_remove_concept_from_group(
 ):
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT concept_group_uid FROM concept_group WHERE id=?", (group_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Group not found")
-    uid = row[0]
+    uid = _fetch_custom_group_uid(cur, group_id)
     cur.execute(
         "DELETE FROM concept_group_concept "
         "WHERE concept_group_uid=? AND concept_code=?",
@@ -687,12 +697,7 @@ def ui_add_category_to_group(
 ):
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT concept_group_uid FROM concept_group WHERE id=?", (group_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Group not found")
-    uid = row[0]
+    uid = _fetch_custom_group_uid(cur, group_id)
     from ..app import (
         fetch_biomedical_concepts_by_category as _fetch_by_cat,
     )
@@ -724,12 +729,7 @@ def ui_add_surrogate_to_group(
 ):
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT concept_group_uid FROM concept_group WHERE id=?", (group_id,))
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(404, "Group not found")
-    group_uid = row[0]
+    group_uid = _fetch_custom_group_uid(cur, group_id)
     cur.execute(
         "UPDATE biomedical_concept_surrogate SET concept_group_uid=? WHERE id=?",
         (group_uid, surrogate_id),
@@ -868,3 +868,283 @@ def ui_remove_group_from_activity(
     from .bc_surrogates import _render_concepts_cell
 
     return _render_concepts_cell(request, soa_id, activity_id)
+
+
+# ---------------------------------------------------------------------------
+# BC Grouping Explorer — proxy to the cdisc-biomedical-concept-groupings
+# service. This section is independent of the Custom Concept Groups
+# code above: it makes no changes to ui_list_concept_groups and adds
+# no data to its response.
+# ---------------------------------------------------------------------------
+
+_BC_GROUPING_SERVICE_URL = os.environ.get(
+    "BC_GROUPING_SERVICE_URL", "http://127.0.0.1:8901"
+)
+_BC_GROUPING_REQUEST_TIMEOUT = float(os.environ.get("BC_GROUPING_REQUEST_TIMEOUT", "3"))
+_BC_GROUPING_CACHE_TTL = int(os.environ.get("BC_GROUPING_CACHE_TTL", "300"))
+_BC_GROUPING_PAGE_LIMIT = 500
+
+_bc_grouping_cache = {"data": None, "fetched_at": 0}
+
+
+def _bc_grouping_fetch_all(path: str, limit: int = _BC_GROUPING_PAGE_LIMIT) -> list:
+    """GET every page of a paginated bc-grouping-service list endpoint."""
+    items = []
+    offset = 0
+    while True:
+        resp = requests.get(
+            f"{_BC_GROUPING_SERVICE_URL}{path}",
+            params={"limit": limit, "offset": offset},
+            timeout=_BC_GROUPING_REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        page = resp.json()
+        items.extend(page.get("items", []))
+        offset += limit
+        if offset >= page.get("total", 0):
+            break
+    return items
+
+
+def fetch_bc_grouping_data(force: bool = False) -> dict:
+    """Fetch (and cache) BC/scheme/value/assignment data from the
+    bc-grouping service. Never raises — on any failure, returns
+    available=False with a human-readable detail message.
+    """
+    now = time.time()
+    if (
+        not force
+        and _bc_grouping_cache.get("data")
+        and now - _bc_grouping_cache.get("fetched_at", 0) < _BC_GROUPING_CACHE_TTL
+    ):
+        return _bc_grouping_cache["data"]
+
+    try:
+        data = {
+            "bcs": _bc_grouping_fetch_all("/biomedical-concepts"),
+            "schemes": _bc_grouping_fetch_all("/classification-schemes"),
+            "values": _bc_grouping_fetch_all("/classification-values"),
+            "assignments": _bc_grouping_fetch_all("/classification-assignments"),
+        }
+        result = {"available": True, "detail": "", "data": data}
+    except requests.exceptions.Timeout:
+        result = {
+            "available": False,
+            "detail": (
+                "BC Grouping service timed out. It may be slow to start "
+                "or temporarily unavailable."
+            ),
+            "data": None,
+        }
+    except requests.exceptions.ConnectionError:
+        result = {
+            "available": False,
+            "detail": (
+                "BC Grouping service is not reachable at "
+                f"{_BC_GROUPING_SERVICE_URL}. Make sure it is running "
+                "(python run.py in cdisc-biomedical-concept-groupings)."
+            ),
+            "data": None,
+        }
+    except Exception as exc:
+        logger.warning("BC Grouping service fetch failed: %s", exc)
+        result = {
+            "available": False,
+            "detail": "BC Grouping service request failed. See server logs.",
+            "data": None,
+        }
+
+    if result["available"]:
+        _bc_grouping_cache["data"] = result
+        _bc_grouping_cache["fetched_at"] = now
+    return result
+
+
+_NCIT_CODE_RE = re.compile(r"^C\d+$")
+
+
+def sync_cdisc_concept_groups(force: bool = False) -> dict:
+    """Materialize CDISC classification values as `concept_group` /
+    `concept_group_concept` rows tagged source='cdisc', so the whole
+    existing group add/remove/display pipeline works for them
+    unchanged. Full idempotent replace-sync scoped strictly to
+    source='cdisc' rows — never touches source='custom' rows.
+
+    Never raises. If the bc-grouping service is unavailable, logs a
+    warning and returns without touching the database — previously
+    synced groups must keep working through a transient outage.
+    """
+    result = fetch_bc_grouping_data(force=force)
+    if not result["available"]:
+        logger.warning(
+            "sync_cdisc_concept_groups: service unavailable (%s), skipping sync",
+            result["detail"],
+        )
+        return {"synced": False, "detail": result["detail"]}
+
+    data = result["data"]
+    bcs_by_id = {bc["bc_id"]: bc for bc in data["bcs"]}
+    schemes_by_id = {s["scheme_id"]: s for s in data["schemes"]}
+    assignments_by_value = {}
+    for a in data["assignments"]:
+        assignments_by_value.setdefault(a["value_id"], []).append(a)
+
+    conn = _connect()
+    cur = conn.cursor()
+    try:
+        current_uids = set()
+        groups_synced = 0
+        members_synced = 0
+
+        for value in data["values"]:
+            scheme = schemes_by_id.get(value["scheme_id"])
+            if not scheme:
+                continue
+            uid = f"cdisc:{value['scheme_id']}:{value['value_id']}"
+            current_uids.add(uid)
+            cur.execute(
+                """INSERT INTO concept_group
+                    (concept_group_uid, name, label, description, source,
+                     cdisc_scheme_id, cdisc_scheme_name, cdisc_value_id)
+                VALUES (?,?,?,?,'cdisc',?,?,?)
+                ON CONFLICT(concept_group_uid) DO UPDATE SET
+                    name=excluded.name,
+                    description=excluded.description,
+                    source='cdisc',
+                    cdisc_scheme_id=excluded.cdisc_scheme_id,
+                    cdisc_scheme_name=excluded.cdisc_scheme_name,
+                    cdisc_value_id=excluded.cdisc_value_id""",
+                (
+                    uid,
+                    value["label"],
+                    None,
+                    value.get("description"),
+                    value["scheme_id"],
+                    scheme["name"],
+                    value["value_id"],
+                ),
+            )
+            groups_synced += 1
+
+            desired_codes = set()
+            for a in assignments_by_value.get(value["value_id"], []):
+                bc = bcs_by_id.get(a["bc_id"])
+                if not bc:
+                    continue
+                ncit_code = bc.get("ncit_code") or ""
+                code = ncit_code if _NCIT_CODE_RE.match(ncit_code) else bc["bc_id"]
+                desired_codes.add(code)
+                cur.execute(
+                    """INSERT INTO concept_group_concept
+                        (concept_group_uid, concept_code, concept_title)
+                    VALUES (?,?,?)
+                    ON CONFLICT(concept_group_uid, concept_code) DO UPDATE SET
+                        concept_title=excluded.concept_title""",
+                    (uid, code, bc["short_name"]),
+                )
+                members_synced += 1
+
+            # Remove members no longer assigned to this value.
+            if desired_codes:
+                placeholders = ",".join("?" for _ in desired_codes)
+                cur.execute(
+                    "DELETE FROM concept_group_concept "
+                    f"WHERE concept_group_uid=? AND concept_code NOT IN ({placeholders})",
+                    (uid, *desired_codes),
+                )
+            else:
+                cur.execute(
+                    "DELETE FROM concept_group_concept WHERE concept_group_uid=?",
+                    (uid,),
+                )
+
+        # Remove CDISC-sourced groups no longer present upstream.
+        cur.execute("SELECT concept_group_uid FROM concept_group WHERE source='cdisc'")
+        existing_cdisc_uids = {r[0] for r in cur.fetchall()}
+        stale_uids = existing_cdisc_uids - current_uids
+        for uid in stale_uids:
+            cur.execute(
+                "DELETE FROM concept_group_concept WHERE concept_group_uid=?", (uid,)
+            )
+            cur.execute(
+                "DELETE FROM concept_group WHERE concept_group_uid=? AND source='cdisc'",
+                (uid,),
+            )
+
+        conn.commit()
+        summary = {
+            "synced": True,
+            "groups": groups_synced,
+            "members": members_synced,
+            "removed": len(stale_uids),
+        }
+        logger.info("sync_cdisc_concept_groups: %s", summary)
+        return summary
+    except Exception as exc:
+        conn.rollback()
+        logger.warning("sync_cdisc_concept_groups failed: %s", exc)
+        return {"synced": False, "detail": str(exc)}
+    finally:
+        conn.close()
+
+
+@ui_router.get("/ui/concept-groups/bc-status", response_class=HTMLResponse)
+def ui_bc_grouping_status(request: Request):
+    """Return HTML partial indicating BC Grouping service availability."""
+    try:
+        resp = requests.get(
+            f"{_BC_GROUPING_SERVICE_URL}/health",
+            timeout=_BC_GROUPING_REQUEST_TIMEOUT,
+        )
+        if resp.status_code < 500:
+            status, detail = "ok", "BC Grouping service is connected."
+        else:
+            status = "error"
+            detail = f"BC Grouping service returned HTTP {resp.status_code}."
+    except requests.exceptions.Timeout:
+        status, detail = (
+            "error",
+            "BC Grouping service timed out. It may be temporarily unavailable.",
+        )
+    except requests.exceptions.ConnectionError:
+        status, detail = (
+            "error",
+            (f"BC Grouping service is not reachable at {_BC_GROUPING_SERVICE_URL}."),
+        )
+    except Exception as exc:
+        logger.warning("BC Grouping service health check failed: %s", exc)
+        status, detail = (
+            "error",
+            "BC Grouping service check failed. See server logs.",
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "bc_status.html",
+        {"status": status, "detail": detail},
+    )
+
+
+@ui_router.get("/ui/concept-groups/bc-explorer", response_class=HTMLResponse)
+def ui_bc_explorer(request: Request):
+    """Return the BC Grouping Explorer partial (or an unavailable card)."""
+    result = fetch_bc_grouping_data()
+    return templates.TemplateResponse(
+        request,
+        "bc_explorer.html",
+        {
+            "available": result["available"],
+            "detail": result["detail"],
+            "data": result["data"],
+        },
+    )
+
+
+@ui_router.post("/ui/concept-groups/bc-explorer/refresh", response_class=HTMLResponse)
+def ui_bc_explorer_refresh(request: Request):
+    """Force refresh of the BC Grouping cache and redirect back to the list."""
+    fetch_bc_grouping_data(force=True)
+    sync_cdisc_concept_groups(force=True)
+    if request.headers.get("HX-Request") == "true":
+        return HTMLResponse("", headers={"HX-Redirect": "/ui/concept-groups"})
+    return HTMLResponse("<script>window.location='/ui/concept-groups';</script>")

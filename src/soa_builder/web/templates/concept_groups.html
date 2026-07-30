@@ -9,8 +9,17 @@
 
 <h2>CDISC Concept Groups</h2>
 
-<div class="fz-create-card fz-create-card-full">
-  <h3>__PLACEHOLDER__</h3>
+<div id="bc-status-notice"
+     hx-get="/ui/concept-groups/bc-status"
+     hx-trigger="load"
+     hx-swap="outerHTML">
+</div>
+
+<div id="bc-explorer-root"
+     hx-get="/ui/concept-groups/bc-explorer"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+  <div class="bc-explorer-loading">Loading BC Grouping Explorer…</div>
 </div>
 
 <hr class="fz-section-divider" />

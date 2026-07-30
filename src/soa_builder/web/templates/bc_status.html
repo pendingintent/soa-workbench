@@ -1,0 +1,14 @@
+{% if status == "ok" %}
+<div class="am-api-notice am-api-notice-ok">
+  <span class="am-api-notice-icon">&#10003;</span>
+  <span>BC Grouping Service is connected.</span>
+</div>
+{% elif status == "error" %}
+<div class="am-api-notice am-api-notice-error">
+  <span class="am-api-notice-icon">&#10007;</span>
+  <div>
+    <strong>BC Grouping Service unavailable.</strong>
+    <span class="am-api-notice-detail">{{ detail }}</span>
+  </div>
+</div>
+{% endif %}
