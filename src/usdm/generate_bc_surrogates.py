@@ -27,8 +27,13 @@ def build_usdm_bc_surrogates(soa_id: int) -> List[Dict[str, Any]]:
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT surrogate_uid, name, label, description, reference "
-        "FROM biomedical_concept_surrogate WHERE soa_id=? ORDER BY id",
+        "SELECT DISTINCT bcs.surrogate_uid, bcs.name, bcs.label, "
+        "bcs.description, bcs.reference "
+        "FROM biomedical_concept_surrogate bcs "
+        "INNER JOIN activity_surrogate asr "
+        "ON bcs.surrogate_uid = asr.surrogate_uid "
+        "AND bcs.soa_id = asr.soa_id "
+        "WHERE bcs.soa_id=? ORDER BY bcs.id",
         (soa_id,),
     )
     rows = cur.fetchall()
