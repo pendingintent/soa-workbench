@@ -1,14 +1,12 @@
 <div id="study-titles-section">
   {% if study_titles %}
-  <ul style="list-style:none;margin:0 0 10px 0;padding:0;">
+  <ul class="am-plain-list">
     {% for t in study_titles %}
-    <li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;
-               background:var(--am-row-bg,#f8f8fa);border-radius:4px;
-               padding:6px 8px;border:1px solid var(--am-border,#ddd);">
-      <div style="flex:1;min-width:0;">
-        <span style="font-size:0.9em;color:var(--am-text);">{{ t.text }}</span>
+    <li class="am-list-row">
+      <div class="am-flex-1 am-minw-0">
+        <span class="am-text am-fz-90">{{ t.text }}</span>
         {% if t.type_decode %}
-        <span style="font-size:0.78em;color:var(--am-text-muted);margin-left:6px;">
+        <span class="am-text-muted am-fz-78 am-ml-6">
           ({{ t.type_decode }})
         </span>
         {% endif %}
@@ -16,7 +14,7 @@
       <form hx-post="/ui/soa/{{ soa_id }}/titles/{{ t.id }}/delete"
             hx-target="#study-titles-section"
             hx-swap="outerHTML"
-            style="flex-shrink:0;">
+            class="am-flex-shrink-0">
         <button type="submit"
                 class="am-btn am-btn-danger am-btn-xs"
                 title="Remove title">
@@ -31,22 +29,18 @@
   <form hx-post="/ui/soa/{{ soa_id }}/titles-add"
         hx-target="#study-titles-section"
         hx-swap="outerHTML"
-        style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">
-    <div style="flex:2;min-width:160px;">
-      <label style="display:block;font-size:0.8em;color:var(--am-text-muted);
-                    margin-bottom:2px;">Text</label>
+        class="fz-form-row" style="gap:6px;">
+    <div class="am-flex-2 am-minw-160">
+      <label class="am-field-label-inline">Text</label>
       <input name="text"
              class="am-input"
-             placeholder="Study title text"
-             style="width:100%;box-sizing:border-box;" />
+             placeholder="Study title text" />
     </div>
-    <div style="flex:1;min-width:140px;">
-      <label style="display:block;font-size:0.8em;color:var(--am-text-muted);
-                    margin-bottom:2px;">Type</label>
+    <div class="am-flex-1 am-minw-140">
+      <label class="am-field-label-inline">Type</label>
       <select name="type_code"
               id="title-type-select-{{ soa_id }}"
               class="am-input"
-              style="width:100%;box-sizing:border-box;"
               onchange="updateTitleDecode(this, 'title-decode-{{ soa_id }}')">
         <option value="">— select type —</option>
         {% for opt in title_type_options %}
@@ -60,7 +54,7 @@
              id="title-decode-{{ soa_id }}"
              value="" />
     </div>
-    <div style="flex-shrink:0;padding-bottom:1px;">
+    <div class="am-flex-shrink-0 am-pb-1">
       <button type="submit"
               class="am-btn am-btn-info am-btn-sm">
         Add Title

@@ -2,7 +2,7 @@
 {% block content %}
 <h2>Objectives &amp; Endpoints for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
@@ -135,7 +135,7 @@
   {% endif %}
 </div>
 
-<h3 class="fz-section-heading" style="margin-top:24px;">Endpoints ({{ endpoints_by_objective.values()|map('length')|sum }})</h3>
+<h3 class="fz-section-heading am-mt-24">Endpoints ({{ endpoints_by_objective.values()|map('length')|sum }})</h3>
 
 <table class="fz-table">
   <tr class="fz-thead-row">

@@ -2,12 +2,12 @@
 {% block content %}
 <h2>DDF Controlled Terminology{% if slug %} &mdash; {{ slug }}{% else %} &mdash; (unavailable){% endif %}</h2>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/" class="am-back-link">&larr; Home</a>
 </div>
 
 {% if error %}
-<div style="padding:8px 12px;margin-bottom:12px;border:1px solid #c33;background:#fee;color:#900;font-size:0.85em;border-radius:4px;">
+<div class="am-legacy-error-notice">
   Error: {{ error }}
 </div>
 {% endif %}
@@ -35,12 +35,12 @@
     </div>
     <div class="am-field">
       <label class="am-field-label">Limit</label>
-      <input type="number" min="1" max="200" name="limit" value="{{ limit }}" class="fz-version-input" style="width:80px;" />
+      <input type="number" min="1" max="200" name="limit" value="{{ limit }}" class="fz-version-input am-w-80" />
     </div>
     <input type="hidden" name="offset" value="0" />
     <button type="submit" class="am-btn am-btn-info">Apply</button>
   </form>
-  <div style="margin-top:8px;">
+  <div class="am-mt-8">
     <form method="get" action="/ui/ddf-ct/terminology" class="am-inline-form">
       <input type="hidden" name="refresh" value="1" />
       <button type="submit" class="am-btn am-btn-slate am-btn-sm">&#x21bb; Refresh from CDISC Library</button>
@@ -48,7 +48,7 @@
   </div>
 </div>
 
-<p style="font-size:0.82em;color:var(--am-text-mid);">
+<p class="am-meta-line">
   Total: {{ total_count }} | Matched: {{ matched_count }} | Showing limit {{ limit }} offset {{ offset }}
 </p>
 
@@ -68,7 +68,7 @@
 {% if matched_count > limit %}
 {% set next_offset = offset + limit %}
 {% if next_offset < matched_count %}
-<div style="margin-top:10px;">
+<div class="am-mt-10">
   <form method="get" action="/ui/ddf-ct/terminology" class="am-inline-form">
     <input type="hidden" name="search" value="{{ search }}" />
     <input type="hidden" name="code" value="{{ code }}" />

@@ -5,24 +5,24 @@
       <th>Name</th>
       <th>Summary</th>
       <th>Rationale</th>
-      <th style="width:1%;white-space:nowrap;">Save</th>
-      <th style="width:1%;white-space:nowrap;">Delete</th>
+      <th class="am-td-shrink">Save</th>
+      <th class="am-td-shrink">Delete</th>
     </tr>
     {% for c in changes %}
     <tr>
       <td class="fz-td-version"><span class="obj-uid">{{ c.change_uid }}</span></td>
       <td><input name="name" value="{{ c.name }}" required class="am-input-compact" /></td>
       <td><textarea name="summary" required rows="2"
-                    class="am-input-compact" style="resize:vertical;">{{ c.summary }}</textarea></td>
+                    class="am-input-compact am-resize-v">{{ c.summary }}</textarea></td>
       <td><textarea name="rationale" required rows="2"
-                    class="am-input-compact" style="resize:vertical;">{{ c.rationale }}</textarea></td>
-      <td style="width:1%;white-space:nowrap;">
+                    class="am-input-compact am-resize-v">{{ c.rationale }}</textarea></td>
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-slate am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/change/{{ c.id }}/update"
                 hx-target="#changes-section" hx-swap="outerHTML"
                 hx-include="closest tr">Save</button>
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-danger am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/change/{{ c.id }}/delete"
                 hx-target="#changes-section" hx-swap="outerHTML"
@@ -30,21 +30,21 @@
       </td>
     </tr>
     <tr>
-      <td colspan="6" style="padding:0 11px 14px 30px; background:var(--am-surface); border-bottom:2px solid var(--am-border-med);">
-        <div style="font-size:0.72em; font-weight:700; color:var(--am-text-mid); text-transform:uppercase; letter-spacing:0.07em; margin:8px 0 4px;">Changed Sections</div>
-        <table class="fz-table" style="font-size:0.82em;">
+      <td colspan="6" class="am-subsection-td-bordered">
+        <div class="am-subsection-header">Changed Sections</div>
+        <table class="fz-table am-fz-82">
           <tr class="fz-thead-row">
             <th>§ Number</th>
             <th>Section Title</th>
             <th>Applies To ID</th>
-            <th style="width:1%;white-space:nowrap;">Delete</th>
+            <th class="am-td-shrink">Delete</th>
           </tr>
           {% for s in c.sections %}
           <tr>
             <td class="fz-td-date">{{ s.section_number }}</td>
             <td>{{ s.section_title }}</td>
             <td class="fz-td-date">{{ s.applies_to_id }}</td>
-            <td style="width:1%;white-space:nowrap;">
+            <td class="am-td-shrink">
               <button type="button" class="am-btn am-btn-danger am-btn-sm"
                       hx-post="/ui/soa/{{ soa_id }}/change/{{ c.id }}/section/{{ s.id }}/delete"
                       hx-target="#changes-section" hx-swap="outerHTML"
@@ -58,14 +58,14 @@
         </table>
         <form hx-post="/ui/soa/{{ soa_id }}/change/{{ c.id }}/sections/add"
               hx-target="#changes-section" hx-swap="outerHTML"
-              style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-end; margin-top:8px; padding-top:8px; border-top:1px dashed var(--am-border-med);">
+              class="am-inline-add-row" style="gap:6px;flex-wrap:wrap;">
           <input type="hidden" name="amendment_id" value="{{ amendment.id }}" />
           <input name="section_number" required placeholder="§ Number"
-                 class="am-input-compact" style="width:90px;" />
+                 class="am-input-compact am-w-90" />
           <input name="section_title" required placeholder="Section title"
-                 class="am-input-compact" style="flex:1; min-width:150px;" />
+                 class="am-input-compact am-flex-1 am-minw-150" />
           <input name="applies_to_id" required placeholder="Applies to ID"
-                 class="am-input-compact" style="width:130px;" />
+                 class="am-input-compact am-w-130" />
           <button type="submit" class="am-btn am-btn-slate am-btn-sm">+ Section</button>
         </form>
       </td>
@@ -75,7 +75,7 @@
     {% endfor %}
   </table>
 
-  <details class="am-add-change-panel" style="margin-top:10px;">
+  <details class="am-add-change-panel am-mt-10">
     <summary class="am-add-change-summary">+ Add Change</summary>
     <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/changes/add"
           hx-target="#changes-section" hx-swap="outerHTML"

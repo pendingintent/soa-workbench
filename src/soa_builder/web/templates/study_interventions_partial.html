@@ -15,10 +15,10 @@
       <td>
         {{ si.name }}
         {% if si.label %}
-        <span style="color:var(--am-text-muted);font-size:0.85em;">({{ si.label }})</span>
+        <span class="am-text-muted am-fz-85">({{ si.label }})</span>
         {% endif %}
         {% if si.description %}
-        <br><small style="color:var(--am-text-mid);">{{ si.description }}</small>
+        <br><small class="am-text-mid">{{ si.description }}</small>
         {% endif %}
       </td>
       <td class="fz-td-date">{{ si.role_decode or '—' }}</td>
@@ -34,7 +34,7 @@
         <form hx-post="/ui/soa/{{ soa_id }}/study-interventions/{{ si.id }}/delete"
               hx-target="#interventions-container"
               hx-swap="outerHTML"
-              style="display:inline;">
+              class="am-inline-form">
           <button type="submit" class="am-btn am-btn-danger am-btn-xs"
                   onclick="return confirm('Delete {{ si.intervention_uid }}?');">&times;</button>
         </form>
@@ -44,14 +44,14 @@
     {# Codes subsection — renders below each intervention row #}
     <tr>
       <td></td>
-      <td colspan="5" style="padding-bottom:12px;">
-        <div style="margin-left:8px;">
-          <p style="font-size:0.85em;font-weight:600;color:var(--am-text-mid);margin:4px 0 6px;">
+      <td colspan="5" class="am-pb-12">
+        <div class="am-ml-8">
+          <p class="am-text-mid am-fz-85 am-fw-600 am-mt-4 am-mb-6">
             Codes ({{ si.codes|length }})
           </p>
 
           {% if si.codes %}
-          <table class="fz-table" style="margin-bottom:8px;">
+          <table class="fz-table am-mb-8">
             <tr class="fz-thead-row">
               <th>UID</th>
               <th>Code</th>
@@ -71,7 +71,7 @@
                 <form hx-post="/ui/soa/{{ soa_id }}/study-interventions/{{ si.id }}/codes/{{ c.id }}/delete"
                       hx-target="#interventions-container"
                       hx-swap="outerHTML"
-                      style="display:inline;">
+                      class="am-inline-form">
                   <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
                 </form>
               </td>
@@ -83,25 +83,25 @@
           <form hx-post="/ui/soa/{{ soa_id }}/study-interventions/{{ si.id }}/codes-add"
                 hx-target="#interventions-container"
                 hx-swap="outerHTML"
-                style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">
-            <div class="am-field" style="min-width:100px;flex:1;">
-              <label class="am-field-label" style="font-size:0.78em;">Code</label>
+                class="fz-form-row" style="gap:6px;">
+            <div class="am-field am-flex-1 am-minw-100">
+              <label class="am-field-label am-fz-78">Code</label>
               <input name="code" class="am-input" placeholder="e.g. C12345" />
             </div>
-            <div class="am-field" style="min-width:140px;flex:2;">
-              <label class="am-field-label" style="font-size:0.78em;">Code System</label>
+            <div class="am-field am-flex-2 am-minw-140">
+              <label class="am-field-label am-fz-78">Code System</label>
               <input name="code_system" class="am-input"
                      placeholder="e.g. http://www.whocc.no/atc" />
             </div>
-            <div class="am-field" style="min-width:80px;flex:1;">
-              <label class="am-field-label" style="font-size:0.78em;">Version</label>
+            <div class="am-field am-flex-1 am-minw-80">
+              <label class="am-field-label am-fz-78">Version</label>
               <input name="code_system_version" class="am-input" placeholder="e.g. 2024" />
             </div>
-            <div class="am-field" style="min-width:120px;flex:2;">
-              <label class="am-field-label" style="font-size:0.78em;">Decode</label>
+            <div class="am-field am-flex-2 am-minw-120">
+              <label class="am-field-label am-fz-78">Decode</label>
               <input name="decode" class="am-input" placeholder="Human-readable term" />
             </div>
-            <div style="padding-bottom:2px;">
+            <div class="am-pb-2">
               <button type="submit" class="am-btn am-btn-slate am-btn-sm">Add Code</button>
             </div>
           </form>

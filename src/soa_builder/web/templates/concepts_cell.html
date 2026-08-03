@@ -6,18 +6,18 @@
 {% set _activity_category_names = activity_category_names if activity_category_names is defined else [] %}
 {% set concept_count = (selected_list | length) + (_surrogate_list | length) %}
 {% set cell_id_suffix = timeline_context ~ '-' ~ activity_id if timeline_context is defined else 'soa-' ~ soa_id ~ '-act-' ~ activity_id %}
-<td class="concepts-cell" id="concepts-cell-{{ cell_id_suffix }}" style="vertical-align:top;">
+<td class="concepts-cell am-cell-top-align" id="concepts-cell-{{ cell_id_suffix }}">
   {% if edit %}
-    <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML" style="margin:0;">
-      <div style="margin-bottom:4px;">
+    <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML" class="am-m-0">
+      <div class="am-mb-4">
         <input type="text" class="concept-search-inline" placeholder="Filter concepts..." />
       </div>
       <select name="concept_codes" multiple size="6" class="concept-select-inline">
         {% for c in concepts %}
           <option value="{{ c.code }}" {% if c.code in selected_codes %}selected{% endif %}>{{ c.title }}</option>
         {% endfor %}
-      </select> 
-      <div style="margin-top:4px;display:flex;gap:6px;">
+      </select>
+      <div class="am-concepts-edit-actions" style="gap:6px;">
         <button type="submit" class="am-btn am-btn-success am-btn-xs">Save</button>
         <button type="button" class="am-btn am-btn-slate am-btn-xs" hx-get="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts_cell" hx-target="#concepts-cell-{{ cell_id_suffix }}" hx-swap="outerHTML">Cancel</button>
       </div>
@@ -39,8 +39,8 @@
       })();
     </script>
   {% else %}
-  <div style="max-width:250px;">
-    
+  <div class="am-maxw-250">
+
     <!-- Clickable header -->
     <div class="concepts-toggle"
       onclick="toggleConcepts('{{ cell_id_suffix }}')">
@@ -52,7 +52,7 @@
     </div>
 
     <!-- Collapsible content -->
-    <div class="concepts-content" id="concepts-content-{{ cell_id_suffix }}" style="display:none;margin-top:4px;">
+    <div class="concepts-content" id="concepts-content-{{ cell_id_suffix }}" style="display:none;">
       {% set _seen_group_uids = [] %}
       {% set _seen_category_names = [] %}
       {% if selected_list %}
@@ -62,30 +62,30 @@
             {# Show category header once per category #}
             {% if ac.bc_category_name not in _seen_category_names %}
               {% set _ = _seen_category_names.append(ac.bc_category_name) %}
-              <div style="font-size:0.75em;color:#4527a0;font-weight:600;margin:4px 0 1px 0;">
+              <div class="am-concept-cat-header">
                 [Cat] {{ ac.bc_category_name }}
                 {% if not readonly %}
                 <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/bc-categories/remove"
                       hx-target="#concepts-cell-{{ cell_id_suffix }}"
                       hx-swap="outerHTML"
-                      style="display:inline;margin:0;">
+                      class="am-inline am-m-0">
                   <input type="hidden" name="category_name" value="{{ ac.bc_category_name }}" />
                   <button type="submit"
-                          style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 2px;font-size:0.9em;"
+                          class="am-remove-all-btn"
                           title="Remove all concepts from this category">×all</button>
                 </form>
                 {% endif %}
               </div>
             {% endif %}
-            <div class="concept-line" style="display:flex;align-items:center;justify-content:space-between;background:#ede7f6;color:#311b92;margin:2px 0 2px 8px;padding:2px 5px;border-radius:3px;font-size:0.8em;">
-              <span class="concept-title" title="{{ ac.code }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ac.title }}</span>
+            <div class="concept-line am-concept-line-cat">
+              <span class="concept-title am-truncate" title="{{ ac.code }}">{{ ac.title }}</span>
               {% if not readonly %}
               <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/remove"
                     hx-target="#concepts-cell-{{ cell_id_suffix }}"
                     hx-swap="outerHTML"
-                    style="margin:0;">
+                    class="am-m-0">
                 <input type="hidden" name="concept_code" value="{{ ac.code }}" />
-                <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
+                <button type="submit" class="am-remove-btn" title="Remove">×</button>
               </form>
               {% endif %}
             </div>
@@ -93,43 +93,43 @@
             {# Show group header once per group #}
             {% if ac.concept_group_uid not in _seen_group_uids %}
               {% set _ = _seen_group_uids.append(ac.concept_group_uid) %}
-              <div style="font-size:0.75em;color:#2e7d32;font-weight:600;margin:4px 0 1px 0;">
+              <div class="am-concept-group-header">
                 [G] {% if ac.cdisc_scheme_name %}{{ ac.cdisc_scheme_name }}: {% endif %}{{ ac.group_name or ac.concept_group_uid }}
                 {% if not readonly %}
                 <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept-groups/remove"
                       hx-target="#concepts-cell-{{ cell_id_suffix }}"
                       hx-swap="outerHTML"
-                      style="display:inline;margin:0;">
+                      class="am-inline am-m-0">
                   <input type="hidden" name="concept_group_uid" value="{{ ac.concept_group_uid }}" />
                   <button type="submit"
-                          style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 2px;font-size:0.9em;"
+                          class="am-remove-all-btn"
                           title="Remove all concepts from this group">×all</button>
                 </form>
                 {% endif %}
               </div>
             {% endif %}
-            <div class="concept-line" style="display:flex;align-items:center;justify-content:space-between;background:#e8f5e9;color:#1b5e20;margin:2px 0 2px 8px;padding:2px 5px;border-radius:3px;font-size:0.8em;">
-              <span class="concept-title" title="{{ ac.code }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ac.title }}</span>
+            <div class="concept-line am-concept-line-group">
+              <span class="concept-title am-truncate" title="{{ ac.code }}">{{ ac.title }}</span>
               {% if not readonly %}
               <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/remove"
                     hx-target="#concepts-cell-{{ cell_id_suffix }}"
                     hx-swap="outerHTML"
-                    style="margin:0;">
+                    class="am-m-0">
                 <input type="hidden" name="concept_code" value="{{ ac.code }}" />
-                <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
+                <button type="submit" class="am-remove-btn" title="Remove">×</button>
               </form>
               {% endif %}
             </div>
           {% else %}
-            <div class="concept-line" style="display:flex;align-items:center;justify-content:space-between;background:#eef;color:#224;margin:2px 0;padding:2px 5px;border-radius:3px;font-size:0.8em;">
-              <span class="concept-title" title="{{ ac.code }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ac.title }}</span>
+            <div class="concept-line am-concept-line-individual">
+              <span class="concept-title am-truncate" title="{{ ac.code }}">{{ ac.title }}</span>
               {% if not readonly %}
               <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/remove"
                     hx-target="#concepts-cell-{{ cell_id_suffix }}"
                     hx-swap="outerHTML"
-                    style="margin:0;">
+                    class="am-m-0">
                 <input type="hidden" name="concept_code" value="{{ ac.code }}" />
-                <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
+                <button type="submit" class="am-remove-btn" title="Remove">×</button>
               </form>
               {% endif %}
             </div>
@@ -141,60 +141,60 @@
           {# Show group header once per surrogate group #}
           {% if s.concept_group_uid not in _seen_group_uids %}
             {% set _ = _seen_group_uids.append(s.concept_group_uid) %}
-            <div style="font-size:0.75em;color:#2e7d32;font-weight:600;margin:4px 0 1px 0;">
+            <div class="am-concept-group-header">
               [G] {% if s.cdisc_scheme_name %}{{ s.cdisc_scheme_name }}: {% endif %}{{ s.group_name or s.concept_group_uid }}
               {% if not readonly %}
               <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept-groups/remove"
                     hx-target="#concepts-cell-{{ cell_id_suffix }}"
                     hx-swap="outerHTML"
-                    style="display:inline;margin:0;">
+                    class="am-inline am-m-0">
                 <input type="hidden" name="concept_group_uid" value="{{ s.concept_group_uid }}" />
                 <button type="submit"
-                        style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 2px;font-size:0.9em;"
+                        class="am-remove-all-btn"
                         title="Remove all concepts from this group">×all</button>
               </form>
               {% endif %}
             </div>
           {% endif %}
-          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff3e0;color:#4e342e;margin:2px 0 2px 8px;padding:2px 5px;border-radius:3px;font-size:0.8em;">
-            <span title="{{ s.surrogate_uid }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">[S] {{ s.label or s.name }}</span>
+          <div class="am-concept-line-surrogate-indented">
+            <span class="am-truncate" title="{{ s.surrogate_uid }}">[S] {{ s.label or s.name }}</span>
             {% if not readonly %}
             <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/bc-surrogates/remove"
                   hx-target="#concepts-cell-{{ cell_id_suffix }}"
                   hx-swap="outerHTML"
-                  style="margin:0;">
+                  class="am-m-0">
               <input type="hidden" name="surrogate_uid" value="{{ s.surrogate_uid }}" />
-              <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
+              <button type="submit" class="am-remove-btn" title="Remove">×</button>
             </form>
             {% endif %}
           </div>
         {% else %}
-          <div style="display:flex;align-items:center;justify-content:space-between;background:#fff3e0;color:#4e342e;margin:2px 0;padding:2px 5px;border-radius:3px;font-size:0.8em;">
-            <span title="{{ s.surrogate_uid }}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">[S] {{ s.label or s.name }}</span>
+          <div class="am-concept-line-surrogate">
+            <span class="am-truncate" title="{{ s.surrogate_uid }}">[S] {{ s.label or s.name }}</span>
             {% if not readonly %}
             <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/bc-surrogates/remove"
                   hx-target="#concepts-cell-{{ cell_id_suffix }}"
                   hx-swap="outerHTML"
-                  style="margin:0;">
+                  class="am-m-0">
               <input type="hidden" name="surrogate_uid" value="{{ s.surrogate_uid }}" />
-              <button type="submit" style="border:none;background:transparent;color:#900;font-weight:bold;cursor:pointer;padding:0 4px;" title="Remove">×</button>
+              <button type="submit" class="am-remove-btn" title="Remove">×</button>
             </form>
             {% endif %}
           </div>
         {% endif %}
       {% endfor %}
       {% if not selected_list and not _surrogate_list %}
-        <div class="no-concepts" style="color:#888;font-size:0.8em;">–</div>
+        <div class="no-concepts">–</div>
       {% endif %}
     </div>
 
     <!-- Add + Bulk controls (hidden in readonly mode) -->
     {% if not readonly %}
-    <div style="margin-top:4px;display:flex;align-items:center;gap:4px;">
+    <div class="am-mt-4 am-add-row-flex" style="gap:4px;">
       <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concepts/add"
             hx-target="#concepts-cell-{{ cell_id_suffix }}"
             hx-swap="outerHTML"
-            style="display:flex;align-items:center;gap:4px;margin:0;">
+            class="am-add-row-flex am-m-0" style="gap:4px;">
         <select name="concept_code" class="cell-add-select">
           <option value="" disabled selected>Add concept...</option>
           {% for c in concepts %}
@@ -219,12 +219,12 @@
     {% set _available_surrogates = surrogates if surrogates is defined else [] %}
     {% set _selected_sur_uids = selected_surrogate_uids if selected_surrogate_uids is defined else [] %}
     {% if not readonly and _available_surrogates %}
-    <div style="margin-top:4px;">
+    <div class="am-mt-4">
       <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/bc-surrogates/add"
             hx-target="#concepts-cell-{{ cell_id_suffix }}"
             hx-swap="outerHTML"
-            style="display:flex;align-items:center;gap:4px;margin:0;">
-        <select name="surrogate_uid" class="cell-add-select" style="background:#fff8f0;">
+            class="am-add-row-flex am-m-0" style="gap:4px;">
+        <select name="surrogate_uid" class="cell-add-select am-select-tint-surrogate">
           <option value="" disabled selected>Add surrogate...</option>
           {% for s in (_available_surrogates | sort(attribute='name')) %}
             {% if s.surrogate_uid not in _selected_sur_uids %}
@@ -237,12 +237,12 @@
     </div>
     {% endif %}
     {% if not readonly and _categories_list %}
-    <div style="margin-top:4px;">
+    <div class="am-mt-4">
       <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/bc-categories/add"
             hx-target="#concepts-cell-{{ cell_id_suffix }}"
             hx-swap="outerHTML"
-            style="display:flex;align-items:center;gap:4px;margin:0;">
-        <select name="category_name" class="cell-add-select" style="background:#ede7f6;">
+            class="am-add-row-flex am-m-0" style="gap:4px;">
+        <select name="category_name" class="cell-add-select am-select-tint-category">
           <option value="" disabled selected>Add category...</option>
           {% for cat in (_categories_list | sort(attribute='title')) %}
             {% if cat.name not in _activity_category_names %}
@@ -256,12 +256,12 @@
     </div>
     {% endif %}
     {% if not readonly and _groups_list %}
-    <div style="margin-top:4px;">
+    <div class="am-mt-4">
       <form hx-post="/ui/soa/{{ soa_id }}/activity/{{ activity_id }}/concept-groups/add"
             hx-target="#concepts-cell-{{ cell_id_suffix }}"
             hx-swap="outerHTML"
-            style="display:flex;align-items:center;gap:4px;margin:0;">
-        <select name="concept_group_uid" class="cell-add-select" style="background:#f1f8e9;">
+            class="am-add-row-flex am-m-0" style="gap:4px;">
+        <select name="concept_group_uid" class="cell-add-select am-select-tint-group">
           <option value="" disabled selected>Add group...</option>
           {% for section in _groups_list %}
             <optgroup label="{{ section.heading }}">

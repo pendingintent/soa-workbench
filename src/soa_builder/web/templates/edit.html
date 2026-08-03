@@ -20,17 +20,17 @@
       <label class="am-field-label" for="study_description">Description</label>
       <textarea id="study_description" name="study_description" rows="3" placeholder="Study Description" class="am-textarea">{{ study_description or '' }}</textarea>
     </div>
-    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <div class="am-field-span am-flex-center-row" style="gap:8px;flex-wrap:wrap;">
       <button type="submit" class="am-btn am-btn-info">Update Metadata</button>
-      <small style="color:#555;">Study ID must be unique and cannot be cleared once set.</small>
+      <small class="am-color-subtle">Study ID must be unique and cannot be cleared once set.</small>
     </div>
   </form>
-  <hr style="margin:14px 0 10px;border:none;border-top:1px solid var(--am-border,#ddd);" />
+  <hr class="am-hr-divider" />
   <div class="am-field">
     <label class="am-field-label">Study Identifiers</label>
   </div>
   {% include "study_identifiers_partial.html" %}
-  <hr style="margin:14px 0 10px;border:none;border-top:1px solid var(--am-border,#ddd);" />
+  <hr class="am-hr-divider" />
   <div class="am-field">
     <label class="am-field-label">Study Titles</label>
   </div>
@@ -38,11 +38,11 @@
 </div>
 
 <div id="modal-host"></div>
-<div class="concepts-global-refresh" style="margin:4px 0 12px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<div class="concepts-global-refresh am-concepts-refresh-row" style="gap:10px;">
   <form hx-post="/ui/soa/{{ soa_id }}/concepts_refresh" class="am-inline-form">
     <button type="submit" class="am-btn am-btn-slate am-btn-sm">&#x21bb; Refresh Biomedical Concepts</button>
   </form>
-  <div style="font-size:0.7em;color:#444;">
+  <div class="am-fetch-meta">
     Last fetch:
     {% if concepts_last_fetch_relative %}
       <span title="{{ concepts_last_fetch_iso }}">{{ concepts_last_fetch_relative }}</span>
@@ -50,7 +50,7 @@
       <span>n/a</span>
     {% endif %}
   </div>
-  <small style="color:#555;">(forces remote re-fetch & cache reset)</small>
+  <small class="am-color-subtle">(forces remote re-fetch & cache reset)</small>
 </div>
 <div class="flex">
   <div>
@@ -69,11 +69,11 @@
         <li class="drag-item" draggable="true" data-id="{{ a.id }}">
           <span class="ord">{{ a.order_index }}</span>. <strong>{{ a.name }}</strong>
           <span class="activity-actions">
-            <form method="post" action="/soa/{{ soa_id }}/activities/{{ a.id }}/update" class="am-inline-form" style="font-size:0.82em;display:inline-flex;gap:4px;align-items:center;">
+            <form method="post" action="/soa/{{ soa_id }}/activities/{{ a.id }}/update" class="am-inline-form am-activity-edit-form" style="gap:4px;">
               <input type="hidden" name="activity_id" value="{{ a.id }}" />
-              <input name="name" value="{{ a.name }}" placeholder="Name" class="am-input-compact" style="width:110px;" />
-              <input name="label" value="{{ a.label or '' }}" placeholder="Label (opt)" class="am-input-compact" style="width:100px;" />
-              <input name="description" value="{{ a.description or '' }}" placeholder="Desc (opt)" class="am-input-compact" style="width:160px;" />
+              <input name="name" value="{{ a.name }}" placeholder="Name" class="am-input-compact am-w-110" />
+              <input name="label" value="{{ a.label or '' }}" placeholder="Label (opt)" class="am-input-compact am-w-100" />
+              <input name="description" value="{{ a.description or '' }}" placeholder="Desc (opt)" class="am-input-compact am-w-160" />
               <button type="submit" class="am-btn am-btn-slate am-btn-xs">Save</button>
             </form>
             <form hx-post="/ui/soa/{{ soa_id }}/delete_activity" hx-confirm="Delete activity '{{ a.name }}' and its cells?" class="am-inline-form">
@@ -84,7 +84,7 @@
         </li>
         {% endfor %}
       </ul>
-      <form method="post" action="/soa/{{ soa_id }}/activities/add" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;">
+      <form method="post" action="/soa/{{ soa_id }}/activities/add" class="am-add-activity-form" style="gap:6px;">
         <div class="am-field"><label class="am-field-label">Name <span class="am-required">*</span></label><input name="name" placeholder="Activity name" required class="am-input-compact" /></div>
         <div class="am-field"><label class="am-field-label">Label</label><input name="label" placeholder="Label (optional)" class="am-input-compact" /></div>
         <div class="am-field"><label class="am-field-label">Description</label><input name="description" placeholder="Description (optional)" class="am-input-compact" /></div>
@@ -98,24 +98,6 @@
 
 <hr />
 <!-- Timeline Selector-->
-<style>
-  .timeline-selector {
-    margin-bottom: 12px;
-  }
-  .timeline-btn {
-    margin: 0 4px;
-    padding: 4px 10px;
-    border: 1px solid #1976d2;
-    border-radius: 3px;
-    cursor: pointer;
-    background: #fff;
-    color: #1976d2;
-  }
-  .timeline-btn.active {
-    background: #1976d2;
-    color: #fff;
-  }
-</style>
 {% if timelines and timelines|length > 0 %}
 <div class="timeline-selector">
 <strong>Select Timeline:</strong>
@@ -132,25 +114,24 @@
 {% endif %}
 
 {% macro epoch_th(soa_id, epoch_id, value, colspan, superscript) %}
-<th style="text-align:center;font-size:0.50em;" colspan="{{ colspan }}">{{ value }}{% if superscript %}<sup>{{ superscript }}</sup>{% endif %}{% if epoch_id %}<span class="sup-edit" hx-get="/ui/soa/{{ soa_id }}/epoch_superscript_edit/{{ epoch_id }}?colspan={{ colspan }}" hx-swap="outerHTML" hx-target="closest th" onclick="event.stopPropagation()" title="Edit superscript">&#9998;</span>{% endif %}</th>
+<th class="am-matrix-value-th" colspan="{{ colspan }}">{{ value }}{% if superscript %}<sup>{{ superscript }}</sup>{% endif %}{% if epoch_id %}<span class="sup-edit" hx-get="/ui/soa/{{ soa_id }}/epoch_superscript_edit/{{ epoch_id }}?colspan={{ colspan }}" hx-swap="outerHTML" hx-target="closest th" onclick="event.stopPropagation()" title="Edit superscript">&#9998;</span>{% endif %}</th>
 {% endmacro %}
 <!-- Matrix Container shown/hidden based on timeline selection -->
 {% for timeline_uid, timeline_instances in instances_by_timeline.items() %}
-<div class="matrix-container" 
-    data-timeline="{{ timeline_uid }}"
-    {% if timeline_uid == default_timeline %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+<div class="matrix-container {% if timeline_uid == default_timeline %}am-tl-visible{% else %}am-tl-hidden{% endif %}"
+    data-timeline="{{ timeline_uid }}">
   
   <h3>Matrix: {% if timeline_instances and timeline_instances[0].timeline_name %}{{ timeline_instances[0].timeline_name }}{% else %}{{ timeline_uid }}{% endif %}</h3>
   
   {% if timeline_instances|length == 0 %}
-    <p style="color:#666;font-style:italic;">No scheduled activity instances for this timeline.</p>
+    <p class="am-empty-matrix-note">No scheduled activity instances for this timeline.</p>
   {% else %}
 <!-- display matrix -->
 <table class="matrix">
   <!-- Epoch row -->
   <tr class="matrix-epoch-row">
     <th></th>
-    <th style="text-align:right;font-size:0.50em;">Epoch:-></th>
+    <th class="am-matrix-label-th">Epoch:-></th>
     {% set prev_epoch = namespace(value=None, count=0, id=None, superscript=None) %}
     {% for inst in timeline_instances %}
       {% set current_epoch = inst.epoch_label if inst.epoch_label else inst.epoch_name %}
@@ -177,9 +158,9 @@
   <!-- Encounter row -->
   <tr class="matrix-encounter-row">
     <th></th>
-    <th style="text-align:right;font-size:0.50em;">Encounter:-></th>
+    <th class="am-matrix-label-th">Encounter:-></th>
     {% for inst in timeline_instances %}
-    <th style="text-align:center;font-size:0.50em;">
+    <th class="am-matrix-value-th">
       {% if inst.encounter_label %}{{ inst.encounter_label }}{% else %}{{ inst.encounter_name }}{% endif %}{% if inst.encounter_superscript %}<sup>{{ inst.encounter_superscript }}</sup>{% endif %}{% if inst.encounter_id %}<span class="sup-edit" hx-get="/ui/soa/{{ soa_id }}/encounter_superscript_edit/{{ inst.encounter_id }}" hx-swap="outerHTML" hx-target="closest th" onclick="event.stopPropagation()" title="Edit superscript">&#9998;</span>{% endif %}
     </th>
     {% endfor %}
@@ -187,19 +168,19 @@
   <!-- ScheduleActivityInstance row -->
   <tr class="matrix-instance-row">
     <th></th>
-    <th style="text-align:right;font-size:0.50em;">Instance:-></th>
+    <th class="am-matrix-label-th">Instance:-></th>
     {% for inst in timeline_instances %}
-    <th style="min-width: 70px; vertical-align: top; text-align:center;" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
-      <div style="color: #1976d2;" {%if inst.label %}title="Scheduled Activity Instance: {{ inst.label }}"{% endif %}>{% if inst.label %}{{ inst.label }}{% else %}{{ inst.name }}{% endif %}</div>
+    <th class="am-matrix-instance-th" data-instance-id="{{ inst.id }}" data-visit-id="{{ inst.id }}">
+      <div class="am-instance-label" {%if inst.label %}title="Scheduled Activity Instance: {{ inst.label }}"{% endif %}>{% if inst.label %}{{ inst.label }}{% else %}{{ inst.name }}{% endif %}</div>
     </th>
     {% endfor %}
   </tr>
   <!-- Study Day row -->
   <tr class="matrix-study-day-row">
     <th></th>
-    <th style="text-align:right;font-size:0.50em;">Study Day:-></th>
+    <th class="am-matrix-label-th">Study Day:-></th>
     {% for inst in timeline_instances %}
-    <th style="text-align:center;font-size:0.50em;">
+    <th class="am-matrix-value-th">
       {% if inst.study_day %}{{ inst.study_day }}{% endif %}
     </th>
     {% endfor %}
@@ -207,9 +188,9 @@
   <!-- Timing row -->
   <tr class="matrix-timing-label-row">
     <th></th>
-    <th style="text-align:right;font-size:0.50em;">Timing:-></th>
+    <th class="am-matrix-label-th">Timing:-></th>
     {% for inst in timeline_instances %}
-    <th style="text-align:center;font-size:0.50em;">
+    <th class="am-matrix-value-th">
       {% if inst.timing_label %}{{ inst.timing_label }}{% else %}{{ inst.timing_name }}{% endif %}
     </th>
     {% endfor %}
@@ -217,19 +198,19 @@
   <!-- Visit Window row -->
   <tr class="matrix-visit-window-row">
     <th></th>
-    <th style="text-align:right;font-size:0.50em;">Visit Window:-></th>
+    <th class="am-matrix-label-th">Visit Window:-></th>
     {% for inst in timeline_instances %}
-    <th style="text-align:center;font-size:0.50em;">
+    <th class="am-matrix-value-th">
         {% if inst.window_label %}{{ inst.window_label }}{% endif %}
     </th>
     {% endfor %}
   </tr>
   <tr>
     <th>Activity</th>
-    <th style="min-width:250px;">Concepts</th>
+    <th class="am-minw-250">Concepts</th>
     <!-- Empty headers for instance columns -->
     {% for inst in timeline_instances %}
-    <th style="min-width: 70px;"></th>
+    <th class="am-minw-70"></th>
     {% endfor %}
   </tr>
   {% for a in activities_by_timeline.get(timeline_uid, []) %}
@@ -265,9 +246,9 @@
 {% endfor %}
 <!-- Footnote display: rendered XHTML below the matrix -->
 {% if footnotes %}
-<div class="footnotes-display" style="margin-top:10px;font-size:0.85em;border-top:1px solid #ddd;padding-top:6px;">
+<div class="footnotes-display am-footnotes-display">
   {% for fn in footnotes %}
-  <div style="margin-bottom:4px;">
+  <div class="am-mb-4">
     <strong>{{ fn.name }}</strong>:
     {{ fn.text | safe }}
   </div>
@@ -275,12 +256,12 @@
 </div>
 {% endif %}
 <!-- Manage Footnotes -->
-<details id="footnotes-section" class="collapsible" style="margin-top:8px;">
+<details id="footnotes-section" class="collapsible am-mt-8">
   <summary>Manage Footnotes ({{ footnotes|length }})</summary>
   {% for fn in footnotes %}
-  <div style="display:flex;align-items:flex-start;gap:8px;border-bottom:1px solid var(--am-border);padding:8px 0;">
+  <div class="am-footnote-row" style="gap:8px;">
     <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/update"
-          class="fz-form-2row" style="flex:1;">
+          class="fz-form-2row am-flex-1">
       <div class="am-field">
         <label class="am-field-label">UID</label>
         <span class="obj-uid">{{ fn.footnote_uid }}</span>
@@ -299,17 +280,17 @@
       </div>
       <div class="am-field">
         <label class="am-field-label">Text (XHTML)</label>
-        <textarea name="text" rows="3" style="font-family:monospace;font-size:0.9em;" class="am-textarea">{{ fn.text or '' }}</textarea>
+        <textarea name="text" rows="3" class="am-textarea am-mono am-fz-90">{{ fn.text or '' }}</textarea>
       </div>
-      <button type="submit" class="am-btn am-btn-slate am-btn-sm" style="grid-row:2;align-self:center;">Save</button>
+      <button type="submit" class="am-btn am-btn-slate am-btn-sm am-btn-grid-row2">Save</button>
     </form>
     <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/{{ fn.id }}/delete"
-          onsubmit="return confirm('Delete this footnote?');" class="fz-inline-form" style="padding-top:22px;">
+          onsubmit="return confirm('Delete this footnote?');" class="fz-inline-form am-pt-22">
       <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
     </form>
   </div>
   {% endfor %}
-  <div style="padding-top:10px;">
+  <div class="am-pt-10">
     <form method="post" action="/ui/soa/{{ soa_id }}/footnotes/create" class="fz-form-2row">
       <div class="am-field">
         <label class="am-field-label">Name <span class="am-required">*</span></label>
@@ -325,14 +306,14 @@
       </div>
       <div class="am-field">
         <label class="am-field-label">Text (XHTML)</label>
-        <textarea name="text" placeholder="Text (XHTML)" rows="3" style="font-family:monospace;font-size:0.9em;" class="am-textarea"></textarea>
+        <textarea name="text" placeholder="Text (XHTML)" rows="3" class="am-textarea am-mono am-fz-90"></textarea>
       </div>
-      <button type="submit" class="am-btn am-btn-info am-btn-sm" style="grid-row:2;align-self:center;">+ Add Footnote</button>
+      <button type="submit" class="am-btn am-btn-info am-btn-sm am-btn-grid-row2">+ Add Footnote</button>
     </form>
   </div>
 </details>
 <!-- Export Excel Matrix for SoA -->
-<div class="export-buttons" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+<div class="export-buttons am-flex-wrap" style="gap:6px;">
   <a id="export-xlsx-link" class="am-btn am-btn-info"
      data-base-href="/soa/{{ soa_id }}/export/xlsx"
      href="/soa/{{ soa_id }}/export/xlsx"

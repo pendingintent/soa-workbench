@@ -2,7 +2,7 @@
 {% block content %}
 <h2 class="am-page-title">Unassigned Biomedical Concepts</h2>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/ui/concepts" class="am-back-link">&larr; Concepts Explorer</a>
 </div>
 <hr class="fz-section-divider" />
@@ -19,7 +19,7 @@
   </p>
 </div>
 
-<div style="display:flex;align-items:center;gap:10px;margin:16px 0;">
+<div class="am-flex-center-row am-my-16" style="gap:10px;">
   <button class="am-btn am-btn-info"
           hx-post="/ui/bc/unassigned-concepts/generate"
           hx-target="#unassigned-results"
@@ -32,8 +32,7 @@
     Export CSV
   </a>
   <span id="generate-spinner"
-        class="htmx-indicator"
-        style="color:var(--am-text-mid);font-size:0.85em;">
+        class="htmx-indicator am-text-mid am-fz-85">
     Computing&hellip;
   </span>
 </div>

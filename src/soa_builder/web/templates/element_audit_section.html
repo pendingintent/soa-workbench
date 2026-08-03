@@ -1,27 +1,27 @@
 <details id="element-audit-section" class="collapsible">
   <summary>Element Audit (latest {{ element_audits|length }})</summary>
   {% if element_audits %}
-  <table style="width:100%;font-size:0.75em;border-collapse:collapse;">
-    <tr style="background:#eee;">
-      <th style="text-align:left;padding:4px;">ID</th>
-      <th style="text-align:left;padding:4px;">Element</th>
-      <th style="text-align:left;padding:4px;">Action</th>
-      <th style="text-align:left;padding:4px;">Performed</th>
-      <th style="text-align:left;padding:4px;">Before</th>
-      <th style="text-align:left;padding:4px;">After</th>
+  <table class="am-audit-table">
+    <tr class="am-audit-thead-row">
+      <th class="am-audit-th">ID</th>
+      <th class="am-audit-th">Element</th>
+      <th class="am-audit-th">Action</th>
+      <th class="am-audit-th">Performed</th>
+      <th class="am-audit-th">Before</th>
+      <th class="am-audit-th">After</th>
     </tr>
     {% for au in element_audits %}
     <tr>
-      <td style="padding:4px;">{{ au.id }}</td>
-      <td style="padding:4px;">{{ au.element_id }}</td>
-      <td style="padding:4px;">{{ au.action }}</td>
-      <td style="padding:4px;">{{ au.performed_at }}</td>
-      <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.before_json or '' }}</td>
-      <td style="padding:4px;white-space:pre-wrap;max-width:320px;">{{ au.after_json or '' }}</td>
+      <td class="am-audit-td">{{ au.id }}</td>
+      <td class="am-audit-td">{{ au.element_id }}</td>
+      <td class="am-audit-td">{{ au.action }}</td>
+      <td class="am-audit-td">{{ au.performed_at }}</td>
+      <td class="am-audit-td-json">{{ au.before_json or '' }}</td>
+      <td class="am-audit-td-json">{{ au.after_json or '' }}</td>
     </tr>
     {% endfor %}
   </table>
   {% else %}
-    <div style="font-size:0.75em;color:#777;">No element audit entries yet.</div>
+    <div class="am-empty-note">No element audit entries yet.</div>
   {% endif %}
 </details>

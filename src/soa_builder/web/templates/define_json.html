@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
@@ -9,20 +9,20 @@
 
 
 {% if study_id_value %}
-<p style="color:var(--am-text-mid);">Study ID: <strong>{{ study_id_value }}</strong></p>
+<p class="am-text-mid">Study ID: <strong>{{ study_id_value }}</strong></p>
 {% endif %}
 
 <hr class="fz-section-divider" />
 
 <em><strong>EXPERIMENTAL</strong></em>
 
-<p style="max-width:560px;color:var(--am-text-mid);margin-bottom:20px;">
+<p class="am-maxw-560 am-text-mid am-mb-20">
   The Data Definition Specification (DDS) JSON is a metadata contract that describes which datasets and variables
   this study produces. It complements USDM and is suitable for inclusion in a
   regulatory submission package alongside Dataset-JSON.
 </p>
 
-<div class="study-meta-card" style="max-width:480px;">
+<div class="study-meta-card am-maxw-480">
   <h3>Download Parameters</h3>
   <form method="get" action="/soa/{{ soa_id }}/usdm_json/define_json"
         class="am-grid-2">
@@ -42,7 +42,7 @@
       <label class="am-field-label">Cosmos API Version</label>
       <input class="am-input" type="text" name="cosmosversion" value="v2" />
     </div>
-    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+    <div class="am-field-span am-flex-center-row" style="gap:8px;">
       <button type="submit" class="am-btn am-btn-info">Download DDS JSON</button>
     </div>
   </form>

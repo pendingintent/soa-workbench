@@ -144,6 +144,7 @@ details.collapsible > *:not(summary) { padding: 0 14px 12px; }
 .drag-item form { margin-left:0; }
 .visit-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
 .activity-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
+.transition-rule-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
 .hint { font-weight:400; font-size:0.7em; color:#666; }
 
 @media screen and (max-height: 450px) {
@@ -1011,4 +1012,844 @@ details.collapsible > *:not(summary) { padding: 0 14px 12px; }
 .am-change-form-grid .am-form-actions {
   grid-column: 2;
   padding-top: 2px;
+}
+
+/* ===== Utilities: spacing, truncation, display toggles, widths ===== */
+/* Prefer an existing am-/fz- component class over these when one
+   fits; these exist only to eliminate one-off inline styles. */
+.am-mt-4  { margin-top: 4px; }
+.am-mt-6  { margin-top: 6px; }
+.am-mt-8  { margin-top: 8px; }
+.am-mt-10 { margin-top: 10px; }
+.am-mb-8  { margin-bottom: 8px; }
+.am-mb-12 { margin-bottom: 12px; }
+.am-m-0   { margin: 0; }
+.am-truncate {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.am-tl-visible { display: block; }
+.am-tl-hidden  { display: none; }
+.am-meta-line { font-size: 0.82em; color: var(--am-text-mid); }
+.am-w-55  { width: 55px; }
+.am-w-80  { width: 80px; }
+.am-w-90  { width: 90px; }
+.am-w-100 { width: 100px; }
+.am-w-110 { width: 110px; }
+.am-w-160 { width: 160px; }
+.am-w-200 { width: 200px; }
+
+/* ===== Legacy audit-log table pattern ===== */
+.am-audit-table {
+  width: 100%;
+  font-size: 0.75em;
+  border-collapse: collapse;
+}
+.am-audit-thead-row { background: #eee; }
+.am-audit-th { text-align: left; padding: 4px; }
+.am-audit-td { padding: 4px; }
+.am-audit-td-json {
+  padding: 4px;
+  white-space: pre-wrap;
+  max-width: 320px;
+}
+.am-empty-note { font-size: 0.75em; color: #777; }
+
+/* ===== Matrix header row labels (edit / edit-column-collapse) ===== */
+.am-matrix-label-th { text-align: right; font-size: 0.50em; }
+.am-matrix-value-th { text-align: center; font-size: 0.50em; }
+.am-td-shrink { width: 1%; white-space: nowrap; }
+
+/* ===== Notice banner variants (legacy, kept pixel-for-pixel to
+   avoid a visual change vs. am-api-notice's card treatment) ===== */
+.am-legacy-error-notice {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #c33;
+  background: #fee;
+  color: #900;
+  font-size: 0.85em;
+  border-radius: 4px;
+}
+.am-legacy-warn-notice {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #cc9;
+  background: #ffd;
+  color: #660;
+  font-size: 0.85em;
+  border-radius: 4px;
+}
+
+/* ---- Edit page: rules moved from edit-column-collapse.html's
+   embedded <style> block ------------------------------------- */
+.col-collapsed {
+  visibility: hidden !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+.encounter-header {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--am-info);
+}
+
+/* ================================================================
+   FORM PARTIALS CONSOLIDATION — organizations/persons/roles/
+   indications/study-identifiers/study-titles/study-interventions/
+   amendment-* /estimands/transition-rules/tdd-view partials.
+   New utilities + one-off component classes replacing inline
+   style="" attributes. Prefer the atomic utilities below when
+   composing new markup; the small composite classes exist only
+   for multi-declaration patterns that recur verbatim.
+   ================================================================ */
+
+/* ---- Width buckets (extends the am-w-* set above) ------------- */
+.am-w-120 { width: 120px; }
+.am-w-130 { width: 130px; }
+.am-w-140 { width: 140px; }
+.am-w-full { width: 100%; }
+
+/* ---- Spacing atomics (extends am-mt-*/am-mb-* above) ----------- */
+.am-mt-20   { margin-top: 20px; }
+.am-mt-24   { margin-top: 24px; }
+.am-mb-6    { margin-bottom: 6px; }
+.am-ml-6    { margin-left: 6px; }
+.am-ml-8    { margin-left: 8px; }
+.am-ml-auto { margin-left: auto; }
+.am-mr-6    { margin-right: 6px; }
+.am-pb-1    { padding-bottom: 1px; }
+.am-pb-2    { padding-bottom: 2px; }
+.am-pb-12   { padding-bottom: 12px; }
+
+/* ---- Text color / size atomics --------------------------------- */
+.am-text         { color: var(--am-text); }
+.am-text-mid     { color: var(--am-text-mid); }
+.am-text-muted   { color: var(--am-text-muted); }
+.am-text-success { color: var(--am-success); }
+.am-fw-600 { font-weight: 600; }
+.am-fz-78  { font-size: 0.78em; }
+.am-fz-82  { font-size: 0.82em; }
+.am-fz-85  { font-size: 0.85em; }
+.am-fz-88  { font-size: 0.88em; }
+.am-fz-90  { font-size: 0.9em; }
+.am-fz-100 { font-size: 1em; }
+
+/* ---- Flex / layout atomics -------------------------------------- */
+.am-flex-1        { flex: 1; }
+.am-flex-2        { flex: 2; }
+.am-flex-shrink-0 { flex-shrink: 0; }
+.am-minw-0   { min-width: 0; }
+.am-minw-80  { min-width: 80px; }
+.am-minw-100 { min-width: 100px; }
+.am-minw-120 { min-width: 120px; }
+.am-minw-140 { min-width: 140px; }
+.am-minw-150 { min-width: 150px; }
+.am-minw-160 { min-width: 160px; }
+.am-flex-row        { display: flex; }
+.am-flex-center-row { display: flex; align-items: center; }
+.am-inline          { display: inline; }
+.am-inline-flex-form { display: inline-flex; align-items: center; gap: 4px; }
+.am-overflow-x-auto { overflow-x: auto; }
+.am-resize-v { resize: vertical; }
+.am-nowrap   { white-space: nowrap; }
+
+/* ---- Sub-section divider / heading (cards, form partials) ------ */
+.am-subsection-divider {
+  margin: 14px 0 10px;
+  border: none;
+  border-top: 1px solid var(--am-border);
+}
+.am-form-subheading {
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--am-text-mid);
+  text-transform: uppercase;
+}
+.am-subsection-header {
+  margin: 8px 0 4px;
+  font-size: 0.72em;
+  font-weight: 700;
+  color: var(--am-text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* ---- Nested subsection table cells (codes/scopes under a row) -- */
+.am-subsection-td    { padding: 0 12px 12px 24px; background: var(--am-surface); }
+.am-subsection-td-sm { padding: 0 12px 4px 24px;  background: var(--am-surface); }
+.am-subsection-td-bordered {
+  padding: 0 11px 14px 30px;
+  background: var(--am-surface);
+  border-bottom: 2px solid var(--am-border-med);
+}
+.am-subsection-td-bordered-sm {
+  padding: 0 11px 12px 30px;
+  background: var(--am-surface);
+  border-bottom: 2px solid var(--am-border-med);
+}
+.am-inline-add-row {
+  display: flex;
+  align-items: flex-end;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--am-border-med);
+}
+
+/* ---- Plain list rows (study identifiers / titles) -------------- */
+.am-plain-list { list-style: none; margin: 0 0 10px 0; padding: 0; }
+.am-list-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  background: var(--am-surface);
+  border-radius: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--am-border);
+}
+.am-field-label-inline {
+  display: block;
+  font-size: 0.8em;
+  color: var(--am-text-muted);
+  margin-bottom: 2px;
+}
+
+/* ---- Chips (linked variables / interventions on estimands) ----- */
+.am-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.82em;
+}
+.am-chip-green   { background: #e8f5e9; }
+.am-chip-indigo  { background: #e8eaf6; }
+.am-chip-remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--am-danger);
+  padding: 0 2px;
+  font-size: 0.9em;
+}
+.am-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 0 4px;
+}
+.am-chip-row-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.am-select-sm-inline { font-size: 0.85em; padding: 2px 6px; }
+
+/* ---- Misc one-off form patterns --------------------------------- */
+.am-checkbox-label { display: flex; align-items: center; cursor: pointer; }
+.am-label-normal { font-weight: normal; text-transform: none; letter-spacing: 0; }
+.am-empty-note-italic {
+  color: var(--am-text-muted);
+  font-style: italic;
+  font-size: 0.85em;
+}
+.am-inline-rule-form { display: inline; margin-left: 6px; font-size: 0.6em; }
+.am-btn-legacy-slate {
+  background: #607d8b;
+  color: #fff;
+  border: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.am-btn-legacy-danger {
+  background: var(--am-danger);
+  color: #fff;
+  border: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+/* ===== Audit modals (rollback / reorder) ===== */
+.am-mono { font-family: var(--am-mono); }
+.am-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+}
+.am-modal-box {
+  background: #fff;
+  max-height: 80%;
+  overflow: auto;
+  padding: 14px 18px;
+  border-radius: 6px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+  font-size: 0.75em;
+  line-height: 1.3;
+}
+.am-modal-w-md { max-width: 760px; width: 90%; }
+.am-modal-w-lg { max-width: 820px; width: 92%; }
+.am-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.am-modal-title { margin: 0; }
+.am-modal-close-btn {
+  background: var(--am-danger);
+  color: #fff;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7em;
+}
+.am-modal-desc {
+  font-size: 0.65em;
+  color: #555;
+  margin-bottom: 6px;
+}
+.am-modal-table { width: 100%; border-collapse: collapse; font-size: 0.7em; }
+.am-modal-thead-row { background: #eceff1; }
+.am-modal-th { text-align: left; padding: 4px; border-bottom: 1px solid #b0bec5; }
+.am-modal-td { padding: 3px; border-bottom: 1px solid #eee; }
+.am-modal-empty-note { font-size: 0.65em; color: #777; }
+.am-modal-muted { color: #777; }
+.am-modal-w-xl { max-width: 900px; width: 90%; }
+.am-modal-subtle { color: #555; }
+.am-modal-list { margin: 4px 0 8px 14px; padding: 0; }
+.am-modal-sublist { margin: 2px 0 4px 14px; padding: 0; }
+.am-modal-summary { cursor: pointer; font-weight: bold; }
+.am-modal-stats-grid-140 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 0.7em;
+}
+.am-modal-stats-grid-160 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 0.7em;
+}
+.am-modal-flex-wrap { display: flex; flex-wrap: wrap; }
+.am-fz-65 { font-size: 0.65em; }
+.am-fz-70 { font-size: 0.70em; }
+.am-fz-80 { font-size: 0.80em; }
+.am-modal-btn {
+  display: inline-block;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  text-decoration: none;
+}
+.am-modal-btn-xs { padding: 2px 6px; border-radius: 3px; }
+.am-modal-btn-sm { padding: 3px 8px; border-radius: 4px; }
+.am-modal-btn-md { padding: 4px 8px; border-radius: 4px; }
+.am-modal-btn-lg { padding: 4px 10px; border-radius: 4px; }
+.am-modal-btn-info { background: var(--am-info); }
+.am-modal-btn-purple { background: var(--am-purple); }
+.am-modal-btn-slate { background: var(--am-slate); }
+.am-modal-color-success { color: var(--am-success); }
+.am-modal-color-danger-text { color: var(--am-danger); }
+.am-modal-color-warn { color: var(--am-warn); }
+.am-modal-nested-details { margin-left: 10px; margin-top: 4px; }
+.am-modal-note-indent { margin: 4px 0 4px 10px; }
+.am-modal-preview-title { margin: 0 0 6px 0; font-size: 0.8em; }
+.am-modal-preview-list { margin: 4px 0 10px 16px; padding: 0; font-size: 0.7em; }
+.am-modal-sublist-tight { margin: 2px 0 2px 12px; padding: 0; }
+.am-cursor-pointer { cursor: pointer; }
+
+/* ===== Matrix core pages (edit.html / edit-column-collapse.html) ===== */
+.am-color-subtle { color: #555; }
+.am-color-444 { color: #444; }
+.am-hr-divider {
+  margin: 14px 0 10px;
+  border: none;
+  border-top: 1px solid var(--am-border, #ddd);
+}
+.am-fetch-meta { font-size: 0.7em; color: #444; }
+.am-empty-matrix-note { color: #666; font-style: italic; }
+.am-matrix-instance-th { min-width: 70px; vertical-align: top; text-align: center; }
+.am-matrix-instance-th-plain { min-width: 70px; vertical-align: top; }
+.am-instance-label { color: var(--am-info); }
+.am-minw-70  { min-width: 70px; }
+.am-minw-110 { min-width: 110px; }
+.am-minw-250 { min-width: 250px; }
+.am-mb-4 { margin-bottom: 4px; }
+.am-pt-10 { padding-top: 10px; }
+.am-pt-22 { padding-top: 22px; }
+.am-fz-60 { font-size: 0.60em; }
+.am-fz-75 { font-size: 0.75em; }
+.am-flex-wrap { display: flex; flex-wrap: wrap; }
+.am-grid-span { grid-column: 1 / -1; }
+.am-footnotes-display {
+  margin-top: 10px;
+  font-size: 0.85em;
+  border-top: 1px solid #ddd;
+  padding-top: 6px;
+}
+.am-footnote-row {
+  display: flex;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--am-border);
+  padding: 8px 0;
+}
+.am-btn-grid-row2 { grid-row: 2; align-self: center; }
+.am-activity-edit-form { font-size: 0.82em; display: inline-flex; align-items: center; }
+.am-add-activity-form { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: flex-end; }
+.am-add-activity-form-alt { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; }
+.am-concepts-refresh-row { margin: 4px 0 12px 0; display: flex; align-items: center; flex-wrap: wrap; }
+.am-legacy-meta-card {
+  background: #f5f5f5;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 0.8em;
+}
+.am-legacy-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: 6px;
+  align-items: start;
+}
+.am-field-col { display: flex; flex-direction: column; }
+.am-field-col-span { display: flex; flex-direction: column; grid-column: 1 / -1; }
+.am-grid-span-row { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; }
+.am-freeze-bar { display: flex; flex-direction: column; }
+.am-freeze-input { font-size: 0.75em; padding: 2px 4px; }
+.am-freeze-feedback { font-size: 0.65em; color: var(--am-danger); }
+.am-version-pill { background: #eee; padding: 2px 6px; border-radius: 3px; color: #333; }
+.am-legacy-study-cells-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: start;
+  margin-top: 6px;
+}
+.am-legacy-table-80 { width: 100%; font-size: 0.8em; border-collapse: collapse; }
+.am-td-muted-note { padding: 6px; color: #777; }
+
+/* ---- Generic small "chip" button system (used across modals and
+   legacy freeze-bar UI); size + color modifiers compose. ---- */
+.am-modal-btn-xs-wide { padding: 2px 8px; border-radius: 3px; }
+.am-modal-btn-wide { padding: 4px 12px; border-radius: 4px; }
+.am-modal-btn-slate-dark { background: var(--am-slate-dark); }
+.am-modal-btn-bluegrey { background: #546e7a; }
+.am-modal-btn-teal { background: #00796b; }
+.am-modal-btn-cyan { background: #00838f; }
+.am-modal-btn-success { background: var(--am-success); }
+.am-modal-btn-danger { background: var(--am-danger); }
+
+/* ===== Matrix concepts cell (concepts_cell.html) ===== */
+.am-cell-top-align { vertical-align: top; }
+.am-maxw-250 { max-width: 250px; }
+.am-concepts-edit-actions { margin-top: 4px; display: flex; }
+.concepts-content { margin-top: 4px; }
+.no-concepts { color: #888; font-size: 0.8em; }
+.am-concept-cat-header {
+  font-size: 0.75em;
+  color: #4527a0;
+  font-weight: 600;
+  margin: 4px 0 1px 0;
+}
+.am-concept-group-header {
+  font-size: 0.75em;
+  color: var(--am-success);
+  font-weight: 600;
+  margin: 4px 0 1px 0;
+}
+.am-remove-all-btn {
+  border: none;
+  background: transparent;
+  color: #900;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 0.9em;
+}
+.am-remove-btn {
+  border: none;
+  background: transparent;
+  color: #900;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.am-concept-line-cat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ede7f6;
+  color: #311b92;
+  margin: 2px 0 2px 8px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.8em;
+}
+.am-concept-line-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #e8f5e9;
+  color: #1b5e20;
+  margin: 2px 0 2px 8px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.8em;
+}
+.am-concept-line-individual {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #eef;
+  color: #224;
+  margin: 2px 0;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.8em;
+}
+.am-concept-line-surrogate-indented {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff3e0;
+  color: #4e342e;
+  margin: 2px 0 2px 8px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.8em;
+}
+.am-concept-line-surrogate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff3e0;
+  color: #4e342e;
+  margin: 2px 0;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.8em;
+}
+.am-add-row-flex { display: flex; align-items: center; }
+.am-select-tint-surrogate { background: #fff8f0; }
+.am-select-tint-category { background: #ede7f6; }
+.am-select-tint-group { background: #f1f8e9; }
+
+/* ===== Standalone SoA matrix export (soa_matrix_export.html) ===== */
+.am-minw-220 { min-width: 220px; }
+.am-color-muted { color: var(--am-text-muted); }
+.am-export-subtitle { margin: 0 0 4px 0; color: var(--am-text-mid); font-size: 0.85em; }
+.am-export-meta { margin: 0 0 16px 0; color: var(--am-text-muted); font-size: 0.78em; }
+.am-export-main-tag { font-size: 0.7em; color: var(--am-text-muted); font-weight: normal; }
+.am-export-concept-summary {
+  font-size: 0.8em;
+  list-style: none;
+  cursor: pointer;
+  display: inline-block;
+}
+.am-export-concept-list { margin: 4px 0 0 8px; padding: 0; list-style: none; }
+.am-export-concept-item {
+  background: #eef;
+  border-radius: 3px;
+  margin: 2px 0;
+  padding: 2px 6px;
+  font-size: 0.8em;
+}
+.am-export-surrogate-item {
+  background: #fff3e0;
+  border-radius: 3px;
+  margin: 2px 0;
+  padding: 2px 6px;
+  font-size: 0.8em;
+}
+.am-export-empty-note { color: var(--am-text-muted); font-size: 0.75em; }
+.am-export-footnotes {
+  margin-top: 18px;
+  font-size: 0.85em;
+  border-top: 1px solid var(--am-border);
+  padding-top: 8px;
+}
+
+/* ===== Lazy-loaded matrix cells (dss_cell.html / crf_cell.html) ===== */
+.am-lazy-cell { padding: 4px; vertical-align: top; max-width: 300px; }
+.am-lazy-content { margin-top: 4px; }
+.am-lazy-inline-form { display: flex; align-items: center; margin: 4px 0; font-size: 0.8em; }
+.am-concept-pill-dss {
+  background: #eef;
+  color: #224;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  min-width: 70px;
+  text-align: center;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.am-concept-pill-crf {
+  background: #efe;
+  color: #141;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  min-width: 70px;
+  text-align: center;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.am-lazy-select { font-size: 1em; max-width: 150px; min-width: 0; }
+.am-assigned-row-dss {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 3px 0 3px 4px;
+  background: #eef;
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 0.8em;
+}
+.am-assigned-row-crf {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 3px 0 3px 4px;
+  background: #efe;
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 0.8em;
+}
+.am-assigned-title-dss { color: #224; }
+.am-assigned-title-crf { color: #141; }
+.am-detail-link { font-size: 0.85em; white-space: nowrap; color: var(--am-info); }
+.am-lazy-delete-form { margin: 0; display: inline; flex-shrink: 0; }
+.am-lazy-divider { border: none; border-top: 1px solid #dde; margin: 4px 0; }
+.am-lazy-empty { color: #888; font-size: 0.6em; }
+
+/* ===== CDISC library pages (concept groups/categories, SDTM & CRF
+   specialization browsers) ===== */
+
+/* ---- Spacing / sizing atomics (extend am-mt-*/am-mb-*/am-w-* above) ---- */
+.am-mb-10   { margin-bottom: 10px; }
+.am-mb-16   { margin-bottom: 16px; }
+.am-mt-18   { margin-top: 18px; }
+.am-mt-05em { margin-top: 0.5em; }
+.am-mt-1em  { margin-top: 1em; }
+.am-mt-15em { margin-top: 1.5em; }
+.am-my-075em { margin: 0.75em 0; }
+.am-my-16   { margin: 16px 0; }
+.am-w-220   { width: 220px; }
+.am-w-280   { width: 280px; }
+.am-w-300   { width: 300px; }
+.am-maxw-300 { max-width: 300px; }
+.am-maxw-340 { max-width: 340px; }
+.am-td-left { text-align: left; }
+.am-cursor-default { cursor: default; }
+
+/* ---- Legacy CDISC Library detail-page tables (concept/SDTM var tables) - */
+.am-lib-th { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
+.am-lib-td { border: 1px solid #ccc; padding: 4px 8px; }
+.am-lib-td-center { border: 1px solid #ccc; padding: 4px 8px; text-align: center; }
+.am-lib-td-strong { border: 1px solid #ccc; padding: 4px 8px; font-weight: 600; }
+.am-lib-table { border-collapse: collapse; width: 100%; font-size: 0.85em; }
+.am-lib-kv-table { border-collapse: collapse; font-size: 0.9em; margin-bottom: 1em; }
+.am-lib-thead-row { background: #f2f2f2; }
+.am-lib-summary-key {
+  padding: 4px 12px 4px 0;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: top;
+}
+.am-lib-summary-val { padding: 4px 0; }
+.am-lib-td-label {
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--am-text-mid);
+}
+
+/* ---- Raw JSON / response snippet blocks --------------------------- */
+.am-lib-raw-json {
+  max-height: 600px;
+  overflow: auto;
+  font-size: 0.8em;
+  background: #f7f7f7;
+  padding: 0.75em;
+  border: 1px solid #ccc;
+}
+.am-lib-raw-json-var {
+  overflow: auto;
+  max-height: 400px;
+  font-size: 0.8em;
+  background: var(--am-surface);
+  padding: 0.75em;
+  border: 1px solid var(--am-border);
+  border-radius: 4px;
+  margin-top: 6px;
+}
+.am-lib-raw-snippet { max-height: 200px; overflow: auto; white-space: pre-wrap; }
+.am-lib-summary-muted { cursor: pointer; font-weight: 600; color: var(--am-text-mid); }
+
+/* ---- API key / diagnostics notices (em-spaced legacy variants) ---- */
+.am-lib-key-notice {
+  padding: 0.5em;
+  margin: 0.5em 0;
+  border: 1px solid #cc9;
+  background: #ffd;
+  color: #660;
+  font-size: 0.85em;
+}
+.am-lib-error-notice-em {
+  padding: 0.5em;
+  margin: 0.5em 0;
+  border: 1px solid #c33;
+  background: #fee;
+  color: #900;
+  font-size: 0.85em;
+}
+.am-lib-error-notice {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--am-danger);
+  background: #fee;
+  color: var(--am-danger);
+  font-size: 0.85em;
+  border-radius: 4px;
+}
+
+/* ---- Search bars / help lists on specialization list pages --------- */
+.am-lib-add-form-row { padding: 8px 14px 12px; display: flex; align-items: flex-end; }
+.am-lib-search-count { font-size: 0.84em; color: var(--am-text-mid); margin-top: 18px; }
+.am-lib-help-list { font-size: 0.85em; color: var(--am-text-mid); margin-top: 6px; }
+
+/* ---- Concept groups page: member lists, chips, collapsible bodies -- */
+.am-lib-stack-list { display: flex; flex-direction: column; margin-bottom: 6px; }
+.am-lib-remove-btn {
+  border: none;
+  background: transparent;
+  color: var(--am-danger);
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.am-lib-label-suffix { font-weight: 400; color: var(--am-text-mid); font-size: 0.9em; }
+.am-lib-arrow { font-size: 0.7em; margin-right: 3px; }
+.am-lib-collapse-body { padding: 10px 14px; }
+.am-lib-edit-panel { border-bottom: 1px solid var(--am-border); padding-bottom: 10px; }
+.am-lib-group-desc { color: var(--am-text-mid); font-size: 0.85em; margin: 0 0 8px; }
+.am-lib-divider-top { border-top: 1px solid var(--am-border); padding-top: 8px; }
+.am-lib-href-wrap { font-size: 0.85em; word-break: break-all; }
+.am-lib-concept-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #e8f5e9;
+  color: #1b5e20;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.82em;
+  align-self: flex-start;
+}
+.am-lib-surrogate-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff3e0;
+  color: #4e342e;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  align-self: flex-start;
+}
+
+/* ================================================================
+   MAIN LIST/DETAIL PAGES — activities/elements/epochs/encounters/
+   arms/study_cells/study_interventions/index/dair/estimands/
+   concepts_list/orgs_roles_persons/define_json/usdm_json/tdd/rules/
+   amendment_edit/amendment_form_fields. New utilities + one-off
+   component classes replacing inline style="" attributes.
+   ================================================================ */
+
+/* ---- Min-height / min-width / max-width atomics ---------------- */
+.am-minh-60  { min-height: 60px; }
+.am-minh-80  { min-height: 80px; }
+.am-minw-180 { min-width: 180px; }
+.am-maxw-120 { max-width: 120px; }
+.am-maxw-480 { max-width: 480px; }
+.am-maxw-520 { max-width: 520px; }
+.am-maxw-540 { max-width: 540px; }
+.am-maxw-560 { max-width: 560px; }
+.am-maxw-640 { max-width: 640px; }
+.am-maxw-680 { max-width: 680px; }
+
+/* ---- Spacing atomics (extend am-mt-*/am-mb-* buckets above) ---- */
+.am-mb-0  { margin-bottom: 0; }
+.am-mb-20 { margin-bottom: 20px; }
+.am-mt-2  { margin-top: 2px; }
+.am-mt-16 { margin-top: 16px; }
+
+/* ---- Color atomic (legacy #666 muted text, distinct from #555
+   am-color-subtle and #444 am-color-444) -------------------------- */
+.am-color-666 { color: #666; }
+
+/* ---- Generic display / box-sizing / flex-justify atomics ------- */
+.am-block       { display: block; }
+.am-box-border  { box-sizing: border-box; }
+.am-flex-end-row { display: flex; justify-content: flex-end; }
+
+/* ---- DAIR page info-box variants (fz-info-box has no base CSS;
+   these carry the actual visual treatment) ------------------------ */
+.am-dair-notice-warn {
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  background: #FFF3CD;
+  border-left: 4px solid #FFA000;
+  border-radius: 4px;
+}
+.am-dair-notice-neutral {
+  padding: 12px 16px;
+  background: #F3F4F6;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+}
+
+/* ---- Index page: delete-study confirmation modal ---------------- */
+/* display:none/flex on these two elements is toggled directly via
+   element.style.display in index.html's inline <script>, so that
+   property must stay inline; everything else moves to a class. */
+.am-delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.am-delete-modal-box {
+  background: var(--am-card-bg, #fff);
+  border-radius: 8px;
+  padding: 28px 32px;
+  max-width: 440px;
+  width: 90%;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .25);
 }
