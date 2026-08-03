@@ -49,7 +49,7 @@
       <div class="am-modal-flex-wrap am-mb-8 am-fz-65" style="gap:6px;">
         <button hx-get="/ui/soa/{{ freeze.snapshot.soa_id }}/freeze/{{ freeze.id }}/rollback_preview" hx-target=".modal-overlay" hx-swap="outerHTML" class="am-modal-btn am-modal-btn-sm am-modal-btn-info">Preview Rollback</button>
         <form hx-post="/ui/soa/{{ freeze.snapshot.soa_id }}/freeze/{{ freeze.id }}/rollback" hx-target="body" hx-confirm="Rollback current state to version {{ freeze.version_label }}?" class="am-inline">
-          <button class="am-modal-btn am-modal-btn-sm am-modal-btn-purple">Rollback</button>
+          <button class="am-modal-btn am-modal-btn-sm am-modal-btn-primary">Rollback</button>
         </form>
       </div>
       <details open>
@@ -254,10 +254,10 @@
       {% endif %}
       <div class="am-modal-flex-wrap am-mt-10 am-fz-65" style="gap:8px;">
         <form hx-post="/ui/soa/{{ soa_id }}/freeze/{{ diff.left.id }}/rollback" hx-target="body" hx-confirm="Rollback current state to version {{ diff.left.label }}? This replaces visits, activities, cells & concepts." class="am-inline">
-          <button class="am-modal-btn am-modal-btn-md am-modal-btn-purple">Rollback to {{ diff.left.label }}</button>
+          <button class="am-modal-btn am-modal-btn-md am-modal-btn-primary">Rollback to {{ diff.left.label }}</button>
         </form>
         <form hx-post="/ui/soa/{{ soa_id }}/freeze/{{ diff.right.id }}/rollback" hx-target="body" hx-confirm="Rollback current state to version {{ diff.right.label }}?" class="am-inline">
-          <button class="am-modal-btn am-modal-btn-md am-modal-btn-purple">Rollback to {{ diff.right.label }}</button>
+          <button class="am-modal-btn am-modal-btn-md am-modal-btn-primary">Rollback to {{ diff.right.label }}</button>
         </form>
       </div>
     {% elif mode == 'rollback_preview' %}
@@ -270,7 +270,7 @@
       </ul>
       <div class="am-modal-flex-wrap am-fz-65" style="gap:8px;">
         <form hx-post="/ui/soa/{{ freeze.snapshot.soa_id }}/freeze/{{ freeze.id }}/rollback" hx-target="body" hx-confirm="Confirm rollback to version {{ freeze.version_label }}? This replaces current matrix." class="am-inline">
-          <button class="am-modal-btn am-modal-btn-lg am-modal-btn-purple">Confirm Rollback</button>
+          <button class="am-modal-btn am-modal-btn-lg am-modal-btn-primary">Confirm Rollback</button>
         </form>
         <button onclick="this.closest('.modal-overlay').remove()" class="am-modal-btn am-modal-btn-lg am-modal-btn-slate">Cancel</button>
       </div>

@@ -12,18 +12,17 @@
 {% else %}
 <style>
 .bc-explorer {
-  /* CDISC Design System Tokens (scoped to this explorer only) */
-  --cdisc-blue: #134678;
+  /* CDISC Design System Tokens (scoped to this explorer only).
+     --cdisc-blue/-red/-orange/-green/-navy match the official values
+     already defined globally in style.css's :root and are inherited
+     from there — not redeclared here. --cdisc-blue-700/-300 are
+     page-specific derived shades and stay local. */
   --cdisc-blue-700: #0f3a63;
   --cdisc-blue-300: #5d83a8;
-  --cdisc-navy: #0E2841;
-  --cdisc-red: #C94543;
-  --cdisc-gold: #EBA91E;
-  --cdisc-teal: #9DD0CA;
-  --cdisc-sky: #3DB3E3;
-  --cdisc-purple: #533278;
-  --cdisc-green: #286040;
-  --cdisc-orange: #D57E00;
+  --cdisc-gold: #EDAA00;
+  --cdisc-teal: #A1D0CA;
+  --cdisc-sky: #40B4E5;
+  --cdisc-purple: #553278;
   --cdisc-amber: #EDAA00;
 
   --white: #FFFFFF;
