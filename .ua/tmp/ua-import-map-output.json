@@ -1,0 +1,665 @@
+{
+  "scriptCompleted": true,
+  "stats": {
+    "filesScanned": 330,
+    "filesWithImports": 80,
+    "totalEdges": 245
+  },
+  "importMap": {
+    ".flake8": [],
+    ".github/copilot-instructions.md": [],
+    ".github/workflows/azure-deploy.yml": [],
+    ".github/workflows/ci.yml": [],
+    ".gitmodules": [],
+    ".pre-commit-config.yaml": [],
+    ".ua/.understandignore": [],
+    "README.md": [],
+    "config.env": [],
+    "docs/NCT01797120-usdm-design-entities.json": [],
+    "docs/NCT04307576-ALLTogether1-usdm.json": [],
+    "docs/bcp-response-code-cleanup.md": [],
+    "docs/define-json-generation.md": [],
+    "docs/soa-workbench-improvement-plan.md": [],
+    "docs/usdm-validation-h2q-mc-lzzt-20260618.md": [],
+    "docs/usdm-validation-nct01797120-20260618.md": [],
+    "files/Amendment_Impact_Assessment_Template.docx": [],
+    "files/CDISC_Pilot_Study_v4.json": [],
+    "files/Digital_Amendment_Impact_Report_DAIR.docx": [],
+    "files/NCT01797120_Footnote_1.html": [],
+    "files/NCT01797120_Footnote_2.html": [],
+    "files/NCT01797120_protocol_text.txt": [],
+    "files/NCT01797120_sections.json": [],
+    "files/README.md": [],
+    "files/USDM_API_v4.0.0.json": [],
+    "files/bc-grouping-extensionAttributes.yaml": [],
+    "files/country_codes.csv": [],
+    "files/geographic_regions.csv": [],
+    "help/ALIGNMENT_EAGER_BCP_VS_DEFINE_JSON.md": [],
+    "help/BIOMEDICAL_CONCEPT_GROUPINGS.md": [],
+    "help/BIOMEDICAL_CONCEPT_PROPERTY_EAGER_POPULATION.md": [],
+    "help/BIOMEDICAL_CONCEPT_WORKFLOW.md": [],
+    "help/DEFINE_JSON_GENERATOR_INTEGRATION.md": [],
+    "help/DEPLOYMENT_AZURE.md": [],
+    "help/DIFF_REPORT_ALL_USDM_ENTITIES.md": [],
+    "help/NCT01797120-results.fhir.json": [],
+    "help/NCT01797120-results.md": [],
+    "help/ORGANIZATIONS.md": [],
+    "help/README_endpoints.md": [],
+    "help/ScheduledDecisionInstances.md": [],
+    "help/api_endpoints.csv": [],
+    "help/biomedical_concept_grouping.md": [],
+    "normalize_soa.py": [],
+    "output/backup/pilot-LZZT-soa-bundle-20260612T0950.json": [],
+    "output/fhir/NCT12345678-vulcan-soa-latest.json": [],
+    "output/fhir/usdm_to_vulcan_fhir.py": [],
+    "output/json/H2Q-MC-LZZT-20260618T1509.json": [],
+    "output/json/H2Q-MC-LZZT-define-20260618T1521.json": [],
+    "output/json/NCT01797120-20260618T1511.json": [],
+    "output/json/NCT01797120-20260630T1221.json": [],
+    "output/json/NCT01797120-define-20260618T1514.json": [],
+    "output/json/NCT01797120-define-20260630T1224.json": [],
+    "output/json/NCT01797120-define-20260716T1138.json": [],
+    "output/json/NCT01797120-define-latest.json": [],
+    "output/json/NCT01797120-latest.json": [],
+    "output/json/NCT01797120-narrative-test.json": [],
+    "output/json/NCT01797120-usdm-20260716T1134.json": [],
+    "output/json/NCT01797120_narrative_test.json": [],
+    "output/json/NCT12345678-define-20260716T1133.json": [],
+    "output/json/NCT12345678-define-latest.json": [],
+    "output/json/NCT12345678-latest.json": [],
+    "output/json/NCT12345678-usdm-20260716T1124.json": [],
+    "output/report/NCT01797120_validation_report.xlsx": [],
+    "output/report/timing_core_report.xlsx": [],
+    "plan.md": [],
+    "pyproject.toml": [],
+    "pytest.ini": [],
+    "requirements.txt": [],
+    "schema/USDM_API_v4.0.0.json": [],
+    "schema/dataStructure.yml": [],
+    "schema/define.yaml": [],
+    "schema/define.yaml.source": [],
+    "scripts/check_ct_href.py": [],
+    "scripts/cleanup_bcp_response_codes.py": [],
+    "scripts/enrich_biomedical_concept.py": [],
+    "scripts/fetch_define_schema.py": [],
+    "scripts/generate_subject_data_NCT01797120.py": [],
+    "scripts/populate_biomedical_concept.py": [],
+    "scripts/run_element_checks.py": [],
+    "scripts/run_rollback_elements_check.py": [],
+    "scripts/upload_database_to_azure.sh": [],
+    "src/sdtm/generate_ta.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/sdtm/generate_te.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/sdtm/generate_tv.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/soa_builder/__init__.py": [
+      "src/soa_builder/normalization.py",
+      "src/soa_builder/schedule.py",
+      "src/soa_builder/validation.py"
+    ],
+    "src/soa_builder/cli.py": [
+      "src/soa_builder/normalization.py",
+      "src/soa_builder/schedule.py",
+      "src/soa_builder/validation.py"
+    ],
+    "src/soa_builder/mcp/__init__.py": [],
+    "src/soa_builder/mcp/server.py": [
+      "src/soa_builder/mcp/server.py",
+      "src/soa_builder/web/db.py"
+    ],
+    "src/soa_builder/normalization.py": [],
+    "src/soa_builder/schedule.py": [],
+    "src/soa_builder/validation.py": [],
+    "src/soa_builder/web/app.py": [
+      "src/soa_builder/normalization.py",
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/initialize_database.py",
+      "src/soa_builder/web/migrate_database.py",
+      "src/soa_builder/web/routers/_freeze_helpers.py",
+      "src/soa_builder/web/routers/organizations.py",
+      "src/soa_builder/web/routers/roles.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/generate_biomedical_concept_properties.py"
+    ],
+    "src/soa_builder/web/audit.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/soa_builder/web/codelist_config.py": [],
+    "src/soa_builder/web/db.py": [],
+    "src/soa_builder/web/initialize_database.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/soa_builder/web/migrate_database.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/soa_builder/web/routers/_freeze_helpers.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/activities.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/amendments.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/arms.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/audits.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/bc_categories.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/bc_surrogates.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/cdash_terminology.py": [
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/cells.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/concept_groups.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/condition_assignments.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/dair.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/routers/_freeze_helpers.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/ddf_controlled_terminology.py": [
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/decision_instances.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/define_xml_terminology.py": [
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/elements.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/endpoints.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/epochs.py": [
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/estimands.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/routers/indications.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/footnotes.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/freezes.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/routers/_freeze_helpers.py",
+      "src/soa_builder/web/routers/amendments.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/indications.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/instances.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/objectives.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/organizations.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/persons.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/protocol_controlled_terminology.py": [
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/roles.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/rollback.py": [
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/rules.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/schedule_timelines.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/routers/condition_assignments.py",
+      "src/soa_builder/web/routers/decision_instances.py",
+      "src/soa_builder/web/routers/instances.py",
+      "src/soa_builder/web/routers/timings.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/sdtm_terminology.py": [
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/soa_bundle.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/soa_builder/web/routers/study_identifiers.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/study_interventions.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/study_titles.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/tdd.py": [
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/timings.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/usdm_json.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/routers/visits.py": [
+      "src/soa_builder/web/audit.py",
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/schemas.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/soa_builder/web/schemas.py": [],
+    "src/soa_builder/web/static/bc_explorer.js": [],
+    "src/soa_builder/web/static/help/bc_groupings.html": [],
+    "src/soa_builder/web/static/help/bc_workflow.html": [],
+    "src/soa_builder/web/static/style.css": [],
+    "src/soa_builder/web/templates/_condition_assignments_section.html": [],
+    "src/soa_builder/web/templates/_decision_instances_section.html": [],
+    "src/soa_builder/web/templates/_instances_section.html": [],
+    "src/soa_builder/web/templates/_schedule_timelines_section.html": [],
+    "src/soa_builder/web/templates/_timings_section.html": [],
+    "src/soa_builder/web/templates/activities.html": [],
+    "src/soa_builder/web/templates/amendment_changes_partial.html": [],
+    "src/soa_builder/web/templates/amendment_edit.html": [],
+    "src/soa_builder/web/templates/amendment_enrollments_partial.html": [],
+    "src/soa_builder/web/templates/amendment_form_fields.html": [],
+    "src/soa_builder/web/templates/amendment_geo_scope_location_options.html": [],
+    "src/soa_builder/web/templates/amendment_geo_scopes_partial.html": [],
+    "src/soa_builder/web/templates/amendment_gov_dates_partial.html": [],
+    "src/soa_builder/web/templates/amendment_impacts_partial.html": [],
+    "src/soa_builder/web/templates/amendment_reasons_partial.html": [],
+    "src/soa_builder/web/templates/arms.html": [],
+    "src/soa_builder/web/templates/audits.html": [],
+    "src/soa_builder/web/templates/base.html": [],
+    "src/soa_builder/web/templates/bc_explorer.html": [],
+    "src/soa_builder/web/templates/bc_status.html": [],
+    "src/soa_builder/web/templates/bc_unassigned_concepts.html": [],
+    "src/soa_builder/web/templates/bc_unassigned_results.html": [],
+    "src/soa_builder/web/templates/cdash_terminology.html": [],
+    "src/soa_builder/web/templates/cdisc_api_status.html": [],
+    "src/soa_builder/web/templates/concept_categories.html": [],
+    "src/soa_builder/web/templates/concept_category_detail.html": [],
+    "src/soa_builder/web/templates/concept_detail.html": [],
+    "src/soa_builder/web/templates/concept_groups.html": [],
+    "src/soa_builder/web/templates/concepts_cell.html": [],
+    "src/soa_builder/web/templates/concepts_list.html": [],
+    "src/soa_builder/web/templates/condition_assignments.html": [],
+    "src/soa_builder/web/templates/crf_cell.html": [],
+    "src/soa_builder/web/templates/crf_specialization_detail.html": [],
+    "src/soa_builder/web/templates/crf_specializations.html": [],
+    "src/soa_builder/web/templates/dair.html": [],
+    "src/soa_builder/web/templates/ddf_controlled_terminology.html": [],
+    "src/soa_builder/web/templates/decision_instances.html": [],
+    "src/soa_builder/web/templates/define_json.html": [],
+    "src/soa_builder/web/templates/define_xml_terminology.html": [],
+    "src/soa_builder/web/templates/dss_cell.html": [],
+    "src/soa_builder/web/templates/edit.html": [],
+    "src/soa_builder/web/templates/element_audit_section.html": [],
+    "src/soa_builder/web/templates/elements.html": [],
+    "src/soa_builder/web/templates/encounters.html": [],
+    "src/soa_builder/web/templates/epochs.html": [],
+    "src/soa_builder/web/templates/estimands.html": [],
+    "src/soa_builder/web/templates/estimands_partial.html": [],
+    "src/soa_builder/web/templates/freeze_modal.html": [],
+    "src/soa_builder/web/templates/freezes.html": [],
+    "src/soa_builder/web/templates/help.html": [],
+    "src/soa_builder/web/templates/index.html": [],
+    "src/soa_builder/web/templates/indications_partial.html": [],
+    "src/soa_builder/web/templates/instances.html": [],
+    "src/soa_builder/web/templates/objectives.html": [],
+    "src/soa_builder/web/templates/organizations_oob_response.html": [],
+    "src/soa_builder/web/templates/organizations_partial.html": [],
+    "src/soa_builder/web/templates/orgs_roles_persons.html": [],
+    "src/soa_builder/web/templates/persons_oob_response.html": [],
+    "src/soa_builder/web/templates/persons_partial.html": [],
+    "src/soa_builder/web/templates/protocol_controlled_terminology.html": [],
+    "src/soa_builder/web/templates/reorder_audit_modal.html": [],
+    "src/soa_builder/web/templates/roles_partial.html": [],
+    "src/soa_builder/web/templates/rollback_audit_modal.html": [],
+    "src/soa_builder/web/templates/rules.html": [],
+    "src/soa_builder/web/templates/schedule_timelines.html": [],
+    "src/soa_builder/web/templates/sdtm_specialization_detail.html": [],
+    "src/soa_builder/web/templates/sdtm_specializations.html": [],
+    "src/soa_builder/web/templates/sdtm_specializations_status.html": [],
+    "src/soa_builder/web/templates/sdtm_terminology.html": [],
+    "src/soa_builder/web/templates/soa_matrix_export.html": [],
+    "src/soa_builder/web/templates/study_cells.html": [],
+    "src/soa_builder/web/templates/study_identifiers_partial.html": [],
+    "src/soa_builder/web/templates/study_interventions.html": [],
+    "src/soa_builder/web/templates/study_interventions_partial.html": [],
+    "src/soa_builder/web/templates/study_timing.html": [],
+    "src/soa_builder/web/templates/study_titles_partial.html": [],
+    "src/soa_builder/web/templates/tdd.html": [],
+    "src/soa_builder/web/templates/tdd_view_partial.html": [],
+    "src/soa_builder/web/templates/timings.html": [],
+    "src/soa_builder/web/templates/transition_rules_list.html": [],
+    "src/soa_builder/web/templates/usdm_json.html": [],
+    "src/soa_builder/web/templates/usdm_model_explorer.html": [],
+    "src/soa_builder/web/utils.py": [
+      "src/soa_builder/web/codelist_config.py",
+      "src/soa_builder/web/db.py"
+    ],
+    "src/usdm/create_define_json.py": [],
+    "src/usdm/generate_activities.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/usdm/generate_amendments.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/usdm/generate_arms.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_bc_categories.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/usdm/generate_bc_surrogates.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/usdm/generate_biomedical_concept_properties.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_biomedical_concepts.py": [
+      "src/soa_builder/web/db.py",
+      "src/usdm/generate_biomedical_concept_properties.py",
+      "src/usdm/generate_extension_attributes.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_dair.py": [],
+    "src/usdm/generate_define_json.py": [
+      "src/usdm/create_define_json.py",
+      "src/usdm/generate_usdm.py"
+    ],
+    "src/usdm/generate_elements.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_encounters.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "src/usdm/generate_endpoints.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_estimands.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/usdm/generate_extension_attributes.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/usdm/generate_indications.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/usdm/generate_narrative_content.py": [
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_objectives.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/generate_endpoints.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_organizations.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/usdm/generate_roles.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/usdm/generate_schedule_timelines.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_scheduled_activity_instances.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_scheduled_decision_instances.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_study_cells.py": [
+      "src/soa_builder/web/db.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_study_epochs.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_study_identifiers.py": [
+      "src/soa_builder/web/db.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_study_interventions.py": [
+      "src/soa_builder/web/db.py"
+    ],
+    "src/usdm/generate_study_timings.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/generate_study_titles.py": [
+      "src/soa_builder/web/app.py"
+    ],
+    "src/usdm/generate_usdm.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py",
+      "src/usdm/generate_activities.py",
+      "src/usdm/generate_amendments.py",
+      "src/usdm/generate_arms.py",
+      "src/usdm/generate_bc_categories.py",
+      "src/usdm/generate_bc_surrogates.py",
+      "src/usdm/generate_biomedical_concepts.py",
+      "src/usdm/generate_elements.py",
+      "src/usdm/generate_encounters.py",
+      "src/usdm/generate_estimands.py",
+      "src/usdm/generate_indications.py",
+      "src/usdm/generate_narrative_content.py",
+      "src/usdm/generate_objectives.py",
+      "src/usdm/generate_organizations.py",
+      "src/usdm/generate_roles.py",
+      "src/usdm/generate_schedule_timelines.py",
+      "src/usdm/generate_study_cells.py",
+      "src/usdm/generate_study_epochs.py",
+      "src/usdm/generate_study_identifiers.py",
+      "src/usdm/generate_study_interventions.py",
+      "src/usdm/generate_study_titles.py",
+      "src/usdm/usdm_utils.py"
+    ],
+    "src/usdm/usdm_utils.py": [
+      "src/soa_builder/web/db.py",
+      "src/soa_builder/web/utils.py"
+    ],
+    "startup.sh": [],
+    "tests/conftest.py": [],
+    "tests/test_bc_unassigned_report.py": [],
+    "tests/test_bcp_response_code_cleanup.py": [],
+    "tests/test_bulk_import.py": [],
+    "tests/test_categories_cache.py": [],
+    "tests/test_categories_ui_force.py": [],
+    "tests/test_cdisc_api_status.py": [],
+    "tests/test_cdisc_concept_group_sync.py": [],
+    "tests/test_code_uid_generation.py": [],
+    "tests/test_codelist_config.py": [],
+    "tests/test_concept_categories.py": [],
+    "tests/test_concept_category_force_refresh.py": [],
+    "tests/test_concepts_by_category_ui_force.py": [],
+    "tests/test_define_json_concepts.py": [],
+    "tests/test_define_json_generator.py": [],
+    "tests/test_element_audit_endpoint.py": [],
+    "tests/test_element_id_generation.py": [],
+    "tests/test_element_id_monotonic.py": [],
+    "tests/test_epoch_reorder_audit_api.py": [],
+    "tests/test_epoch_type_options.py": [],
+    "tests/test_fetch_crf_specializations.py": [],
+    "tests/test_fetch_sdtm_specializations.py": [],
+    "tests/test_generate_biomedical_concept_properties.py": [],
+    "tests/test_generate_endpoints.py": [],
+    "tests/test_generate_extension_attributes.py": [],
+    "tests/test_generate_narrative_content.py": [],
+    "tests/test_generate_objectives.py": [],
+    "tests/test_instances_audit.py": [],
+    "tests/test_mcp_server.py": [],
+    "tests/test_migrate_backfill_crf_href.py": [],
+    "tests/test_routers_activities.py": [],
+    "tests/test_routers_activities_crf.py": [],
+    "tests/test_routers_amendments.py": [],
+    "tests/test_routers_arms.py": [],
+    "tests/test_routers_audits.py": [],
+    "tests/test_routers_bc_categories.py": [],
+    "tests/test_routers_bc_grouping.py": [],
+    "tests/test_routers_bc_surrogates.py": [],
+    "tests/test_routers_dair.py": [],
+    "tests/test_routers_decision_instances.py": [],
+    "tests/test_routers_delete_soa.py": [],
+    "tests/test_routers_elements.py": [],
+    "tests/test_routers_endpoints.py": [],
+    "tests/test_routers_epochs.py": [],
+    "tests/test_routers_estimands.py": [],
+    "tests/test_routers_export_html.py": [],
+    "tests/test_routers_freezes.py": [],
+    "tests/test_routers_indications.py": [],
+    "tests/test_routers_instances.py": [],
+    "tests/test_routers_objectives.py": [],
+    "tests/test_routers_objectives_ui.py": [],
+    "tests/test_routers_organizations.py": [],
+    "tests/test_routers_persons.py": [],
+    "tests/test_routers_roles.py": [],
+    "tests/test_routers_rollback.py": [],
+    "tests/test_routers_rules.py": [],
+    "tests/test_routers_schedule_timelines.py": [],
+    "tests/test_routers_soa_bundle.py": [],
+    "tests/test_routers_study_identifiers.py": [],
+    "tests/test_routers_study_interventions.py": [],
+    "tests/test_routers_study_timing.py": [],
+    "tests/test_routers_study_titles.py": [],
+    "tests/test_routers_tdd.py": [],
+    "tests/test_routers_timings.py": [],
+    "tests/test_routers_usdm_json.py": [],
+    "tests/test_routers_visits.py": [],
+    "tests/test_study_cell_uid_reuse.py": [],
+    "tests/test_study_cell_uid_reuse_later.py": [],
+    "tests/test_timing_audit.py": [],
+    "tests/test_timing_audit_endpoint.py": [],
+    "tests/test_timings.py": [],
+    "tests/test_ui_add_element.py": [],
+    "validate_soa.py": []
+  }
+}

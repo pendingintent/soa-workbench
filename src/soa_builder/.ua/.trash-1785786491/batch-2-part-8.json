@@ -1,0 +1,1024 @@
+{
+  "nodes": [
+    {
+      "id": "function:web/routers/organizations.py:_partial_response",
+      "type": "function",
+      "name": "_partial_response",
+      "filePath": "web/routers/organizations.py",
+      "lineRange": [
+        364,
+        383
+      ],
+      "summary": "Renders the organizations list HTML partial used for HTMX swaps after create/update/delete actions.",
+      "tags": [
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/organizations.py:ui_organizations_add",
+      "type": "function",
+      "name": "ui_organizations_add",
+      "filePath": "web/routers/organizations.py",
+      "lineRange": [
+        390,
+        484
+      ],
+      "summary": "UI form endpoint creating a new Organization with full address and identifier fields, returning the refreshed list partial.",
+      "tags": [
+        "api-handler",
+        "organization",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/organizations.py:ui_organizations_delete",
+      "type": "function",
+      "name": "ui_organizations_delete",
+      "filePath": "web/routers/organizations.py",
+      "lineRange": [
+        491,
+        528
+      ],
+      "summary": "UI form endpoint deleting an Organization, returning the refreshed list partial.",
+      "tags": [
+        "api-handler",
+        "organization",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/organizations.py:ui_organizations_update",
+      "type": "function",
+      "name": "ui_organizations_update",
+      "filePath": "web/routers/organizations.py",
+      "lineRange": [
+        535,
+        623
+      ],
+      "summary": "UI form endpoint updating an existing Organization's fields, address, and controlled-terminology codes, returning the refreshed list partial.",
+      "tags": [
+        "api-handler",
+        "organization",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/roles.py",
+      "type": "file",
+      "name": "roles.py",
+      "filePath": "web/routers/roles.py",
+      "summary": "FastAPI router implementing CRUD for study Role entities, including role-type controlled-terminology codes, organization linkage, person assignment, masking flags, and conflict validation between role/org/person combinations.",
+      "tags": [
+        "api-handler",
+        "role",
+        "crud",
+        "person-assignment"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/roles.py:_next_role_uid",
+      "type": "function",
+      "name": "_next_role_uid",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        33,
+        64
+      ],
+      "summary": "Generates the next monotonic Role UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:_get_role_type_options",
+      "type": "function",
+      "name": "_get_role_type_options",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        67,
+        81
+      ],
+      "summary": "Loads the role-type controlled-terminology dropdown options for the role form.",
+      "tags": [
+        "utility",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:_ddf_ct_version",
+      "type": "function",
+      "name": "_ddf_ct_version",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        84,
+        87
+      ],
+      "summary": "Resolves the DDF controlled-terminology package version used for role-type code lookups.",
+      "tags": [
+        "utility",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:_insert_role_code",
+      "type": "function",
+      "name": "_insert_role_code",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        90,
+        107
+      ],
+      "summary": "Inserts a Code row recording a role's type controlled-terminology value.",
+      "tags": [
+        "database",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:_delete_code",
+      "type": "function",
+      "name": "_delete_code",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        110,
+        116
+      ],
+      "summary": "Deletes a Code row by UID, used when clearing a role's prior type code before replacing it.",
+      "tags": [
+        "database",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:_list_roles",
+      "type": "function",
+      "name": "_list_roles",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        119,
+        178
+      ],
+      "summary": "Fetches all Role rows for a SoA joined with their type code, linked organizations, and assigned persons.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/roles.py:list_roles",
+      "type": "function",
+      "name": "list_roles",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        187,
+        190
+      ],
+      "summary": "API endpoint returning all roles for a SoA as JSON.",
+      "tags": [
+        "api-handler",
+        "role"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:create_role",
+      "type": "function",
+      "name": "create_role",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        194,
+        256
+      ],
+      "summary": "API endpoint creating a new Role record with its type code, organization links, and person assignments.",
+      "tags": [
+        "api-handler",
+        "role",
+        "crud"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/roles.py:delete_role",
+      "type": "function",
+      "name": "delete_role",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        264,
+        295
+      ],
+      "summary": "API endpoint deleting a Role and its organization/person assignment links.",
+      "tags": [
+        "api-handler",
+        "role",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:_partial_response",
+      "type": "function",
+      "name": "_partial_response",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        303,
+        321
+      ],
+      "summary": "Renders the roles list HTML partial used for HTMX swaps after create/update/delete actions.",
+      "tags": [
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:_assign_persons_to_role",
+      "type": "function",
+      "name": "_assign_persons_to_role",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        324,
+        339
+      ],
+      "summary": "Links a set of Person UIDs to a role, inserting the role-person association rows.",
+      "tags": [
+        "database",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:_delete_person_assignments",
+      "type": "function",
+      "name": "_delete_person_assignments",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        342,
+        346
+      ],
+      "summary": "Removes all person assignments for a role before reassigning a new set.",
+      "tags": [
+        "database",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:_assert_no_role_org_person_org_conflict",
+      "type": "function",
+      "name": "_assert_no_role_org_person_org_conflict",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        349,
+        369
+      ],
+      "summary": "Validates that a role's assigned persons don't belong to organizations that conflict with the role's own linked organizations, raising an error if a conflict is found.",
+      "tags": [
+        "validation",
+        "business-rule"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:ui_roles_add",
+      "type": "function",
+      "name": "ui_roles_add",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        376,
+        451
+      ],
+      "summary": "UI form endpoint creating a new Role with type code, organization links, person assignments, and masking flag, returning the refreshed list partial.",
+      "tags": [
+        "api-handler",
+        "role",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/roles.py:ui_roles_delete",
+      "type": "function",
+      "name": "ui_roles_delete",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        458,
+        493
+      ],
+      "summary": "UI form endpoint deleting a Role, returning the refreshed list partial.",
+      "tags": [
+        "api-handler",
+        "role",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/roles.py:ui_roles_update",
+      "type": "function",
+      "name": "ui_roles_update",
+      "filePath": "web/routers/roles.py",
+      "lineRange": [
+        500,
+        585
+      ],
+      "summary": "UI form endpoint updating an existing Role's fields, organization links, and person assignments, returning the refreshed list partial.",
+      "tags": [
+        "api-handler",
+        "role",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/soa_bundle.py",
+      "type": "file",
+      "name": "soa_bundle.py",
+      "filePath": "web/routers/soa_bundle.py",
+      "summary": "FastAPI router for exporting and importing an entire SoA study as a self-contained JSON bundle covering all related tables, enabling backup, cloning, or transfer of a study between databases.",
+      "tags": [
+        "api-handler",
+        "import-export",
+        "backup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/soa_bundle.py:_table_exists",
+      "type": "function",
+      "name": "_table_exists",
+      "filePath": "web/routers/soa_bundle.py",
+      "lineRange": [
+        61,
+        66
+      ],
+      "summary": "Checks whether a named table exists in the SQLite schema, used defensively before exporting/importing optional tables.",
+      "tags": [
+        "utility",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/soa_bundle.py:_export_table",
+      "type": "function",
+      "name": "_export_table",
+      "filePath": "web/routers/soa_bundle.py",
+      "lineRange": [
+        69,
+        76
+      ],
+      "summary": "Dumps all rows of a given table for a SoA into a list of plain dicts for inclusion in the export bundle.",
+      "tags": [
+        "database",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/soa_bundle.py:_export_soa_bundle",
+      "type": "function",
+      "name": "_export_soa_bundle",
+      "filePath": "web/routers/soa_bundle.py",
+      "lineRange": [
+        79,
+        103
+      ],
+      "summary": "Assembles the full export bundle for a SoA by dumping every related table into a single JSON-serializable structure.",
+      "tags": [
+        "import-export",
+        "serialization"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/soa_bundle.py:_insert_and_map",
+      "type": "function",
+      "name": "_insert_and_map",
+      "filePath": "web/routers/soa_bundle.py",
+      "lineRange": [
+        106,
+        136
+      ],
+      "summary": "Inserts a batch of exported rows into a new SoA, remapping foreign keys and UIDs to the newly assigned IDs and returning an old-to-new ID map.",
+      "tags": [
+        "database",
+        "import-export"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/soa_bundle.py:_import_bc_properties_and_response_codes",
+      "type": "function",
+      "name": "_import_bc_properties_and_response_codes",
+      "filePath": "web/routers/soa_bundle.py",
+      "lineRange": [
+        139,
+        185
+      ],
+      "summary": "Imports biomedical concept properties and their response codes from a bundle, remapping them onto the newly created BiomedicalConcept rows.",
+      "tags": [
+        "database",
+        "import-export"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/soa_bundle.py:_import_soa_bundle",
+      "type": "function",
+      "name": "_import_soa_bundle",
+      "filePath": "web/routers/soa_bundle.py",
+      "lineRange": [
+        188,
+        403
+      ],
+      "summary": "Recreates a full SoA study from an export bundle by inserting all tables in dependency order and remapping every foreign key/UID reference.",
+      "tags": [
+        "import-export",
+        "database"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/soa_bundle.py:export_bundle",
+      "type": "function",
+      "name": "export_bundle",
+      "filePath": "web/routers/soa_bundle.py",
+      "lineRange": [
+        407,
+        417
+      ],
+      "summary": "API endpoint returning a SoA's full export bundle as a downloadable JSON file.",
+      "tags": [
+        "api-handler",
+        "import-export"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/soa_bundle.py:import_bundle",
+      "type": "function",
+      "name": "import_bundle",
+      "filePath": "web/routers/soa_bundle.py",
+      "lineRange": [
+        421,
+        434
+      ],
+      "summary": "API endpoint accepting an uploaded JSON bundle and creating a new SoA study from it.",
+      "tags": [
+        "api-handler",
+        "import-export"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/soa_bundle.py:ui_import_bundle",
+      "type": "function",
+      "name": "ui_import_bundle",
+      "filePath": "web/routers/soa_bundle.py",
+      "lineRange": [
+        438,
+        452
+      ],
+      "summary": "UI form endpoint for uploading a bundle file and creating a new SoA study, redirecting to the new study's edit page.",
+      "tags": [
+        "api-handler",
+        "import-export",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:web/routers/usdm_json.py",
+      "type": "file",
+      "name": "usdm_json.py",
+      "filePath": "web/routers/usdm_json.py",
+      "summary": "FastAPI router serving generated USDM JSON, the Define-JSON view, and per-component USDM downloads for a SoA, delegating actual generation to the `usdm` package's generators.",
+      "tags": [
+        "api-handler",
+        "usdm",
+        "define-xml",
+        "json-export"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/usdm_json.py:_build",
+      "type": "function",
+      "name": "_build",
+      "filePath": "web/routers/usdm_json.py",
+      "lineRange": [
+        43,
+        108
+      ],
+      "summary": "Dispatches to the appropriate `usdm` package generator function for a named USDM component and SoA, returning the generated JSON-serializable structure.",
+      "tags": [
+        "usdm",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/usdm_json.py:ui_usdm_json",
+      "type": "function",
+      "name": "ui_usdm_json",
+      "filePath": "web/routers/usdm_json.py",
+      "lineRange": [
+        112,
+        130
+      ],
+      "summary": "Renders the full USDM JSON viewer page for a SoA.",
+      "tags": [
+        "api-handler",
+        "usdm",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/usdm_json.py:ui_define_json",
+      "type": "function",
+      "name": "ui_define_json",
+      "filePath": "web/routers/usdm_json.py",
+      "lineRange": [
+        134,
+        155
+      ],
+      "summary": "Renders the Define-JSON viewer page for a SoA.",
+      "tags": [
+        "api-handler",
+        "usdm",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/usdm_json.py:download_define_json",
+      "type": "function",
+      "name": "download_define_json",
+      "filePath": "web/routers/usdm_json.py",
+      "lineRange": [
+        159,
+        193
+      ],
+      "summary": "API endpoint returning a downloadable Define-JSON file for a SoA, parameterized by SDTM CT, SDTM IG, COSMoS, study version/design, and doc version.",
+      "tags": [
+        "api-handler",
+        "usdm",
+        "json-export"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/usdm_json.py:download_usdm_component",
+      "type": "function",
+      "name": "download_usdm_component",
+      "filePath": "web/routers/usdm_json.py",
+      "lineRange": [
+        197,
+        232
+      ],
+      "summary": "API endpoint returning a downloadable JSON file for a single named USDM component of a SoA.",
+      "tags": [
+        "api-handler",
+        "usdm",
+        "json-export"
+      ],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "file:web/audit.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "file:web/codelist_config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/usdm_json.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/usdm_json.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/organizations.py:ui_organizations_add",
+      "target": "function:web/routers/organizations.py:_partial_response",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/organizations.py:ui_organizations_delete",
+      "target": "function:web/routers/organizations.py:_partial_response",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/organizations.py:ui_organizations_update",
+      "target": "function:web/routers/organizations.py:_partial_response",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_next_role_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_get_role_type_options",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_ddf_ct_version",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_insert_role_code",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_delete_code",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_list_roles",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:list_roles",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:create_role",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:delete_role",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_partial_response",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_assign_persons_to_role",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_delete_person_assignments",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:_assert_no_role_org_person_org_conflict",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:ui_roles_add",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:ui_roles_delete",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/roles.py",
+      "target": "function:web/routers/roles.py:ui_roles_update",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/roles.py:create_role",
+      "target": "function:web/routers/roles.py:_next_role_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/roles.py:create_role",
+      "target": "function:web/routers/roles.py:_insert_role_code",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/roles.py:create_role",
+      "target": "function:web/routers/roles.py:_assign_persons_to_role",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/roles.py:list_roles",
+      "target": "function:web/routers/roles.py:_list_roles",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/roles.py:ui_roles_add",
+      "target": "function:web/routers/roles.py:_assert_no_role_org_person_org_conflict",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/roles.py:ui_roles_update",
+      "target": "function:web/routers/roles.py:_assert_no_role_org_person_org_conflict",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/roles.py:ui_roles_add",
+      "target": "function:web/routers/roles.py:_partial_response",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/roles.py:ui_roles_delete",
+      "target": "function:web/routers/roles.py:_partial_response",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/roles.py:ui_roles_update",
+      "target": "function:web/routers/roles.py:_partial_response",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "function:web/routers/soa_bundle.py:_table_exists",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "function:web/routers/soa_bundle.py:_export_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "function:web/routers/soa_bundle.py:_export_soa_bundle",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "function:web/routers/soa_bundle.py:_insert_and_map",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "function:web/routers/soa_bundle.py:_import_bc_properties_and_response_codes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "function:web/routers/soa_bundle.py:_import_soa_bundle",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "function:web/routers/soa_bundle.py:export_bundle",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "function:web/routers/soa_bundle.py:import_bundle",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/soa_bundle.py",
+      "target": "function:web/routers/soa_bundle.py:ui_import_bundle",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/soa_bundle.py:_export_soa_bundle",
+      "target": "function:web/routers/soa_bundle.py:_export_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/soa_bundle.py:_export_soa_bundle",
+      "target": "function:web/routers/soa_bundle.py:_table_exists",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/soa_bundle.py:export_bundle",
+      "target": "function:web/routers/soa_bundle.py:_export_soa_bundle",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/soa_bundle.py:_import_soa_bundle",
+      "target": "function:web/routers/soa_bundle.py:_insert_and_map",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/soa_bundle.py:_import_soa_bundle",
+      "target": "function:web/routers/soa_bundle.py:_import_bc_properties_and_response_codes",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/soa_bundle.py:import_bundle",
+      "target": "function:web/routers/soa_bundle.py:_import_soa_bundle",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/soa_bundle.py:ui_import_bundle",
+      "target": "function:web/routers/soa_bundle.py:_import_soa_bundle",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:web/routers/usdm_json.py",
+      "target": "function:web/routers/usdm_json.py:_build",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/usdm_json.py",
+      "target": "function:web/routers/usdm_json.py:ui_usdm_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/usdm_json.py",
+      "target": "function:web/routers/usdm_json.py:ui_define_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/usdm_json.py",
+      "target": "function:web/routers/usdm_json.py:download_define_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/usdm_json.py",
+      "target": "function:web/routers/usdm_json.py:download_usdm_component",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/usdm_json.py:ui_usdm_json",
+      "target": "function:web/routers/usdm_json.py:_build",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/usdm_json.py:ui_define_json",
+      "target": "function:web/routers/usdm_json.py:_build",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/usdm_json.py:download_define_json",
+      "target": "function:web/routers/usdm_json.py:_build",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/usdm_json.py:download_usdm_component",
+      "target": "function:web/routers/usdm_json.py:_build",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ]
+}

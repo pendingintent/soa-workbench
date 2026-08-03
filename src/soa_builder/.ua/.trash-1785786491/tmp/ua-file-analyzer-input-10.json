@@ -1,0 +1,25 @@
+{
+  "projectRoot": "/Users/dmoreland/projects/soa-workbench/src/soa_builder",
+  "batchFiles": [
+    {"path": "mcp/__init__.py", "language": "python", "sizeLines": 0, "fileCategory": "code"},
+    {"path": "mcp/server.py", "language": "python", "sizeLines": 738, "fileCategory": "code"},
+    {"path": "web/static/bc_explorer.js", "language": "javascript", "sizeLines": 417, "fileCategory": "code"},
+    {"path": "web/static/help/bc_groupings.html", "language": "html", "sizeLines": 278, "fileCategory": "markup"},
+    {"path": "web/static/help/bc_workflow.html", "language": "html", "sizeLines": 670, "fileCategory": "markup"},
+    {"path": "web/static/style.css", "language": "css", "sizeLines": 1854, "fileCategory": "markup"},
+    {"path": "web/templates/usdm_json.html", "language": "html", "sizeLines": 32, "fileCategory": "markup"},
+    {"path": "web/templates/usdm_model_explorer.html", "language": "html", "sizeLines": 857, "fileCategory": "markup"}
+  ],
+  "batchImportData": {
+    "mcp/__init__.py": [],
+    "mcp/server.py": [
+      "mcp/server.py"
+    ],
+    "web/static/bc_explorer.js": [],
+    "web/static/help/bc_groupings.html": [],
+    "web/static/help/bc_workflow.html": [],
+    "web/static/style.css": [],
+    "web/templates/usdm_json.html": [],
+    "web/templates/usdm_model_explorer.html": []
+  }
+}

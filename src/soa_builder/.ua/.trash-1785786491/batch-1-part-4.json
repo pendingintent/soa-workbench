@@ -1,0 +1,2623 @@
+{
+  "nodes": [
+    {
+      "id": "file:web/routers/study_identifiers.py",
+      "type": "file",
+      "name": "study_identifiers.py",
+      "filePath": "web/routers/study_identifiers.py",
+      "summary": "FastAPI router for StudyIdentifier CRUD, linking scoping organizations to study identifier values such as the NCT number.",
+      "tags": [
+        "api-handler",
+        "router",
+        "study-identifiers"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/study_identifiers.py:_list_identifiers",
+      "type": "function",
+      "name": "_list_identifiers",
+      "filePath": "web/routers/study_identifiers.py",
+      "lineRange": [
+        27,
+        52
+      ],
+      "summary": "Loads all study identifier rows for the SoA joined with their scoping organization.",
+      "tags": [
+        "utility",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/study_identifiers.py:_list_orgs",
+      "type": "function",
+      "name": "_list_orgs",
+      "filePath": "web/routers/study_identifiers.py",
+      "lineRange": [
+        59,
+        74
+      ],
+      "summary": "Loads the organizations available to scope a study identifier to.",
+      "tags": [
+        "utility",
+        "database"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/study_identifiers.py:_render_partial",
+      "type": "function",
+      "name": "_render_partial",
+      "filePath": "web/routers/study_identifiers.py",
+      "lineRange": [
+        77,
+        89
+      ],
+      "summary": "Renders the study identifiers section partial for the SoA UI page.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "render"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/study_identifiers.py:create_study_identifier",
+      "type": "function",
+      "name": "create_study_identifier",
+      "filePath": "web/routers/study_identifiers.py",
+      "lineRange": [
+        106,
+        159
+      ],
+      "summary": "API endpoint that validates and inserts a new study identifier for the SoA, assigning its UID and recording an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "create"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/study_identifiers.py:delete_study_identifier",
+      "type": "function",
+      "name": "delete_study_identifier",
+      "filePath": "web/routers/study_identifiers.py",
+      "lineRange": [
+        163,
+        194
+      ],
+      "summary": "API endpoint that deletes a study identifier and records an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "delete"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/study_identifiers.py:ui_add_study_identifier",
+      "type": "function",
+      "name": "ui_add_study_identifier",
+      "filePath": "web/routers/study_identifiers.py",
+      "lineRange": [
+        206,
+        251
+      ],
+      "summary": "HTMX form handler that creates a new study identifier from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "create"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/study_identifiers.py:ui_delete_study_identifier",
+      "type": "function",
+      "name": "ui_delete_study_identifier",
+      "filePath": "web/routers/study_identifiers.py",
+      "lineRange": [
+        258,
+        291
+      ],
+      "summary": "HTMX handler that deletes a study identifier and returns the updated partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "delete"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/timings.py",
+      "type": "file",
+      "name": "timings.py",
+      "filePath": "web/routers/timings.py",
+      "summary": "FastAPI router for StudyTiming CRUD, including ISO 8601 duration/window validation and relative-to-instance scheduling used to compute visit timing windows.",
+      "tags": [
+        "api-handler",
+        "router",
+        "timings"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/timings.py:list_timings",
+      "type": "function",
+      "name": "list_timings",
+      "filePath": "web/routers/timings.py",
+      "lineRange": [
+        42,
+        77
+      ],
+      "summary": "API endpoint returning all timings for the given SoA as JSON.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "timings"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/timings.py:ui_list_timings",
+      "type": "function",
+      "name": "ui_list_timings",
+      "filePath": "web/routers/timings.py",
+      "lineRange": [
+        82,
+        153
+      ],
+      "summary": "Renders the timings list/section HTMX partial for the SoA UI page.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "ui"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/timings.py:create_timing",
+      "type": "function",
+      "name": "create_timing",
+      "filePath": "web/routers/timings.py",
+      "lineRange": [
+        163,
+        248
+      ],
+      "summary": "API endpoint that validates and inserts a new timing for the SoA, assigning its UID and recording an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "create"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/timings.py:ui_create_timing",
+      "type": "function",
+      "name": "ui_create_timing",
+      "filePath": "web/routers/timings.py",
+      "lineRange": [
+        253,
+        342
+      ],
+      "summary": "HTMX form handler that creates a new timing from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "create"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/timings.py:list_timing_audit",
+      "type": "function",
+      "name": "list_timing_audit",
+      "filePath": "web/routers/timings.py",
+      "lineRange": [
+        346,
+        381
+      ],
+      "summary": "API endpoint returning the audit-history rows for timings on the SoA.",
+      "tags": [
+        "api-handler",
+        "audit-trail"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/timings.py:update_timing",
+      "type": "function",
+      "name": "update_timing",
+      "filePath": "web/routers/timings.py",
+      "lineRange": [
+        390,
+        552
+      ],
+      "summary": "API endpoint that validates and applies changes to an existing timing, recording before/after audit state.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "update"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/timings.py:ui_update_timing",
+      "type": "function",
+      "name": "ui_update_timing",
+      "filePath": "web/routers/timings.py",
+      "lineRange": [
+        557,
+        680
+      ],
+      "summary": "HTMX form handler that updates an existing timing from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "update"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/timings.py:delete_timing",
+      "type": "function",
+      "name": "delete_timing",
+      "filePath": "web/routers/timings.py",
+      "lineRange": [
+        689,
+        724
+      ],
+      "summary": "API endpoint that deletes a timing and records an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "delete"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/visits.py",
+      "type": "file",
+      "name": "visits.py",
+      "filePath": "web/routers/visits.py",
+      "summary": "FastAPI router for Visit (Encounter) CRUD, reordering, transition rules, and environmental-setting/contact-mode code-list associations.",
+      "tags": [
+        "api-handler",
+        "router",
+        "visits",
+        "encounters"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/visits.py:_load_code_value_map",
+      "type": "function",
+      "name": "_load_code_value_map",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        39,
+        48
+      ],
+      "summary": "Loads controlled-terminology submission-value lookup maps used to resolve visit environmental-setting and contact-mode codes.",
+      "tags": [
+        "utility",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/visits.py:list_visits",
+      "type": "function",
+      "name": "list_visits",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        53,
+        84
+      ],
+      "summary": "API endpoint returning all visits for the given SoA as JSON.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "visits"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/visits.py:ui_list_visits",
+      "type": "function",
+      "name": "ui_list_visits",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        89,
+        159
+      ],
+      "summary": "Renders the visits list/section HTMX partial for the SoA UI page.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "ui"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/visits.py:get_visit",
+      "type": "function",
+      "name": "get_visit",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        164,
+        185
+      ],
+      "summary": "API endpoint returning a single visit's details by ID.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "read"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/visits.py:add_visit",
+      "type": "function",
+      "name": "add_visit",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        195,
+        333
+      ],
+      "summary": "API endpoint that validates and inserts a new visit for the SoA, assigning its UID and recording an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "create"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/visits.py:ui_create_visit",
+      "type": "function",
+      "name": "ui_create_visit",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        338,
+        365
+      ],
+      "summary": "HTMX form handler that creates a new visit from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "create"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/visits.py:update_visit",
+      "type": "function",
+      "name": "update_visit",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        370,
+        594
+      ],
+      "summary": "API endpoint that validates and applies changes to an existing visit, recording before/after audit state.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "update"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/visits.py:ui_update_visit",
+      "type": "function",
+      "name": "ui_update_visit",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        599,
+        623
+      ],
+      "summary": "HTMX form handler that updates an existing visit from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "update"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/visits.py:delete_visit",
+      "type": "function",
+      "name": "delete_visit",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        632,
+        670
+      ],
+      "summary": "API endpoint that deletes a visit and records an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "delete"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/visits.py:ui_delete_visit",
+      "type": "function",
+      "name": "ui_delete_visit",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        675,
+        677
+      ],
+      "summary": "HTMX handler that deletes a visit and returns the updated partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "delete"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/visits.py:reorder_visits_api",
+      "type": "function",
+      "name": "reorder_visits_api",
+      "filePath": "web/routers/visits.py",
+      "lineRange": [
+        682,
+        720
+      ],
+      "summary": "API endpoint that persists a new display order for visits and records a reorder audit entry.",
+      "tags": [
+        "api-handler",
+        "reorder"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/schemas.py",
+      "type": "file",
+      "name": "schemas.py",
+      "filePath": "web/schemas.py",
+      "summary": "Central Pydantic request-validation schema module defining Create/Update payload models for every mutable USDM entity in the application (activities, elements, visits, timings, arms, epochs, amendments, and more), including ISO 8601 duration and timing-window consistency validators.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schemas",
+        "pydantic"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Uses Pydantic v2 field_validator/model_validator decorators (_validate_iso8601_duration, _validate_window_all_or_none) shared across TimingCreate/TimingUpdate, and per-class validators for conditional 'other reason' text fields."
+    },
+    {
+      "id": "function:web/schemas.py:_validate_iso8601_duration",
+      "type": "function",
+      "name": "_validate_iso8601_duration",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        12,
+        23
+      ],
+      "summary": "Validator helper that checks a string matches ISO 8601 duration syntax (e.g. P1D, P2W).",
+      "tags": [
+        "validation",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/schemas.py:_validate_window_all_or_none",
+      "type": "function",
+      "name": "_validate_window_all_or_none",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        26,
+        47
+      ],
+      "summary": "Validator helper enforcing that timing window_lower, window_upper, and window_label are either all specified or all absent together.",
+      "tags": [
+        "validation",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:web/schemas.py:InstanceUpdate",
+      "type": "class",
+      "name": "InstanceUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        50,
+        59
+      ],
+      "summary": "Pydantic request-validation schema for updating a ScheduledActivityInstance.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:InstanceCreate",
+      "type": "class",
+      "name": "InstanceCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        62,
+        71
+      ],
+      "summary": "Pydantic request-validation schema for creating a new ScheduledActivityInstance.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:TimingCreate",
+      "type": "class",
+      "name": "TimingCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        74,
+        99
+      ],
+      "summary": "Pydantic request-validation schema for creating a new StudyTiming.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema",
+        "custom-validator"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:web/schemas.py:TimingUpdate",
+      "type": "class",
+      "name": "TimingUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        102,
+        127
+      ],
+      "summary": "Pydantic request-validation schema for updating a StudyTiming.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema",
+        "custom-validator"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:web/schemas.py:ScheduleTimelineCreate",
+      "type": "class",
+      "name": "ScheduleTimelineCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        130,
+        137
+      ],
+      "summary": "Pydantic request-validation schema for creating a new ScheduleTimeline.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ScheduleTimelineUpdate",
+      "type": "class",
+      "name": "ScheduleTimelineUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        140,
+        147
+      ],
+      "summary": "Pydantic request-validation schema for updating a ScheduleTimeline.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ActivityCreate",
+      "type": "class",
+      "name": "ActivityCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        150,
+        153
+      ],
+      "summary": "Pydantic request-validation schema for creating a new Activity.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ActivityUpdate",
+      "type": "class",
+      "name": "ActivityUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        156,
+        159
+      ],
+      "summary": "Pydantic request-validation schema for updating an Activity.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:BulkActivities",
+      "type": "class",
+      "name": "BulkActivities",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        162,
+        163
+      ],
+      "summary": "Pydantic schema modeling a batch of Activities from a newline-delimited names list.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ElementCreate",
+      "type": "class",
+      "name": "ElementCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        166,
+        172
+      ],
+      "summary": "Pydantic request-validation schema for creating a new StudyElement.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ElementUpdate",
+      "type": "class",
+      "name": "ElementUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        175,
+        181
+      ],
+      "summary": "Pydantic request-validation schema for updating a StudyElement.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:EpochCreate",
+      "type": "class",
+      "name": "EpochCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        184,
+        188
+      ],
+      "summary": "Pydantic request-validation schema for creating a new StudyEpoch.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:EpochUpdate",
+      "type": "class",
+      "name": "EpochUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        191,
+        195
+      ],
+      "summary": "Pydantic request-validation schema for updating a StudyEpoch.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:VisitCreate",
+      "type": "class",
+      "name": "VisitCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        198,
+        208
+      ],
+      "summary": "Pydantic request-validation schema for creating a new Visit/Encounter.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:VisitUpdate",
+      "type": "class",
+      "name": "VisitUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        211,
+        221
+      ],
+      "summary": "Pydantic request-validation schema for updating a Visit/Encounter.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ArmCreate",
+      "type": "class",
+      "name": "ArmCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        224,
+        229
+      ],
+      "summary": "Pydantic request-validation schema for creating a new StudyArm.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ArmUpdate",
+      "type": "class",
+      "name": "ArmUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        232,
+        237
+      ],
+      "summary": "Pydantic request-validation schema for updating a StudyArm.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:RuleCreate",
+      "type": "class",
+      "name": "RuleCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        240,
+        244
+      ],
+      "summary": "Pydantic request-validation schema for creating a new transition rule.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:RuleUpdate",
+      "type": "class",
+      "name": "RuleUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        247,
+        251
+      ],
+      "summary": "Pydantic request-validation schema for updating a transition rule.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:SOACreate",
+      "type": "class",
+      "name": "SOACreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        254,
+        258
+      ],
+      "summary": "Pydantic request-validation schema for creating a new Schedule of Activities (study).",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:SOAMetadataUpdate",
+      "type": "class",
+      "name": "SOAMetadataUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        261,
+        264
+      ],
+      "summary": "Pydantic request-validation schema for updating a study's top-level metadata.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ConceptsUpdate",
+      "type": "class",
+      "name": "ConceptsUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        268,
+        269
+      ],
+      "summary": "Pydantic request-validation schema for updating an activity's associated Biomedical Concept codes.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ObjectiveCreate",
+      "type": "class",
+      "name": "ObjectiveCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        272,
+        277
+      ],
+      "summary": "Pydantic request-validation schema for creating a new study Objective.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ObjectiveUpdate",
+      "type": "class",
+      "name": "ObjectiveUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        280,
+        285
+      ],
+      "summary": "Pydantic request-validation schema for updating a study Objective.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:EndpointCreate",
+      "type": "class",
+      "name": "EndpointCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        288,
+        295
+      ],
+      "summary": "Pydantic request-validation schema for creating a new study Endpoint.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:EndpointUpdate",
+      "type": "class",
+      "name": "EndpointUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        298,
+        305
+      ],
+      "summary": "Pydantic request-validation schema for updating a study Endpoint.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:FreezeCreate",
+      "type": "class",
+      "name": "FreezeCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        308,
+        309
+      ],
+      "summary": "Pydantic request-validation schema for creating a version freeze/snapshot of the SoA.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:CellCreate",
+      "type": "class",
+      "name": "CellCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        312,
+        315
+      ],
+      "summary": "Pydantic request-validation schema for creating a legacy SoA matrix cell (visit x activity) status.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:MatrixInstance",
+      "type": "class",
+      "name": "MatrixInstance",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        318,
+        320
+      ],
+      "summary": "Pydantic request-validation schema for creating an instance row within a bulk matrix import.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:MatrixActivity",
+      "type": "class",
+      "name": "MatrixActivity",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        323,
+        325
+      ],
+      "summary": "Pydantic request-validation schema for creating an activity row (with per-instance statuses) within a bulk matrix import.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:MatrixImport",
+      "type": "class",
+      "name": "MatrixImport",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        328,
+        331
+      ],
+      "summary": "Pydantic schema modeling a full wide-format SoA matrix import payload.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:StudyCellCreate",
+      "type": "class",
+      "name": "StudyCellCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        334,
+        337
+      ],
+      "summary": "Pydantic request-validation schema for creating a new StudyCell (arm x epoch x element junction).",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:StudyCellUpdate",
+      "type": "class",
+      "name": "StudyCellUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        340,
+        343
+      ],
+      "summary": "Pydantic request-validation schema for updating a StudyCell.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:DecisionInstanceCreate",
+      "type": "class",
+      "name": "DecisionInstanceCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        346,
+        352
+      ],
+      "summary": "Pydantic request-validation schema for creating a new DecisionInstance.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:DecisionInstanceUpdate",
+      "type": "class",
+      "name": "DecisionInstanceUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        355,
+        361
+      ],
+      "summary": "Pydantic request-validation schema for updating a DecisionInstance.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ConditionAssignmentCreate",
+      "type": "class",
+      "name": "ConditionAssignmentCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        364,
+        370
+      ],
+      "summary": "Pydantic request-validation schema for creating a new ConditionAssignment.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:ConditionAssignmentUpdate",
+      "type": "class",
+      "name": "ConditionAssignmentUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        373,
+        379
+      ],
+      "summary": "Pydantic request-validation schema for updating a ConditionAssignment.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:BCSurrogateCreate",
+      "type": "class",
+      "name": "BCSurrogateCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        382,
+        386
+      ],
+      "summary": "Pydantic request-validation schema for creating a new BC Surrogate.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:BCSurrogateUpdate",
+      "type": "class",
+      "name": "BCSurrogateUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        389,
+        393
+      ],
+      "summary": "Pydantic request-validation schema for updating a BC Surrogate.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:FootnoteCreate",
+      "type": "class",
+      "name": "FootnoteCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        396,
+        401
+      ],
+      "summary": "Pydantic request-validation schema for creating a new Footnote.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:FootnoteUpdate",
+      "type": "class",
+      "name": "FootnoteUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        404,
+        409
+      ],
+      "summary": "Pydantic request-validation schema for updating a Footnote.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:StudyAmendmentCreate",
+      "type": "class",
+      "name": "StudyAmendmentCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        412,
+        427
+      ],
+      "summary": "Pydantic request-validation schema for creating a new StudyAmendment, requiring primary_reason_other text when primary_reason_code indicates 'Other'.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema",
+        "custom-validator"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "class:web/schemas.py:StudyAmendmentUpdate",
+      "type": "class",
+      "name": "StudyAmendmentUpdate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        430,
+        435
+      ],
+      "summary": "Pydantic request-validation schema for updating a StudyAmendment.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:StudyAmendmentReasonCreate",
+      "type": "class",
+      "name": "StudyAmendmentReasonCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        438,
+        446
+      ],
+      "summary": "Pydantic request-validation schema for creating a secondary amendment reason, requiring free-text when the code is 'Other'.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema",
+        "custom-validator"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:StudyAmendmentImpactCreate",
+      "type": "class",
+      "name": "StudyAmendmentImpactCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        449,
+        452
+      ],
+      "summary": "Pydantic request-validation schema for creating an amendment impact record.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:StudyChangeCreate",
+      "type": "class",
+      "name": "StudyChangeCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        455,
+        460
+      ],
+      "summary": "Pydantic request-validation schema for creating an amendment change/rationale record.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:DocumentContentReferenceCreate",
+      "type": "class",
+      "name": "DocumentContentReferenceCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        463,
+        466
+      ],
+      "summary": "Pydantic request-validation schema for creating a protocol document section reference linked to an amendment change.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:GeographicScopeCreate",
+      "type": "class",
+      "name": "GeographicScopeCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        469,
+        470
+      ],
+      "summary": "Pydantic request-validation schema for creating a geographic scope (country/region) on an amendment.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:SubjectEnrollmentCreate",
+      "type": "class",
+      "name": "SubjectEnrollmentCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        473,
+        480
+      ],
+      "summary": "Pydantic request-validation schema for creating a subject enrollment/quantity record scoped to a geographic scope, cohort, or site.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "class:web/schemas.py:GovernanceDateCreate",
+      "type": "class",
+      "name": "GovernanceDateCreate",
+      "filePath": "web/schemas.py",
+      "lineRange": [
+        483,
+        489
+      ],
+      "summary": "Pydantic request-validation schema for creating a governance/regulatory milestone date on an amendment.",
+      "tags": [
+        "type-definition",
+        "validation",
+        "schema"
+      ],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:_list_identifiers",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:_list_orgs",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:_render_partial",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:create_study_identifier",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:create_study_identifier",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:delete_study_identifier",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:delete_study_identifier",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:ui_add_study_identifier",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:ui_add_study_identifier",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:ui_delete_study_identifier",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "function:web/routers/study_identifiers.py:ui_delete_study_identifier",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:list_timings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:list_timings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:ui_list_timings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:ui_list_timings",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:create_timing",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:create_timing",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:ui_create_timing",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:ui_create_timing",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:list_timing_audit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:list_timing_audit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:update_timing",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:update_timing",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:ui_update_timing",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:ui_update_timing",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:delete_timing",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "function:web/routers/timings.py:delete_timing",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:_load_code_value_map",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:list_visits",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:list_visits",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:ui_list_visits",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:ui_list_visits",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:get_visit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:get_visit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:add_visit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:add_visit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:ui_create_visit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:ui_create_visit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:update_visit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:update_visit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:ui_update_visit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:ui_update_visit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:delete_visit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:delete_visit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:ui_delete_visit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:ui_delete_visit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:reorder_visits_api",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "function:web/routers/visits.py:reorder_visits_api",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "function:web/schemas.py:_validate_iso8601_duration",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "function:web/schemas.py:_validate_iso8601_duration",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "function:web/schemas.py:_validate_window_all_or_none",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "function:web/schemas.py:_validate_window_all_or_none",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:InstanceUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:InstanceUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:InstanceCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:InstanceCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:TimingCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:TimingCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:TimingUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:TimingUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ScheduleTimelineCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ScheduleTimelineCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ScheduleTimelineUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ScheduleTimelineUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ActivityCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ActivityCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ActivityUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ActivityUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:BulkActivities",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:BulkActivities",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ElementCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ElementCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ElementUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ElementUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:EpochCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:EpochCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:EpochUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:EpochUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:VisitCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:VisitCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:VisitUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:VisitUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ArmCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ArmCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ArmUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ArmUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:RuleCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:RuleCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:RuleUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:RuleUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:SOACreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:SOACreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:SOAMetadataUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:SOAMetadataUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ConceptsUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ConceptsUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ObjectiveCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ObjectiveCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ObjectiveUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ObjectiveUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:EndpointCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:EndpointCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:EndpointUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:EndpointUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:FreezeCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:FreezeCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:CellCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:CellCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:MatrixInstance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:MatrixInstance",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:MatrixActivity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:MatrixActivity",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:MatrixImport",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:MatrixImport",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyCellCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyCellCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyCellUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyCellUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:DecisionInstanceCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:DecisionInstanceCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:DecisionInstanceUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:DecisionInstanceUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ConditionAssignmentCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ConditionAssignmentCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ConditionAssignmentUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:ConditionAssignmentUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:BCSurrogateCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:BCSurrogateCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:BCSurrogateUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:BCSurrogateUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:FootnoteCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:FootnoteCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:FootnoteUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:FootnoteUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyAmendmentCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyAmendmentCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyAmendmentUpdate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyAmendmentUpdate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyAmendmentReasonCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyAmendmentReasonCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyAmendmentImpactCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyAmendmentImpactCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyChangeCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:StudyChangeCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:DocumentContentReferenceCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:DocumentContentReferenceCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:GeographicScopeCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:GeographicScopeCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:SubjectEnrollmentCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:SubjectEnrollmentCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:GovernanceDateCreate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/schemas.py",
+      "target": "class:web/schemas.py:GovernanceDateCreate",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "file:web/audit.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/study_identifiers.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "file:web/audit.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "file:web/codelist_config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "file:web/schemas.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/timings.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "file:web/audit.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "file:web/codelist_config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "file:web/schemas.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/visits.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/study_identifiers.py:create_study_identifier",
+      "target": "function:web/audit.py:_record_study_identifier_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/study_identifiers.py:delete_study_identifier",
+      "target": "function:web/audit.py:_record_study_identifier_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/study_identifiers.py:ui_add_study_identifier",
+      "target": "function:web/audit.py:_record_study_identifier_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/study_identifiers.py:ui_delete_study_identifier",
+      "target": "function:web/audit.py:_record_study_identifier_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/timings.py:create_timing",
+      "target": "function:web/audit.py:_record_timing_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/timings.py:update_timing",
+      "target": "function:web/audit.py:_record_timing_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/timings.py:delete_timing",
+      "target": "function:web/audit.py:_record_timing_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/visits.py:add_visit",
+      "target": "function:web/audit.py:_record_visit_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/visits.py:update_visit",
+      "target": "function:web/audit.py:_record_visit_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/visits.py:delete_visit",
+      "target": "function:web/audit.py:_record_visit_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/visits.py:reorder_visits_api",
+      "target": "function:web/audit.py:_record_reorder_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/visits.py:reorder_visits_api",
+      "target": "function:web/audit.py:_record_visit_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ]
+}

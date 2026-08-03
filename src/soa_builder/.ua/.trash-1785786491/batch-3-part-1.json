@@ -1,0 +1,1078 @@
+{
+  "nodes": [
+    {
+      "id": "file:web/routers/cdash_terminology.py",
+      "type": "file",
+      "name": "cdash_terminology.py",
+      "filePath": "web/routers/cdash_terminology.py",
+      "summary": "FastAPI router exposing a JSON API and HTMX UI page for browsing the cached CDASH Controlled Terminology package sourced from the CDISC Library, with search, code/codelist filtering, and pagination.",
+      "tags": [
+        "api-handler",
+        "controlled-terminology",
+        "cdisc-library",
+        "htmx-ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/cdash_terminology.py:_apply_filters",
+      "type": "function",
+      "name": "_apply_filters",
+      "filePath": "web/routers/cdash_terminology.py",
+      "lineRange": [
+        37,
+        58
+      ],
+      "summary": "Applies exact code/codelist filters and a substring search across searchable columns to a list of CDASH CT rows.",
+      "tags": [
+        "utility",
+        "filtering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/cdash_terminology.py:get_cdash_terminology",
+      "type": "function",
+      "name": "get_cdash_terminology",
+      "filePath": "web/routers/cdash_terminology.py",
+      "lineRange": [
+        62,
+        99
+      ],
+      "summary": "GET /cdash/terminology JSON API endpoint returning paginated, filtered CDASH Controlled Terminology rows fetched (and optionally refreshed) from the cached CDISC Library package.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/cdash_terminology.py:ui_cdash_terminology",
+      "type": "function",
+      "name": "ui_cdash_terminology",
+      "filePath": "web/routers/cdash_terminology.py",
+      "lineRange": [
+        105,
+        140
+      ],
+      "summary": "GET /ui/cdash/terminology HTMX page endpoint rendering the CDASH Controlled Terminology browser template using the JSON endpoint's data.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/ddf_controlled_terminology.py",
+      "type": "file",
+      "name": "ddf_controlled_terminology.py",
+      "filePath": "web/routers/ddf_controlled_terminology.py",
+      "summary": "FastAPI router exposing a JSON API and HTMX UI page for browsing the cached DDF (Digital Data Flow) Controlled Terminology package from the CDISC Library, with search, filtering, and pagination.",
+      "tags": [
+        "api-handler",
+        "controlled-terminology",
+        "cdisc-library",
+        "htmx-ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/ddf_controlled_terminology.py:_apply_filters",
+      "type": "function",
+      "name": "_apply_filters",
+      "filePath": "web/routers/ddf_controlled_terminology.py",
+      "lineRange": [
+        29,
+        50
+      ],
+      "summary": "Applies exact code/codelist filters and a substring search across searchable columns to a list of DDF CT rows.",
+      "tags": [
+        "utility",
+        "filtering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/ddf_controlled_terminology.py:get_ddf_ct_terminology",
+      "type": "function",
+      "name": "get_ddf_ct_terminology",
+      "filePath": "web/routers/ddf_controlled_terminology.py",
+      "lineRange": [
+        54,
+        87
+      ],
+      "summary": "GET /ddf/terminology JSON API endpoint returning paginated, filtered DDF Controlled Terminology rows from the cached CDISC Library package.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/ddf_controlled_terminology.py:ui_ddf_controlled_terminology",
+      "type": "function",
+      "name": "ui_ddf_controlled_terminology",
+      "filePath": "web/routers/ddf_controlled_terminology.py",
+      "lineRange": [
+        95,
+        130
+      ],
+      "summary": "GET /ui/ddf/terminology HTMX page endpoint rendering the DDF Controlled Terminology browser template.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/define_xml_terminology.py",
+      "type": "file",
+      "name": "define_xml_terminology.py",
+      "filePath": "web/routers/define_xml_terminology.py",
+      "summary": "FastAPI router exposing a JSON API and HTMX UI page for browsing the cached Define-XML Controlled Terminology package from the CDISC Library, with search, filtering, and pagination.",
+      "tags": [
+        "api-handler",
+        "controlled-terminology",
+        "cdisc-library",
+        "htmx-ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/define_xml_terminology.py:_apply_filters",
+      "type": "function",
+      "name": "_apply_filters",
+      "filePath": "web/routers/define_xml_terminology.py",
+      "lineRange": [
+        37,
+        58
+      ],
+      "summary": "Applies exact code/codelist filters and a substring search across searchable columns to a list of Define-XML CT rows.",
+      "tags": [
+        "utility",
+        "filtering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/define_xml_terminology.py:get_define_xml_terminology",
+      "type": "function",
+      "name": "get_define_xml_terminology",
+      "filePath": "web/routers/define_xml_terminology.py",
+      "lineRange": [
+        62,
+        99
+      ],
+      "summary": "GET /define-xml/terminology JSON API endpoint returning paginated, filtered Define-XML Controlled Terminology rows from the cached CDISC Library package.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/define_xml_terminology.py:ui_define_xml_terminology",
+      "type": "function",
+      "name": "ui_define_xml_terminology",
+      "filePath": "web/routers/define_xml_terminology.py",
+      "lineRange": [
+        107,
+        142
+      ],
+      "summary": "GET /ui/define-xml/terminology HTMX page endpoint rendering the Define-XML Controlled Terminology browser template.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/concept_groups.py",
+      "type": "file",
+      "name": "concept_groups.py",
+      "filePath": "web/routers/concept_groups.py",
+      "summary": "Large FastAPI router managing custom Concept Groups (CRUD on groups, member concepts, category/surrogate assignment to activities) and a proxy/sync layer to the external BC Grouping microservice that materializes CDISC classification schemes as concept_group rows (source='cdisc') alongside user-authored custom groups.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "biomedical-concepts",
+        "external-service-integration",
+        "htmx-ui"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Uses in-function (deferred) imports from web/app.py and web/routers/bc_surrogates.py to avoid circular imports between the router modules and the central app module."
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:_next_group_uid",
+      "type": "function",
+      "name": "_next_group_uid",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        35,
+        48
+      ],
+      "summary": "Generates the next monotonic ConceptGroup_N UID by scanning existing concept_group rows.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:_fetch_group_row",
+      "type": "function",
+      "name": "_fetch_group_row",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        51,
+        72
+      ],
+      "summary": "Fetches a concept_group row by id, raising 404 if missing and optionally 400 if the group is CDISC-sourced and the caller requires a custom (editable) group.",
+      "tags": [
+        "validation",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:_fetch_custom_group_uid",
+      "type": "function",
+      "name": "_fetch_custom_group_uid",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        75,
+        81
+      ],
+      "summary": "Resolves a group_id to its concept_group_uid while rejecting CDISC-sourced groups, for routes that mutate a group's member definition.",
+      "tags": [
+        "validation",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:_expand_group_to_activity",
+      "type": "function",
+      "name": "_expand_group_to_activity",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        84,
+        150
+      ],
+      "summary": "Inserts all concepts belonging to a concept group into activity_concept for a given activity, upserting biomedical concept metadata and skipping concepts already present.",
+      "tags": [
+        "data-model",
+        "biomedical-concepts"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:list_concept_groups",
+      "type": "function",
+      "name": "list_concept_groups",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        184,
+        209
+      ],
+      "summary": "API endpoint listing all concept groups (custom and CDISC-sourced) with member counts.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:create_concept_group",
+      "type": "function",
+      "name": "create_concept_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        218,
+        239
+      ],
+      "summary": "API endpoint creating a new custom concept group, optionally copying members from an existing group.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:update_concept_group",
+      "type": "function",
+      "name": "update_concept_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        252,
+        286
+      ],
+      "summary": "API endpoint updating a custom concept group's name, label, or description.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:delete_concept_group",
+      "type": "function",
+      "name": "delete_concept_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        299,
+        311
+      ],
+      "summary": "API endpoint deleting a custom concept group and its member rows.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:add_concepts_to_group",
+      "type": "function",
+      "name": "add_concepts_to_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        324,
+        347
+      ],
+      "summary": "API endpoint adding one or more concept codes as members of a custom concept group.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:remove_concept_from_group",
+      "type": "function",
+      "name": "remove_concept_from_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        355,
+        367
+      ],
+      "summary": "API endpoint removing a single concept code from a custom concept group.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:add_category_to_group",
+      "type": "function",
+      "name": "add_category_to_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        380,
+        401
+      ],
+      "summary": "API endpoint expanding a biomedical concept category into a custom group's members via the CDISC Library.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:assign_group_to_activity",
+      "type": "function",
+      "name": "assign_group_to_activity",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        414,
+        435
+      ],
+      "summary": "API endpoint assigning a concept group's member concepts to a specific SoA activity.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:unassign_group_from_activity",
+      "type": "function",
+      "name": "unassign_group_from_activity",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        443,
+        457
+      ],
+      "summary": "API endpoint removing a concept group's association from an activity.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_list_concept_groups",
+      "type": "function",
+      "name": "ui_list_concept_groups",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        466,
+        550
+      ],
+      "summary": "HTMX page endpoint rendering the Custom Concept Groups admin list with member counts and BC Grouping service status.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_create_concept_group",
+      "type": "function",
+      "name": "ui_create_concept_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        559,
+        594
+      ],
+      "summary": "HTMX form endpoint creating a custom concept group and redirecting back to the list.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_update_concept_group",
+      "type": "function",
+      "name": "ui_update_concept_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        598,
+        615
+      ],
+      "summary": "HTMX form endpoint updating a custom concept group's metadata.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_delete_concept_group",
+      "type": "function",
+      "name": "ui_delete_concept_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        619,
+        631
+      ],
+      "summary": "HTMX form endpoint deleting a custom concept group.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_add_concept_to_group",
+      "type": "function",
+      "name": "ui_add_concept_to_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        642,
+        664
+      ],
+      "summary": "HTMX form endpoint adding a single concept code to a custom group.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_remove_concept_from_group",
+      "type": "function",
+      "name": "ui_remove_concept_from_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        671,
+        686
+      ],
+      "summary": "HTMX form endpoint removing a concept code from a custom group.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_add_category_to_group",
+      "type": "function",
+      "name": "ui_add_category_to_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        693,
+        714
+      ],
+      "summary": "HTMX form endpoint expanding a biomedical concept category into a custom group's members.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_add_surrogate_to_group",
+      "type": "function",
+      "name": "ui_add_surrogate_to_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        725,
+        739
+      ],
+      "summary": "HTMX form endpoint assigning a biomedical concept surrogate to a custom group's definition.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_remove_surrogate_from_group",
+      "type": "function",
+      "name": "ui_remove_surrogate_from_group",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        746,
+        759
+      ],
+      "summary": "HTMX form endpoint removing a surrogate's assignment from a custom group.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_add_group_to_activity",
+      "type": "function",
+      "name": "ui_add_group_to_activity",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        771,
+        829
+      ],
+      "summary": "HTMX endpoint assigning a concept group to an activity, queuing background enrichment tasks for each newly added concept, and returning the refreshed concepts cell partial.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx",
+        "background-task"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_remove_group_from_activity",
+      "type": "function",
+      "name": "ui_remove_group_from_activity",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        836,
+        870
+      ],
+      "summary": "HTMX endpoint removing a concept group's association (concepts and surrogates) from an activity and returning the refreshed concepts cell partial.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:_bc_grouping_fetch_all",
+      "type": "function",
+      "name": "_bc_grouping_fetch_all",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        890,
+        906
+      ],
+      "summary": "Fetches every page of a paginated BC Grouping microservice list endpoint and concatenates the results.",
+      "tags": [
+        "utility",
+        "external-service-integration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:fetch_bc_grouping_data",
+      "type": "function",
+      "name": "fetch_bc_grouping_data",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        909,
+        960
+      ],
+      "summary": "Fetches and time-caches biomedical concepts, classification schemes, values, and assignments from the BC Grouping microservice; never raises, returning an availability flag and detail message on failure.",
+      "tags": [
+        "external-service-integration",
+        "caching"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:sync_cdisc_concept_groups",
+      "type": "function",
+      "name": "sync_cdisc_concept_groups",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        966,
+        1088
+      ],
+      "summary": "Idempotently materializes CDISC classification values from the BC Grouping service as concept_group/concept_group_concept rows tagged source='cdisc', adding, updating, and pruning stale groups/members without touching custom-sourced rows.",
+      "tags": [
+        "data-sync",
+        "biomedical-concepts",
+        "external-service-integration"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_bc_grouping_status",
+      "type": "function",
+      "name": "ui_bc_grouping_status",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        1092,
+        1125
+      ],
+      "summary": "HTMX endpoint returning an HTML partial reporting BC Grouping service health/connectivity.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_bc_explorer",
+      "type": "function",
+      "name": "ui_bc_explorer",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        1129,
+        1140
+      ],
+      "summary": "HTMX endpoint rendering the BC Grouping Explorer partial with classification data or an unavailable-service card.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/concept_groups.py:ui_bc_explorer_refresh",
+      "type": "function",
+      "name": "ui_bc_explorer_refresh",
+      "filePath": "web/routers/concept_groups.py",
+      "lineRange": [
+        1144,
+        1150
+      ],
+      "summary": "HTMX endpoint forcing a refresh of the BC Grouping cache and a re-sync of CDISC concept groups, then redirecting back to the list.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:web/routers/cdash_terminology.py",
+      "target": "function:web/routers/cdash_terminology.py:_apply_filters",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/cdash_terminology.py",
+      "target": "function:web/routers/cdash_terminology.py:get_cdash_terminology",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/cdash_terminology.py",
+      "target": "function:web/routers/cdash_terminology.py:ui_cdash_terminology",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/cdash_terminology.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/cdash_terminology.py:get_cdash_terminology",
+      "target": "function:web/utils.py:get_cdash_ct_rows",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/ddf_controlled_terminology.py",
+      "target": "function:web/routers/ddf_controlled_terminology.py:_apply_filters",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/ddf_controlled_terminology.py",
+      "target": "function:web/routers/ddf_controlled_terminology.py:get_ddf_ct_terminology",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/ddf_controlled_terminology.py",
+      "target": "function:web/routers/ddf_controlled_terminology.py:ui_ddf_controlled_terminology",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/ddf_controlled_terminology.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/ddf_controlled_terminology.py:get_ddf_ct_terminology",
+      "target": "function:web/utils.py:get_ddf_ct_rows",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/define_xml_terminology.py",
+      "target": "function:web/routers/define_xml_terminology.py:_apply_filters",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/define_xml_terminology.py",
+      "target": "function:web/routers/define_xml_terminology.py:get_define_xml_terminology",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/define_xml_terminology.py",
+      "target": "function:web/routers/define_xml_terminology.py:ui_define_xml_terminology",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/define_xml_terminology.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/define_xml_terminology.py:get_define_xml_terminology",
+      "target": "function:web/utils.py:get_define_xml_ct_rows",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:_next_group_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:_fetch_group_row",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:_fetch_custom_group_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:_expand_group_to_activity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:list_concept_groups",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:create_concept_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:update_concept_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:delete_concept_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:add_concepts_to_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:remove_concept_from_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:add_category_to_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:assign_group_to_activity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:unassign_group_from_activity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_list_concept_groups",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_create_concept_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_update_concept_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_delete_concept_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_add_concept_to_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_remove_concept_from_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_add_category_to_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_add_surrogate_to_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_remove_surrogate_from_group",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_add_group_to_activity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_remove_group_from_activity",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:_bc_grouping_fetch_all",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:fetch_bc_grouping_data",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:sync_cdisc_concept_groups",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_bc_grouping_status",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_bc_explorer",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "function:web/routers/concept_groups.py:ui_bc_explorer_refresh",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/concept_groups.py:_expand_group_to_activity",
+      "target": "function:web/utils.py:get_next_concept_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/concept_groups.py:assign_group_to_activity",
+      "target": "function:web/utils.py:soa_exists",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/concept_groups.py:list_concept_groups",
+      "target": "function:web/db.py:_connect",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/concept_groups.py:sync_cdisc_concept_groups",
+      "target": "function:web/db.py:_connect",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "file:web/app.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/concept_groups.py",
+      "target": "file:web/routers/bc_surrogates.py",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

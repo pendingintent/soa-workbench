@@ -1,0 +1,1970 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 3,
+  "filesSkipped": [
+    "web/static/help/bc_groupings.html",
+    "web/static/help/bc_workflow.html",
+    "web/static/style.css",
+    "web/templates/usdm_json.html",
+    "web/templates/usdm_model_explorer.html"
+  ],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 3,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 3,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "mcp/__init__.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 1,
+      "nonEmptyLines": 0,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "mcp/server.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 738,
+      "nonEmptyLines": 677,
+      "functions": [
+        {
+          "name": "list_tools",
+          "startLine": 275,
+          "endLine": 276,
+          "params": []
+        },
+        {
+          "name": "call_tool",
+          "startLine": 280,
+          "endLine": 283,
+          "params": [
+            "name",
+            "arguments"
+          ]
+        },
+        {
+          "name": "_dispatch",
+          "startLine": 291,
+          "endLine": 308,
+          "params": [
+            "name",
+            "args"
+          ]
+        },
+        {
+          "name": "_list_soas",
+          "startLine": 316,
+          "endLine": 337,
+          "params": [
+            "_args"
+          ]
+        },
+        {
+          "name": "_create_soa",
+          "startLine": 340,
+          "endLine": 379,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "_get_soa",
+          "startLine": 382,
+          "endLine": 404,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "_list_visits",
+          "startLine": 407,
+          "endLine": 431,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "_create_visit",
+          "startLine": 434,
+          "endLine": 490,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "_list_activities",
+          "startLine": 493,
+          "endLine": 516,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "_create_activity",
+          "startLine": 519,
+          "endLine": 583,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "_assign_instance_activity",
+          "startLine": 586,
+          "endLine": 641,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "_get_soa_matrix",
+          "startLine": 644,
+          "endLine": 694,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "_get_usdm_json",
+          "startLine": 697,
+          "endLine": 707,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "_get_define_json",
+          "startLine": 710,
+          "endLine": 719,
+          "params": [
+            "args"
+          ]
+        },
+        {
+          "name": "main",
+          "startLine": 727,
+          "endLine": 729,
+          "params": []
+        },
+        {
+          "name": "_run",
+          "startLine": 732,
+          "endLine": 734,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "list_tools",
+          "line": 274,
+          "isDefault": false
+        },
+        {
+          "name": "call_tool",
+          "line": 279,
+          "isDefault": false
+        },
+        {
+          "name": "_dispatch",
+          "line": 291,
+          "isDefault": false
+        },
+        {
+          "name": "_list_soas",
+          "line": 316,
+          "isDefault": false
+        },
+        {
+          "name": "_create_soa",
+          "line": 340,
+          "isDefault": false
+        },
+        {
+          "name": "_get_soa",
+          "line": 382,
+          "isDefault": false
+        },
+        {
+          "name": "_list_visits",
+          "line": 407,
+          "isDefault": false
+        },
+        {
+          "name": "_create_visit",
+          "line": 434,
+          "isDefault": false
+        },
+        {
+          "name": "_list_activities",
+          "line": 493,
+          "isDefault": false
+        },
+        {
+          "name": "_create_activity",
+          "line": 519,
+          "isDefault": false
+        },
+        {
+          "name": "_assign_instance_activity",
+          "line": 586,
+          "isDefault": false
+        },
+        {
+          "name": "_get_soa_matrix",
+          "line": 644,
+          "isDefault": false
+        },
+        {
+          "name": "_get_usdm_json",
+          "line": 697,
+          "isDefault": false
+        },
+        {
+          "name": "_get_define_json",
+          "line": 710,
+          "isDefault": false
+        },
+        {
+          "name": "main",
+          "line": 727,
+          "isDefault": false
+        },
+        {
+          "name": "_run",
+          "line": 732,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "call_tool",
+          "callee": "asyncio.get_event_loop",
+          "lineNumber": 281
+        },
+        {
+          "caller": "call_tool",
+          "callee": "loop.run_in_executor",
+          "lineNumber": 282
+        },
+        {
+          "caller": "call_tool",
+          "callee": "types.TextContent",
+          "lineNumber": 283
+        },
+        {
+          "caller": "call_tool",
+          "callee": "json.dumps",
+          "lineNumber": 283
+        },
+        {
+          "caller": "_dispatch",
+          "callee": "handlers.get",
+          "lineNumber": 305
+        },
+        {
+          "caller": "_dispatch",
+          "callee": "ValueError",
+          "lineNumber": 307
+        },
+        {
+          "caller": "_dispatch",
+          "callee": "fn",
+          "lineNumber": 308
+        },
+        {
+          "caller": "_list_soas",
+          "callee": "_connect",
+          "lineNumber": 317
+        },
+        {
+          "caller": "_list_soas",
+          "callee": "conn.cursor",
+          "lineNumber": 318
+        },
+        {
+          "caller": "_list_soas",
+          "callee": "cur.execute",
+          "lineNumber": 320
+        },
+        {
+          "caller": "_list_soas",
+          "callee": "cur.fetchall",
+          "lineNumber": 324
+        },
+        {
+          "caller": "_list_soas",
+          "callee": "conn.close",
+          "lineNumber": 326
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "args.get(\"name\", \"\").strip",
+          "lineNumber": 341
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "args.get",
+          "lineNumber": 341
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "ValueError",
+          "lineNumber": 343
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "(args.get(\"study_id\") or \"\").strip",
+          "lineNumber": 344
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "args.get",
+          "lineNumber": 344
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "(args.get(\"study_label\") or \"\").strip",
+          "lineNumber": 345
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "args.get",
+          "lineNumber": 345
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "(args.get(\"study_description\") or \"\").strip",
+          "lineNumber": 346
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "args.get",
+          "lineNumber": 346
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "_connect",
+          "lineNumber": 347
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "conn.cursor",
+          "lineNumber": 348
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "cur.execute",
+          "lineNumber": 351
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "cur.fetchone",
+          "lineNumber": 352
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "ValueError",
+          "lineNumber": 353
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "cur.execute",
+          "lineNumber": 354
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "datetime.now(timezone.utc).isoformat",
+          "lineNumber": 360
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "datetime.now",
+          "lineNumber": 360
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "conn.commit",
+          "lineNumber": 367
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "conn.rollback",
+          "lineNumber": 369
+        },
+        {
+          "caller": "_create_soa",
+          "callee": "conn.close",
+          "lineNumber": 372
+        },
+        {
+          "caller": "_get_soa",
+          "callee": "int",
+          "lineNumber": 383
+        },
+        {
+          "caller": "_get_soa",
+          "callee": "_connect",
+          "lineNumber": 384
+        },
+        {
+          "caller": "_get_soa",
+          "callee": "conn.cursor",
+          "lineNumber": 385
+        },
+        {
+          "caller": "_get_soa",
+          "callee": "cur.execute",
+          "lineNumber": 387
+        },
+        {
+          "caller": "_get_soa",
+          "callee": "cur.fetchone",
+          "lineNumber": 392
+        },
+        {
+          "caller": "_get_soa",
+          "callee": "conn.close",
+          "lineNumber": 394
+        },
+        {
+          "caller": "_get_soa",
+          "callee": "ValueError",
+          "lineNumber": 396
+        },
+        {
+          "caller": "_list_visits",
+          "callee": "int",
+          "lineNumber": 408
+        },
+        {
+          "caller": "_list_visits",
+          "callee": "_connect",
+          "lineNumber": 409
+        },
+        {
+          "caller": "_list_visits",
+          "callee": "conn.cursor",
+          "lineNumber": 410
+        },
+        {
+          "caller": "_list_visits",
+          "callee": "cur.execute",
+          "lineNumber": 412
+        },
+        {
+          "caller": "_list_visits",
+          "callee": "cur.fetchall",
+          "lineNumber": 417
+        },
+        {
+          "caller": "_list_visits",
+          "callee": "conn.close",
+          "lineNumber": 419
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "int",
+          "lineNumber": 435
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "args.get(\"name\", \"\").strip",
+          "lineNumber": 436
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "args.get",
+          "lineNumber": 436
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "ValueError",
+          "lineNumber": 438
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "(args.get(\"label\") or \"\").strip",
+          "lineNumber": 439
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "args.get",
+          "lineNumber": 439
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "(args.get(\"type\") or \"\").strip",
+          "lineNumber": 440
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "args.get",
+          "lineNumber": 440
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "_connect",
+          "lineNumber": 442
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "conn.cursor",
+          "lineNumber": 443
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "cur.execute",
+          "lineNumber": 445
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "cur.fetchone",
+          "lineNumber": 449
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "cur.execute",
+          "lineNumber": 451
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "cur.fetchall",
+          "lineNumber": 456
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "nums.append",
+          "lineNumber": 462
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "int",
+          "lineNumber": 462
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "uid.split",
+          "lineNumber": 462
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "max",
+          "lineNumber": 466
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "cur.execute",
+          "lineNumber": 469
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "conn.commit",
+          "lineNumber": 476
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "conn.rollback",
+          "lineNumber": 478
+        },
+        {
+          "caller": "_create_visit",
+          "callee": "conn.close",
+          "lineNumber": 481
+        },
+        {
+          "caller": "_list_activities",
+          "callee": "int",
+          "lineNumber": 494
+        },
+        {
+          "caller": "_list_activities",
+          "callee": "_connect",
+          "lineNumber": 495
+        },
+        {
+          "caller": "_list_activities",
+          "callee": "conn.cursor",
+          "lineNumber": 496
+        },
+        {
+          "caller": "_list_activities",
+          "callee": "cur.execute",
+          "lineNumber": 498
+        },
+        {
+          "caller": "_list_activities",
+          "callee": "cur.fetchall",
+          "lineNumber": 503
+        },
+        {
+          "caller": "_list_activities",
+          "callee": "conn.close",
+          "lineNumber": 505
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "int",
+          "lineNumber": 520
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "args.get(\"name\", \"\").strip",
+          "lineNumber": 521
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "args.get",
+          "lineNumber": 521
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "ValueError",
+          "lineNumber": 523
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "(args.get(\"label\") or \"\").strip",
+          "lineNumber": 524
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "args.get",
+          "lineNumber": 524
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "(args.get(\"description\") or \"\").strip",
+          "lineNumber": 525
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "args.get",
+          "lineNumber": 525
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "_connect",
+          "lineNumber": 527
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "conn.cursor",
+          "lineNumber": 528
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "cur.execute",
+          "lineNumber": 530
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "cur.fetchone",
+          "lineNumber": 534
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "cur.execute",
+          "lineNumber": 536
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "cur.fetchall",
+          "lineNumber": 541
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "nums.append",
+          "lineNumber": 547
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "int",
+          "lineNumber": 547
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "uid.split",
+          "lineNumber": 547
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "max",
+          "lineNumber": 551
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "cur.execute",
+          "lineNumber": 555
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "cur.execute",
+          "lineNumber": 562
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "conn.commit",
+          "lineNumber": 569
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "conn.rollback",
+          "lineNumber": 571
+        },
+        {
+          "caller": "_create_activity",
+          "callee": "conn.close",
+          "lineNumber": 574
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "int",
+          "lineNumber": 587
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "int",
+          "lineNumber": 588
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "int",
+          "lineNumber": 589
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "args.get",
+          "lineNumber": 590
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "str(raw_status).strip",
+          "lineNumber": 591
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "str",
+          "lineNumber": 591
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "_connect",
+          "lineNumber": 593
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "conn.cursor",
+          "lineNumber": 594
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "cur.execute",
+          "lineNumber": 596
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "cur.fetchone",
+          "lineNumber": 601
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "cur.execute",
+          "lineNumber": 604
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "conn.commit",
+          "lineNumber": 605
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "cur.execute",
+          "lineNumber": 617
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "cur.execute",
+          "lineNumber": 622
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "conn.commit",
+          "lineNumber": 629
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "conn.rollback",
+          "lineNumber": 631
+        },
+        {
+          "caller": "_assign_instance_activity",
+          "callee": "conn.close",
+          "lineNumber": 634
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "int",
+          "lineNumber": 645
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "_connect",
+          "lineNumber": 646
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "conn.cursor",
+          "lineNumber": 647
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "cur.execute",
+          "lineNumber": 649
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "cur.fetchall",
+          "lineNumber": 663
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "cur.execute",
+          "lineNumber": 666
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "cur.fetchall",
+          "lineNumber": 680
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "cur.execute",
+          "lineNumber": 683
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "cur.fetchall",
+          "lineNumber": 690
+        },
+        {
+          "caller": "_get_soa_matrix",
+          "callee": "conn.close",
+          "lineNumber": 693
+        },
+        {
+          "caller": "_get_usdm_json",
+          "callee": "int",
+          "lineNumber": 698
+        },
+        {
+          "caller": "_get_usdm_json",
+          "callee": "str(args.get(\"component\") or \"\").strip",
+          "lineNumber": 699
+        },
+        {
+          "caller": "_get_usdm_json",
+          "callee": "str",
+          "lineNumber": 699
+        },
+        {
+          "caller": "_get_usdm_json",
+          "callee": "args.get",
+          "lineNumber": 699
+        },
+        {
+          "caller": "_get_usdm_json",
+          "callee": "ValueError",
+          "lineNumber": 701
+        },
+        {
+          "caller": "_get_usdm_json",
+          "callee": "', '.join",
+          "lineNumber": 703
+        },
+        {
+          "caller": "_get_usdm_json",
+          "callee": "_build",
+          "lineNumber": 707
+        },
+        {
+          "caller": "_get_define_json",
+          "callee": "int",
+          "lineNumber": 711
+        },
+        {
+          "caller": "_get_define_json",
+          "callee": "str(args.get(\"sdtmct\") or \"\").strip",
+          "lineNumber": 712
+        },
+        {
+          "caller": "_get_define_json",
+          "callee": "str",
+          "lineNumber": 712
+        },
+        {
+          "caller": "_get_define_json",
+          "callee": "args.get",
+          "lineNumber": 712
+        },
+        {
+          "caller": "_get_define_json",
+          "callee": "ValueError",
+          "lineNumber": 714
+        },
+        {
+          "caller": "_get_define_json",
+          "callee": "str(args.get(\"sdtmig\") or \"3.4\").strip",
+          "lineNumber": 715
+        },
+        {
+          "caller": "_get_define_json",
+          "callee": "str",
+          "lineNumber": 715
+        },
+        {
+          "caller": "_get_define_json",
+          "callee": "args.get",
+          "lineNumber": 715
+        },
+        {
+          "caller": "_get_define_json",
+          "callee": "build_define_json",
+          "lineNumber": 719
+        },
+        {
+          "caller": "main",
+          "callee": "logging.basicConfig",
+          "lineNumber": 728
+        },
+        {
+          "caller": "main",
+          "callee": "asyncio.run",
+          "lineNumber": 729
+        },
+        {
+          "caller": "main",
+          "callee": "_run",
+          "lineNumber": 729
+        },
+        {
+          "caller": "_run",
+          "callee": "stdio_server",
+          "lineNumber": 733
+        },
+        {
+          "caller": "_run",
+          "callee": "server.run",
+          "lineNumber": 734
+        },
+        {
+          "caller": "_run",
+          "callee": "server.create_initialization_options",
+          "lineNumber": 734
+        }
+      ],
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 16,
+        "functionCount": 16,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "web/static/bc_explorer.js",
+      "language": "javascript",
+      "fileCategory": "code",
+      "totalLines": 417,
+      "nonEmptyLines": 367,
+      "functions": [
+        {
+          "name": "valueById",
+          "startLine": 16,
+          "endLine": 16,
+          "params": [
+            "id"
+          ]
+        },
+        {
+          "name": "schemeById",
+          "startLine": 17,
+          "endLine": 17,
+          "params": [
+            "id"
+          ]
+        },
+        {
+          "name": "bcById",
+          "startLine": 18,
+          "endLine": 18,
+          "params": [
+            "id"
+          ]
+        },
+        {
+          "name": "assignmentsForBc",
+          "startLine": 19,
+          "endLine": 19,
+          "params": [
+            "bcId"
+          ]
+        },
+        {
+          "name": "bcsForValue",
+          "startLine": 20,
+          "endLine": 23,
+          "params": [
+            "valueId"
+          ]
+        },
+        {
+          "name": "valuesForScheme",
+          "startLine": 24,
+          "endLine": 24,
+          "params": [
+            "schemeId"
+          ]
+        },
+        {
+          "name": "bcMatchesSearch",
+          "startLine": 27,
+          "endLine": 40,
+          "params": [
+            "bc",
+            "q"
+          ]
+        },
+        {
+          "name": "getFilteredBcs",
+          "startLine": 43,
+          "endLine": 64,
+          "params": []
+        },
+        {
+          "name": "getValueCountForFiltered",
+          "startLine": 66,
+          "endLine": 89,
+          "params": [
+            "valueId",
+            "schemeId"
+          ]
+        },
+        {
+          "name": "highlight",
+          "startLine": 92,
+          "endLine": 96,
+          "params": [
+            "text",
+            "query"
+          ]
+        },
+        {
+          "name": "updateExpandAllBtn",
+          "startLine": 99,
+          "endLine": 104,
+          "params": []
+        },
+        {
+          "name": "renderFacets",
+          "startLine": 107,
+          "endLine": 179,
+          "params": []
+        },
+        {
+          "name": "renderExplorer",
+          "startLine": 182,
+          "endLine": 204,
+          "params": []
+        },
+        {
+          "name": "renderMatrix",
+          "startLine": 207,
+          "endLine": 258,
+          "params": []
+        },
+        {
+          "name": "openDetail",
+          "startLine": 261,
+          "endLine": 319,
+          "params": [
+            "bcId"
+          ]
+        },
+        {
+          "name": "closeDetail",
+          "startLine": 321,
+          "endLine": 325,
+          "params": []
+        },
+        {
+          "name": "switchView",
+          "startLine": 328,
+          "endLine": 334,
+          "params": [
+            "view"
+          ]
+        },
+        {
+          "name": "renderAll",
+          "startLine": 337,
+          "endLine": 343,
+          "params": []
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "valueById",
+          "callee": "store.values.find",
+          "lineNumber": 16
+        },
+        {
+          "caller": "schemeById",
+          "callee": "store.schemes.find",
+          "lineNumber": 17
+        },
+        {
+          "caller": "bcById",
+          "callee": "store.bcs.find",
+          "lineNumber": 18
+        },
+        {
+          "caller": "assignmentsForBc",
+          "callee": "store.assignments.filter",
+          "lineNumber": 19
+        },
+        {
+          "caller": "bcsForValue",
+          "callee": "store.assignments.filter(a => a.value_id === valueId).map",
+          "lineNumber": 21
+        },
+        {
+          "caller": "bcsForValue",
+          "callee": "store.assignments.filter",
+          "lineNumber": 21
+        },
+        {
+          "caller": "bcsForValue",
+          "callee": "store.bcs.filter",
+          "lineNumber": 22
+        },
+        {
+          "caller": "bcsForValue",
+          "callee": "bcIds.has",
+          "lineNumber": 22
+        },
+        {
+          "caller": "valuesForScheme",
+          "callee": "store.values.filter",
+          "lineNumber": 24
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "bc.short_name.toLowerCase().includes",
+          "lineNumber": 28
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "bc.short_name.toLowerCase",
+          "lineNumber": 28
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "bc.bc_id.toLowerCase().includes",
+          "lineNumber": 29
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "bc.bc_id.toLowerCase",
+          "lineNumber": 29
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "bc.ncit_code.toLowerCase().includes",
+          "lineNumber": 30
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "bc.ncit_code.toLowerCase",
+          "lineNumber": 30
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "assignmentsForBc",
+          "lineNumber": 32
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "asgns.some",
+          "lineNumber": 33
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "valueById",
+          "lineNumber": 34
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "v.label.toLowerCase().includes",
+          "lineNumber": 36
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "v.label.toLowerCase",
+          "lineNumber": 36
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "v.description.toLowerCase().includes",
+          "lineNumber": 37
+        },
+        {
+          "caller": "bcMatchesSearch",
+          "callee": "v.description.toLowerCase",
+          "lineNumber": 37
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "searchQuery.toLowerCase",
+          "lineNumber": 47
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "bcs.filter",
+          "lineNumber": 48
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "bcMatchesSearch",
+          "lineNumber": 48
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "Object.keys(activeFilters).filter",
+          "lineNumber": 52
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "Object.keys",
+          "lineNumber": 52
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "bcs.filter",
+          "lineNumber": 54
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "assignmentsForBc",
+          "lineNumber": 55
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "activeSchemes.every",
+          "lineNumber": 56
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "asgns.some",
+          "lineNumber": 58
+        },
+        {
+          "caller": "getFilteredBcs",
+          "callee": "selectedValues.has",
+          "lineNumber": 58
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "Object.keys(activeFilters).filter",
+          "lineNumber": 69
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "Object.keys",
+          "lineNumber": 69
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "searchQuery.toLowerCase",
+          "lineNumber": 73
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "bcs.filter",
+          "lineNumber": 74
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "bcMatchesSearch",
+          "lineNumber": 74
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "bcs.filter",
+          "lineNumber": 78
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "assignmentsForBc",
+          "lineNumber": 79
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "activeSchemes.every",
+          "lineNumber": 80
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "asgns.some",
+          "lineNumber": 82
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "sv.has",
+          "lineNumber": 82
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "bcs.map",
+          "lineNumber": 87
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "store.assignments.filter",
+          "lineNumber": 88
+        },
+        {
+          "caller": "getValueCountForFiltered",
+          "callee": "bcIds.has",
+          "lineNumber": 88
+        },
+        {
+          "caller": "highlight",
+          "callee": "query.replace",
+          "lineNumber": 94
+        },
+        {
+          "caller": "highlight",
+          "callee": "text.replace",
+          "lineNumber": 95
+        },
+        {
+          "caller": "updateExpandAllBtn",
+          "callee": "document.getElementById",
+          "lineNumber": 100
+        },
+        {
+          "caller": "updateExpandAllBtn",
+          "callee": "store.schemes.every",
+          "lineNumber": 102
+        },
+        {
+          "caller": "updateExpandAllBtn",
+          "callee": "collapsedSchemes.has",
+          "lineNumber": 102
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "document.getElementById",
+          "lineNumber": 108
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "Object.values(activeFilters).some",
+          "lineNumber": 109
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "Object.values",
+          "lineNumber": 109
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "document.getElementById('clearFilters').classList.toggle",
+          "lineNumber": 111
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "document.getElementById",
+          "lineNumber": 111
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "store.schemes.map(scheme => {\n    const values = valuesForScheme(scheme.scheme_id);\n    const isActive = activeFilters[scheme.scheme_id] && activeFilters[scheme.scheme_id].size > 0;\n    const isCollapsed = collapsedSchemes.has(scheme.scheme_id);\n\n    return `\n      <div class=\"facet-group\">\n        <div class=\"facet-header ${isCollapsed ? 'collapsed' : ''}\" data-scheme=\"${scheme.scheme_id}\">\n          <h3>${scheme.name}</h3>\n          <svg class=\"chevron\" width=\"12\" height=\"12\" viewBox=\"0 0 12 12\"><path d=\"M4 2l4 4-4 4\" stroke=\"currentColor\" stroke-width=\"1.5\" fill=\"none\" stroke-linecap=\"round\"/></svg>\n        </div>\n        <div class=\"facet-list ${isCollapsed ? 'collapsed' : ''}\" data-scheme=\"${scheme.scheme_id}\">\n          ${values.map(v => {\n            const count = getValueCountForFiltered(v.value_id, scheme.scheme_id);\n            const active = activeFilters[scheme.scheme_id] && activeFilters[scheme.scheme_id].has(v.value_id);\n            if (!showZeros && count === 0 && !active) return '';\n            return `\n              <div class=\"facet-item ${active ? 'active' : ''}\" data-value=\"${v.value_id}\" data-scheme=\"${scheme.scheme_id}\" title=\"${v.description}\">\n                <div class=\"facet-check\"></div>\n                <span class=\"facet-label\">${v.label}</span>\n                <span class=\"facet-count ${count === 0 ? 'zero' : ''}\">${count}</span>\n              </div>`;\n          }).join('')}\n        </div>\n      </div>`;\n  }).join",
+          "lineNumber": 113
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "store.schemes.map",
+          "lineNumber": 113
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "valuesForScheme",
+          "lineNumber": 114
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "collapsedSchemes.has",
+          "lineNumber": 116
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "values.map(v => {\n            const count = getValueCountForFiltered(v.value_id, scheme.scheme_id);\n            const active = activeFilters[scheme.scheme_id] && activeFilters[scheme.scheme_id].has(v.value_id);\n            if (!showZeros && count === 0 && !active) return '';\n            return `\n              <div class=\"facet-item ${active ? 'active' : ''}\" data-value=\"${v.value_id}\" data-scheme=\"${scheme.scheme_id}\" title=\"${v.description}\">\n                <div class=\"facet-check\"></div>\n                <span class=\"facet-label\">${v.label}</span>\n                <span class=\"facet-count ${count === 0 ? 'zero' : ''}\">${count}</span>\n              </div>`;\n          }).join",
+          "lineNumber": 125
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "values.map",
+          "lineNumber": 125
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "getValueCountForFiltered",
+          "lineNumber": 126
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "activeFilters[scheme.scheme_id].has",
+          "lineNumber": 127
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "container.querySelectorAll('.facet-header').forEach",
+          "lineNumber": 141
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "container.querySelectorAll",
+          "lineNumber": 141
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "h.addEventListener",
+          "lineNumber": 142
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "collapsedSchemes.has",
+          "lineNumber": 144
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "collapsedSchemes.delete",
+          "lineNumber": 145
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "collapsedSchemes.add",
+          "lineNumber": 147
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "h.classList.toggle",
+          "lineNumber": 149
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "h.nextElementSibling.classList.toggle",
+          "lineNumber": 150
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "updateExpandAllBtn",
+          "lineNumber": 151
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "updateExpandAllBtn",
+          "lineNumber": 154
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "container.querySelectorAll('.facet-item').forEach",
+          "lineNumber": 156
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "container.querySelectorAll",
+          "lineNumber": 156
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "item.addEventListener",
+          "lineNumber": 157
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "activeFilters[schemeId].has",
+          "lineNumber": 161
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "activeFilters[schemeId].delete",
+          "lineNumber": 162
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "activeFilters[schemeId].add",
+          "lineNumber": 164
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "renderAll",
+          "lineNumber": 166
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "document.getElementById",
+          "lineNumber": 170
+        },
+        {
+          "caller": "renderFacets",
+          "callee": "showZerosBtn.classList.toggle",
+          "lineNumber": 174
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "document.getElementById",
+          "lineNumber": 183
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "getFilteredBcs",
+          "lineNumber": 184
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "bcs.map((bc, i) => {\n    const asgns = assignmentsForBc(bc.bc_id);\n    const tags = asgns.map(a => {\n      const v = valueById(a.value_id);\n      return v ? `<span class=\"bc-tag scheme-${a.scheme_id}\">${highlight(v.label, searchQuery)}</span>` : '';\n    }).join('');\n\n    return `\n      <div class=\"bc-card ${selectedBcId === bc.bc_id ? 'selected' : ''}\" data-bc=\"${bc.bc_id}\" style=\"--i:${i}\">\n        <div class=\"bc-card-id\">${highlight(bc.bc_id, searchQuery)}</div>\n        <div class=\"bc-card-name\">${highlight(bc.short_name, searchQuery)}</div>\n        <div class=\"bc-card-tags\">${tags}</div>\n      </div>`;\n  }).join",
+          "lineNumber": 186
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "bcs.map",
+          "lineNumber": 186
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "assignmentsForBc",
+          "lineNumber": 187
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "asgns.map(a => {\n      const v = valueById(a.value_id);\n      return v ? `<span class=\"bc-tag scheme-${a.scheme_id}\">${highlight(v.label, searchQuery)}</span>` : '';\n    }).join",
+          "lineNumber": 188
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "asgns.map",
+          "lineNumber": 188
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "valueById",
+          "lineNumber": 189
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "highlight",
+          "lineNumber": 190
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "highlight",
+          "lineNumber": 195
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "highlight",
+          "lineNumber": 196
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "container.querySelectorAll('.bc-card').forEach",
+          "lineNumber": 201
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "container.querySelectorAll",
+          "lineNumber": 201
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "card.addEventListener",
+          "lineNumber": 202
+        },
+        {
+          "caller": "renderExplorer",
+          "callee": "openDetail",
+          "lineNumber": 202
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "document.getElementById",
+          "lineNumber": 208
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "getFilteredBcs().map",
+          "lineNumber": 209
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "getFilteredBcs",
+          "lineNumber": 209
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "store.schemes.map(scheme => {\n    const values = valuesForScheme(scheme.scheme_id);\n\n    const valueRows = values.map(v => {\n      const bcs = bcsForValue(v.value_id).filter(b => filteredBcIds.has(b.bc_id));\n      if (bcs.length === 0) return '';\n      return `\n        <div class=\"grouped-value-row\">\n          <div class=\"grouped-value-meta\" data-scheme=\"${scheme.scheme_id}\" data-value=\"${v.value_id}\" title=\"${v.description} — click to filter Explorer\">\n            <span class=\"grouped-value-name\">${v.label}</span>\n            <span class=\"facet-count\">${bcs.length}</span>\n            <span class=\"grouped-value-arrow\">→</span>\n          </div>\n          <div class=\"grouped-bc-chips\">\n            ${bcs.map(bc => `<span class=\"bc-chip ${selectedBcId === bc.bc_id ? 'selected' : ''}\" data-bc=\"${bc.bc_id}\">${highlight(bc.short_name, searchQuery)}</span>`).join('')}\n          </div>\n        </div>`;\n    }).join('');\n\n    if (!valueRows.trim()) return '';\n    return `\n      <div class=\"grouped-scheme\">\n        <div class=\"grouped-scheme-header\">\n          <h3>${scheme.name}</h3>\n          <p>${scheme.purpose}</p>\n        </div>\n        <div class=\"grouped-scheme-body\">${valueRows}</div>\n      </div>`;\n  }).join",
+          "lineNumber": 211
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "store.schemes.map",
+          "lineNumber": 211
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "valuesForScheme",
+          "lineNumber": 212
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "values.map(v => {\n      const bcs = bcsForValue(v.value_id).filter(b => filteredBcIds.has(b.bc_id));\n      if (bcs.length === 0) return '';\n      return `\n        <div class=\"grouped-value-row\">\n          <div class=\"grouped-value-meta\" data-scheme=\"${scheme.scheme_id}\" data-value=\"${v.value_id}\" title=\"${v.description} — click to filter Explorer\">\n            <span class=\"grouped-value-name\">${v.label}</span>\n            <span class=\"facet-count\">${bcs.length}</span>\n            <span class=\"grouped-value-arrow\">→</span>\n          </div>\n          <div class=\"grouped-bc-chips\">\n            ${bcs.map(bc => `<span class=\"bc-chip ${selectedBcId === bc.bc_id ? 'selected' : ''}\" data-bc=\"${bc.bc_id}\">${highlight(bc.short_name, searchQuery)}</span>`).join('')}\n          </div>\n        </div>`;\n    }).join",
+          "lineNumber": 214
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "values.map",
+          "lineNumber": 214
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "bcsForValue(v.value_id).filter",
+          "lineNumber": 215
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "bcsForValue",
+          "lineNumber": 215
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "filteredBcIds.has",
+          "lineNumber": 215
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "bcs.map(bc => `<span class=\"bc-chip ${selectedBcId === bc.bc_id ? 'selected' : ''}\" data-bc=\"${bc.bc_id}\">${highlight(bc.short_name, searchQuery)}</span>`).join",
+          "lineNumber": 225
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "bcs.map",
+          "lineNumber": 225
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "highlight",
+          "lineNumber": 225
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "valueRows.trim",
+          "lineNumber": 230
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "container.querySelectorAll('.bc-chip').forEach",
+          "lineNumber": 243
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "container.querySelectorAll",
+          "lineNumber": 243
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "chip.addEventListener",
+          "lineNumber": 244
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "openDetail",
+          "lineNumber": 244
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "container.querySelectorAll('.grouped-value-meta').forEach",
+          "lineNumber": 247
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "container.querySelectorAll",
+          "lineNumber": 247
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "meta.addEventListener",
+          "lineNumber": 248
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "activeFilters[schemeId].clear",
+          "lineNumber": 252
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "activeFilters[schemeId].add",
+          "lineNumber": 253
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "switchView",
+          "lineNumber": 254
+        },
+        {
+          "caller": "renderMatrix",
+          "callee": "renderAll",
+          "lineNumber": 255
+        },
+        {
+          "caller": "openDetail",
+          "callee": "bcById",
+          "lineNumber": 263
+        },
+        {
+          "caller": "openDetail",
+          "callee": "assignmentsForBc",
+          "lineNumber": 266
+        },
+        {
+          "caller": "openDetail",
+          "callee": "document.getElementById",
+          "lineNumber": 267
+        },
+        {
+          "caller": "openDetail",
+          "callee": "document.getElementById",
+          "lineNumber": 268
+        },
+        {
+          "caller": "openDetail",
+          "callee": "asgns.forEach",
+          "lineNumber": 272
+        },
+        {
+          "caller": "openDetail",
+          "callee": "grouped[a.scheme_id].push",
+          "lineNumber": 274
+        },
+        {
+          "caller": "openDetail",
+          "callee": "asgns.map",
+          "lineNumber": 278
+        },
+        {
+          "caller": "openDetail",
+          "callee": "store.assignments.forEach",
+          "lineNumber": 280
+        },
+        {
+          "caller": "openDetail",
+          "callee": "myValues.has",
+          "lineNumber": 281
+        },
+        {
+          "caller": "openDetail",
+          "callee": "relatedIds.add",
+          "lineNumber": 281
+        },
+        {
+          "caller": "openDetail",
+          "callee": "store.schemes.map(scheme => {\n      const vals = grouped[scheme.scheme_id] || [];\n      if (vals.length === 0) return '';\n      return `\n        <div class=\"detail-section\">\n          <div class=\"detail-section-title\">${scheme.name}</div>\n          ${vals.map(a => {\n            const v = valueById(a.value_id);\n            return v ? `<div class=\"detail-value\">\n              <div class=\"detail-value-label\">${v.label}</div>\n              <div class=\"detail-value-desc\">${v.description}</div>\n            </div>` : '';\n          }).join('')}\n        </div>`;\n    }).join",
+          "lineNumber": 288
+        },
+        {
+          "caller": "openDetail",
+          "callee": "store.schemes.map",
+          "lineNumber": 288
+        },
+        {
+          "caller": "openDetail",
+          "callee": "vals.map(a => {\n            const v = valueById(a.value_id);\n            return v ? `<div class=\"detail-value\">\n              <div class=\"detail-value-label\">${v.label}</div>\n              <div class=\"detail-value-desc\">${v.description}</div>\n            </div>` : '';\n          }).join",
+          "lineNumber": 294
+        },
+        {
+          "caller": "openDetail",
+          "callee": "vals.map",
+          "lineNumber": 294
+        },
+        {
+          "caller": "openDetail",
+          "callee": "valueById",
+          "lineNumber": 295
+        },
+        {
+          "caller": "openDetail",
+          "callee": "[...relatedIds].map(rid => {\n        const r = bcById(rid);\n        return r ? `<span class=\"related-bc\" data-bc=\"${rid}\">${r.short_name}</span>` : '';\n      }).join",
+          "lineNumber": 305
+        },
+        {
+          "caller": "openDetail",
+          "callee": "[...relatedIds].map",
+          "lineNumber": 305
+        },
+        {
+          "caller": "openDetail",
+          "callee": "bcById",
+          "lineNumber": 306
+        },
+        {
+          "caller": "openDetail",
+          "callee": "panel.classList.add",
+          "lineNumber": 311
+        },
+        {
+          "caller": "openDetail",
+          "callee": "content.querySelectorAll('.related-bc').forEach",
+          "lineNumber": 313
+        },
+        {
+          "caller": "openDetail",
+          "callee": "content.querySelectorAll",
+          "lineNumber": 313
+        },
+        {
+          "caller": "openDetail",
+          "callee": "el.addEventListener",
+          "lineNumber": 314
+        },
+        {
+          "caller": "openDetail",
+          "callee": "openDetail",
+          "lineNumber": 314
+        },
+        {
+          "caller": "openDetail",
+          "callee": "document.querySelectorAll('.bc-card, .bc-chip').forEach",
+          "lineNumber": 318
+        },
+        {
+          "caller": "openDetail",
+          "callee": "document.querySelectorAll",
+          "lineNumber": 318
+        },
+        {
+          "caller": "openDetail",
+          "callee": "c.classList.toggle",
+          "lineNumber": 318
+        },
+        {
+          "caller": "closeDetail",
+          "callee": "document.getElementById('detailPanel').classList.remove",
+          "lineNumber": 323
+        },
+        {
+          "caller": "closeDetail",
+          "callee": "document.getElementById",
+          "lineNumber": 323
+        },
+        {
+          "caller": "closeDetail",
+          "callee": "document.querySelectorAll('.bc-card.selected, .bc-chip.selected').forEach",
+          "lineNumber": 324
+        },
+        {
+          "caller": "closeDetail",
+          "callee": "document.querySelectorAll",
+          "lineNumber": 324
+        },
+        {
+          "caller": "closeDetail",
+          "callee": "c.classList.remove",
+          "lineNumber": 324
+        },
+        {
+          "caller": "switchView",
+          "callee": "document.querySelectorAll('.view-tab').forEach",
+          "lineNumber": 330
+        },
+        {
+          "caller": "switchView",
+          "callee": "document.querySelectorAll",
+          "lineNumber": 330
+        },
+        {
+          "caller": "switchView",
+          "callee": "t.classList.toggle",
+          "lineNumber": 330
+        },
+        {
+          "caller": "switchView",
+          "callee": "document.getElementById('explorerView').classList.toggle",
+          "lineNumber": 331
+        },
+        {
+          "caller": "switchView",
+          "callee": "document.getElementById",
+          "lineNumber": 331
+        },
+        {
+          "caller": "switchView",
+          "callee": "document.getElementById('matrixView').classList.toggle",
+          "lineNumber": 332
+        },
+        {
+          "caller": "switchView",
+          "callee": "document.getElementById",
+          "lineNumber": 332
+        },
+        {
+          "caller": "switchView",
+          "callee": "document.getElementById",
+          "lineNumber": 333
+        },
+        {
+          "caller": "renderAll",
+          "callee": "getFilteredBcs",
+          "lineNumber": 338
+        },
+        {
+          "caller": "renderAll",
+          "callee": "document.getElementById",
+          "lineNumber": 339
+        },
+        {
+          "caller": "renderAll",
+          "callee": "renderFacets",
+          "lineNumber": 340
+        },
+        {
+          "caller": "renderAll",
+          "callee": "renderExplorer",
+          "lineNumber": 341
+        },
+        {
+          "caller": "renderAll",
+          "callee": "renderMatrix",
+          "lineNumber": 342
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 18,
+        "classCount": 0
+      }
+    }
+  ]
+}

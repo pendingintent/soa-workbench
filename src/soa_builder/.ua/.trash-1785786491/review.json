@@ -1,0 +1,35 @@
+{
+  "issues": [],
+  "warnings": [
+    "Node 'file:web/templates/amendment_form_fields.html' has no edges (orphan)",
+    "Node 'file:web/templates/bc_status.html' has no edges (orphan)",
+    "Node 'file:web/templates/cdisc_api_status.html' has no edges (orphan)",
+    "Node 'file:web/templates/element_audit_section.html' has no edges (orphan)",
+    "Node 'file:web/templates/freeze_modal.html' has no edges (orphan)",
+    "Node 'file:web/templates/reorder_audit_modal.html' has no edges (orphan)",
+    "Node 'file:web/templates/rollback_audit_modal.html' has no edges (orphan)",
+    "Node 'file:web/templates/soa_matrix_export.html' has no edges (orphan)",
+    "Node 'file:web/templates/transition_rules_list.html' has no edges (orphan)",
+    "Node 'file:mcp/__init__.py' has no edges (orphan)"
+  ],
+  "stats": {
+    "totalNodes": 1003,
+    "totalEdges": 1901,
+    "totalLayers": 8,
+    "tourSteps": 12,
+    "nodeTypes": {
+      "file": 141,
+      "function": 803,
+      "class": 59
+    },
+    "edgeTypes": {
+      "contains": 859,
+      "exports": 303,
+      "imports": 156,
+      "calls": 494,
+      "depends_on": 18,
+      "related": 69,
+      "configures": 2
+    }
+  }
+}

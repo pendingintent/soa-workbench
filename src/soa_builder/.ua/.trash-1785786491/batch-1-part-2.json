@@ -1,0 +1,1398 @@
+{
+  "nodes": [
+    {
+      "id": "file:web/routers/condition_assignments.py",
+      "type": "file",
+      "name": "condition_assignments.py",
+      "filePath": "web/routers/condition_assignments.py",
+      "summary": "FastAPI router for ConditionAssignment CRUD, mapping decision-instance branch conditions to their target instances, with matching API and HTMX UI endpoints.",
+      "tags": [
+        "api-handler",
+        "router",
+        "conditional-logic"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/condition_assignments.py:list_condition_assignments",
+      "type": "function",
+      "name": "list_condition_assignments",
+      "filePath": "web/routers/condition_assignments.py",
+      "lineRange": [
+        32,
+        61
+      ],
+      "summary": "API endpoint returning all condition assignments for the given SoA as JSON.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "conditional-logic"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/condition_assignments.py:ui_list_condition_assignments",
+      "type": "function",
+      "name": "ui_list_condition_assignments",
+      "filePath": "web/routers/condition_assignments.py",
+      "lineRange": [
+        66,
+        101
+      ],
+      "summary": "Renders the condition assignments list/section HTMX partial for the SoA UI page.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/condition_assignments.py:create_condition_assignment",
+      "type": "function",
+      "name": "create_condition_assignment",
+      "filePath": "web/routers/condition_assignments.py",
+      "lineRange": [
+        111,
+        180
+      ],
+      "summary": "API endpoint that validates and inserts a new condition assignment for the SoA, assigning its UID and recording an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "create"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/condition_assignments.py:ui_create_condition_assignment",
+      "type": "function",
+      "name": "ui_create_condition_assignment",
+      "filePath": "web/routers/condition_assignments.py",
+      "lineRange": [
+        185,
+        207
+      ],
+      "summary": "HTMX form handler that creates a new condition assignment from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "create"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/condition_assignments.py:update_condition_assignment",
+      "type": "function",
+      "name": "update_condition_assignment",
+      "filePath": "web/routers/condition_assignments.py",
+      "lineRange": [
+        216,
+        327
+      ],
+      "summary": "API endpoint that validates and applies changes to an existing condition assignment, recording before/after audit state.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "update"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/condition_assignments.py:ui_update_condition_assignment",
+      "type": "function",
+      "name": "ui_update_condition_assignment",
+      "filePath": "web/routers/condition_assignments.py",
+      "lineRange": [
+        332,
+        355
+      ],
+      "summary": "HTMX form handler that updates an existing condition assignment from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "update"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/condition_assignments.py:delete_condition_assignment",
+      "type": "function",
+      "name": "delete_condition_assignment",
+      "filePath": "web/routers/condition_assignments.py",
+      "lineRange": [
+        364,
+        406
+      ],
+      "summary": "API endpoint that deletes a condition assignment and records an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "delete"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/condition_assignments.py:ui_delete_condition_assignment",
+      "type": "function",
+      "name": "ui_delete_condition_assignment",
+      "filePath": "web/routers/condition_assignments.py",
+      "lineRange": [
+        411,
+        419
+      ],
+      "summary": "HTMX handler that deletes a condition assignment and returns the updated partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "delete"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:web/routers/decision_instances.py",
+      "type": "file",
+      "name": "decision_instances.py",
+      "filePath": "web/routers/decision_instances.py",
+      "summary": "FastAPI router for DecisionInstance CRUD and reordering \u2014 the branch points in a ScheduleTimeline that route subjects based on ConditionAssignments.",
+      "tags": [
+        "api-handler",
+        "router",
+        "schedule-timeline"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/decision_instances.py:list_decision_instances",
+      "type": "function",
+      "name": "list_decision_instances",
+      "filePath": "web/routers/decision_instances.py",
+      "lineRange": [
+        32,
+        59
+      ],
+      "summary": "API endpoint returning all decision instances for the given SoA as JSON.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "schedule-timeline"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/decision_instances.py:ui_list_decision_instances",
+      "type": "function",
+      "name": "ui_list_decision_instances",
+      "filePath": "web/routers/decision_instances.py",
+      "lineRange": [
+        63,
+        96
+      ],
+      "summary": "Renders the decision instances list/section HTMX partial for the SoA UI page.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/decision_instances.py:create_decision_instance",
+      "type": "function",
+      "name": "create_decision_instance",
+      "filePath": "web/routers/decision_instances.py",
+      "lineRange": [
+        105,
+        174
+      ],
+      "summary": "API endpoint that validates and inserts a new decision instance for the SoA, assigning its UID and recording an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "create"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/decision_instances.py:ui_create_decision_instance",
+      "type": "function",
+      "name": "ui_create_decision_instance",
+      "filePath": "web/routers/decision_instances.py",
+      "lineRange": [
+        178,
+        200
+      ],
+      "summary": "HTMX form handler that creates a new decision instance from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "create"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/decision_instances.py:update_decision_instance",
+      "type": "function",
+      "name": "update_decision_instance",
+      "filePath": "web/routers/decision_instances.py",
+      "lineRange": [
+        208,
+        316
+      ],
+      "summary": "API endpoint that validates and applies changes to an existing decision instance, recording before/after audit state.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "update"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/decision_instances.py:ui_update_decision_instance",
+      "type": "function",
+      "name": "ui_update_decision_instance",
+      "filePath": "web/routers/decision_instances.py",
+      "lineRange": [
+        320,
+        343
+      ],
+      "summary": "HTMX form handler that updates an existing decision instance from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "update"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/decision_instances.py:delete_decision_instance",
+      "type": "function",
+      "name": "delete_decision_instance",
+      "filePath": "web/routers/decision_instances.py",
+      "lineRange": [
+        351,
+        378
+      ],
+      "summary": "API endpoint that deletes a decision instance and records an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "delete"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/decision_instances.py:ui_delete_decision_instance",
+      "type": "function",
+      "name": "ui_delete_decision_instance",
+      "filePath": "web/routers/decision_instances.py",
+      "lineRange": [
+        382,
+        389
+      ],
+      "summary": "HTMX handler that deletes a decision instance and returns the updated partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "delete"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/decision_instances.py:reorder_decision_instances",
+      "type": "function",
+      "name": "reorder_decision_instances",
+      "filePath": "web/routers/decision_instances.py",
+      "lineRange": [
+        393,
+        416
+      ],
+      "summary": "API endpoint that persists a new display order for decision instances and records a reorder audit entry.",
+      "tags": [
+        "api-handler",
+        "reorder"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/elements.py",
+      "type": "file",
+      "name": "elements.py",
+      "filePath": "web/routers/elements.py",
+      "summary": "FastAPI router for StudyElement CRUD (structural design periods/cohorts), transition-rule and study-intervention associations, and the element audit-history endpoint.",
+      "tags": [
+        "api-handler",
+        "router",
+        "study-elements"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/elements.py:_get_element_interventions_by_element",
+      "type": "function",
+      "name": "_get_element_interventions_by_element",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        41,
+        50
+      ],
+      "summary": "Loads a map of element_id to associated study-intervention UIDs for all elements in the SoA.",
+      "tags": [
+        "utility",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/elements.py:_set_element_interventions",
+      "type": "function",
+      "name": "_set_element_interventions",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        53,
+        66
+      ],
+      "summary": "Replaces the set of study-intervention associations for an element.",
+      "tags": [
+        "utility",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/elements.py:list_elements",
+      "type": "function",
+      "name": "list_elements",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        71,
+        99
+      ],
+      "summary": "API endpoint returning all elements for the given SoA as JSON.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "study-elements"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/elements.py:ui_list_elements",
+      "type": "function",
+      "name": "ui_list_elements",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        104,
+        145
+      ],
+      "summary": "Renders the elements list/section HTMX partial for the SoA UI page.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/elements.py:add_element",
+      "type": "function",
+      "name": "add_element",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        155,
+        227
+      ],
+      "summary": "API endpoint that validates and inserts a new element for the SoA, assigning its UID and recording an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "create"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/elements.py:ui_create_element",
+      "type": "function",
+      "name": "ui_create_element",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        232,
+        254
+      ],
+      "summary": "HTMX form handler that creates a new element from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "create"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/elements.py:update_element",
+      "type": "function",
+      "name": "update_element",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        259,
+        353
+      ],
+      "summary": "API endpoint that validates and applies changes to an existing element, recording before/after audit state.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "update"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/elements.py:ui_update_element",
+      "type": "function",
+      "name": "ui_update_element",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        358,
+        378
+      ],
+      "summary": "HTMX form handler that updates an existing element from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "update"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/elements.py:delete_element",
+      "type": "function",
+      "name": "delete_element",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        387,
+        430
+      ],
+      "summary": "API endpoint that deletes a element and records an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "delete"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/elements.py:ui_delete_element",
+      "type": "function",
+      "name": "ui_delete_element",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        435,
+        437
+      ],
+      "summary": "HTMX handler that deletes a element and returns the updated partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "delete"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/elements.py:get_element",
+      "type": "function",
+      "name": "get_element",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        442,
+        464
+      ],
+      "summary": "API endpoint returning a single element by ID.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "read"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/elements.py:list_element_audit",
+      "type": "function",
+      "name": "list_element_audit",
+      "filePath": "web/routers/elements.py",
+      "lineRange": [
+        468,
+        505
+      ],
+      "summary": "API endpoint returning the audit-history rows for elements on the SoA.",
+      "tags": [
+        "api-handler",
+        "audit-trail"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/footnotes.py",
+      "type": "file",
+      "name": "footnotes.py",
+      "filePath": "web/routers/footnotes.py",
+      "summary": "FastAPI router for Footnote CRUD used to annotate SoA matrix cells and activities with reference text.",
+      "tags": [
+        "api-handler",
+        "router",
+        "footnotes"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/footnotes.py:_next_footnote_uid",
+      "type": "function",
+      "name": "_next_footnote_uid",
+      "filePath": "web/routers/footnotes.py",
+      "lineRange": [
+        16,
+        27
+      ],
+      "summary": "Computes the next monotonic Footnote_N UID for the SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/footnotes.py:_row_to_dict",
+      "type": "function",
+      "name": "_row_to_dict",
+      "filePath": "web/routers/footnotes.py",
+      "lineRange": [
+        30,
+        41
+      ],
+      "summary": "Converts a footnote database row into a plain response dict.",
+      "tags": [
+        "utility",
+        "serialization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/footnotes.py:list_footnotes",
+      "type": "function",
+      "name": "list_footnotes",
+      "filePath": "web/routers/footnotes.py",
+      "lineRange": [
+        50,
+        61
+      ],
+      "summary": "API endpoint returning all footnotes for the given SoA as JSON.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "footnotes"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/footnotes.py:create_footnote",
+      "type": "function",
+      "name": "create_footnote",
+      "filePath": "web/routers/footnotes.py",
+      "lineRange": [
+        65,
+        97
+      ],
+      "summary": "API endpoint that validates and inserts a new footnote for the SoA, assigning its UID and recording an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "create"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/footnotes.py:update_footnote",
+      "type": "function",
+      "name": "update_footnote",
+      "filePath": "web/routers/footnotes.py",
+      "lineRange": [
+        101,
+        153
+      ],
+      "summary": "API endpoint that validates and applies changes to an existing footnote, recording before/after audit state.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "update"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/footnotes.py:delete_footnote",
+      "type": "function",
+      "name": "delete_footnote",
+      "filePath": "web/routers/footnotes.py",
+      "lineRange": [
+        157,
+        175
+      ],
+      "summary": "API endpoint that deletes a footnote and records an audit entry.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "delete"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/footnotes.py:ui_create_footnote",
+      "type": "function",
+      "name": "ui_create_footnote",
+      "filePath": "web/routers/footnotes.py",
+      "lineRange": [
+        184,
+        209
+      ],
+      "summary": "HTMX form handler that creates a new footnote from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "create"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/footnotes.py:ui_update_footnote",
+      "type": "function",
+      "name": "ui_update_footnote",
+      "filePath": "web/routers/footnotes.py",
+      "lineRange": [
+        215,
+        242
+      ],
+      "summary": "HTMX form handler that updates an existing footnote from submitted form fields and returns the refreshed partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "update"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/footnotes.py:ui_delete_footnote",
+      "type": "function",
+      "name": "ui_delete_footnote",
+      "filePath": "web/routers/footnotes.py",
+      "lineRange": [
+        248,
+        260
+      ],
+      "summary": "HTMX handler that deletes a footnote and returns the updated partial.",
+      "tags": [
+        "api-handler",
+        "htmx",
+        "delete"
+      ],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:list_condition_assignments",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:list_condition_assignments",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:ui_list_condition_assignments",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:ui_list_condition_assignments",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:create_condition_assignment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:create_condition_assignment",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:ui_create_condition_assignment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:ui_create_condition_assignment",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:update_condition_assignment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:update_condition_assignment",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:ui_update_condition_assignment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:ui_update_condition_assignment",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:delete_condition_assignment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:delete_condition_assignment",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:ui_delete_condition_assignment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "function:web/routers/condition_assignments.py:ui_delete_condition_assignment",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:list_decision_instances",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:list_decision_instances",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:ui_list_decision_instances",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:ui_list_decision_instances",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:create_decision_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:create_decision_instance",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:ui_create_decision_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:ui_create_decision_instance",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:update_decision_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:update_decision_instance",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:ui_update_decision_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:ui_update_decision_instance",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:delete_decision_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:delete_decision_instance",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:ui_delete_decision_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:ui_delete_decision_instance",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:reorder_decision_instances",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "function:web/routers/decision_instances.py:reorder_decision_instances",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:_get_element_interventions_by_element",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:_set_element_interventions",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:list_elements",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:list_elements",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:ui_list_elements",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:ui_list_elements",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:add_element",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:add_element",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:ui_create_element",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:ui_create_element",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:update_element",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:update_element",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:ui_update_element",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:ui_update_element",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:delete_element",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:delete_element",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:ui_delete_element",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:ui_delete_element",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:get_element",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:get_element",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:list_element_audit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "function:web/routers/elements.py:list_element_audit",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:_next_footnote_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:_row_to_dict",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:list_footnotes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:list_footnotes",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:create_footnote",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:create_footnote",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:update_footnote",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:update_footnote",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:delete_footnote",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:delete_footnote",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:ui_create_footnote",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:ui_create_footnote",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:ui_update_footnote",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:ui_update_footnote",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:ui_delete_footnote",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "function:web/routers/footnotes.py:ui_delete_footnote",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "file:web/audit.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "file:web/schemas.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/condition_assignments.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "file:web/audit.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "file:web/schemas.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/decision_instances.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "file:web/audit.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "file:web/schemas.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/elements.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "file:web/audit.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "file:web/schemas.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/footnotes.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/condition_assignments.py:create_condition_assignment",
+      "target": "function:web/audit.py:_record_condition_assignment_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/condition_assignments.py:update_condition_assignment",
+      "target": "function:web/audit.py:_record_condition_assignment_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/condition_assignments.py:delete_condition_assignment",
+      "target": "function:web/audit.py:_record_condition_assignment_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/decision_instances.py:create_decision_instance",
+      "target": "function:web/audit.py:_record_decision_instance_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/decision_instances.py:update_decision_instance",
+      "target": "function:web/audit.py:_record_decision_instance_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/decision_instances.py:delete_decision_instance",
+      "target": "function:web/audit.py:_record_decision_instance_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/elements.py:add_element",
+      "target": "function:web/audit.py:_record_element_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/elements.py:update_element",
+      "target": "function:web/audit.py:_record_element_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/elements.py:delete_element",
+      "target": "function:web/audit.py:_record_element_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/footnotes.py:create_footnote",
+      "target": "function:web/audit.py:_record_footnote_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/footnotes.py:update_footnote",
+      "target": "function:web/audit.py:_record_footnote_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/footnotes.py:delete_footnote",
+      "target": "function:web/audit.py:_record_footnote_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ]
+}

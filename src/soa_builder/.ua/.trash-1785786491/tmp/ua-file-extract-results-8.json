@@ -1,0 +1,38 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 0,
+  "filesSkipped": [
+    "web/templates/edit.html",
+    "web/templates/element_audit_section.html",
+    "web/templates/elements.html",
+    "web/templates/encounters.html",
+    "web/templates/epochs.html",
+    "web/templates/estimands.html",
+    "web/templates/estimands_partial.html",
+    "web/templates/freeze_modal.html",
+    "web/templates/freezes.html",
+    "web/templates/help.html",
+    "web/templates/index.html",
+    "web/templates/indications_partial.html",
+    "web/templates/instances.html",
+    "web/templates/objectives.html",
+    "web/templates/organizations_oob_response.html",
+    "web/templates/organizations_partial.html",
+    "web/templates/orgs_roles_persons.html",
+    "web/templates/persons_oob_response.html",
+    "web/templates/persons_partial.html",
+    "web/templates/protocol_controlled_terminology.html"
+  ],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 0,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": []
+}

@@ -1,0 +1,1827 @@
+{
+  "nodes": [
+    {
+      "id": "function:web/db.py:_resolve_db_path",
+      "type": "function",
+      "name": "_resolve_db_path",
+      "filePath": "web/db.py",
+      "lineRange": [
+        13,
+        23
+      ],
+      "summary": "Resolves the SQLite database file path, auto-selecting the test database when pytest is active (via sys.modules or PYTEST_CURRENT_TEST) to enforce production/test isolation.",
+      "tags": [
+        "utility",
+        "database",
+        "test-isolation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/db.py:_connect",
+      "type": "function",
+      "name": "_connect",
+      "filePath": "web/db.py",
+      "lineRange": [
+        31,
+        57
+      ],
+      "summary": "Opens a SQLite connection using the resolved DB path, enabling WAL journal mode and a busy timeout; this is the single canonical connection entry point required by all routers.",
+      "tags": [
+        "database",
+        "utility",
+        "connection-management"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:web/initialize_database.py",
+      "type": "file",
+      "name": "initialize_database.py",
+      "filePath": "web/initialize_database.py",
+      "summary": "Defines `_init_db`, a single large function that creates every core SQLite table (studies, arms, epochs, visits, activities, cells, timelines, instances, audits, and related entities) on a fresh database.",
+      "tags": [
+        "database",
+        "schema",
+        "initialization"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/initialize_database.py:_init_db",
+      "type": "function",
+      "name": "_init_db",
+      "filePath": "web/initialize_database.py",
+      "lineRange": [
+        6,
+        538
+      ],
+      "summary": "Creates every core SQLite table for a fresh database (studies, arms, epochs, elements, visits, activities, matrix cells, timelines, timings, instances, biomedical concepts, amendments, organizations, roles, and their audit tables) using CREATE TABLE IF NOT EXISTS statements.",
+      "tags": [
+        "database",
+        "schema",
+        "initialization"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:web/migrate_database.py",
+      "type": "file",
+      "name": "migrate_database.py",
+      "filePath": "web/migrate_database.py",
+      "summary": "Library of ~108 small, idempotent schema-migration functions (new columns, new tables, audit tables, backfills, data repairs) that are individually imported and invoked by `app.py`'s lifespan startup to incrementally evolve the SQLite schema across releases.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Each migration is a standalone, independently-callable function rather than a numbered migration file, so ordering and idempotency are managed entirely by the import list and internal existence checks in app.py's lifespan."
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_copy_cell_data",
+      "type": "function",
+      "name": "_migrate_copy_cell_data",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        24,
+        51
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that copies legacy cell data into the new matrix-cell schema.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_arm_uid",
+      "type": "function",
+      "name": "_migrate_add_arm_uid",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        55,
+        107
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds arm uid.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_drop_arm_element_link",
+      "type": "function",
+      "name": "_migrate_drop_arm_element_link",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        111,
+        176
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that drops arm element link.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "cleanup"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_epoch_id_to_visit",
+      "type": "function",
+      "name": "_migrate_add_epoch_id_to_visit",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        180,
+        193
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds epoch id to visit.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_epoch_seq",
+      "type": "function",
+      "name": "_migrate_add_epoch_seq",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        197,
+        229
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds epoch seq.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_visit_add_label_desc",
+      "type": "function",
+      "name": "_migrate_visit_add_label_desc",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        233,
+        257
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds label and description columns to the visit (encounter) table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_epoch_label_desc",
+      "type": "function",
+      "name": "_migrate_add_epoch_label_desc",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        261,
+        287
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds epoch label desc.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_epoch_type",
+      "type": "function",
+      "name": "_migrate_add_epoch_type",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        291,
+        311
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds epoch type.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_epoch_uid",
+      "type": "function",
+      "name": "_migrate_add_epoch_uid",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        315,
+        393
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds epoch uid.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_study_fields",
+      "type": "function",
+      "name": "_migrate_add_study_fields",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        397,
+        434
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds study fields.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_drop_unused_override_table",
+      "type": "function",
+      "name": "_drop_unused_override_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        438,
+        459
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that drops a legacy, now-unused override table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation",
+        "cleanup"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_element_table",
+      "type": "function",
+      "name": "_migrate_element_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        463,
+        516
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that creates the StudyElement table used to represent structural design periods/cohorts.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_rename_cell_table",
+      "type": "function",
+      "name": "_migrate_rename_cell_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        520,
+        549
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that renames cell table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_element_id",
+      "type": "function",
+      "name": "_migrate_element_id",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        553,
+        638
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds an element_id foreign key linking cells/visits to StudyElement rows.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_rollback_add_elements_restored",
+      "type": "function",
+      "name": "_migrate_rollback_add_elements_restored",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        642,
+        656
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds an elements_restored column to the rollback audit table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_activity_add_uid",
+      "type": "function",
+      "name": "_migrate_activity_add_uid",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        660,
+        689
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds a uid column to the activity table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_arm_add_type_fields",
+      "type": "function",
+      "name": "_migrate_arm_add_type_fields",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        693,
+        719
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds arm-type and data-origin-type columns to the arm table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_element_audit_columns",
+      "type": "function",
+      "name": "_migrate_element_audit_columns",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        723,
+        775
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds audit tracking columns to the element table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "audit"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_backfill_dataset_date",
+      "type": "function",
+      "name": "_backfill_dataset_date",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        779,
+        827
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that backfills a dataset_date column on a given table/audit_table pair from existing audit timestamps.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation",
+        "data-backfill"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_visit_columns",
+      "type": "function",
+      "name": "_migrate_visit_columns",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        830,
+        873
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds additional descriptive columns to the visit table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_timing_add_member_of_timeline",
+      "type": "function",
+      "name": "_migrate_timing_add_member_of_timeline",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        876,
+        897
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds a member_of_timeline column to the timing table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_instances_add_member_of_timeline",
+      "type": "function",
+      "name": "_migrate_instances_add_member_of_timeline",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        900,
+        919
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds a member_of_timeline column to the scheduled-activity-instance table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_matrix_cells_add_instance_id",
+      "type": "function",
+      "name": "_migrate_matrix_cells_add_instance_id",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        922,
+        935
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds an instance_id column to the matrix-cell table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_activity_concept_add_href",
+      "type": "function",
+      "name": "_migrate_activity_concept_add_href",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        938,
+        951
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds an href column to the activity-concept association table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_activity_concept_add_dss",
+      "type": "function",
+      "name": "_migrate_activity_concept_add_dss",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        954,
+        975
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds DSS (Dataset Specialization) columns to the activity-concept association table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_study_cell_add_order_index",
+      "type": "function",
+      "name": "_migrate_study_cell_add_order_index",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        978,
+        991
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds an order_index column to the study-cell table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_biomedical_concept_audit",
+      "type": "function",
+      "name": "_migrate_biomedical_concept_audit",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        994,
+        1013
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that creates the audit table for biomedical concept changes.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "audit"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_backfill_biomedical_concept_codes",
+      "type": "function",
+      "name": "_migrate_backfill_biomedical_concept_codes",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1016,
+        1107
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that backfills biomedical concept codes.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "data-backfill"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_biomedical_concept_property_add_uid",
+      "type": "function",
+      "name": "_migrate_biomedical_concept_property_add_uid",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1110,
+        1128
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds a uid column to the biomedical-concept-property table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_repoint_stale_bc_code_chains",
+      "type": "function",
+      "name": "_migrate_repoint_stale_bc_code_chains",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1131,
+        1344
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that repoints stale bc code chains.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_soa_id_indexes",
+      "type": "function",
+      "name": "_migrate_add_soa_id_indexes",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1347,
+        1373
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds soa id indexes.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_footnote_table",
+      "type": "function",
+      "name": "_migrate_add_footnote_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1376,
+        1398
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds footnote table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_footnote_audit_table",
+      "type": "function",
+      "name": "_migrate_add_footnote_audit_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1401,
+        1421
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds footnote audit table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "audit"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_matrix_cells_add_superscript",
+      "type": "function",
+      "name": "_migrate_matrix_cells_add_superscript",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1424,
+        1436
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds superscript to the matrix cells table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_activity_add_superscript",
+      "type": "function",
+      "name": "_migrate_activity_add_superscript",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1439,
+        1451
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds superscript to the activity table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_epoch_add_superscript",
+      "type": "function",
+      "name": "_migrate_epoch_add_superscript",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1454,
+        1466
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds superscript to the epoch table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_visit_add_superscript",
+      "type": "function",
+      "name": "_migrate_visit_add_superscript",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1469,
+        1481
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds superscript to the visit table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_bc_surrogate_table",
+      "type": "function",
+      "name": "_migrate_add_bc_surrogate_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1484,
+        1507
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds bc surrogate table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_activity_surrogate_table",
+      "type": "function",
+      "name": "_migrate_add_activity_surrogate_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1510,
+        1528
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds activity surrogate table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_bc_surrogate_audit_table",
+      "type": "function",
+      "name": "_migrate_add_bc_surrogate_audit_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1531,
+        1551
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds bc surrogate audit table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "audit"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_concept_group_table",
+      "type": "function",
+      "name": "_migrate_add_concept_group_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1554,
+        1581
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds concept group table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_concept_group_add_cdisc_source_columns",
+      "type": "function",
+      "name": "_migrate_concept_group_add_cdisc_source_columns",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1584,
+        1611
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds cdisc source columns to the concept group table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_activity_concept_add_concept_group_uid",
+      "type": "function",
+      "name": "_migrate_activity_concept_add_concept_group_uid",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1614,
+        1629
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds concept group uid to the activity concept table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_activity_concept_add_bc_category_name",
+      "type": "function",
+      "name": "_migrate_activity_concept_add_bc_category_name",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1632,
+        1645
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds bc category name to the activity concept table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_surrogate_add_concept_group_uid",
+      "type": "function",
+      "name": "_migrate_surrogate_add_concept_group_uid",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1648,
+        1666
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds concept group uid to the surrogate table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_activity_surrogate_add_concept_group_uid",
+      "type": "function",
+      "name": "_migrate_activity_surrogate_add_concept_group_uid",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1669,
+        1687
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds concept group uid to the activity surrogate table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_activity_concept_dss_table",
+      "type": "function",
+      "name": "_migrate_add_activity_concept_dss_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1690,
+        1739
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds activity concept dss table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_activity_concept_dss_add_display",
+      "type": "function",
+      "name": "_migrate_activity_concept_dss_add_display",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1742,
+        1755
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds display to the activity concept dss table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_activity_concept_dss_add_extension_attribute_uid",
+      "type": "function",
+      "name": "_migrate_activity_concept_dss_add_extension_attribute_uid",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1758,
+        1781
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds extension attribute uid to the activity concept dss table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_activity_concept_crf_table",
+      "type": "function",
+      "name": "_migrate_add_activity_concept_crf_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1784,
+        1805
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds activity concept crf table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_drop_protocol_terminology_tables",
+      "type": "function",
+      "name": "_migrate_drop_protocol_terminology_tables",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1808,
+        1823
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that drops protocol terminology tables.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "cleanup"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_drop_ddf_terminology_tables",
+      "type": "function",
+      "name": "_migrate_drop_ddf_terminology_tables",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1826,
+        1840
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that drops ddf terminology tables.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation",
+        "cleanup"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_objective_table",
+      "type": "function",
+      "name": "_migrate_add_objective_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1843,
+        1866
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds objective table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_objective_audit_table",
+      "type": "function",
+      "name": "_migrate_add_objective_audit_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1869,
+        1889
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds objective audit table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "audit"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/migrate_database.py:_migrate_add_endpoint_table",
+      "type": "function",
+      "name": "_migrate_add_endpoint_table",
+      "filePath": "web/migrate_database.py",
+      "lineRange": [
+        1892,
+        1917
+      ],
+      "summary": "Idempotent schema-migration step, applied once during app startup, that adds endpoint table.",
+      "tags": [
+        "database",
+        "migration",
+        "schema-evolution",
+        "table-creation"
+      ],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:web/initialize_database.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/initialize_database.py",
+      "target": "function:web/initialize_database.py:_init_db",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/initialize_database.py",
+      "target": "function:web/initialize_database.py:_init_db",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_copy_cell_data",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_arm_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_drop_arm_element_link",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_id_to_visit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_seq",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_visit_add_label_desc",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_label_desc",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_type",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_fields",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_drop_unused_override_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_element_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_rename_cell_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_element_id",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_rollback_add_elements_restored",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_activity_add_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_arm_add_type_fields",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_element_audit_columns",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_backfill_dataset_date",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_visit_columns",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_timing_add_member_of_timeline",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_instances_add_member_of_timeline",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_matrix_cells_add_instance_id",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_add_href",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_add_dss",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_study_cell_add_order_index",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_biomedical_concept_audit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_backfill_biomedical_concept_codes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_biomedical_concept_property_add_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_repoint_stale_bc_code_chains",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_soa_id_indexes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_footnote_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_footnote_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_matrix_cells_add_superscript",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_activity_add_superscript",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_epoch_add_superscript",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_visit_add_superscript",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_bc_surrogate_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_activity_surrogate_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_bc_surrogate_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_concept_group_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_concept_group_add_cdisc_source_columns",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_add_concept_group_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_add_bc_category_name",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_surrogate_add_concept_group_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_activity_surrogate_add_concept_group_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_activity_concept_dss_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_dss_add_display",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_dss_add_extension_attribute_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_activity_concept_crf_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_drop_protocol_terminology_tables",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_drop_ddf_terminology_tables",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_objective_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_objective_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_endpoint_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_endpoint_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_reason_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_reason_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_impact_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_impact_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_change_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_change_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_document_content_reference_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_document_content_reference_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_bcp_response_code_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_geographic_scope_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_geographic_scope_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_subject_enrollment_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_subject_enrollment_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_governance_date_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_governance_date_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_governance_date_geographic_scope_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_decode_to_code_association",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_remap_code_association_codes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_backfill_code_association_decode",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_create_country_codes_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_create_geographic_regions_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_location_code_uid_to_geo_scope",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_title_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_title_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_repair_broken_bc_code_chains",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_organization_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_organization_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_role_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_role_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_intervention_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_intervention_code_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_intervention_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_estimand_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_estimand_intervention_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_intercurrent_event_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_estimand_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_estimand_variable_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_indication_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_indication_code_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_indication_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_person_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_person_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_role_person_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_person_drop_job_title_notnull",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_person_name_fields",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_identifier_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_study_identifier_audit_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_add_element_intervention_table",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_soa_add_tool_extension_uids",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/migrate_database.py",
+      "target": "function:web/migrate_database.py:_migrate_backfill_crf_href_latest_version",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    }
+  ]
+}

@@ -1,0 +1,1525 @@
+{
+  "nodes": [
+    {
+      "id": "function:web/app.py:lifespan",
+      "type": "function",
+      "name": "lifespan",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1626,
+        1693
+      ],
+      "summary": "FastAPI lifespan async context manager: initializes the database schema (`_init_db`) on first run and then runs the full sequence of ~106 idempotent schema migrations from `migrate_database.py` on every startup.",
+      "tags": [
+        "entry-point",
+        "lifecycle",
+        "database",
+        "migration"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:_record_visit_audit",
+      "type": "function",
+      "name": "_record_visit_audit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        487,
+        511
+      ],
+      "summary": "Records a before/after audit trail entry for a visit (encounter) mutation.",
+      "tags": [
+        "audit",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_record_activity_audit",
+      "type": "function",
+      "name": "_record_activity_audit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        514,
+        538
+      ],
+      "summary": "Records a before/after audit trail entry for an activity mutation.",
+      "tags": [
+        "audit",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_record_reorder_audit",
+      "type": "function",
+      "name": "_record_reorder_audit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        568,
+        599
+      ],
+      "summary": "Records an audit trail entry capturing the old and new ordering when entities (activities, visits, etc.) are reordered.",
+      "tags": [
+        "audit",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_list_reorder_audit",
+      "type": "function",
+      "name": "_list_reorder_audit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        602,
+        620
+      ],
+      "summary": "Fetches the reorder-audit history for a SoA.",
+      "tags": [
+        "audit",
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:export_reorder_audit_csv",
+      "type": "function",
+      "name": "export_reorder_audit_csv",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1717,
+        1752
+      ],
+      "summary": "API endpoint exporting the reorder-audit trail for a SoA as a downloadable CSV file.",
+      "tags": [
+        "api-handler",
+        "audit",
+        "csv-export"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_fetch_arms_for_edit",
+      "type": "function",
+      "name": "_fetch_arms_for_edit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        623,
+        648
+      ],
+      "summary": "Fetches arm records for a SoA formatted for use as edit-page context.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_fetch_matrix",
+      "type": "function",
+      "name": "_fetch_matrix",
+      "filePath": "web/app.py",
+      "lineRange": [
+        651,
+        724
+      ],
+      "summary": "Builds the full SoA matrix data structure (activities x encounters, with cell statuses) used to render and export the schedule of activities.",
+      "tags": [
+        "matrix-rendering",
+        "database"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:_list_study_cells",
+      "type": "function",
+      "name": "_list_study_cells",
+      "filePath": "web/app.py",
+      "lineRange": [
+        728,
+        759
+      ],
+      "summary": "Fetches all StudyCell (arm/epoch/element junction) records for a SoA.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_matrix_arrays",
+      "type": "function",
+      "name": "_matrix_arrays",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1917,
+        1932
+      ],
+      "summary": "Builds the row (activity) and column (encounter/epoch) arrays needed to render the SoA matrix grid.",
+      "tags": [
+        "matrix-rendering",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_fetch_enriched_instances",
+      "type": "function",
+      "name": "_fetch_enriched_instances",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1935,
+        1977
+      ],
+      "summary": "Fetches ScheduledActivityInstance rows enriched with their associated encounter, epoch, and arm data for matrix rendering and export.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:fetch_biomedical_concept_categories",
+      "type": "function",
+      "name": "fetch_biomedical_concept_categories",
+      "filePath": "web/app.py",
+      "lineRange": [
+        762,
+        841
+      ],
+      "summary": "Fetches CDISC BC classification categories from the CDISC Library API, with local caching and an optional force-refresh.",
+      "tags": [
+        "cdisc-integration",
+        "caching"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:fetch_biomedical_concepts_by_category",
+      "type": "function",
+      "name": "fetch_biomedical_concepts_by_category",
+      "filePath": "web/app.py",
+      "lineRange": [
+        844,
+        981
+      ],
+      "summary": "Fetches biomedical concepts belonging to a named CDISC BC category from the CDISC Library API, with caching.",
+      "tags": [
+        "cdisc-integration",
+        "caching"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:fetch_biomedical_concepts",
+      "type": "function",
+      "name": "fetch_biomedical_concepts",
+      "filePath": "web/app.py",
+      "lineRange": [
+        984,
+        1129
+      ],
+      "summary": "Fetches the full list of biomedical concepts from the CDISC Library API across all categories, with local caching and an optional force-refresh.",
+      "tags": [
+        "cdisc-integration",
+        "caching"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:_compute_unassigned_concepts",
+      "type": "function",
+      "name": "_compute_unassigned_concepts",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1132,
+        1144
+      ],
+      "summary": "Computes the set of cached biomedical concepts that are not yet assigned to any activity in the current SoA.",
+      "tags": [
+        "utility",
+        "biomedical-concept"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:fetch_sdtm_specializations",
+      "type": "function",
+      "name": "fetch_sdtm_specializations",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1147,
+        1417
+      ],
+      "summary": "Fetches CDISC SDTM dataset specializations from the CDISC Library API, with caching and optional code filtering.",
+      "tags": [
+        "cdisc-integration",
+        "caching"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:fetch_crf_specializations",
+      "type": "function",
+      "name": "fetch_crf_specializations",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1420,
+        1622
+      ],
+      "summary": "Fetches CDISC CRF specializations from the CDISC Library CRF Specializations API (using the separate CRF API key), with caching.",
+      "tags": [
+        "cdisc-integration",
+        "caching"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:ui_refresh_concepts",
+      "type": "function",
+      "name": "ui_refresh_concepts",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1702,
+        1713
+      ],
+      "summary": "UI endpoint that force-refreshes the cached biomedical concepts from the CDISC Library.",
+      "tags": [
+        "api-handler",
+        "cdisc-integration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:concepts_status",
+      "type": "function",
+      "name": "concepts_status",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1756,
+        1771
+      ],
+      "summary": "API endpoint reporting the current cache status (populated, stale, count) of biomedical concepts.",
+      "tags": [
+        "api-handler",
+        "cdisc-integration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:sdtm_specializations_status",
+      "type": "function",
+      "name": "sdtm_specializations_status",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1775,
+        1792
+      ],
+      "summary": "API endpoint reporting the current cache status of SDTM specializations.",
+      "tags": [
+        "api-handler",
+        "cdisc-integration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_sdtm_specializations_status",
+      "type": "function",
+      "name": "ui_sdtm_specializations_status",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1796,
+        1803
+      ],
+      "summary": "UI partial rendering the SDTM specialization cache status.",
+      "tags": [
+        "api-handler",
+        "cdisc-integration",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_cdisc_api_status",
+      "type": "function",
+      "name": "ui_cdisc_api_status",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1817,
+        1880
+      ],
+      "summary": "Renders a diagnostics page summarizing connectivity/status of every configured CDISC Library API integration (concepts, SDTM, CRF).",
+      "tags": [
+        "api-handler",
+        "cdisc-integration",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_generate_wide_csv",
+      "type": "function",
+      "name": "_generate_wide_csv",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1887,
+        1914
+      ],
+      "summary": "Generates a wide-format CSV export of the SoA matrix (one row per activity, one column per encounter).",
+      "tags": [
+        "csv-export",
+        "matrix-rendering"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_add_header_rows_to_worksheet",
+      "type": "function",
+      "name": "_add_header_rows_to_worksheet",
+      "filePath": "web/app.py",
+      "lineRange": [
+        1980,
+        2048
+      ],
+      "summary": "Writes the multi-row header block (epochs, encounters, arms) into an openpyxl worksheet for the XLSX matrix export.",
+      "tags": [
+        "excel-export",
+        "matrix-rendering"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:create_soa",
+      "type": "function",
+      "name": "create_soa",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2053,
+        2082
+      ],
+      "summary": "API endpoint creating a new SoA study record.",
+      "tags": [
+        "api-handler",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:get_soa",
+      "type": "function",
+      "name": "get_soa",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2087,
+        2135
+      ],
+      "summary": "API endpoint returning a SoA's core study metadata as JSON.",
+      "tags": [
+        "api-handler",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:update_soa_metadata",
+      "type": "function",
+      "name": "update_soa_metadata",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2140,
+        2178
+      ],
+      "summary": "API endpoint updating a SoA's study metadata fields (name, study_id, label, description).",
+      "tags": [
+        "api-handler",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:set_activity_concepts",
+      "type": "function",
+      "name": "set_activity_concepts",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2183,
+        2286
+      ],
+      "summary": "API endpoint replacing the full set of biomedical concept associations for an activity.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_get_activity_concepts",
+      "type": "function",
+      "name": "_get_activity_concepts",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2290,
+        2349
+      ],
+      "summary": "Fetches the biomedical concept associations currently linked to an activity.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_get_concept_group_sections",
+      "type": "function",
+      "name": "_get_concept_group_sections",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2362,
+        2402
+      ],
+      "summary": "Builds the concept-group section data structure used to render grouped concept assignment UI.",
+      "tags": [
+        "utility",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_get_concept_groups_for_cell",
+      "type": "function",
+      "name": "_get_concept_groups_for_cell",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2405,
+        2422
+      ],
+      "summary": "Fetches the concept groups assigned to a specific activity's concept cell.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_get_bc_categories_for_cell",
+      "type": "function",
+      "name": "_get_bc_categories_for_cell",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2425,
+        2441
+      ],
+      "summary": "Fetches the CDISC BC classification categories assigned to a specific activity's concept cell.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_get_activity_surrogates",
+      "type": "function",
+      "name": "_get_activity_surrogates",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2444,
+        2473
+      ],
+      "summary": "Fetches the surrogate biomedical concepts linked to an activity.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_upsert_code",
+      "type": "function",
+      "name": "_upsert_code",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2476,
+        2511
+      ],
+      "summary": "Inserts or updates a Code row for a given concept code, used when associating controlled-terminology values with entities.",
+      "tags": [
+        "database",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_upsert_alias_code",
+      "type": "function",
+      "name": "_upsert_alias_code",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2514,
+        2547
+      ],
+      "summary": "Inserts or updates an AliasCode row linking a code to its canonical alias chain.",
+      "tags": [
+        "database",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_enrich_code_bg",
+      "type": "function",
+      "name": "_enrich_code_bg",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2550,
+        2599
+      ],
+      "summary": "Background task that enriches a previously-inserted Code row with metadata fetched from the CDISC Library.",
+      "tags": [
+        "background-task",
+        "cdisc-integration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_resolve_code_chain",
+      "type": "function",
+      "name": "_resolve_code_chain",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2602,
+        2619
+      ],
+      "summary": "Walks an alias-code chain to resolve it to its canonical underlying Code row.",
+      "tags": [
+        "database",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_upsert_biomedical_concept",
+      "type": "function",
+      "name": "_upsert_biomedical_concept",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2622,
+        2693
+      ],
+      "summary": "Inserts or updates a BiomedicalConcept row for a given concept code and name.",
+      "tags": [
+        "database",
+        "biomedical-concept"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_enrich_biomedical_concept_bg",
+      "type": "function",
+      "name": "_enrich_biomedical_concept_bg",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2696,
+        2749
+      ],
+      "summary": "Background task that enriches a previously-inserted BiomedicalConcept row with full metadata fetched from the CDISC Library.",
+      "tags": [
+        "background-task",
+        "cdisc-integration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_populate_biomedical_concept_properties_bg",
+      "type": "function",
+      "name": "_populate_biomedical_concept_properties_bg",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2752,
+        2810
+      ],
+      "summary": "Background task that populates a BiomedicalConcept's properties and response codes from CDISC Library data.",
+      "tags": [
+        "background-task",
+        "cdisc-integration"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_cleanup_orphaned_concept_rows",
+      "type": "function",
+      "name": "_cleanup_orphaned_concept_rows",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2813,
+        2917
+      ],
+      "summary": "Removes orphaned Code/AliasCode/BiomedicalConcept rows left behind after concept associations are removed from an activity.",
+      "tags": [
+        "database",
+        "cleanup"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_add_activity_concept",
+      "type": "function",
+      "name": "ui_add_activity_concept",
+      "filePath": "web/app.py",
+      "lineRange": [
+        2924,
+        3048
+      ],
+      "summary": "UI endpoint adding a biomedical concept to an activity, upserting the concept row and scheduling background enrichment from the CDISC Library.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "ui"
+      ],
+      "complexity": "complex"
+    }
+  ],
+  "edges": [
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/initialize_database.py:_init_db",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_activity_add_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_arm_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_id_to_visit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_visit_add_label_desc",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_label_desc",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_seq",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_fields",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_arm_add_type_fields",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_element_audit_columns",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_copy_cell_data",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_drop_arm_element_link",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_element_id",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_element_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_rename_cell_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_rollback_add_elements_restored",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_epoch_type",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_visit_columns",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_timing_add_member_of_timeline",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_instances_add_member_of_timeline",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_matrix_cells_add_instance_id",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_add_href",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_add_dss",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_study_cell_add_order_index",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_biomedical_concept_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_backfill_biomedical_concept_codes",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_repoint_stale_bc_code_chains",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_soa_id_indexes",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_footnote_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_footnote_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_matrix_cells_add_superscript",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_activity_add_superscript",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_epoch_add_superscript",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_visit_add_superscript",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_bc_surrogate_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_activity_surrogate_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_bc_surrogate_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_concept_group_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_concept_group_add_cdisc_source_columns",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_add_concept_group_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_surrogate_add_concept_group_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_activity_surrogate_add_concept_group_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_add_bc_category_name",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_activity_concept_dss_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_dss_add_display",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_activity_concept_dss_add_extension_attribute_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_activity_concept_crf_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_drop_protocol_terminology_tables",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_drop_ddf_terminology_tables",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_objective_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_objective_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_endpoint_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_endpoint_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_reason_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_reason_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_impact_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_amendment_impact_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_change_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_change_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_document_content_reference_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_document_content_reference_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_bcp_response_code_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_geographic_scope_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_geographic_scope_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_subject_enrollment_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_subject_enrollment_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_governance_date_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_amendment_governance_date_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_governance_date_geographic_scope_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_decode_to_code_association",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_remap_code_association_codes",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_backfill_code_association_decode",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_create_country_codes_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_create_geographic_regions_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_location_code_uid_to_geo_scope",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_title_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_title_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_repair_broken_bc_code_chains",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_organization_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_organization_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_role_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_role_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_intervention_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_intervention_code_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_intervention_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_estimand_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_estimand_intervention_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_intercurrent_event_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_estimand_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_estimand_variable_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_indication_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_indication_code_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_indication_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_person_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_person_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_role_person_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_person_drop_job_title_notnull",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_person_name_fields",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_identifier_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_study_identifier_audit_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_add_element_intervention_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_soa_add_tool_extension_uids",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_migrate_backfill_crf_href_latest_version",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:lifespan",
+      "target": "function:web/migrate_database.py:_drop_unused_override_table",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:export_reorder_audit_csv",
+      "target": "function:web/app.py:_list_reorder_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:_fetch_matrix",
+      "target": "function:web/app.py:_matrix_arrays",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:_fetch_matrix",
+      "target": "function:web/app.py:_fetch_enriched_instances",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_refresh_concepts",
+      "target": "function:web/app.py:fetch_biomedical_concepts",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:_generate_wide_csv",
+      "target": "function:web/app.py:_fetch_matrix",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:set_activity_concepts",
+      "target": "function:web/app.py:_upsert_biomedical_concept",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:set_activity_concepts",
+      "target": "function:web/app.py:_cleanup_orphaned_concept_rows",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_add_activity_concept",
+      "target": "function:web/app.py:_upsert_code",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_add_activity_concept",
+      "target": "function:web/app.py:_upsert_biomedical_concept",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_add_activity_concept",
+      "target": "function:web/app.py:_enrich_code_bg",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_add_activity_concept",
+      "target": "function:web/app.py:_enrich_biomedical_concept_bg",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_add_activity_concept",
+      "target": "function:web/app.py:_populate_biomedical_concept_properties_bg",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:_upsert_biomedical_concept",
+      "target": "function:web/app.py:_resolve_code_chain",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ]
+}

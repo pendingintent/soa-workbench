@@ -1,0 +1,1255 @@
+{
+  "nodes": [
+    {
+      "id": "function:web/app.py:ui_remove_activity_concept",
+      "type": "function",
+      "name": "ui_remove_activity_concept",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3056,
+        3137
+      ],
+      "summary": "UI endpoint removing a biomedical concept association from an activity, cleaning up orphaned rows.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:set_cell",
+      "type": "function",
+      "name": "set_cell",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3142,
+        3179
+      ],
+      "summary": "API endpoint setting a single matrix cell's status for an activity/encounter pair.",
+      "tags": [
+        "api-handler",
+        "matrix-rendering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:set_cell_instance",
+      "type": "function",
+      "name": "set_cell_instance",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3194,
+        3230
+      ],
+      "summary": "API endpoint setting the status of a matrix cell scoped to a specific scheduled activity instance.",
+      "tags": [
+        "api-handler",
+        "matrix-rendering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_render_cell_td",
+      "type": "function",
+      "name": "_render_cell_td",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3233,
+        3268
+      ],
+      "summary": "Renders a single matrix cell as an HTML `<td>` fragment (status marker, superscript) for HTMX partial swaps.",
+      "tags": [
+        "ui",
+        "matrix-rendering"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_render_activity_td",
+      "type": "function",
+      "name": "_render_activity_td",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3271,
+        3288
+      ],
+      "summary": "Renders an activity row-header `<td>` fragment for the matrix.",
+      "tags": [
+        "ui",
+        "matrix-rendering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_render_encounter_th",
+      "type": "function",
+      "name": "_render_encounter_th",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3291,
+        3311
+      ],
+      "summary": "Renders an encounter column-header `<th>` fragment for the matrix.",
+      "tags": [
+        "ui",
+        "matrix-rendering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:_render_epoch_th",
+      "type": "function",
+      "name": "_render_epoch_th",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3314,
+        3336
+      ],
+      "summary": "Renders an epoch group-header `<th>` fragment (with colspan) for the matrix.",
+      "tags": [
+        "ui",
+        "matrix-rendering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_toggle_cell_instance",
+      "type": "function",
+      "name": "ui_toggle_cell_instance",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3340,
+        3370
+      ],
+      "summary": "UI endpoint toggling an instance-scoped matrix cell's status and returning the refreshed cell HTML fragment.",
+      "tags": [
+        "api-handler",
+        "matrix-rendering",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:export_xlsx",
+      "type": "function",
+      "name": "export_xlsx",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3375,
+        3893
+      ],
+      "summary": "API endpoint exporting the full SoA matrix as an Excel workbook, including header rows, cell statuses, and (optionally) a freeze-diff comparison and rollback-audit sheet.",
+      "tags": [
+        "api-handler",
+        "excel-export",
+        "matrix-rendering"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:export_html",
+      "type": "function",
+      "name": "export_html",
+      "filePath": "web/app.py",
+      "lineRange": [
+        3897,
+        4065
+      ],
+      "summary": "API endpoint exporting the SoA matrix as a standalone, self-contained HTML document.",
+      "tags": [
+        "api-handler",
+        "html-export",
+        "matrix-rendering"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:export_pdf",
+      "type": "function",
+      "name": "export_pdf",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4070,
+        4240
+      ],
+      "summary": "API endpoint exporting the SoA matrix as a PDF document.",
+      "tags": [
+        "api-handler",
+        "pdf-export",
+        "matrix-rendering"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:get_normalized",
+      "type": "function",
+      "name": "get_normalized",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4245,
+        4254
+      ],
+      "summary": "API endpoint returning the SoA's normalized (pre-expansion) data as JSON.",
+      "tags": [
+        "api-handler",
+        "normalization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:import_matrix",
+      "type": "function",
+      "name": "import_matrix",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4259,
+        4358
+      ],
+      "summary": "API endpoint importing a full SoA matrix payload, replacing the SoA's existing activities/encounters/cells.",
+      "tags": [
+        "api-handler",
+        "matrix-rendering"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:_reindex",
+      "type": "function",
+      "name": "_reindex",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4361,
+        4371
+      ],
+      "summary": "Reindexes the ordering column of a table after rows are inserted, deleted, or reordered.",
+      "tags": [
+        "database",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:delete_activity",
+      "type": "function",
+      "name": "delete_activity",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4376,
+        4403
+      ],
+      "summary": "API endpoint deleting an activity and all of its dependent associations (cells, concepts, surrogates).",
+      "tags": [
+        "api-handler",
+        "crud"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_index",
+      "type": "function",
+      "name": "ui_index",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4408,
+        4433
+      ],
+      "summary": "Renders the landing page listing all SoA studies.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "entry-point"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_add_activity",
+      "type": "function",
+      "name": "ui_add_activity",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4460,
+        4495
+      ],
+      "summary": "UI endpoint adding a new activity to a SoA.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_create_soa",
+      "type": "function",
+      "name": "ui_create_soa",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4500,
+        4531
+      ],
+      "summary": "UI form endpoint creating a new SoA study, redirecting to its edit page.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_update_meta",
+      "type": "function",
+      "name": "ui_update_meta",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4536,
+        4590
+      ],
+      "summary": "UI form endpoint updating a SoA's study metadata fields.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_edit",
+      "type": "function",
+      "name": "ui_edit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        4595,
+        5086
+      ],
+      "summary": "Renders the main SoA edit page: assembles the combined template context (matrix, arms, epochs, visits, elements, timelines, organizations/roles dropdown data, rollback audit) needed by the single-page study editor.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "entry-point"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:ui_concepts_list",
+      "type": "function",
+      "name": "ui_concepts_list",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5091,
+        5113
+      ],
+      "summary": "Renders the biomedical concepts listing page.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_bc_unassigned_concepts",
+      "type": "function",
+      "name": "ui_bc_unassigned_concepts",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5118,
+        5124
+      ],
+      "summary": "Renders the page listing biomedical concepts not yet assigned to any activity.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_bc_unassigned_concepts_generate",
+      "type": "function",
+      "name": "ui_bc_unassigned_concepts_generate",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5128,
+        5135
+      ],
+      "summary": "UI endpoint regenerating the unassigned-concepts report.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_bc_unassigned_concepts_export_csv",
+      "type": "function",
+      "name": "ui_bc_unassigned_concepts_export_csv",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5139,
+        5153
+      ],
+      "summary": "Exports the unassigned-concepts report as a downloadable CSV.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "csv-export"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_categories_list",
+      "type": "function",
+      "name": "ui_categories_list",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5158,
+        5179
+      ],
+      "summary": "Renders the CDISC BC categories listing page.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_category_detail",
+      "type": "function",
+      "name": "ui_category_detail",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5184,
+        5213
+      ],
+      "summary": "Renders a single CDISC BC category's detail page listing its constituent concepts.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_sdtm_specializations_list",
+      "type": "function",
+      "name": "ui_sdtm_specializations_list",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5218,
+        5246
+      ],
+      "summary": "Renders the SDTM specializations listing page.",
+      "tags": [
+        "api-handler",
+        "cdisc-integration",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_sdtm_specialization_detail",
+      "type": "function",
+      "name": "ui_sdtm_specialization_detail",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5251,
+        5319
+      ],
+      "summary": "Renders a single SDTM specialization's detail page.",
+      "tags": [
+        "api-handler",
+        "cdisc-integration",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_crf_specializations_list",
+      "type": "function",
+      "name": "ui_crf_specializations_list",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5323,
+        5351
+      ],
+      "summary": "Renders the CRF specializations listing page.",
+      "tags": [
+        "api-handler",
+        "cdisc-integration",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_crf_specialization_detail",
+      "type": "function",
+      "name": "ui_crf_specialization_detail",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5364,
+        5420
+      ],
+      "summary": "Renders a single CRF specialization's detail page.",
+      "tags": [
+        "api-handler",
+        "cdisc-integration",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_concept_detail",
+      "type": "function",
+      "name": "ui_concept_detail",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5425,
+        5550
+      ],
+      "summary": "Renders a single biomedical concept's full detail page.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_add_element",
+      "type": "function",
+      "name": "ui_add_element",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5555,
+        5665
+      ],
+      "summary": "UI endpoint adding a new StudyElement (structural design period/cohort) to a SoA.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_set_element_transition_start_rule",
+      "type": "function",
+      "name": "ui_set_element_transition_start_rule",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5672,
+        5746
+      ],
+      "summary": "UI endpoint linking a TransitionRule to an element's transition-start.",
+      "tags": [
+        "api-handler",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_set_element_transition_end_rule",
+      "type": "function",
+      "name": "ui_set_element_transition_end_rule",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5753,
+        5826
+      ],
+      "summary": "UI endpoint linking a TransitionRule to an element's transition-end.",
+      "tags": [
+        "api-handler",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_update_element",
+      "type": "function",
+      "name": "ui_update_element",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5831,
+        5943
+      ],
+      "summary": "UI endpoint updating a StudyElement's name/label/description.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_delete_element",
+      "type": "function",
+      "name": "ui_delete_element",
+      "filePath": "web/app.py",
+      "lineRange": [
+        5948,
+        6015
+      ],
+      "summary": "UI endpoint deleting a StudyElement.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:_next_transition_rule_uid",
+      "type": "function",
+      "name": "_next_transition_rule_uid",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6019,
+        6063
+      ],
+      "summary": "Generates the next monotonic TransitionRule UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_set_activity_concepts",
+      "type": "function",
+      "name": "ui_set_activity_concepts",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6070,
+        6142
+      ],
+      "summary": "UI form endpoint setting an activity's biomedical concept codes and scheduling background CDISC Library enrichment.",
+      "tags": [
+        "api-handler",
+        "biomedical-concept",
+        "ui"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/app.py:ui_activity_concepts_cell",
+      "type": "function",
+      "name": "ui_activity_concepts_cell",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6149,
+        6200
+      ],
+      "summary": "Renders the activity-concepts cell partial (read or edit mode) for HTMX swaps.",
+      "tags": [
+        "ui",
+        "biomedical-concept"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_set_cell",
+      "type": "function",
+      "name": "ui_set_cell",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6205,
+        6216
+      ],
+      "summary": "UI endpoint setting a matrix cell's status by activity/visit pair.",
+      "tags": [
+        "api-handler",
+        "matrix-rendering",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_toggle_cell",
+      "type": "function",
+      "name": "ui_toggle_cell",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6221,
+        6287
+      ],
+      "summary": "UI endpoint toggling a matrix cell's status and returning the refreshed cell HTML fragment.",
+      "tags": [
+        "api-handler",
+        "matrix-rendering",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_cell_superscript_edit",
+      "type": "function",
+      "name": "ui_cell_superscript_edit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6294,
+        6329
+      ],
+      "summary": "Renders the inline edit form for a superscript annotation on a scheduled activity instance cell, used for HTMX partial swaps.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_cell_superscript_save",
+      "type": "function",
+      "name": "ui_cell_superscript_save",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6336,
+        6370
+      ],
+      "summary": "UI endpoint saving a superscript annotation on a scheduled activity instance cell and returning the refreshed read-only view fragment.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_cell_superscript_view",
+      "type": "function",
+      "name": "ui_cell_superscript_view",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6377,
+        6398
+      ],
+      "summary": "Renders the read-only view fragment for a superscript annotation on a scheduled activity instance cell.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_activity_superscript_edit",
+      "type": "function",
+      "name": "ui_activity_superscript_edit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6405,
+        6438
+      ],
+      "summary": "Renders the inline edit form for a superscript annotation on an activity row header, used for HTMX partial swaps.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_activity_superscript_save",
+      "type": "function",
+      "name": "ui_activity_superscript_save",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6445,
+        6476
+      ],
+      "summary": "UI endpoint saving a superscript annotation on an activity row header and returning the refreshed read-only view fragment.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_activity_superscript_view",
+      "type": "function",
+      "name": "ui_activity_superscript_view",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6483,
+        6503
+      ],
+      "summary": "Renders the read-only view fragment for a superscript annotation on an activity row header.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_encounter_superscript_edit",
+      "type": "function",
+      "name": "ui_encounter_superscript_edit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6510,
+        6543
+      ],
+      "summary": "Renders the inline edit form for a superscript annotation on an encounter column header, used for HTMX partial swaps.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_encounter_superscript_save",
+      "type": "function",
+      "name": "ui_encounter_superscript_save",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6550,
+        6580
+      ],
+      "summary": "UI endpoint saving a superscript annotation on an encounter column header and returning the refreshed read-only view fragment.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_encounter_superscript_view",
+      "type": "function",
+      "name": "ui_encounter_superscript_view",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6587,
+        6609
+      ],
+      "summary": "Renders the read-only view fragment for a superscript annotation on an encounter column header.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_epoch_superscript_edit",
+      "type": "function",
+      "name": "ui_epoch_superscript_edit",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6616,
+        6658
+      ],
+      "summary": "Renders the inline edit form for a superscript annotation on an epoch group header, used for HTMX partial swaps.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_epoch_superscript_save",
+      "type": "function",
+      "name": "ui_epoch_superscript_save",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6665,
+        6696
+      ],
+      "summary": "UI endpoint saving a superscript annotation on an epoch group header and returning the refreshed read-only view fragment.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_epoch_superscript_view",
+      "type": "function",
+      "name": "ui_epoch_superscript_view",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6703,
+        6726
+      ],
+      "summary": "Renders the read-only view fragment for a superscript annotation on an epoch group header.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "superscript"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/app.py:ui_set_visit_transition_start_rule",
+      "type": "function",
+      "name": "ui_set_visit_transition_start_rule",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6733,
+        6812
+      ],
+      "summary": "UI endpoint linking a TransitionRule to a visit's transition-start.",
+      "tags": [
+        "api-handler",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_set_transition_end_rule",
+      "type": "function",
+      "name": "ui_set_transition_end_rule",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6817,
+        6897
+      ],
+      "summary": "UI endpoint linking a TransitionRule to a visit's transition-end.",
+      "tags": [
+        "api-handler",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_set_timing",
+      "type": "function",
+      "name": "ui_set_timing",
+      "filePath": "web/app.py",
+      "lineRange": [
+        6902,
+        6981
+      ],
+      "summary": "UI endpoint linking a Timing record to a visit.",
+      "tags": [
+        "api-handler",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_delete_soa",
+      "type": "function",
+      "name": "ui_delete_soa",
+      "filePath": "web/app.py",
+      "lineRange": [
+        7050,
+        7087
+      ],
+      "summary": "UI endpoint deleting an entire SoA study after the user confirms by re-typing the study ID.",
+      "tags": [
+        "api-handler",
+        "crud",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:ui_reorder_activities",
+      "type": "function",
+      "name": "ui_reorder_activities",
+      "filePath": "web/app.py",
+      "lineRange": [
+        7102,
+        7126
+      ],
+      "summary": "UI endpoint persisting a new activity display order for a SoA and recording a reorder-audit entry.",
+      "tags": [
+        "api-handler",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/app.py:main",
+      "type": "function",
+      "name": "main",
+      "filePath": "web/app.py",
+      "lineRange": [
+        7129,
+        7137
+      ],
+      "summary": "Process entry point that starts the uvicorn ASGI server for the application when the module is run directly (`python -m soa_builder.web.app`).",
+      "tags": [
+        "entry-point"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:web/db.py",
+      "type": "file",
+      "name": "db.py",
+      "filePath": "web/db.py",
+      "summary": "Canonical SQLite connection helper used throughout the web app; resolves the DB path (auto-selecting the test DB under pytest) and opens a connection with WAL mode and a busy timeout.",
+      "tags": [
+        "database",
+        "utility",
+        "connection-management"
+      ],
+      "complexity": "simple",
+      "languageNotes": "This is the single required entry point for all DB access per project convention (`from .db import _connect`); its pytest-detection logic is what enforces production/test database isolation."
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:web/db.py",
+      "target": "function:web/db.py:_resolve_db_path",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/db.py",
+      "target": "function:web/db.py:_connect",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/db.py",
+      "target": "function:web/db.py:_resolve_db_path",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/db.py",
+      "target": "function:web/db.py:_connect",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_remove_activity_concept",
+      "target": "function:web/app.py:_cleanup_orphaned_concept_rows",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_toggle_cell_instance",
+      "target": "function:web/app.py:_render_cell_td",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:export_xlsx",
+      "target": "function:web/app.py:_fetch_matrix",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:export_xlsx",
+      "target": "function:web/app.py:_add_header_rows_to_worksheet",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:export_xlsx",
+      "target": "function:web/routers/_freeze_helpers.py:_get_freeze",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:export_xlsx",
+      "target": "function:web/routers/_freeze_helpers.py:_diff_freezes_limited",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:export_xlsx",
+      "target": "function:web/routers/_freeze_helpers.py:_list_rollback_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:export_html",
+      "target": "function:web/app.py:_fetch_matrix",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:export_pdf",
+      "target": "function:web/app.py:export_html",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:delete_activity",
+      "target": "function:web/app.py:_reindex",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_edit",
+      "target": "function:web/app.py:_fetch_matrix",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_edit",
+      "target": "function:web/app.py:_fetch_arms_for_edit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_edit",
+      "target": "function:web/app.py:_list_study_cells",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_edit",
+      "target": "function:web/routers/organizations.py:_list_organizations",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_edit",
+      "target": "function:web/routers/roles.py:_list_roles",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_bc_unassigned_concepts",
+      "target": "function:web/app.py:_compute_unassigned_concepts",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_categories_list",
+      "target": "function:web/app.py:fetch_biomedical_concept_categories",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_category_detail",
+      "target": "function:web/app.py:fetch_biomedical_concepts_by_category",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_sdtm_specializations_list",
+      "target": "function:web/app.py:fetch_sdtm_specializations",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_crf_specializations_list",
+      "target": "function:web/app.py:fetch_crf_specializations",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_set_element_transition_start_rule",
+      "target": "function:web/app.py:_next_transition_rule_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_set_element_transition_end_rule",
+      "target": "function:web/app.py:_next_transition_rule_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_toggle_cell",
+      "target": "function:web/app.py:_render_cell_td",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/app.py:ui_set_activity_concepts",
+      "target": "function:web/app.py:_upsert_biomedical_concept",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_set_activity_concepts",
+      "target": "function:web/app.py:_enrich_biomedical_concept_bg",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_cell_superscript_save",
+      "target": "function:web/app.py:ui_cell_superscript_view",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_activity_superscript_save",
+      "target": "function:web/app.py:ui_activity_superscript_view",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_encounter_superscript_save",
+      "target": "function:web/app.py:ui_encounter_superscript_view",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_epoch_superscript_save",
+      "target": "function:web/app.py:ui_epoch_superscript_view",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_set_visit_transition_start_rule",
+      "target": "function:web/app.py:_next_transition_rule_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_set_transition_end_rule",
+      "target": "function:web/app.py:_next_transition_rule_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/app.py:ui_reorder_activities",
+      "target": "function:web/app.py:_record_reorder_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ]
+}

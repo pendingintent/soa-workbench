@@ -1,0 +1,39 @@
+{
+  "projectRoot": "/Users/dmoreland/projects/soa-workbench/src/soa_builder",
+  "batchFiles": [
+    {"path": "web/audit.py", "language": "python", "sizeLines": 939, "fileCategory": "code"},
+    {"path": "web/routers/activities.py", "language": "python", "sizeLines": 1602, "fileCategory": "code"},
+    {"path": "web/routers/bc_surrogates.py", "language": "python", "sizeLines": 736, "fileCategory": "code"},
+    {"path": "web/routers/cells.py", "language": "python", "sizeLines": 481, "fileCategory": "code"},
+    {"path": "web/routers/condition_assignments.py", "language": "python", "sizeLines": 419, "fileCategory": "code"},
+    {"path": "web/routers/decision_instances.py", "language": "python", "sizeLines": 416, "fileCategory": "code"},
+    {"path": "web/routers/elements.py", "language": "python", "sizeLines": 802, "fileCategory": "code"},
+    {"path": "web/routers/footnotes.py", "language": "python", "sizeLines": 260, "fileCategory": "code"},
+    {"path": "web/routers/instances.py", "language": "python", "sizeLines": 488, "fileCategory": "code"},
+    {"path": "web/routers/persons.py", "language": "python", "sizeLines": 531, "fileCategory": "code"},
+    {"path": "web/routers/rules.py", "language": "python", "sizeLines": 358, "fileCategory": "code"},
+    {"path": "web/routers/schedule_timelines.py", "language": "python", "sizeLines": 559, "fileCategory": "code"},
+    {"path": "web/routers/study_identifiers.py", "language": "python", "sizeLines": 291, "fileCategory": "code"},
+    {"path": "web/routers/timings.py", "language": "python", "sizeLines": 733, "fileCategory": "code"},
+    {"path": "web/routers/visits.py", "language": "python", "sizeLines": 720, "fileCategory": "code"},
+    {"path": "web/schemas.py", "language": "python", "sizeLines": 489, "fileCategory": "code"}
+  ],
+  "batchImportData": {
+    "web/audit.py": ["web/db.py"],
+    "web/routers/activities.py": ["web/audit.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/bc_surrogates.py": ["web/audit.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/cells.py": ["web/audit.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/condition_assignments.py": ["web/audit.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/decision_instances.py": ["web/audit.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/elements.py": ["web/audit.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/footnotes.py": ["web/audit.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/instances.py": ["web/audit.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/persons.py": ["web/audit.py", "web/db.py", "web/utils.py"],
+    "web/routers/rules.py": ["web/audit.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/schedule_timelines.py": ["web/audit.py", "web/codelist_config.py", "web/db.py", "web/routers/condition_assignments.py", "web/routers/decision_instances.py", "web/routers/instances.py", "web/routers/timings.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/study_identifiers.py": ["web/audit.py", "web/db.py", "web/utils.py"],
+    "web/routers/timings.py": ["web/audit.py", "web/codelist_config.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/routers/visits.py": ["web/audit.py", "web/codelist_config.py", "web/db.py", "web/schemas.py", "web/utils.py"],
+    "web/schemas.py": []
+  }
+}

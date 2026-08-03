@@ -1,0 +1,1472 @@
+{
+  "nodes": [
+    {
+      "id": "file:web/routers/sdtm_terminology.py",
+      "type": "file",
+      "name": "sdtm_terminology.py",
+      "filePath": "web/routers/sdtm_terminology.py",
+      "summary": "FastAPI router exposing a JSON API and HTMX UI page for browsing the cached SDTM Controlled Terminology package from the CDISC Library, with search, filtering, and pagination.",
+      "tags": [
+        "api-handler",
+        "controlled-terminology",
+        "cdisc-library",
+        "htmx-ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/sdtm_terminology.py:_apply_filters",
+      "type": "function",
+      "name": "_apply_filters",
+      "filePath": "web/routers/sdtm_terminology.py",
+      "lineRange": [
+        37,
+        58
+      ],
+      "summary": "Applies exact code/codelist filters and a substring search across searchable columns to a list of SDTM CT rows.",
+      "tags": [
+        "utility",
+        "filtering"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/sdtm_terminology.py:get_sdtm_terminology",
+      "type": "function",
+      "name": "get_sdtm_terminology",
+      "filePath": "web/routers/sdtm_terminology.py",
+      "lineRange": [
+        62,
+        99
+      ],
+      "summary": "GET /sdtm/terminology JSON API endpoint returning paginated, filtered SDTM Controlled Terminology rows from the cached CDISC Library package.",
+      "tags": [
+        "api-handler",
+        "endpoint"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/sdtm_terminology.py:ui_sdtm_terminology",
+      "type": "function",
+      "name": "ui_sdtm_terminology",
+      "filePath": "web/routers/sdtm_terminology.py",
+      "lineRange": [
+        105,
+        140
+      ],
+      "summary": "GET /ui/sdtm/terminology HTMX page endpoint rendering the SDTM Controlled Terminology browser template.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/tdd.py",
+      "type": "file",
+      "name": "tdd.py",
+      "filePath": "web/routers/tdd.py",
+      "summary": "FastAPI router generating SDTM Trial Design Domains (TA/Trial Arms, TE/Trial Elements, TV/Trial Visits) from the SoA's arms, elements, and visits, exposing JSON dataset views, a define-XML style column metadata browser page, and CSV download.",
+      "tags": [
+        "api-handler",
+        "sdtm",
+        "export",
+        "htmx-ui"
+      ],
+      "complexity": "moderate",
+      "languageNotes": "Delegates actual domain-record construction to `sdtm.generate_ta` / `generate_te` / `generate_tv` via deferred imports inside `_build`, which live in a sibling `sdtm` package outside soa_builder."
+    },
+    {
+      "id": "function:web/routers/tdd.py:_to_dataset_json",
+      "type": "function",
+      "name": "_to_dataset_json",
+      "filePath": "web/routers/tdd.py",
+      "lineRange": [
+        255,
+        293
+      ],
+      "summary": "Converts a list of domain records into the standard TDD dataset JSON shape (item metadata plus rows) for a given SDTM domain.",
+      "tags": [
+        "utility",
+        "serialization"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/tdd.py:_build",
+      "type": "function",
+      "name": "_build",
+      "filePath": "web/routers/tdd.py",
+      "lineRange": [
+        310,
+        324
+      ],
+      "summary": "Dispatches to the appropriate generator (TA/TE/TV) for a domain and returns its records for a SoA.",
+      "tags": [
+        "utility",
+        "sdtm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/tdd.py:ui_tdd",
+      "type": "function",
+      "name": "ui_tdd",
+      "filePath": "web/routers/tdd.py",
+      "lineRange": [
+        328,
+        335
+      ],
+      "summary": "HTMX page endpoint listing the available Trial Design Domains for a SoA.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/tdd.py:download_tdd_json",
+      "type": "function",
+      "name": "download_tdd_json",
+      "filePath": "web/routers/tdd.py",
+      "lineRange": [
+        339,
+        357
+      ],
+      "summary": "API endpoint streaming a Trial Design Domain's records as a downloadable JSON file.",
+      "tags": [
+        "api-handler",
+        "endpoint",
+        "export"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/tdd.py:ui_tdd_domain_view",
+      "type": "function",
+      "name": "ui_tdd_domain_view",
+      "filePath": "web/routers/tdd.py",
+      "lineRange": [
+        361,
+        382
+      ],
+      "summary": "HTMX page endpoint rendering a single Trial Design Domain's records and column metadata in a browsable table.",
+      "tags": [
+        "api-handler",
+        "ui",
+        "htmx"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/tdd.py:download_tdd_csv",
+      "type": "function",
+      "name": "download_tdd_csv",
+      "filePath": "web/routers/tdd.py",
+      "lineRange": [
+        386,
+        408
+      ],
+      "summary": "API endpoint streaming a Trial Design Domain's records as a downloadable CSV file, decoding unicode escapes for readability.",
+      "tags": [
+        "api-handler",
+        "endpoint",
+        "export"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/utils.py",
+      "type": "file",
+      "name": "utils.py",
+      "filePath": "web/utils.py",
+      "summary": "Large shared utility module for the web layer: CDISC Library API integration (cached fetch/refresh of epoch types, environmental settings, contact modes, and SDTM/CDASH/Define-XML/Protocol/DDF Controlled Terminology packages), monotonic UID generators for dozens of USDM entity types, USDM/database lookup helpers (timing, encounters, epochs, schedule timelines), and misc helpers (ISO-8601 duration parsing, referer-based redirects).",
+      "tags": [
+        "utility",
+        "cdisc-library",
+        "caching",
+        "uid-generator"
+      ],
+      "complexity": "complex",
+      "languageNotes": "Uses module-level dicts as simple TTL caches (fetched_at + configurable *_CACHE_TTL) to avoid re-hitting the CDISC Library API on every request."
+    },
+    {
+      "id": "function:web/utils.py:iso_duration_to_days",
+      "type": "function",
+      "name": "iso_duration_to_days",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        139,
+        167
+      ],
+      "summary": "Parses an ISO-8601 duration string (e.g. P1W, P3D) into a float number of days using a precompiled regex.",
+      "tags": [
+        "utility",
+        "date-parsing"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_cdisc_crf_api_key",
+      "type": "function",
+      "name": "get_cdisc_crf_api_key",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        179,
+        186
+      ],
+      "summary": "Returns the CDISC Library CRF Specializations API key, falling back to the general CDISC API key when the CRF-specific one is unset.",
+      "tags": [
+        "configuration",
+        "cdisc-library"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_cdisc_crf_subscription_key",
+      "type": "function",
+      "name": "get_cdisc_crf_subscription_key",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        189,
+        197
+      ],
+      "summary": "Returns the CDISC Library CRF Specializations subscription key, falling back to the general CDISC subscription key when unset.",
+      "tags": [
+        "configuration",
+        "cdisc-library"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:load_epoch_type_options",
+      "type": "function",
+      "name": "load_epoch_type_options",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        204,
+        301
+      ],
+      "summary": "Fetches and caches the Epoch Type controlled terminology codelist from the CDISC Library, returning selectable options for the epoch type dropdown.",
+      "tags": [
+        "cdisc-library",
+        "caching",
+        "controlled-terminology"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/utils.py:load_epoch_type_map",
+      "type": "function",
+      "name": "load_epoch_type_map",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        316,
+        410
+      ],
+      "summary": "Fetches and caches a code-to-submission-value map for the Epoch Type codelist, used to resolve stored codes to display labels.",
+      "tags": [
+        "cdisc-library",
+        "caching",
+        "controlled-terminology"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/utils.py:get_next_quantity_uid",
+      "type": "function",
+      "name": "get_next_quantity_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        423,
+        468
+      ],
+      "summary": "Generates the next monotonic Quantity_N UID across all relevant tables, never reusing deleted UIDs.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_next_intercurrent_event_uid",
+      "type": "function",
+      "name": "get_next_intercurrent_event_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        471,
+        520
+      ],
+      "summary": "Generates the next monotonic IntercurrentEvent_N UID for a SoA, scanning live rows and audit history.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_next_indication_uid",
+      "type": "function",
+      "name": "get_next_indication_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        523,
+        567
+      ],
+      "summary": "Generates the next monotonic Indication_N UID for a SoA, scanning live rows and audit history.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_next_study_identifier_uid",
+      "type": "function",
+      "name": "get_next_study_identifier_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        570,
+        615
+      ],
+      "summary": "Generates the next monotonic StudyIdentifier_N UID for a SoA, scanning live rows and audit history.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_next_alias_code_uid",
+      "type": "function",
+      "name": "get_next_alias_code_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        619,
+        634
+      ],
+      "summary": "Generates the next monotonic AliasCode_N UID.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_next_code_uid",
+      "type": "function",
+      "name": "get_next_code_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        638,
+        656
+      ],
+      "summary": "Generates the next monotonic Code_N UID, used across many entities for coded terminology values.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_next_biomedical_concept_property_uid",
+      "type": "function",
+      "name": "get_next_biomedical_concept_property_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        659,
+        678
+      ],
+      "summary": "Generates the next monotonic BiomedicalConceptProperty_N UID.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_next_response_code_uid",
+      "type": "function",
+      "name": "get_next_response_code_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        681,
+        699
+      ],
+      "summary": "Generates the next monotonic ResponseCode_N UID.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_next_extension_attribute_uid",
+      "type": "function",
+      "name": "get_next_extension_attribute_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        702,
+        726
+      ],
+      "summary": "Generates the next monotonic ExtensionAttribute_N UID.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_next_extension_class_uid",
+      "type": "function",
+      "name": "get_next_extension_class_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        729,
+        748
+      ],
+      "summary": "Generates the next monotonic ExtensionClass_N UID.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_next_concept_uid",
+      "type": "function",
+      "name": "get_next_concept_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        751,
+        780
+      ],
+      "summary": "Generates the next monotonic BiomedicalConcept_N UID, scanning both live rows and audit history.",
+      "tags": [
+        "uid-generator",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:soa_exists",
+      "type": "function",
+      "name": "soa_exists",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        783,
+        793
+      ],
+      "summary": "Checks whether a SoA row with the given id exists in the database; used as a guard clause across most routers.",
+      "tags": [
+        "validation",
+        "data-access"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:table_has_columns",
+      "type": "function",
+      "name": "table_has_columns",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        796,
+        809
+      ],
+      "summary": "Checks whether a SQLite table currently has a given set of columns, used to guard optional/migrated schema features.",
+      "tags": [
+        "utility",
+        "schema-introspection"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_conditions",
+      "type": "function",
+      "name": "get_conditions",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        817,
+        837
+      ],
+      "summary": "Fetches condition rows (used by decision instances/transition rules) for a SoA.",
+      "tags": [
+        "data-access",
+        "usdm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_scheduled_activity_instance",
+      "type": "function",
+      "name": "get_scheduled_activity_instance",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        840,
+        862
+      ],
+      "summary": "Fetches a ScheduledActivityInstance row and its related fields for USDM generation.",
+      "tags": [
+        "data-access",
+        "usdm"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_schedule_timeline",
+      "type": "function",
+      "name": "get_schedule_timeline",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        865,
+        884
+      ],
+      "summary": "Fetches a ScheduleTimeline row for USDM generation.",
+      "tags": [
+        "data-access",
+        "usdm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_encounter_id",
+      "type": "function",
+      "name": "get_encounter_id",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        887,
+        897
+      ],
+      "summary": "Resolves an Encounter's internal database id from its UID.",
+      "tags": [
+        "data-access",
+        "usdm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_epoch_uid",
+      "type": "function",
+      "name": "get_epoch_uid",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        900,
+        910
+      ],
+      "summary": "Resolves an epoch's USDM UID from its internal database id.",
+      "tags": [
+        "data-access",
+        "usdm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_epoch_id",
+      "type": "function",
+      "name": "get_epoch_id",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        913,
+        923
+      ],
+      "summary": "Resolves an epoch's internal database id from its USDM UID.",
+      "tags": [
+        "data-access",
+        "usdm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_sdtm_submission_values",
+      "type": "function",
+      "name": "get_sdtm_submission_values",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        926,
+        989
+      ],
+      "summary": "Fetches SDTM submission-value mappings for a codelist, used to populate SDTM-facing dropdowns and generators.",
+      "tags": [
+        "data-access",
+        "controlled-terminology",
+        "sdtm"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/utils.py:get_study_timings",
+      "type": "function",
+      "name": "get_study_timings",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        992,
+        1007
+      ],
+      "summary": "Fetches Timing rows for a SoA's ScheduleTimeline for USDM generation.",
+      "tags": [
+        "data-access",
+        "usdm"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_study_transition_rules",
+      "type": "function",
+      "name": "get_study_transition_rules",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1010,
+        1027
+      ],
+      "summary": "Fetches transition rule rows (element entry/exit conditions) for a SoA.",
+      "tags": [
+        "data-access",
+        "usdm"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_timing_id",
+      "type": "function",
+      "name": "get_timing_id",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1030,
+        1040
+      ],
+      "summary": "Resolves a Timing's internal database id from its USDM UID.",
+      "tags": [
+        "data-access",
+        "usdm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_encounter_type_sv",
+      "type": "function",
+      "name": "get_encounter_type_sv",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1043,
+        1067
+      ],
+      "summary": "Resolves an Encounter Type code's submission value from controlled terminology.",
+      "tags": [
+        "data-access",
+        "controlled-terminology"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:get_latest_sdtm_ct_href",
+      "type": "function",
+      "name": "get_latest_sdtm_ct_href",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1070,
+        1132
+      ],
+      "summary": "Resolves the CDISC Library href for the latest published SDTM Controlled Terminology package, with caching.",
+      "tags": [
+        "cdisc-library",
+        "caching",
+        "controlled-terminology"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/utils.py:_flatten_ct_package",
+      "type": "function",
+      "name": "_flatten_ct_package",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1147,
+        1198
+      ],
+      "summary": "Flattens a nested CDISC Library CT package JSON payload (codelists and terms) into a flat list of row dicts.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/utils.py:_get_latest_ct_package_slug",
+      "type": "function",
+      "name": "_get_latest_ct_package_slug",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1201,
+        1263
+      ],
+      "summary": "Resolves and caches the slug of the latest CDISC Library CT package for a given product line (SDTM/CDASH/Define-XML/Protocol/DDF).",
+      "tags": [
+        "cdisc-library",
+        "caching",
+        "controlled-terminology"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/utils.py:_get_ct_rows",
+      "type": "function",
+      "name": "_get_ct_rows",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1286,
+        1367
+      ],
+      "summary": "Shared implementation fetching, flattening, and caching an entire Controlled Terminology package's rows for a given product line; backs all of the product-specific get_*_ct_rows helpers.",
+      "tags": [
+        "cdisc-library",
+        "caching",
+        "controlled-terminology"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/utils.py:get_sdtm_ct_rows",
+      "type": "function",
+      "name": "get_sdtm_ct_rows",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1370,
+        1379
+      ],
+      "summary": "Returns cached SDTM Controlled Terminology rows, optionally forcing a refresh; used by the SDTM terminology router.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_cdash_ct_rows",
+      "type": "function",
+      "name": "get_cdash_ct_rows",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1382,
+        1391
+      ],
+      "summary": "Returns cached CDASH Controlled Terminology rows, optionally forcing a refresh; used by the CDASH terminology router.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_define_xml_ct_rows",
+      "type": "function",
+      "name": "get_define_xml_ct_rows",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1394,
+        1403
+      ],
+      "summary": "Returns cached Define-XML Controlled Terminology rows, optionally forcing a refresh; used by the Define-XML terminology router.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_protocol_ct_rows",
+      "type": "function",
+      "name": "get_protocol_ct_rows",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1406,
+        1415
+      ],
+      "summary": "Returns cached Protocol Controlled Terminology rows, optionally forcing a refresh; used by the Protocol CT terminology router.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_protocol_ct_codelist_map",
+      "type": "function",
+      "name": "get_protocol_ct_codelist_map",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1418,
+        1429
+      ],
+      "summary": "Builds a codelist-code-to-name map from cached Protocol CT rows.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_protocol_ct_term",
+      "type": "function",
+      "name": "get_protocol_ct_term",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1432,
+        1441
+      ],
+      "summary": "Looks up a single Protocol CT term by code from the cached rows.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_ddf_ct_rows",
+      "type": "function",
+      "name": "get_ddf_ct_rows",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1444,
+        1453
+      ],
+      "summary": "Returns cached DDF Controlled Terminology rows, optionally forcing a refresh; used by the DDF terminology router.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_ddf_ct_codelist_map",
+      "type": "function",
+      "name": "get_ddf_ct_codelist_map",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1456,
+        1464
+      ],
+      "summary": "Builds a codelist-code-to-name map from cached DDF CT rows.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_ddf_ct_codelist_map_by_submission",
+      "type": "function",
+      "name": "get_ddf_ct_codelist_map_by_submission",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1467,
+        1475
+      ],
+      "summary": "Builds a codelist-submission-value-to-name map from cached DDF CT rows.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_ddf_ct_term",
+      "type": "function",
+      "name": "get_ddf_ct_term",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1478,
+        1487
+      ],
+      "summary": "Looks up a single DDF CT term by code from the cached rows.",
+      "tags": [
+        "cdisc-library",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/utils.py:get_encounter_environment_sv",
+      "type": "function",
+      "name": "get_encounter_environment_sv",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1490,
+        1593
+      ],
+      "summary": "Resolves an Encounter Environmental Setting code's submission value, loading and caching the underlying codelist as needed.",
+      "tags": [
+        "data-access",
+        "caching",
+        "controlled-terminology"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/utils.py:get_submission_value_for_code",
+      "type": "function",
+      "name": "get_submission_value_for_code",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1597,
+        1700
+      ],
+      "summary": "Generic helper resolving a submission value for an arbitrary codelist/code pair, loading and caching the codelist on demand.",
+      "tags": [
+        "data-access",
+        "caching",
+        "controlled-terminology"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/utils.py:load_environmental_setting_options",
+      "type": "function",
+      "name": "load_environmental_setting_options",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1704,
+        1793
+      ],
+      "summary": "Fetches and caches the Encounter Environmental Setting controlled terminology codelist, returning selectable dropdown options.",
+      "tags": [
+        "cdisc-library",
+        "caching",
+        "controlled-terminology"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/utils.py:load_contact_mode_options",
+      "type": "function",
+      "name": "load_contact_mode_options",
+      "filePath": "web/utils.py",
+      "lineRange": [
+        1797,
+        1888
+      ],
+      "summary": "Fetches and caches the Encounter Contact Mode controlled terminology codelist, returning selectable dropdown options.",
+      "tags": [
+        "cdisc-library",
+        "caching",
+        "controlled-terminology"
+      ],
+      "complexity": "complex"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:web/routers/sdtm_terminology.py",
+      "target": "function:web/routers/sdtm_terminology.py:_apply_filters",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/sdtm_terminology.py",
+      "target": "function:web/routers/sdtm_terminology.py:get_sdtm_terminology",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/sdtm_terminology.py",
+      "target": "function:web/routers/sdtm_terminology.py:ui_sdtm_terminology",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/sdtm_terminology.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/sdtm_terminology.py:get_sdtm_terminology",
+      "target": "function:web/utils.py:get_sdtm_ct_rows",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/tdd.py",
+      "target": "function:web/routers/tdd.py:_to_dataset_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/tdd.py",
+      "target": "function:web/routers/tdd.py:_build",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/tdd.py",
+      "target": "function:web/routers/tdd.py:ui_tdd",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/tdd.py",
+      "target": "function:web/routers/tdd.py:download_tdd_json",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/tdd.py",
+      "target": "function:web/routers/tdd.py:ui_tdd_domain_view",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/tdd.py",
+      "target": "function:web/routers/tdd.py:download_tdd_csv",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/tdd.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/tdd.py:download_tdd_json",
+      "target": "function:web/utils.py:soa_exists",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:iso_duration_to_days",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_cdisc_crf_api_key",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_cdisc_crf_subscription_key",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:load_epoch_type_options",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:load_epoch_type_map",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_quantity_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_intercurrent_event_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_indication_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_study_identifier_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_alias_code_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_code_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_biomedical_concept_property_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_response_code_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_extension_attribute_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_extension_class_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_concept_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:soa_exists",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:table_has_columns",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_conditions",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_scheduled_activity_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_schedule_timeline",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_encounter_id",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_epoch_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_epoch_id",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_sdtm_submission_values",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_study_timings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_study_transition_rules",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_timing_id",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_encounter_type_sv",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_latest_sdtm_ct_href",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:_flatten_ct_package",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:_get_latest_ct_package_slug",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:_get_ct_rows",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_sdtm_ct_rows",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_cdash_ct_rows",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_define_xml_ct_rows",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_protocol_ct_rows",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_protocol_ct_codelist_map",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_protocol_ct_term",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_ddf_ct_rows",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_ddf_ct_codelist_map",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_ddf_ct_codelist_map_by_submission",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_ddf_ct_term",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_encounter_environment_sv",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_submission_value_for_code",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:load_environmental_setting_options",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:load_contact_mode_options",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "file:web/codelist_config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_cdash_ct_rows",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_ddf_ct_rows",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_define_xml_ct_rows",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_protocol_ct_rows",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_sdtm_ct_rows",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:soa_exists",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_concept_uid",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_intercurrent_event_uid",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/utils.py",
+      "target": "function:web/utils.py:get_next_code_uid",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/utils.py:soa_exists",
+      "target": "function:web/db.py:_connect",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/utils.py:get_conditions",
+      "target": "function:web/db.py:_connect",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ]
+}

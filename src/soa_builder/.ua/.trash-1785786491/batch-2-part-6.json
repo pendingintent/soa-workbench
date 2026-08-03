@@ -1,0 +1,1816 @@
+{
+  "nodes": [
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_capture_study_cells",
+      "type": "function",
+      "name": "_capture_study_cells",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        183,
+        199
+      ],
+      "summary": "Captures a point-in-time snapshot of a SoA's study cells for inclusion in a freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_capture_schedule_timelines",
+      "type": "function",
+      "name": "_capture_schedule_timelines",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        202,
+        223
+      ],
+      "summary": "Captures a point-in-time snapshot of a SoA's schedule timelines for inclusion in a freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_capture_instances",
+      "type": "function",
+      "name": "_capture_instances",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        226,
+        247
+      ],
+      "summary": "Captures a point-in-time snapshot of a SoA's scheduled activity instances for inclusion in a freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_capture_decision_instances",
+      "type": "function",
+      "name": "_capture_decision_instances",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        250,
+        269
+      ],
+      "summary": "Captures a point-in-time snapshot of a SoA's decision instances for inclusion in a freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_capture_bc_surrogates",
+      "type": "function",
+      "name": "_capture_bc_surrogates",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        272,
+        289
+      ],
+      "summary": "Captures a point-in-time snapshot of a SoA's biomedical concept surrogates for inclusion in a freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_capture_biomedical_concepts",
+      "type": "function",
+      "name": "_capture_biomedical_concepts",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        292,
+        314
+      ],
+      "summary": "Captures a point-in-time snapshot of a SoA's biomedical concepts for inclusion in a freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_capture_bc_properties",
+      "type": "function",
+      "name": "_capture_bc_properties",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        317,
+        340
+      ],
+      "summary": "Captures a point-in-time snapshot of a SoA's biomedical concept properties for inclusion in a freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_capture_amendments",
+      "type": "function",
+      "name": "_capture_amendments",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        343,
+        361
+      ],
+      "summary": "Captures a point-in-time snapshot of a SoA's study amendments for inclusion in a freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_capture_extension_attributes",
+      "type": "function",
+      "name": "_capture_extension_attributes",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        364,
+        385
+      ],
+      "summary": "Captures a point-in-time snapshot of a SoA's extension attributes for inclusion in a freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_diff_entity_list",
+      "type": "function",
+      "name": "_diff_entity_list",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        388,
+        417
+      ],
+      "summary": "Generic list-diff utility comparing two lists of entity dicts by UID key, classifying each as added, removed, or changed (with per-field before/after values) for the given display fields.",
+      "tags": [
+        "diff",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_list_freezes",
+      "type": "function",
+      "name": "_list_freezes",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        420,
+        441
+      ],
+      "summary": "Fetches all freeze records for a SoA, ordered by creation time, for listing in the UI.",
+      "tags": [
+        "freeze",
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_get_freeze",
+      "type": "function",
+      "name": "_get_freeze",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        444,
+        465
+      ],
+      "summary": "Fetches a single freeze record and its stored snapshot payload for a SoA.",
+      "tags": [
+        "freeze",
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "type": "function",
+      "name": "_create_freeze",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        468,
+        635
+      ],
+      "summary": "Creates a new freeze by capturing snapshots of every trackable entity type (arms, timings, objectives, endpoints, encounters, cells, timelines, instances, decision instances, BCs, surrogates, amendments, extension attributes) and storing them as a single freeze record.",
+      "tags": [
+        "freeze",
+        "snapshot",
+        "database"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_diff_freezes_limited",
+      "type": "function",
+      "name": "_diff_freezes_limited",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        642,
+        968
+      ],
+      "summary": "Computes the full structural diff between two freezes (or a freeze and the live study) across every entity type, using `_diff_entity_list`, optionally capping the number of changed entities returned per section.",
+      "tags": [
+        "freeze",
+        "diff"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_rollback_freeze",
+      "type": "function",
+      "name": "_rollback_freeze",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        971,
+        1296
+      ],
+      "summary": "Restores the live study's entities to match a prior freeze's captured snapshot, deleting/recreating rows as needed and recording a rollback audit entry.",
+      "tags": [
+        "freeze",
+        "rollback",
+        "database"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_record_rollback_audit",
+      "type": "function",
+      "name": "_record_rollback_audit",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        1299,
+        1319
+      ],
+      "summary": "Records an audit trail entry summarizing the statistics of a freeze rollback operation (entities restored, added, removed).",
+      "tags": [
+        "audit",
+        "freeze"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_list_rollback_audit",
+      "type": "function",
+      "name": "_list_rollback_audit",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        1322,
+        1344
+      ],
+      "summary": "Fetches the rollback audit history for a SoA.",
+      "tags": [
+        "audit",
+        "freeze",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_delete_freeze",
+      "type": "function",
+      "name": "_delete_freeze",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        1347,
+        1358
+      ],
+      "summary": "Deletes a freeze record and its stored snapshot data.",
+      "tags": [
+        "freeze",
+        "database"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/_freeze_helpers.py:_rollback_preview",
+      "type": "function",
+      "name": "_rollback_preview",
+      "filePath": "web/routers/_freeze_helpers.py",
+      "lineRange": [
+        1361,
+        1377
+      ],
+      "summary": "Computes a preview of what a rollback to a given freeze would change, without applying it, by diffing the freeze snapshot against live data.",
+      "tags": [
+        "freeze",
+        "rollback",
+        "diff"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:web/routers/amendments.py",
+      "type": "file",
+      "name": "amendments.py",
+      "filePath": "web/routers/amendments.py",
+      "summary": "FastAPI router implementing CRUD for protocol amendments and their sub-entities (secondary reasons, impacts, changes with document-content-reference sections, geographic scopes, subject enrollments, governance dates), each tied to a freeze.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "protocol-amendment",
+        "crud"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_next_uid",
+      "type": "function",
+      "name": "_next_uid",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        61,
+        93
+      ],
+      "summary": "Generic monotonic UID generator that finds the max numeric suffix for a given prefix/table/column combination and returns the next value; the shared implementation behind all `_next_*_uid` helpers in this file.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_next_amendment_uid",
+      "type": "function",
+      "name": "_next_amendment_uid",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        96,
+        97
+      ],
+      "summary": "Generates the next StudyAmendment UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_next_reason_uid",
+      "type": "function",
+      "name": "_next_reason_uid",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        100,
+        107
+      ],
+      "summary": "Generates the next StudyAmendmentReason UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_next_impact_uid",
+      "type": "function",
+      "name": "_next_impact_uid",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        110,
+        117
+      ],
+      "summary": "Generates the next StudyAmendmentImpact UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_next_change_uid",
+      "type": "function",
+      "name": "_next_change_uid",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        120,
+        121
+      ],
+      "summary": "Generates the next StudyChange UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_next_ref_uid",
+      "type": "function",
+      "name": "_next_ref_uid",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        124,
+        131
+      ],
+      "summary": "Generates the next DocumentContentReference UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_next_scope_uid",
+      "type": "function",
+      "name": "_next_scope_uid",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        134,
+        141
+      ],
+      "summary": "Generates the next GeographicScope UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_next_enrollment_uid",
+      "type": "function",
+      "name": "_next_enrollment_uid",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        144,
+        151
+      ],
+      "summary": "Generates the next SubjectEnrollment UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_next_gov_date_uid",
+      "type": "function",
+      "name": "_next_gov_date_uid",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        154,
+        161
+      ],
+      "summary": "Generates the next GovernanceDate UID for a SoA.",
+      "tags": [
+        "utility",
+        "uid-generation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_insert_code",
+      "type": "function",
+      "name": "_insert_code",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        169,
+        182
+      ],
+      "summary": "Inserts a Code row recording a controlled-terminology value used by an amendment sub-entity (e.g. reason type, impact type).",
+      "tags": [
+        "database",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_update_code_value",
+      "type": "function",
+      "name": "_update_code_value",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        185,
+        194
+      ],
+      "summary": "Updates an existing Code row's value and codelist reference in place.",
+      "tags": [
+        "database",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_geo_scope_category",
+      "type": "function",
+      "name": "_geo_scope_category",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        205,
+        213
+      ],
+      "summary": "Maps a geographic scope type code to its category grouping (e.g. country vs. region) used for location lookups.",
+      "tags": [
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_get_countries",
+      "type": "function",
+      "name": "_get_countries",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        216,
+        221
+      ],
+      "summary": "Fetches available country controlled-terminology rows for geographic scope selection.",
+      "tags": [
+        "database",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_get_regions",
+      "type": "function",
+      "name": "_get_regions",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        224,
+        229
+      ],
+      "summary": "Fetches available geographic region controlled-terminology rows for geographic scope selection.",
+      "tags": [
+        "database",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_insert_location_code",
+      "type": "function",
+      "name": "_insert_location_code",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        232,
+        284
+      ],
+      "summary": "Inserts the appropriate country or region Code row for a geographic scope location value, based on its category.",
+      "tags": [
+        "database",
+        "controlled-terminology"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_amendment_row",
+      "type": "function",
+      "name": "_amendment_row",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        292,
+        311
+      ],
+      "summary": "Fetches a single StudyAmendment row for a SoA/amendment ID pair.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_load_amendment_data",
+      "type": "function",
+      "name": "_load_amendment_data",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        314,
+        493
+      ],
+      "summary": "Loads a StudyAmendment along with all of its related sub-entities (reasons, impacts, changes, geographic scopes, enrollments, governance dates) into a single context dict for rendering.",
+      "tags": [
+        "database",
+        "query"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_load_amendment_context",
+      "type": "function",
+      "name": "_load_amendment_context",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        496,
+        507
+      ],
+      "summary": "Builds the full template context (amendment data plus dropdown option lists) used by the amendment edit page.",
+      "tags": [
+        "utility",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/amendments.py:create_amendment",
+      "type": "function",
+      "name": "create_amendment",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        519,
+        599
+      ],
+      "summary": "API endpoint creating a new StudyAmendment record tied to a freeze, including its primary reason code.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/amendments.py:get_amendment",
+      "type": "function",
+      "name": "get_amendment",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        603,
+        620
+      ],
+      "summary": "API endpoint returning a StudyAmendment's full data (with sub-entities) as JSON.",
+      "tags": [
+        "api-handler",
+        "amendments"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:update_amendment",
+      "type": "function",
+      "name": "update_amendment",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        624,
+        646
+      ],
+      "summary": "API endpoint updating a StudyAmendment's editable fields.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:delete_amendment",
+      "type": "function",
+      "name": "delete_amendment",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        650,
+        727
+      ],
+      "summary": "API endpoint deleting a StudyAmendment and cascading deletes across all of its sub-entities (reasons, impacts, changes, scopes, enrollments, governance dates).",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/amendments.py:add_secondary_reason",
+      "type": "function",
+      "name": "add_secondary_reason",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        734,
+        773
+      ],
+      "summary": "API endpoint adding a secondary reason record to an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:add_impact",
+      "type": "function",
+      "name": "add_impact",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        819,
+        854
+      ],
+      "summary": "API endpoint adding a impact record to an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/amendments.py:add_change",
+      "type": "function",
+      "name": "add_change",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        893,
+        927
+      ],
+      "summary": "API endpoint adding a change record to an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:add_geographic_scope",
+      "type": "function",
+      "name": "add_geographic_scope",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1036,
+        1058
+      ],
+      "summary": "API endpoint adding a geographic scope record to an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:add_enrollment",
+      "type": "function",
+      "name": "add_enrollment",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1101,
+        1149
+      ],
+      "summary": "API endpoint adding a subject enrollment record to an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/amendments.py:add_governance_date",
+      "type": "function",
+      "name": "add_governance_date",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1184,
+        1227
+      ],
+      "summary": "API endpoint adding a governance date record to an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/amendments.py:delete_secondary_reason",
+      "type": "function",
+      "name": "delete_secondary_reason",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        780,
+        812
+      ],
+      "summary": "API endpoint deleting a secondary reason from an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:delete_impact",
+      "type": "function",
+      "name": "delete_impact",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        861,
+        886
+      ],
+      "summary": "API endpoint deleting an impact record from an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:delete_change",
+      "type": "function",
+      "name": "delete_change",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        934,
+        958
+      ],
+      "summary": "API endpoint deleting a change record from an amendment, cascading to its document-content-reference sections.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:add_section",
+      "type": "function",
+      "name": "add_section",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        965,
+        1002
+      ],
+      "summary": "API endpoint adding a DocumentContentReference protocol section link to a StudyChange.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:delete_section",
+      "type": "function",
+      "name": "delete_section",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1009,
+        1029
+      ],
+      "summary": "API endpoint deleting a DocumentContentReference section from a StudyChange.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:delete_geographic_scope",
+      "type": "function",
+      "name": "delete_geographic_scope",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1065,
+        1094
+      ],
+      "summary": "API endpoint deleting a geographic scope from an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:delete_enrollment",
+      "type": "function",
+      "name": "delete_enrollment",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1156,
+        1177
+      ],
+      "summary": "API endpoint deleting a subject enrollment record from an amendment.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:delete_governance_date",
+      "type": "function",
+      "name": "delete_governance_date",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1234,
+        1263
+      ],
+      "summary": "API endpoint deleting a governance date from an amendment, unlinking its geographic scope associations.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "crud"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:ui_amendment_edit",
+      "type": "function",
+      "name": "ui_amendment_edit",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1275,
+        1292
+      ],
+      "summary": "Renders the full amendment edit page for a freeze, including all sub-entity sections.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:ui_amendment_form_fields",
+      "type": "function",
+      "name": "ui_amendment_form_fields",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1299,
+        1305
+      ],
+      "summary": "Renders the dropdown option fields (reason codes, type codes) needed by the amendment creation form.",
+      "tags": [
+        "ui",
+        "controlled-terminology"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:web/routers/amendments.py:ui_create_amendment",
+      "type": "function",
+      "name": "ui_create_amendment",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1312,
+        1433
+      ],
+      "summary": "UI form endpoint creating a new StudyAmendment with its primary reason, returning the refreshed amendment edit page.",
+      "tags": [
+        "api-handler",
+        "amendments",
+        "ui"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:web/routers/amendments.py:_ui_reasons_partial",
+      "type": "function",
+      "name": "_ui_reasons_partial",
+      "filePath": "web/routers/amendments.py",
+      "lineRange": [
+        1436,
+        1447
+      ],
+      "summary": "Renders the secondary-reasons HTML partial for an amendment, used for HTMX swaps.",
+      "tags": [
+        "ui",
+        "htmx"
+      ],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "file:web/audit.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "file:web/codelist_config.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "file:web/db.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "file:web/schemas.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "file:web/utils.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_next_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_next_amendment_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_next_reason_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_next_impact_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_next_change_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_next_ref_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_next_scope_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_next_enrollment_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_next_gov_date_uid",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:_next_amendment_uid",
+      "target": "function:web/routers/amendments.py:_next_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/amendments.py:_next_reason_uid",
+      "target": "function:web/routers/amendments.py:_next_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/amendments.py:_next_impact_uid",
+      "target": "function:web/routers/amendments.py:_next_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/amendments.py:_next_change_uid",
+      "target": "function:web/routers/amendments.py:_next_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/amendments.py:_next_ref_uid",
+      "target": "function:web/routers/amendments.py:_next_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/amendments.py:_next_scope_uid",
+      "target": "function:web/routers/amendments.py:_next_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/amendments.py:_next_enrollment_uid",
+      "target": "function:web/routers/amendments.py:_next_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/amendments.py:_next_gov_date_uid",
+      "target": "function:web/routers/amendments.py:_next_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_insert_code",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_update_code_value",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_geo_scope_category",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_get_countries",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_get_regions",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_insert_location_code",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:_insert_location_code",
+      "target": "function:web/routers/amendments.py:_geo_scope_category",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/amendments.py:_insert_location_code",
+      "target": "function:web/routers/amendments.py:_get_countries",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/amendments.py:_insert_location_code",
+      "target": "function:web/routers/amendments.py:_get_regions",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_amendment_row",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_load_amendment_data",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_load_amendment_context",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:_load_amendment_context",
+      "target": "function:web/routers/amendments.py:_load_amendment_data",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/amendments.py:_load_amendment_context",
+      "target": "function:web/routers/amendments.py:_amendment_row",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:create_amendment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:get_amendment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:update_amendment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:delete_amendment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:create_amendment",
+      "target": "function:web/routers/amendments.py:_next_amendment_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/amendments.py:create_amendment",
+      "target": "function:web/routers/amendments.py:_insert_code",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "function:web/routers/amendments.py:get_amendment",
+      "target": "function:web/routers/amendments.py:_load_amendment_data",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:add_secondary_reason",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:add_secondary_reason",
+      "target": "function:web/routers/amendments.py:_next_reason_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:add_impact",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:add_impact",
+      "target": "function:web/routers/amendments.py:_next_impact_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:add_change",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:add_change",
+      "target": "function:web/routers/amendments.py:_next_change_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:add_geographic_scope",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:add_geographic_scope",
+      "target": "function:web/routers/amendments.py:_next_scope_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:add_enrollment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:add_enrollment",
+      "target": "function:web/routers/amendments.py:_next_enrollment_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:add_governance_date",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:add_governance_date",
+      "target": "function:web/routers/amendments.py:_next_gov_date_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:delete_secondary_reason",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:delete_impact",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:delete_change",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:add_section",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:add_section",
+      "target": "function:web/routers/amendments.py:_next_ref_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:delete_section",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:delete_geographic_scope",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:delete_enrollment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:delete_governance_date",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_amendment_edit",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:ui_amendment_edit",
+      "target": "function:web/routers/amendments.py:_load_amendment_context",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_amendment_form_fields",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_create_amendment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/amendments.py:ui_create_amendment",
+      "target": "function:web/routers/amendments.py:_next_amendment_uid",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_ui_reasons_partial",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_ui_impacts_partial",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_ui_changes_partial",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_ui_geo_scopes_partial",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_ui_geo_scopes_and_deps",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_ui_enrollments_partial",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:_ui_gov_dates_partial",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_add_secondary_reason",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_delete_secondary_reason",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_update_reason",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_add_impact",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_delete_impact",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_update_impact",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_add_change",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_delete_change",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_update_change",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_add_section",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_delete_section",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_geo_scope_location_options",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_add_geographic_scope",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_delete_geographic_scope",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_update_geographic_scope",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_add_enrollment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_delete_enrollment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_update_enrollment",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_add_governance_date",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_delete_governance_date",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_update_governance_date",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_link_gov_date_scope",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:web/routers/amendments.py",
+      "target": "function:web/routers/amendments.py:ui_unlink_gov_date_scope",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_code_associations",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_arms",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_timings",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_objectives",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_endpoints",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_encounters_full",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_study_cells",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_schedule_timelines",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_instances",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_decision_instances",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_bc_surrogates",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_biomedical_concepts",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_bc_properties",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_amendments",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_create_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_capture_extension_attributes",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_diff_freezes_limited",
+      "target": "function:web/routers/_freeze_helpers.py:_diff_entity_list",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_rollback_freeze",
+      "target": "function:web/routers/_freeze_helpers.py:_record_rollback_audit",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:web/routers/_freeze_helpers.py:_rollback_preview",
+      "target": "function:web/routers/_freeze_helpers.py:_diff_freezes_limited",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    }
+  ]
+}

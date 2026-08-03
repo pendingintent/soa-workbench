@@ -1,0 +1,78 @@
+[
+  {
+    "order": 1,
+    "title": "Application Entry Point",
+    "description": "web/app.py is the heart of the FastAPI web application: it creates the app instance, runs the lifespan startup (database initialization plus sequential schema migrations), registers every domain router, and hosts the SoA matrix build/render logic along with bulk export endpoints (XLSX/HTML/PDF/CSV). With the highest fan-out in the codebase (over 100 outgoing edges), this file is the natural starting point -- everything the workbench does is wired together here.",
+    "nodeIds": ["file:web/app.py"]
+  },
+  {
+    "order": 2,
+    "title": "Package Public API",
+    "description": "Before diving into the web layer, it helps to see what soa_builder exposes as its public surface. __init__.py re-exports the three core legacy pipeline functions -- normalize_soa, expand_schedule_rules, and validate_imaging_schedule -- as the package's __all__. This tells you the project actually ships two parallel systems: the modern FastAPI/SQLite web app (Step 1) and an older CSV-based CLI pipeline, which you'll revisit later in the tour.",
+    "nodeIds": ["file:__init__.py"]
+  },
+  {
+    "order": 3,
+    "title": "Database Connection & Schema Bootstrap",
+    "description": "web/db.py provides the single canonical `_connect()` helper used across the entire web app: it resolves the correct SQLite file (auto-switching to a test database under pytest), and opens connections in WAL mode with a busy timeout to tolerate concurrent HTMX requests. web/initialize_database.py complements it with `_init_db`, the large function that creates every core table -- studies, arms, epochs, visits, activities, cells, timelines, instances, and audit tables -- on a brand-new database. Together these two files are the persistence foundation that app.py's lifespan (Step 1) calls at startup.",
+    "nodeIds": ["file:web/db.py", "file:web/initialize_database.py"],
+    "languageLesson": "SQLite's WAL (Write-Ahead Log) mode allows concurrent readers alongside a single writer, which is important for a multi-request HTMX UI hitting the same file-based database."
+  },
+  {
+    "order": 4,
+    "title": "Schema Migrations",
+    "description": "Real databases evolve, and web/migrate_database.py is where that evolution is tracked: roughly 108 small, idempotent migration functions (new columns, new tables, audit tables, backfills, data repairs) are each imported and invoked in sequence by app.py's lifespan startup. This file has the second-highest fan-out in the codebase, reflecting how every schema change the project has ever needed lives here as a discrete, replayable function rather than a single monolithic schema file.",
+    "nodeIds": ["file:web/migrate_database.py"],
+    "languageLesson": "Idempotent migrations can be safely re-run without side effects (e.g. checking column existence with PRAGMA table_info before ALTER TABLE), which is what lets the whole list run unconditionally on every startup."
+  },
+  {
+    "order": 5,
+    "title": "Audit Trail",
+    "description": "Building on the persistence layer from Steps 3-4, web/audit.py provides before/after change-logging helpers for every mutable entity in the workbench -- visits, activities, elements, timings, schedule timelines, instances, amendments, organizations, roles, and more. Each helper writes a row to the entity's audit table using a shared database cursor, meaning any router that mutates data (Step 7) can log full change history with one function call. With 26 incoming references, this module is depended upon almost everywhere mutations happen.",
+    "nodeIds": ["file:web/audit.py"]
+  },
+  {
+    "order": 6,
+    "title": "Pydantic Schemas & Shared Utilities",
+    "description": "web/schemas.py is the central Pydantic validation module: it defines Create/Update payload models for every mutable USDM entity (activities, elements, visits, timings, arms, epochs, amendments, and more), including validators for ISO 8601 durations and timing-window consistency. web/utils.py is the workbench's service layer -- it integrates with the CDISC Library API (with caching), generates monotonic UIDs for dozens of entity types, and offers USDM/database lookup helpers. Both files are among the most fanned-in modules in the project, since nearly every router (Step 7) imports request schemas from one and helper functions from the other.",
+    "nodeIds": ["file:web/schemas.py", "file:web/utils.py"],
+    "languageLesson": "Pydantic models double as both request validation and self-documenting API contracts -- FastAPI uses the same classes to generate OpenAPI schema documentation automatically."
+  },
+  {
+    "order": 7,
+    "title": "The Router / API Layer",
+    "description": "Domain logic lives in web/routers/, one module per USDM entity family. web/routers/activities.py handles Activity CRUD plus CDISC Biomedical Concept association; web/routers/elements.py, cells.py, visits.py, and schedule_timelines.py implement the structural (StudyElement, StudyCell) and temporal (Visit, ScheduleTimeline, ScheduledActivityInstance) sides of the SoA model described in this project's domain knowledge. Every router follows the same pattern seen in app.py: a REST endpoint plus a parallel HTMX UI endpoint that returns an HTML partial for in-page swaps, using the schemas (Step 6) for validation and audit.py (Step 5) for change logging.",
+    "nodeIds": ["file:web/routers/activities.py", "file:web/routers/elements.py", "file:web/routers/cells.py", "file:web/routers/visits.py", "file:web/routers/schedule_timelines.py"]
+  },
+  {
+    "order": 8,
+    "title": "Amendments & USDM Export",
+    "description": "Two routers show how the workbench connects clinical trial change management to the formal USDM standard. web/routers/amendments.py implements CRUD for protocol amendments and their many sub-entities (impacts, geographic scopes, subject enrollments, governance dates). web/routers/usdm_json.py serves the generated USDM JSON and Define-JSON views, delegating the actual generation work to the separate `usdm` package's generators -- this is where the workbench's internal SQLite model gets transformed into standards-compliant USDM artifacts.",
+    "nodeIds": ["file:web/routers/amendments.py", "file:web/routers/usdm_json.py"]
+  },
+  {
+    "order": 9,
+    "title": "Configuration: Controlled Terminology Codelists",
+    "description": "web/codelist_config.py defines the CDISC controlled-terminology codelist codes (epoch type, arm type, role type, objective/endpoint level, intervention role/type/unit, and more) that back every dropdown in the UI. Each is overridable via a CODELIST_* environment variable read once at import time, letting a deployment point a dropdown at an alternate codelist without touching code. With 13 incoming references, this module is the single source of truth that both the routers (Step 7) and templates (Step 10) rely on for consistent terminology.",
+    "nodeIds": ["file:web/codelist_config.py"]
+  },
+  {
+    "order": 10,
+    "title": "The Presentation Layer",
+    "description": "The UI is server-rendered Jinja2 plus HTMX rather than a separate frontend framework. web/templates/base.html is the site-wide layout -- HTML shell, collapsible sidebar navigation, and the {% block content %} extension point every other template inherits from; with 42 incoming references it is by far the most depended-upon file in the entire project. web/static/style.css supplies the shared `am-`/`fz-` utility-class design system used across all templates, and web/static/bc_explorer.js drives the one significant piece of client-side interactivity: filtering and rendering the CDISC Biomedical Concept explorer.",
+    "nodeIds": ["file:web/templates/base.html", "file:web/static/style.css", "file:web/static/bc_explorer.js"],
+    "languageLesson": "HTMX lets server-rendered HTML partials replace fragments of the page on user interaction (via hx-get/hx-post attributes), avoiding the need for a client-side JavaScript framework while still getting SPA-like responsiveness."
+  },
+  {
+    "order": 11,
+    "title": "The Legacy CLI Pipeline",
+    "description": "Alongside the modern web app, soa_builder still ships its original command-line pipeline, exposed as three subcommands. cli.py is the Click-based entry point (normalize, expand, validate); normalization.py parses a wide-format SoA CSV into normalized dataclasses (Visit, Activity, VisitActivity, ScheduleRule) and writes them to per-entity CSVs and SQLite; schedule.py expands those normalized rules -- cyclical, weekly, daily patterns -- into concrete projected activity occurrences across a study horizon; and validation.py checks that imaging events fall within expected interval tolerances. This is the pre-USDM, file-based workflow that predates the FastAPI app from Step 1, and __init__.py (Step 2) re-exports exactly these three functions.",
+    "nodeIds": ["file:cli.py", "file:normalization.py", "file:schedule.py", "file:validation.py"]
+  },
+  {
+    "order": 12,
+    "title": "MCP Integration Layer",
+    "description": "mcp/server.py exposes the SoA workbench over the Model Context Protocol, offering 11 tools over stdio for listing/creating SoAs, visits, and activities, assigning activities to scheduled instances, and retrieving USDM/Define-JSON output. This is what lets an AI agent (such as Claude Code, via the soa-workbench MCP tools referenced elsewhere in this project) interact with the same underlying data model that the FastAPI routers (Step 7) and CLI (Step 11) expose to humans -- a third, programmatic front door onto the same persistence layer from Steps 3-5.",
+    "nodeIds": ["file:mcp/server.py", "file:mcp/__init__.py"]
+  }
+]

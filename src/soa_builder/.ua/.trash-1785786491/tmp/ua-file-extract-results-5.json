@@ -1,0 +1,2146 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 5,
+  "filesSkipped": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 5,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 5,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "__init__.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 21,
+      "nonEmptyLines": 14,
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "cli.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 339,
+      "nonEmptyLines": 303,
+      "functions": [
+        {
+          "name": "_read_csv",
+          "startLine": 33,
+          "endLine": 38,
+          "params": [
+            "path"
+          ]
+        },
+        {
+          "name": "_load_rules",
+          "startLine": 41,
+          "endLine": 56,
+          "params": [
+            "normalized_dir"
+          ]
+        },
+        {
+          "name": "_load_visits",
+          "startLine": 59,
+          "endLine": 70,
+          "params": [
+            "normalized_dir"
+          ]
+        },
+        {
+          "name": "cli",
+          "startLine": 79,
+          "endLine": 83,
+          "params": [
+            "verbose"
+          ]
+        },
+        {
+          "name": "cmd_normalize",
+          "startLine": 110,
+          "endLine": 118,
+          "params": [
+            "input_csv",
+            "out_dir",
+            "sqlite_path"
+          ]
+        },
+        {
+          "name": "cmd_expand",
+          "startLine": 184,
+          "endLine": 270,
+          "params": [
+            "normalized_dir",
+            "start_date",
+            "cycle_length_days",
+            "num_cycles",
+            "followup_weeks",
+            "horizon_days",
+            "cycle_lengths",
+            "max_occurrences",
+            "filter_pattern",
+            "json_out",
+            "csv_out"
+          ]
+        },
+        {
+          "name": "cmd_validate",
+          "startLine": 297,
+          "endLine": 328,
+          "params": [
+            "normalized_dir",
+            "expected_interval_weeks",
+            "tolerance_days"
+          ]
+        },
+        {
+          "name": "main",
+          "startLine": 334,
+          "endLine": 335,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "_read_csv",
+          "line": 33,
+          "isDefault": false
+        },
+        {
+          "name": "_load_rules",
+          "line": 41,
+          "isDefault": false
+        },
+        {
+          "name": "_load_visits",
+          "line": 59,
+          "isDefault": false
+        },
+        {
+          "name": "cli",
+          "line": 76,
+          "isDefault": false
+        },
+        {
+          "name": "cmd_normalize",
+          "line": 89,
+          "isDefault": false
+        },
+        {
+          "name": "cmd_expand",
+          "line": 124,
+          "isDefault": false
+        },
+        {
+          "name": "cmd_validate",
+          "line": 276,
+          "isDefault": false
+        },
+        {
+          "name": "main",
+          "line": 334,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "_read_csv",
+          "callee": "os.path.exists",
+          "lineNumber": 34
+        },
+        {
+          "caller": "_read_csv",
+          "callee": "FileNotFoundError",
+          "lineNumber": 35
+        },
+        {
+          "caller": "_read_csv",
+          "callee": "open",
+          "lineNumber": 36
+        },
+        {
+          "caller": "_read_csv",
+          "callee": "csv.DictReader",
+          "lineNumber": 37
+        },
+        {
+          "caller": "_read_csv",
+          "callee": "list",
+          "lineNumber": 38
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "_read_csv",
+          "lineNumber": 42
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "os.path.join",
+          "lineNumber": 42
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "rules.append",
+          "lineNumber": 45
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "RuleStub",
+          "lineNumber": 46
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "int",
+          "lineNumber": 47
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "r.get",
+          "lineNumber": 49
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "r.get",
+          "lineNumber": 50
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "int",
+          "lineNumber": 51
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "r.get",
+          "lineNumber": 51
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "int",
+          "lineNumber": 52
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "r.get",
+          "lineNumber": 52
+        },
+        {
+          "caller": "_load_rules",
+          "callee": "r.get",
+          "lineNumber": 53
+        },
+        {
+          "caller": "_load_visits",
+          "callee": "_read_csv",
+          "lineNumber": 60
+        },
+        {
+          "caller": "_load_visits",
+          "callee": "os.path.join",
+          "lineNumber": 60
+        },
+        {
+          "caller": "_load_visits",
+          "callee": "int",
+          "lineNumber": 63
+        },
+        {
+          "caller": "_load_visits",
+          "callee": "VisitStub",
+          "lineNumber": 64
+        },
+        {
+          "caller": "_load_visits",
+          "callee": "r.get",
+          "lineNumber": 66
+        },
+        {
+          "caller": "_load_visits",
+          "callee": "r.get",
+          "lineNumber": 67
+        },
+        {
+          "caller": "_load_visits",
+          "callee": "int",
+          "lineNumber": 68
+        },
+        {
+          "caller": "_load_visits",
+          "callee": "r.get",
+          "lineNumber": 68
+        },
+        {
+          "caller": "cli",
+          "callee": "logging.basicConfig",
+          "lineNumber": 82
+        },
+        {
+          "caller": "cli",
+          "callee": "logging.debug",
+          "lineNumber": 83
+        },
+        {
+          "caller": "cmd_normalize",
+          "callee": "normalize_soa",
+          "lineNumber": 113
+        },
+        {
+          "caller": "cmd_normalize",
+          "callee": "click.echo",
+          "lineNumber": 114
+        },
+        {
+          "caller": "cmd_normalize",
+          "callee": "logging.exception",
+          "lineNumber": 116
+        },
+        {
+          "caller": "cmd_normalize",
+          "callee": "click.echo",
+          "lineNumber": 117
+        },
+        {
+          "caller": "cmd_normalize",
+          "callee": "sys.exit",
+          "lineNumber": 118
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "datetime.strptime",
+          "lineNumber": 199
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "click.BadParameter",
+          "lineNumber": 201
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "int",
+          "lineNumber": 205
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "x.strip",
+          "lineNumber": 205
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "cycle_lengths.split",
+          "lineNumber": 205
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "x.strip",
+          "lineNumber": 205
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "_load_rules",
+          "lineNumber": 208
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "_load_visits",
+          "lineNumber": 209
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "click.echo",
+          "lineNumber": 211
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "sys.exit",
+          "lineNumber": 212
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "logging.exception",
+          "lineNumber": 214
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "click.echo",
+          "lineNumber": 215
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "sys.exit",
+          "lineNumber": 216
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "click.echo",
+          "lineNumber": 218
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "expand_schedule_rules",
+          "lineNumber": 222
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "list",
+          "lineNumber": 232
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "logging.exception",
+          "lineNumber": 235
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "click.echo",
+          "lineNumber": 236
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "sys.exit",
+          "lineNumber": 237
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "click.echo",
+          "lineNumber": 238
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "len",
+          "lineNumber": 238
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "len",
+          "lineNumber": 238
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "os.path.join",
+          "lineNumber": 241
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "open",
+          "lineNumber": 258
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "_csv.DictWriter",
+          "lineNumber": 259
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "w.writeheader",
+          "lineNumber": 260
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "w.writerow",
+          "lineNumber": 262
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "getattr",
+          "lineNumber": 262
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "open(csv_out, \"w\").close",
+          "lineNumber": 264
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "open",
+          "lineNumber": 264
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "open",
+          "lineNumber": 266
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "json.dump",
+          "lineNumber": 267
+        },
+        {
+          "caller": "cmd_expand",
+          "callee": "click.echo",
+          "lineNumber": 268
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "_read_csv",
+          "lineNumber": 302
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "os.path.join",
+          "lineNumber": 302
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "_read_csv",
+          "lineNumber": 303
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "os.path.join",
+          "lineNumber": 303
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "_read_csv",
+          "lineNumber": 304
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "os.path.join",
+          "lineNumber": 305
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "click.echo",
+          "lineNumber": 308
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "sys.exit",
+          "lineNumber": 309
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "logging.exception",
+          "lineNumber": 311
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "click.echo",
+          "lineNumber": 312
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "sys.exit",
+          "lineNumber": 313
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "extract_imaging_events",
+          "lineNumber": 315
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "validate_imaging_schedule",
+          "lineNumber": 316
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "logging.exception",
+          "lineNumber": 320
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "click.echo",
+          "lineNumber": 321
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "sys.exit",
+          "lineNumber": 322
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "click.echo",
+          "lineNumber": 324
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "click.echo",
+          "lineNumber": 326
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "sys.exit",
+          "lineNumber": 327
+        },
+        {
+          "caller": "cmd_validate",
+          "callee": "click.echo",
+          "lineNumber": 328
+        },
+        {
+          "caller": "main",
+          "callee": "cli",
+          "lineNumber": 335
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 8,
+        "functionCount": 8,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "normalization.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 388,
+      "nonEmptyLines": 339,
+      "functions": [
+        {
+          "name": "classify_visit",
+          "startLine": 120,
+          "endLine": 125,
+          "params": [
+            "header"
+          ]
+        },
+        {
+          "name": "parse_window",
+          "startLine": 128,
+          "endLine": 145,
+          "params": [
+            "header"
+          ]
+        },
+        {
+          "name": "extract_visit_code",
+          "startLine": 148,
+          "endLine": 155,
+          "params": [
+            "header"
+          ]
+        },
+        {
+          "name": "detect_repeat_pattern",
+          "startLine": 158,
+          "endLine": 163,
+          "params": [
+            "cell_value"
+          ]
+        },
+        {
+          "name": "classify_activity",
+          "startLine": 166,
+          "endLine": 171,
+          "params": [
+            "name"
+          ]
+        },
+        {
+          "name": "build_visits",
+          "startLine": 177,
+          "endLine": 196,
+          "params": [
+            "headers"
+          ]
+        },
+        {
+          "name": "build_activities",
+          "startLine": 199,
+          "endLine": 204,
+          "params": [
+            "rows"
+          ]
+        },
+        {
+          "name": "build_visit_activities",
+          "startLine": 207,
+          "endLine": 232,
+          "params": [
+            "rows",
+            "visits"
+          ]
+        },
+        {
+          "name": "build_activity_categories",
+          "startLine": 235,
+          "endLine": 239,
+          "params": [
+            "activities"
+          ]
+        },
+        {
+          "name": "build_schedule_rules",
+          "startLine": 242,
+          "endLine": 292,
+          "params": [
+            "rows",
+            "visits"
+          ]
+        },
+        {
+          "name": "normalize_soa",
+          "startLine": 298,
+          "endLine": 388,
+          "params": [
+            "input_csv",
+            "out_dir",
+            "sqlite_path"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "Visit",
+          "startLine": 72,
+          "endLine": 81,
+          "methods": [],
+          "properties": [
+            "visit_id",
+            "label",
+            "visit_name",
+            "visit_code",
+            "sequence_index",
+            "window_lower",
+            "window_upper",
+            "repeat_pattern",
+            "category"
+          ]
+        },
+        {
+          "name": "Activity",
+          "startLine": 85,
+          "endLine": 87,
+          "methods": [],
+          "properties": [
+            "activity_id",
+            "activity_name"
+          ]
+        },
+        {
+          "name": "VisitActivity",
+          "startLine": 91,
+          "endLine": 97,
+          "methods": [],
+          "properties": [
+            "id",
+            "visit_id",
+            "activity_id",
+            "status",
+            "required_flag",
+            "conditional_flag"
+          ]
+        },
+        {
+          "name": "ActivityCategory",
+          "startLine": 101,
+          "endLine": 103,
+          "methods": [],
+          "properties": [
+            "activity_id",
+            "category"
+          ]
+        },
+        {
+          "name": "ScheduleRule",
+          "startLine": 107,
+          "endLine": 114,
+          "methods": [],
+          "properties": [
+            "rule_id",
+            "pattern",
+            "description",
+            "source_type",
+            "activity_id",
+            "visit_id",
+            "raw_text"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Visit",
+          "line": 71,
+          "isDefault": false
+        },
+        {
+          "name": "Activity",
+          "line": 84,
+          "isDefault": false
+        },
+        {
+          "name": "VisitActivity",
+          "line": 90,
+          "isDefault": false
+        },
+        {
+          "name": "ActivityCategory",
+          "line": 100,
+          "isDefault": false
+        },
+        {
+          "name": "ScheduleRule",
+          "line": 106,
+          "isDefault": false
+        },
+        {
+          "name": "classify_visit",
+          "line": 120,
+          "isDefault": false
+        },
+        {
+          "name": "parse_window",
+          "line": 128,
+          "isDefault": false
+        },
+        {
+          "name": "extract_visit_code",
+          "line": 148,
+          "isDefault": false
+        },
+        {
+          "name": "detect_repeat_pattern",
+          "line": 158,
+          "isDefault": false
+        },
+        {
+          "name": "classify_activity",
+          "line": 166,
+          "isDefault": false
+        },
+        {
+          "name": "build_visits",
+          "line": 177,
+          "isDefault": false
+        },
+        {
+          "name": "build_activities",
+          "line": 199,
+          "isDefault": false
+        },
+        {
+          "name": "build_visit_activities",
+          "line": 207,
+          "isDefault": false
+        },
+        {
+          "name": "build_activity_categories",
+          "line": 235,
+          "isDefault": false
+        },
+        {
+          "name": "build_schedule_rules",
+          "line": 242,
+          "isDefault": false
+        },
+        {
+          "name": "normalize_soa",
+          "line": 298,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "classify_visit",
+          "callee": "header.lower",
+          "lineNumber": 121
+        },
+        {
+          "caller": "classify_visit",
+          "callee": "CATEGORY_KEYWORDS.items",
+          "lineNumber": 122
+        },
+        {
+          "caller": "classify_visit",
+          "callee": "any",
+          "lineNumber": 123
+        },
+        {
+          "caller": "parse_window",
+          "callee": "WINDOW_RANGE_RE.search",
+          "lineNumber": 129
+        },
+        {
+          "caller": "parse_window",
+          "callee": "int",
+          "lineNumber": 131
+        },
+        {
+          "caller": "parse_window",
+          "callee": "m.group",
+          "lineNumber": 131
+        },
+        {
+          "caller": "parse_window",
+          "callee": "int",
+          "lineNumber": 131
+        },
+        {
+          "caller": "parse_window",
+          "callee": "m.group",
+          "lineNumber": 131
+        },
+        {
+          "caller": "parse_window",
+          "callee": "WINDOW_PM_RE.search",
+          "lineNumber": 132
+        },
+        {
+          "caller": "parse_window",
+          "callee": "int",
+          "lineNumber": 134
+        },
+        {
+          "caller": "parse_window",
+          "callee": "m.group",
+          "lineNumber": 134
+        },
+        {
+          "caller": "parse_window",
+          "callee": "DAY_PM_RE.search",
+          "lineNumber": 136
+        },
+        {
+          "caller": "parse_window",
+          "callee": "int",
+          "lineNumber": 138
+        },
+        {
+          "caller": "parse_window",
+          "callee": "m.group",
+          "lineNumber": 138
+        },
+        {
+          "caller": "parse_window",
+          "callee": "int",
+          "lineNumber": 139
+        },
+        {
+          "caller": "parse_window",
+          "callee": "m.group",
+          "lineNumber": 139
+        },
+        {
+          "caller": "parse_window",
+          "callee": "PM_SYMBOL_RE.search",
+          "lineNumber": 141
+        },
+        {
+          "caller": "parse_window",
+          "callee": "int",
+          "lineNumber": 143
+        },
+        {
+          "caller": "parse_window",
+          "callee": "m.group",
+          "lineNumber": 143
+        },
+        {
+          "caller": "extract_visit_code",
+          "callee": "VISIT_CODE_RE.findall",
+          "lineNumber": 149
+        },
+        {
+          "caller": "extract_visit_code",
+          "callee": "re.search",
+          "lineNumber": 153
+        },
+        {
+          "caller": "detect_repeat_pattern",
+          "callee": "cell_value.lower",
+          "lineNumber": 159
+        },
+        {
+          "caller": "classify_activity",
+          "callee": "name.lower",
+          "lineNumber": 167
+        },
+        {
+          "caller": "classify_activity",
+          "callee": "ACTIVITY_CATEGORY_KEYWORDS.items",
+          "lineNumber": 168
+        },
+        {
+          "caller": "classify_activity",
+          "callee": "any",
+          "lineNumber": 169
+        },
+        {
+          "caller": "build_visits",
+          "callee": "enumerate",
+          "lineNumber": 179
+        },
+        {
+          "caller": "build_visits",
+          "callee": "parse_window",
+          "lineNumber": 180
+        },
+        {
+          "caller": "build_visits",
+          "callee": "extract_visit_code",
+          "lineNumber": 181
+        },
+        {
+          "caller": "build_visits",
+          "callee": "classify_visit",
+          "lineNumber": 182
+        },
+        {
+          "caller": "build_visits",
+          "callee": "visits.append",
+          "lineNumber": 183
+        },
+        {
+          "caller": "build_visits",
+          "callee": "Visit",
+          "lineNumber": 184
+        },
+        {
+          "caller": "build_visits",
+          "callee": "re.sub(r\"\\s*\\(.*?\\)\", \"\", h).strip",
+          "lineNumber": 187
+        },
+        {
+          "caller": "build_visits",
+          "callee": "re.sub",
+          "lineNumber": 187
+        },
+        {
+          "caller": "build_activities",
+          "callee": "enumerate",
+          "lineNumber": 201
+        },
+        {
+          "caller": "build_activities",
+          "callee": "r[0].strip",
+          "lineNumber": 202
+        },
+        {
+          "caller": "build_activities",
+          "callee": "acts.append",
+          "lineNumber": 203
+        },
+        {
+          "caller": "build_activities",
+          "callee": "Activity",
+          "lineNumber": 203
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "enumerate",
+          "lineNumber": 212
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "enumerate",
+          "lineNumber": 213
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "len",
+          "lineNumber": 214
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "r[v_idx].strip",
+          "lineNumber": 216
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "raw.startswith",
+          "lineNumber": 219
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "raw.lower",
+          "lineNumber": 221
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "raw.lower",
+          "lineNumber": 221
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "detect_repeat_pattern",
+          "lineNumber": 223
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "vas.append",
+          "lineNumber": 226
+        },
+        {
+          "caller": "build_visit_activities",
+          "callee": "VisitActivity",
+          "lineNumber": 227
+        },
+        {
+          "caller": "build_activity_categories",
+          "callee": "ActivityCategory",
+          "lineNumber": 237
+        },
+        {
+          "caller": "build_activity_categories",
+          "callee": "classify_activity",
+          "lineNumber": 237
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "v.label.lower",
+          "lineNumber": 249
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "rules.append",
+          "lineNumber": 252
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "ScheduleRule",
+          "lineNumber": 253
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "enumerate",
+          "lineNumber": 265
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "enumerate",
+          "lineNumber": 266
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "len",
+          "lineNumber": 267
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "r[v_idx].strip",
+          "lineNumber": 269
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "detect_repeat_pattern",
+          "lineNumber": 272
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "rules.append",
+          "lineNumber": 274
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "ScheduleRule",
+          "lineNumber": 275
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "list",
+          "lineNumber": 292
+        },
+        {
+          "caller": "build_schedule_rules",
+          "callee": "unique.values",
+          "lineNumber": 292
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "open",
+          "lineNumber": 301
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "csv.reader",
+          "lineNumber": 302
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "list",
+          "lineNumber": 303
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "ValueError",
+          "lineNumber": 305
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "build_visits",
+          "lineNumber": 308
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "build_activities",
+          "lineNumber": 309
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "build_visit_activities",
+          "lineNumber": 310
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "build_activity_categories",
+          "lineNumber": 311
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "build_schedule_rules",
+          "lineNumber": 312
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "os.makedirs",
+          "lineNumber": 314
+        },
+        {
+          "caller": "write",
+          "callee": "open(os.path.join(out_dir, name), \"w\").close",
+          "lineNumber": 318
+        },
+        {
+          "caller": "write",
+          "callee": "open",
+          "lineNumber": 318
+        },
+        {
+          "caller": "write",
+          "callee": "os.path.join",
+          "lineNumber": 318
+        },
+        {
+          "caller": "write",
+          "callee": "list",
+          "lineNumber": 320
+        },
+        {
+          "caller": "write",
+          "callee": "asdict(items[0]).keys",
+          "lineNumber": 320
+        },
+        {
+          "caller": "write",
+          "callee": "asdict",
+          "lineNumber": 320
+        },
+        {
+          "caller": "write",
+          "callee": "open",
+          "lineNumber": 321
+        },
+        {
+          "caller": "write",
+          "callee": "os.path.join",
+          "lineNumber": 321
+        },
+        {
+          "caller": "write",
+          "callee": "csv.DictWriter",
+          "lineNumber": 322
+        },
+        {
+          "caller": "write",
+          "callee": "w.writeheader",
+          "lineNumber": 323
+        },
+        {
+          "caller": "write",
+          "callee": "w.writerow",
+          "lineNumber": 325
+        },
+        {
+          "caller": "write",
+          "callee": "asdict",
+          "lineNumber": 325
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "write",
+          "lineNumber": 327
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "write",
+          "lineNumber": 328
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "write",
+          "lineNumber": 329
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "write",
+          "lineNumber": 330
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "write",
+          "lineNumber": 331
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "sqlite3.connect",
+          "lineNumber": 334
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "conn.cursor",
+          "lineNumber": 335
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.execute",
+          "lineNumber": 343
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.execute",
+          "lineNumber": 344
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.execute",
+          "lineNumber": 347
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.execute",
+          "lineNumber": 350
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.execute",
+          "lineNumber": 353
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.execute",
+          "lineNumber": 356
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.executemany",
+          "lineNumber": 359
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "tuple",
+          "lineNumber": 361
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict(v).values",
+          "lineNumber": 361
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict",
+          "lineNumber": 361
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.executemany",
+          "lineNumber": 363
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "tuple",
+          "lineNumber": 365
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict(a).values",
+          "lineNumber": 365
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict",
+          "lineNumber": 365
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.executemany",
+          "lineNumber": 367
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "tuple",
+          "lineNumber": 369
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict(va).values",
+          "lineNumber": 369
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict",
+          "lineNumber": 369
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.executemany",
+          "lineNumber": 371
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "tuple",
+          "lineNumber": 373
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict(c).values",
+          "lineNumber": 373
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict",
+          "lineNumber": 373
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "cur.executemany",
+          "lineNumber": 375
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "tuple",
+          "lineNumber": 377
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict(r).values",
+          "lineNumber": 377
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "asdict",
+          "lineNumber": 377
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "conn.commit",
+          "lineNumber": 379
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "conn.close",
+          "lineNumber": 380
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "len",
+          "lineNumber": 383
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "len",
+          "lineNumber": 384
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "len",
+          "lineNumber": 385
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "len",
+          "lineNumber": 386
+        },
+        {
+          "caller": "normalize_soa",
+          "callee": "len",
+          "lineNumber": 387
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 16,
+        "functionCount": 11,
+        "classCount": 5
+      }
+    },
+    {
+      "path": "schedule.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 247,
+      "nonEmptyLines": 227,
+      "functions": [
+        {
+          "name": "parse_pattern_interval_days",
+          "startLine": 58,
+          "endLine": 80,
+          "params": [
+            "pattern",
+            "cycle_length_days"
+          ]
+        },
+        {
+          "name": "get_cycle_start_day",
+          "startLine": 83,
+          "endLine": 84,
+          "params": [
+            "cycle_num",
+            "cycle_lengths"
+          ]
+        },
+        {
+          "name": "derive_nominal_day_for_visit",
+          "startLine": 87,
+          "endLine": 107,
+          "params": [
+            "v",
+            "cycle_length_days",
+            "cycle_lengths"
+          ]
+        },
+        {
+          "name": "get_horizon_days",
+          "startLine": 110,
+          "endLine": 124,
+          "params": [
+            "num_cycles",
+            "cycle_length_days",
+            "followup_weeks",
+            "cycle_lengths"
+          ]
+        },
+        {
+          "name": "expand_schedule_rules",
+          "startLine": 127,
+          "endLine": 247,
+          "params": [
+            "rules",
+            "visits",
+            "start_date",
+            "cycle_length_days",
+            "num_cycles",
+            "followup_weeks",
+            "horizon_days",
+            "cycle_lengths",
+            "max_occurrences",
+            "filter_patterns"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "VisitStub",
+          "startLine": 26,
+          "endLine": 30,
+          "methods": [],
+          "properties": [
+            "visit_id",
+            "visit_name",
+            "label",
+            "sequence_index"
+          ]
+        },
+        {
+          "name": "RuleStub",
+          "startLine": 34,
+          "endLine": 41,
+          "methods": [],
+          "properties": [
+            "rule_id",
+            "pattern",
+            "description",
+            "source_type",
+            "activity_id",
+            "visit_id",
+            "raw_text"
+          ]
+        },
+        {
+          "name": "Instance",
+          "startLine": 45,
+          "endLine": 55,
+          "methods": [],
+          "properties": [
+            "instance_id",
+            "rule_id",
+            "pattern",
+            "occurrence_index",
+            "anchor_visit_id",
+            "anchor_activity_id",
+            "nominal_day",
+            "projected_date",
+            "source_type",
+            "description"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "VisitStub",
+          "line": 25,
+          "isDefault": false
+        },
+        {
+          "name": "RuleStub",
+          "line": 33,
+          "isDefault": false
+        },
+        {
+          "name": "Instance",
+          "line": 44,
+          "isDefault": false
+        },
+        {
+          "name": "parse_pattern_interval_days",
+          "line": 58,
+          "isDefault": false
+        },
+        {
+          "name": "get_cycle_start_day",
+          "line": 83,
+          "isDefault": false
+        },
+        {
+          "name": "derive_nominal_day_for_visit",
+          "line": 87,
+          "isDefault": false
+        },
+        {
+          "name": "get_horizon_days",
+          "line": 110,
+          "isDefault": false
+        },
+        {
+          "name": "expand_schedule_rules",
+          "line": 127,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "pattern.lower",
+          "lineNumber": 59
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "PATTERN_CYCLE_RE.search",
+          "lineNumber": 60
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "int",
+          "lineNumber": 62
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "m.group",
+          "lineNumber": 62
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "PATTERN_QW_RE.search",
+          "lineNumber": 63
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "int",
+          "lineNumber": 65
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "m.group",
+          "lineNumber": 65
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "PATTERN_EVERY_WEEKS_RE.search",
+          "lineNumber": 66
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "int",
+          "lineNumber": 68
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "m.group",
+          "lineNumber": 68
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "PATTERN_QD_RE.search",
+          "lineNumber": 69
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "int",
+          "lineNumber": 71
+        },
+        {
+          "caller": "parse_pattern_interval_days",
+          "callee": "m.group",
+          "lineNumber": 71
+        },
+        {
+          "caller": "get_cycle_start_day",
+          "callee": "sum",
+          "lineNumber": 84
+        },
+        {
+          "caller": "get_cycle_start_day",
+          "callee": "max",
+          "lineNumber": 84
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "v.visit_name.lower",
+          "lineNumber": 90
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "v.label.lower",
+          "lineNumber": 91
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "CYCLE_DAY1_RE.search",
+          "lineNumber": 93
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "int",
+          "lineNumber": 95
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "mc.group",
+          "lineNumber": 95
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "get_cycle_start_day",
+          "lineNumber": 97
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "re.search",
+          "lineNumber": 99
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "int",
+          "lineNumber": 101
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "mw.group",
+          "lineNumber": 101
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "re.search",
+          "lineNumber": 102
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "int",
+          "lineNumber": 104
+        },
+        {
+          "caller": "derive_nominal_day_for_visit",
+          "callee": "md.group",
+          "lineNumber": 104
+        },
+        {
+          "caller": "get_horizon_days",
+          "callee": "max",
+          "lineNumber": 118
+        },
+        {
+          "caller": "get_horizon_days",
+          "callee": "len",
+          "lineNumber": 118
+        },
+        {
+          "caller": "get_horizon_days",
+          "callee": "sum",
+          "lineNumber": 120
+        },
+        {
+          "caller": "get_horizon_days",
+          "callee": "max",
+          "lineNumber": 124
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "p.lower",
+          "lineNumber": 140
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "rule.pattern.lower",
+          "lineNumber": 142
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "parse_pattern_interval_days",
+          "lineNumber": 144
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "logger.debug",
+          "lineNumber": 146
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "logger.debug",
+          "lineNumber": 151
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "get_horizon_days",
+          "lineNumber": 156
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "derive_nominal_day_for_visit",
+          "lineNumber": 163
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "rule.pattern.lower",
+          "lineNumber": 167
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "rule.pattern.lower",
+          "lineNumber": 167
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "PATTERN_CYCLE_RE.search",
+          "lineNumber": 171
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "rule.pattern.lower",
+          "lineNumber": 171
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "logger.debug",
+          "lineNumber": 173
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "int",
+          "lineNumber": 177
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "m.group",
+          "lineNumber": 177
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "logger.debug",
+          "lineNumber": 179
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "(\n                    visits[rule.visit_id].visit_name + \" \" + visits[rule.visit_id].label\n                ).lower",
+          "lineNumber": 185
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "CYCLE_DAY1_RE.search",
+          "lineNumber": 188
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "int",
+          "lineNumber": 190
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "mc.group",
+          "lineNumber": 190
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "get_cycle_start_day",
+          "lineNumber": 194
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "timedelta",
+          "lineNumber": 198
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "results.append",
+          "lineNumber": 199
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "Instance",
+          "lineNumber": 200
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "projected.date().isoformat",
+          "lineNumber": 208
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "projected.date",
+          "lineNumber": 208
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "timedelta",
+          "lineNumber": 220
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "results.append",
+          "lineNumber": 221
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "Instance",
+          "lineNumber": 222
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "projected.date().isoformat",
+          "lineNumber": 230
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "projected.date",
+          "lineNumber": 230
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "logger.debug",
+          "lineNumber": 240
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "len",
+          "lineNumber": 241
+        },
+        {
+          "caller": "expand_schedule_rules",
+          "callee": "len",
+          "lineNumber": 241
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 8,
+        "functionCount": 5,
+        "classCount": 3
+      }
+    },
+    {
+      "path": "validation.py",
+      "language": "python",
+      "fileCategory": "code",
+      "totalLines": 87,
+      "nonEmptyLines": 73,
+      "functions": [
+        {
+          "name": "derive_nominal_day",
+          "startLine": 25,
+          "endLine": 39,
+          "params": [
+            "label"
+          ]
+        },
+        {
+          "name": "extract_imaging_events",
+          "startLine": 42,
+          "endLine": 67,
+          "params": [
+            "visit_rows",
+            "activity_rows",
+            "visit_activity_rows"
+          ]
+        },
+        {
+          "name": "validate_imaging_schedule",
+          "startLine": 70,
+          "endLine": 87,
+          "params": [
+            "events",
+            "expected_interval_weeks",
+            "tolerance_days"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "ImagingEvent",
+          "startLine": 13,
+          "endLine": 15,
+          "methods": [],
+          "properties": [
+            "visit_name",
+            "nominal_day"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "ImagingEvent",
+          "line": 12,
+          "isDefault": false
+        },
+        {
+          "name": "derive_nominal_day",
+          "line": 25,
+          "isDefault": false
+        },
+        {
+          "name": "extract_imaging_events",
+          "line": 42,
+          "isDefault": false
+        },
+        {
+          "name": "validate_imaging_schedule",
+          "line": 70,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "derive_nominal_day",
+          "callee": "label.lower",
+          "lineNumber": 26
+        },
+        {
+          "caller": "derive_nominal_day",
+          "callee": "WEEK_RE.search",
+          "lineNumber": 27
+        },
+        {
+          "caller": "derive_nominal_day",
+          "callee": "int",
+          "lineNumber": 29
+        },
+        {
+          "caller": "derive_nominal_day",
+          "callee": "m.group",
+          "lineNumber": 29
+        },
+        {
+          "caller": "derive_nominal_day",
+          "callee": "DAY_RE.search",
+          "lineNumber": 30
+        },
+        {
+          "caller": "derive_nominal_day",
+          "callee": "int",
+          "lineNumber": 32
+        },
+        {
+          "caller": "derive_nominal_day",
+          "callee": "m.group",
+          "lineNumber": 32
+        },
+        {
+          "caller": "derive_nominal_day",
+          "callee": "CYCLE_DAY1_RE.search",
+          "lineNumber": 33
+        },
+        {
+          "caller": "derive_nominal_day",
+          "callee": "int",
+          "lineNumber": 35
+        },
+        {
+          "caller": "derive_nominal_day",
+          "callee": "m.group",
+          "lineNumber": 35
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "set",
+          "lineNumber": 48
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "act.get(\"activity_name\", \"\").lower",
+          "lineNumber": 50
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "act.get",
+          "lineNumber": 50
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "any",
+          "lineNumber": 51
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "imaging_activity_ids.add",
+          "lineNumber": 52
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "visit_lookup.get",
+          "lineNumber": 59
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "visit.get",
+          "lineNumber": 62
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "derive_nominal_day",
+          "lineNumber": 63
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "events.append",
+          "lineNumber": 65
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "ImagingEvent",
+          "lineNumber": 65
+        },
+        {
+          "caller": "extract_imaging_events",
+          "callee": "events.sort",
+          "lineNumber": 66
+        },
+        {
+          "caller": "validate_imaging_schedule",
+          "callee": "abs",
+          "lineNumber": 82
+        },
+        {
+          "caller": "validate_imaging_schedule",
+          "callee": "issues.append",
+          "lineNumber": 83
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 3,
+        "classCount": 1
+      }
+    }
+  ]
+}
