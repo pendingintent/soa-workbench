@@ -3350,6 +3350,38 @@ def _migrate_soa_add_tool_extension_uids():
         logger.warning("_migrate_soa_add_tool_extension_uids failed: %s", e)
 
 
+def _migrate_add_activity_grouping_extension_table():
+    """Create activity_grouping_extension table.
+
+    Persists stable ExtensionAttribute_N / ExtensionClass_N UIDs for
+    each (soa, activity, concept_group) assignment so USDM export can
+    reuse identical UIDs across regenerations.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity_grouping_extension (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id            INTEGER NOT NULL,
+                activity_uid      TEXT NOT NULL,
+                concept_group_uid TEXT NOT NULL,
+                ea_outer_uid      TEXT,
+                ec_uid            TEXT,
+                ea_scheme_uid     TEXT,
+                ea_value_uid      TEXT,
+                UNIQUE(soa_id, activity_uid, concept_group_uid)
+            )
+            """
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_activity_grouping_extension_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_activity_grouping_extension_table failed: %s", e)
+
+
 def _migrate_backfill_crf_href_latest_version():
     """Rewrite activity_concept_crf.crf_href from the dated-package
     format to the latest-version format, e.g.:

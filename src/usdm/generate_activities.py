@@ -2,6 +2,10 @@
 from typing import List, Dict, Any
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import _nz
+from usdm.generate_activity_grouping_extensions import (
+    populate_activity_grouping_extensions,
+    build_usdm_activity_grouping_extensions_bulk,
+)
 
 
 def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
@@ -22,9 +26,13 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
       - bcSurrogateIds: string[]               (left empty here)
       - timelineId?: string | null             (left null here)
       - notes: CommentAnnotation-Output[]      (left empty here)
-      - extensionAttributes: ExtensionAttribute-Output[] (empty)
+      - extensionAttributes: ExtensionAttribute-Output[]
+        (one nested entry per assigned CDISC BC grouping)
       - instanceType: "Activity"
     """
+    populate_activity_grouping_extensions(soa_id)
+    grouping_ext_map = build_usdm_activity_grouping_extensions_bulk(soa_id)
+
     conn = _connect()
     cur = conn.cursor()
     # Order by order_index if present, else by id for deterministic output
@@ -99,7 +107,7 @@ def build_usdm_activities(soa_id: int) -> List[Dict[str, Any]]:
 
         activity = {
             "id": aid,
-            "extensionAttributes": [],
+            "extensionAttributes": grouping_ext_map.get(aid, []),
             "name": name,
             "label": _nz(label),
             "description": _nz(description),
