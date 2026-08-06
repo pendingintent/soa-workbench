@@ -25,7 +25,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from usdm.usdm_utils import _get_soa_metadata
+from usdm.usdm_utils import _get_latest_sdtmct_version, _get_soa_metadata
 
 logger = logging.getLogger("usdm.generate_narrative_content")
 
@@ -193,6 +193,7 @@ def build_usdm_study_definition_document(
     if not _soa_has_narrative_content(soa_id):
         return None
     contents = build_usdm_narrative_contents(soa_id)
+    sdtmct_version = _get_latest_sdtmct_version()
 
     version: Dict[str, Any] = {
         "id": document_version_id,
@@ -203,7 +204,7 @@ def build_usdm_study_definition_document(
             "extensionAttributes": [],
             "code": "C25508",
             "codeSystem": "http://www.cdisc.org",
-            "codeSystemVersion": "2025-09-26",
+            "codeSystemVersion": sdtmct_version,
             "decode": "Final",
             "instanceType": "Code",
         },
@@ -219,7 +220,7 @@ def build_usdm_study_definition_document(
                     "extensionAttributes": [],
                     "code": "C215663",
                     "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2025-09-26",
+                    "codeSystemVersion": sdtmct_version,
                     "decode": "Effective Date",
                     "instanceType": "Code",
                 },
@@ -259,7 +260,7 @@ def build_usdm_study_definition_document(
             "extensionAttributes": [],
             "code": "C70817",
             "codeSystem": "http://www.cdisc.org",
-            "codeSystemVersion": "2025-09-26",
+            "codeSystemVersion": sdtmct_version,
             "decode": "Protocol",
             "instanceType": "Code",
         },

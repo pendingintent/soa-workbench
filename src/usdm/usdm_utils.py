@@ -6,6 +6,7 @@ import logging
 from urllib.parse import urlparse
 from typing import List, Dict, Optional, Any, Tuple
 
+from soa_builder.web.codelist_config import EPOCH_TYPE_CODELIST
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href
 
@@ -186,6 +187,19 @@ def _get_dss_response_codes(
     if not row or not row[0]:
         return []
     return _fetch_dss_variable_map(row[0]).get(variable_name, [])
+
+
+@functools.lru_cache(maxsize=1)
+def _get_latest_sdtmct_version() -> str:
+    """Return the latest SDTM CT package date string (e.g. '2025-09-26').
+
+    Wraps ``_get_latest_sdtm_ct_href`` (which reads ``_links.packages``
+    from the CDISC Library packages endpoint) and strips the
+    ``sdtmct-`` prefix, so every SDTM-CT-derived ``codeSystemVersion``
+    in the USDM export is pinned to the same, current package.
+    Falls back to '' on any error.
+    """
+    return (_get_latest_sdtm_ct_href() or "").removeprefix("sdtmct-")
 
 
 @functools.lru_cache(maxsize=1)
@@ -828,7 +842,18 @@ def _get_epoch_code_values(
     code_system_version = ""
     decode = ""
 
-    url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
+    package_slug = _get_latest_sdtm_ct_href()
+    if not package_slug:
+        logger.warning(
+            "Could not discover latest SDTM CT package for epoch code %s",
+            code,
+        )
+        return code_system, code_system_version, decode
+
+    url = (
+        "https://library.cdisc.org/api/mdr/ct/packages/"
+        f"{package_slug}/codelists/{EPOCH_TYPE_CODELIST}"
+    )
 
     try:
         resp = requests.get(url, headers=_build_api_headers(), timeout=10)
@@ -844,7 +869,7 @@ def _get_epoch_code_values(
         content = resp.json()
         parsed_url = urlparse(url)
         code_system = parsed_url.scheme + "://" + parsed_url.netloc
-        code_system_version = parsed_url.path.split("/", 7)[5]
+        code_system_version = package_slug.removeprefix("sdtmct-")
 
         # Guard against missing 'terms' key
         top_terms = content.get("terms") or []
