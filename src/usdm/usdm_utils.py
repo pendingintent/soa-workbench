@@ -242,18 +242,36 @@ def _get_latest_bc_package_version() -> str:
     return latest_version
 
 
-@functools.lru_cache(maxsize=256)
+_biomedical_concept_cache: Dict[str, Dict[str, Any]] = {}
+
+
 def _get_biomedical_concept_data(concept_code: str) -> Dict[str, Any]:
-    """Fetch the full CDISC Biomedical Concept API response. Cached per code."""
+    """Fetch the full CDISC Biomedical Concept API response.
+
+    Cached per code, but only successful (200) responses are cached —
+    a transient failure (rate limit, timeout, auth hiccup) must not
+    permanently poison the cache for the life of the process.
+    """
+    if concept_code in _biomedical_concept_cache:
+        return _biomedical_concept_cache[concept_code]
     url = URL_PREFIX + "mdr/bc/biomedicalconcepts/" + concept_code
     try:
         resp = requests.get(url, headers=_build_api_headers(), timeout=15)
         if resp.status_code != 200:
+            logger.warning(
+                "_get_biomedical_concept_data: %s returned %s",
+                url,
+                resp.status_code,
+            )
             return {}
-        return resp.json()
+        data = resp.json()
     except (requests.RequestException, ValueError) as e:
-        print(f"Error fetching biomedical concept: {e}")
+        logger.warning(
+            "_get_biomedical_concept_data failed for %s: %s", concept_code, e
+        )
         return {}
+    _biomedical_concept_cache[concept_code] = data
+    return data
 
 
 def _absolute_url(href: str) -> str:
