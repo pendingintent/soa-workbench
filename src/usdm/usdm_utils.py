@@ -3,7 +3,6 @@ import os
 import functools
 import requests
 import logging
-from urllib.parse import urlparse
 from typing import List, Dict, Optional, Any, Tuple
 
 from soa_builder.web.codelist_config import EPOCH_TYPE_CODELIST
@@ -867,8 +866,7 @@ def _get_epoch_code_values(
             return code_system, code_system_version, decode
 
         content = resp.json()
-        parsed_url = urlparse(url)
-        code_system = parsed_url.scheme + "://" + parsed_url.netloc
+        code_system = "http://www.cdisc.org"
         code_system_version = package_slug.removeprefix("sdtmct-")
 
         # Guard against missing 'terms' key
