@@ -23,7 +23,7 @@ dependencies = [
   "python-multipart>=0.0.9",
   "jmespath>=1.1.0",
   "cdisc-library-client>=0.1.6",
-  "mcp>=1.0.0",
+  "mcp>=1.0.0,<2.0",
   "python-docx>=1.1.0"
 ]
 
