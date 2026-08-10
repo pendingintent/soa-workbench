@@ -4,8 +4,8 @@
       <th>UID</th>
       <th>Type</th>
       <th>Location</th>
-      <th style="width:1%;white-space:nowrap;">Save</th>
-      <th style="width:1%;white-space:nowrap;">Delete</th>
+      <th class="am-td-shrink">Save</th>
+      <th class="am-td-shrink">Delete</th>
     </tr>
     {% for s in geo_scopes %}
     <tr>
@@ -29,13 +29,13 @@
           {% endif %}
         </div>
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-slate am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/geographic-scope/{{ s.id }}/update"
                 hx-target="#geo-scopes-section" hx-swap="outerHTML"
                 hx-include="closest tr">Save</button>
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-danger am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/geographic-scope/{{ s.id }}/delete"
                 hx-target="#geo-scopes-section" hx-swap="outerHTML"
@@ -47,7 +47,7 @@
     {% endfor %}
   </table>
 
-  <details class="am-add-change-panel" style="margin-top:10px;">
+  <details class="am-add-change-panel am-mt-10">
     <summary class="am-add-change-summary">+ Add Geographic Scope</summary>
     <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/geographic-scopes/add"
           hx-target="#geo-scopes-section" hx-swap="outerHTML"

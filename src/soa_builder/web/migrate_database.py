@@ -1581,6 +1581,36 @@ def _migrate_add_concept_group_table():
         logger.warning("_migrate_add_concept_group_table failed: %s", e)
 
 
+def _migrate_concept_group_add_cdisc_source_columns():
+    """Add columns to concept_group distinguishing CDISC-sourced rows
+    (materialized from the cdisc-biomedical-concept-groupings service)
+    from user-created Custom Concept Groups.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(concept_group)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "source" not in cols:
+            cur.execute(
+                "ALTER TABLE concept_group ADD COLUMN source TEXT DEFAULT 'custom'"
+            )
+            logger.info("Added source column to concept_group")
+        if "cdisc_scheme_id" not in cols:
+            cur.execute("ALTER TABLE concept_group ADD COLUMN cdisc_scheme_id TEXT")
+            logger.info("Added cdisc_scheme_id column to concept_group")
+        if "cdisc_scheme_name" not in cols:
+            cur.execute("ALTER TABLE concept_group ADD COLUMN cdisc_scheme_name TEXT")
+            logger.info("Added cdisc_scheme_name column to concept_group")
+        if "cdisc_value_id" not in cols:
+            cur.execute("ALTER TABLE concept_group ADD COLUMN cdisc_value_id TEXT")
+            logger.info("Added cdisc_value_id column to concept_group")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("_migrate_concept_group_add_cdisc_source_columns failed: %s", e)
+
+
 def _migrate_activity_concept_add_concept_group_uid():
     """Add concept_group_uid column to activity_concept if missing."""
     try:
@@ -3318,6 +3348,38 @@ def _migrate_soa_add_tool_extension_uids():
         conn.close()
     except Exception as e:
         logger.warning("_migrate_soa_add_tool_extension_uids failed: %s", e)
+
+
+def _migrate_add_activity_grouping_extension_table():
+    """Create activity_grouping_extension table.
+
+    Persists stable ExtensionAttribute_N / ExtensionClass_N UIDs for
+    each (soa, activity, concept_group) assignment so USDM export can
+    reuse identical UIDs across regenerations.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity_grouping_extension (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id            INTEGER NOT NULL,
+                activity_uid      TEXT NOT NULL,
+                concept_group_uid TEXT NOT NULL,
+                ea_outer_uid      TEXT,
+                ec_uid            TEXT,
+                ea_scheme_uid     TEXT,
+                ea_value_uid      TEXT,
+                UNIQUE(soa_id, activity_uid, concept_group_uid)
+            )
+            """
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_activity_grouping_extension_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_activity_grouping_extension_table failed: %s", e)
 
 
 def _migrate_backfill_crf_href_latest_version():

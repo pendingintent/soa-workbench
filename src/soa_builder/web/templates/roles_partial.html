@@ -16,15 +16,15 @@
       <td class="fz-td-version"><span class="obj-uid">{{ r.role_uid }}</span></td>
       <td>
         <input name="name" value="{{ r.name }}" required
-               class="am-input-compact" style="width:110px;" />
+               class="am-input-compact am-w-110" />
       </td>
       <td>
         <input name="label" value="{{ r.label or '' }}" placeholder="Label"
-               class="am-input-compact" style="width:80px;" />
+               class="am-input-compact am-w-80" />
       </td>
       <td>
         <input name="description" value="{{ r.description or '' }}"
-               placeholder="Description" class="am-input-compact" style="width:140px;" />
+               placeholder="Description" class="am-input-compact am-w-140" />
       </td>
       <td>
         <select name="role_type_code" class="am-select-compact"
@@ -42,7 +42,7 @@
       </td>
       <td>
         <select name="organization_ids" multiple size="3"
-                class="am-select-compact" style="width:120px;">
+                class="am-select-compact am-w-120">
           {% for o in organizations %}
           <option value="{{ o.organization_uid }}"
             {% if o.organization_uid in r.organization_ids %}selected{% endif %}>
@@ -53,7 +53,7 @@
       </td>
       <td>
         <select name="person_uids" multiple size="3"
-                class="am-select-compact" style="width:120px;">
+                class="am-select-compact am-w-120">
           {% for p in persons %}
           <option value="{{ p.person_uid }}"
             {% if p.person_uid in r.assigned_person_uids %}selected{% endif %}>
@@ -66,7 +66,7 @@
         <input type="checkbox" name="masking" value="on"
                {% if r.masking %}checked{% endif %} />
       </td>
-      <td class="am-td-center" style="white-space:nowrap;">
+      <td class="am-td-center am-nowrap">
         <button type="button" class="am-btn am-btn-slate am-btn-xs"
                 hx-post="/ui/soa/{{ soa_id }}/roles/{{ r.id }}/update"
                 hx-target="#roles-section"
@@ -75,7 +75,7 @@
         <form hx-post="/ui/soa/{{ soa_id }}/roles/{{ r.id }}/delete"
               hx-target="#roles-section"
               hx-swap="outerHTML"
-              style="display:inline;">
+              class="am-inline-form">
           <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
         </form>
       </td>
@@ -85,7 +85,7 @@
     {% endfor %}
   </table>
 
-  <hr style="margin:14px 0 10px;border:none;border-top:1px solid var(--am-border,#ddd);" />
+  <hr class="am-subsection-divider" />
 
   <form hx-post="/ui/soa/{{ soa_id }}/roles-add"
         hx-target="#roles-section"
@@ -130,7 +130,7 @@
         </option>
         {% endfor %}
       </select>
-      <small style="color:var(--am-text-mid);">Hold Ctrl / Cmd to select multiple</small>
+      <small class="am-text-mid">Hold Ctrl / Cmd to select multiple</small>
     </div>
 
     <div class="am-field am-field-span">
@@ -140,19 +140,19 @@
         <option value="{{ p.person_uid }}">{{ p.name }}</option>
         {% endfor %}
       </select>
-      <small style="color:var(--am-text-mid);">Hold Ctrl / Cmd to select multiple</small>
+      <small class="am-text-mid">Hold Ctrl / Cmd to select multiple</small>
     </div>
 
     <div class="am-field am-field-span">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+      <label class="am-checkbox-label" style="gap:8px;">
         <input type="checkbox" name="masking" value="on" />
-        <span class="am-field-label" style="margin:0;">
+        <span class="am-field-label am-m-0">
           Masking applied (role is blinded)
         </span>
       </label>
     </div>
 
-    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+    <div class="am-field-span am-flex-center-row" style="gap:8px;">
       <button type="submit" class="am-btn am-btn-info am-btn-sm">
         Add Role
       </button>

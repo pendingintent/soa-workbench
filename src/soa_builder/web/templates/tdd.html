@@ -2,18 +2,18 @@
 {% block content %}
 <h2>Generate Trial Design Domains (SDTM)</h2>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
 <hr class="fz-section-divider" />
 
-<table class="fz-table" style="max-width:640px;">
+<table class="fz-table am-maxw-640">
   <tr class="fz-thead-row">
     <th>Domain</th>
-    <th style="text-align:center;">JSON</th>
-    <th style="text-align:center;">CSV</th>
-    <th style="text-align:center;">View</th>
+    <th class="am-td-center">JSON</th>
+    <th class="am-td-center">CSV</th>
+    <th class="am-td-center">View</th>
   </tr>
   {% for key, label, json_file, csv_file in domains %}
   <tr>

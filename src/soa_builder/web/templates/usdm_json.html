@@ -2,20 +2,20 @@
 {% block content %}
 <h2>Generate USDM JSON for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
 {% if study_id_value %}
-<p style="margin:0 0 12px;color:#555;">Study ID: <strong>{{ study_id_value }}</strong></p>
+<p class="am-m-0 am-mb-12 am-color-subtle">Study ID: <strong>{{ study_id_value }}</strong></p>
 {% endif %}
 
 <hr class="fz-section-divider" />
 
-<table class="fz-table" style="max-width:520px;">
+<table class="fz-table am-maxw-520">
   <tr class="fz-thead-row">
     <th>Component</th>
-    <th style="text-align:center;">Download</th>
+    <th class="am-td-center">Download</th>
   </tr>
   {% for key, label, filename in components %}
   <tr>

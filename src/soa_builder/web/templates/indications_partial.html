@@ -23,34 +23,34 @@
     <td>
       {{ ind.name }}
       {% if ind.label %}
-        <div style="color:var(--am-text-muted);font-size:0.85em;">
+        <div class="am-text-muted am-fz-85">
           {{ ind.label }}
         </div>
       {% endif %}
       {% if ind.description %}
-        <div style="color:var(--am-text-muted);font-size:0.82em;">
+        <div class="am-text-muted am-fz-82">
           {{ ind.description }}
         </div>
       {% endif %}
     </td>
-    <td style="text-align:center;">
+    <td class="am-td-center">
       {% if ind.is_rare_disease %}
-        <span style="color:var(--am-success);font-weight:600;">&#10003;</span>
+        <span class="am-text-success am-fw-600">&#10003;</span>
       {% else %}
-        <span style="color:var(--am-text-muted);">—</span>
+        <span class="am-text-muted">—</span>
       {% endif %}
     </td>
     <td>
       {% if ind.codes %}
         {{ ind.codes | length }} code{{ 's' if ind.codes|length != 1 else '' }}
       {% else %}
-        <span style="color:var(--am-text-muted);">—</span>
+        <span class="am-text-muted">—</span>
       {% endif %}
     </td>
     <td>
       <form hx-post="/ui/soa/{{ soa_id }}/indications/{{ ind.id }}/delete"
             hx-target="#indications-container" hx-swap="outerHTML"
-            style="display:inline;">
+            class="am-inline-form">
         <button type="submit" class="am-btn am-btn-danger am-btn-xs">
           &times;
         </button>
@@ -60,15 +60,14 @@
 
   {# ── Codes subsection ── #}
   <tr>
-    <td colspan="5"
-        style="padding:0 12px 12px 24px;background:var(--am-surface);">
-      <strong style="font-size:0.85em;color:var(--am-text-mid);">
+    <td colspan="5" class="am-subsection-td">
+      <strong class="am-text-mid am-fz-85">
         Codes ({{ ind.codes | length }})
       </strong>
 
       <form hx-post="/ui/soa/{{ soa_id }}/indications/{{ ind.id }}/codes-add"
             hx-target="#indications-container" hx-swap="outerHTML"
-            class="am-grid-2" style="margin-top:6px;">
+            class="am-grid-2 am-mt-6">
         <div class="am-field">
           <label class="am-field-label">Code</label>
           <input name="code" class="am-input am-input-compact"
@@ -89,7 +88,7 @@
           <input name="decode" class="am-input am-input-compact"
                  placeholder="Human-readable term" />
         </div>
-        <div class="am-field-span" style="display:flex;gap:8px;">
+        <div class="am-field-span am-flex-row" style="gap:8px;">
           <button type="submit" class="am-btn am-btn-info am-btn-xs">
             Add Code
           </button>
@@ -97,7 +96,7 @@
       </form>
 
       {% if ind.codes %}
-      <table class="fz-table" style="margin-top:6px;">
+      <table class="fz-table am-mt-6">
         <tr class="fz-thead-row">
           <th>UID</th>
           <th>Code</th>
@@ -109,17 +108,17 @@
         {% for c in ind.codes %}
         <tr>
           <td>
-            <span class="obj-uid" style="font-size:0.78em;">{{ c.code_uid }}</span>
+            <span class="obj-uid am-fz-78">{{ c.code_uid }}</span>
           </td>
-          <td style="font-size:0.88em;">{{ c.code or '—' }}</td>
-          <td style="font-size:0.82em;">{{ c.code_system or '—' }}</td>
-          <td style="font-size:0.82em;">{{ c.code_system_version or '—' }}</td>
-          <td style="font-size:0.88em;">{{ c.decode or '—' }}</td>
+          <td class="am-fz-88">{{ c.code or '—' }}</td>
+          <td class="am-fz-82">{{ c.code_system or '—' }}</td>
+          <td class="am-fz-82">{{ c.code_system_version or '—' }}</td>
+          <td class="am-fz-88">{{ c.decode or '—' }}</td>
           <td>
             <form
               hx-post="/ui/soa/{{ soa_id }}/indications/{{ ind.id }}/codes/{{ c.id }}/delete"
               hx-target="#indications-container" hx-swap="outerHTML"
-              style="display:inline;">
+              class="am-inline-form">
               <button type="submit"
                       class="am-btn am-btn-danger am-btn-xs">&times;</button>
             </form>

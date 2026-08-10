@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Biomedical Concepts (<span id="conceptTotal">{{ count }}</span>)</h2>
-<p style="color:#555;font-size:0.9em;">Derived from the CDISC Library API. Each link points to the concept's API resource.</p>
+<p class="am-color-subtle am-fz-90">Derived from the CDISC Library API. Each link points to the concept's API resource.</p>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/" class="am-back-link">&larr; Home</a>
 </div>
 
 <hr class="fz-section-divider" />
 
-<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<div class="am-flex-center-row am-flex-wrap am-mb-12" style="gap:10px;">
   <div class="am-field">
     <label class="am-field-label" for="conceptSearch">Search</label>
     <input id="conceptSearch" type="text" placeholder="Filter concepts..."
-           class="fz-version-input" style="width:280px;" oninput="filterConcepts()" />
+           class="fz-version-input am-w-280" oninput="filterConcepts()" />
   </div>
-  <span id="searchCount" style="font-size:0.84em;color:var(--am-text-mid);margin-top:18px;"></span>
+  <span id="searchCount" class="am-lib-search-count"></span>
 </div>
 
 {% if rows %}

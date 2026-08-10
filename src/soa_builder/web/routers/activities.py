@@ -18,6 +18,8 @@ from ..utils import (
     table_has_columns as _table_has_columns,
     get_next_concept_uid as _get_next_concept_uid,
     get_cdisc_api_key as _get_cdisc_api_key,
+    get_cdisc_crf_api_key as _get_cdisc_crf_api_key,
+    get_cdisc_crf_subscription_key as _get_cdisc_crf_subscription_key,
 )
 import html as _html
 
@@ -721,14 +723,11 @@ def ui_list_activities(request: Request, soa_id: int):
                 )
                 break
 
-    # Fetch concept groups globally (for the dropdown in concepts_cell)
-    cur.execute(
-        "SELECT id, concept_group_uid, name, label FROM concept_group ORDER BY id"
-    )
-    concept_groups = [
-        {"id": r[0], "concept_group_uid": r[1], "name": r[2], "label": r[3]}
-        for r in cur.fetchall()
-    ]
+    # Fetch concept groups globally (for the dropdown in concepts_cell),
+    # organized into CDISC-scheme + Custom Concept Groups sections.
+    from ..app import _get_concept_group_sections
+
+    concept_groups = _get_concept_group_sections()
     conn.close()
 
     # Fetch CDISC BC categories list (for the category dropdown in concepts_cell)
@@ -1524,8 +1523,8 @@ def ui_crf_detail_from_activity(
     import requests as _requests
     import json as _json
 
-    api_key = _get_cdisc_api_key()
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
+    api_key = _get_cdisc_crf_api_key()
+    subscription_key = _get_cdisc_crf_subscription_key()
     unified_key = subscription_key or api_key
     headers: dict = {}
     if unified_key:

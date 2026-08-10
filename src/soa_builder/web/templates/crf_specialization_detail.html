@@ -2,29 +2,29 @@
 {% block content %}
 <h2 class="am-page-title">CRF Specialization Detail</h2>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/ui/crf/specializations" class="am-back-link">&larr; Back to CRF Specializations</a>
 </div>
 
-<p style="font-size:0.9em;color:var(--am-text-mid);">
+<p class="am-fz-90 am-text-mid">
   <strong>Title:</strong> {{ title }}<br/>
   {% if href %}
     <strong>API HREF:</strong>
     <a href="{{ href }}" target="_blank" rel="noopener"
-       style="font-size:0.85em;word-break:break-all;">{{ href }}</a>
+       class="am-lib-href-wrap">{{ href }}</a>
   {% else %}
     <em>No href available</em>
   {% endif %}
 </p>
 
 {% if missing_key %}
-<div style="padding:8px 12px;margin-bottom:12px;border:1px solid #cc9;background:#ffd;color:#660;font-size:0.85em;border-radius:4px;">
+<div class="am-legacy-warn-notice">
   <strong>Notice:</strong> No API key detected; set <code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code> to retrieve live JSON.
 </div>
 {% endif %}
 
 {% if error %}
-<div style="padding:8px 12px;margin-bottom:12px;border:1px solid var(--am-danger,#c62828);background:#fee;color:var(--am-danger,#c62828);font-size:0.85em;border-radius:4px;">
+<div class="am-lib-error-notice">
   <strong>Error:</strong> {{ error }}
 </div>
 {% endif %}
@@ -43,14 +43,14 @@
 
 {% if scalar_items %}
 <h3 class="fz-section-heading">Summary</h3>
-<table class="fz-table" style="margin-bottom:16px;">
+<table class="fz-table am-mb-16">
   <tr class="fz-thead-row">
-    <th style="width:220px;">Field</th>
+    <th class="am-w-220">Field</th>
     <th>Value</th>
   </tr>
   {% for item in scalar_items %}
   <tr>
-    <td style="font-weight:600;white-space:nowrap;color:var(--am-text-mid);">{{ item.key }}</td>
+    <td class="am-lib-td-label">{{ item.key }}</td>
     <td>{{ item.val }}</td>
   </tr>
   {% endfor %}
@@ -83,8 +83,8 @@
   {% endif %}
 
 <h3 class="fz-section-heading">{{ items_key | title }}</h3>
-<div style="overflow-x:auto;">
-<table class="fz-table" style="margin-bottom:16px;font-size:0.85em;">
+<div class="am-overflow-x-auto">
+<table class="fz-table am-mb-16 am-fz-85">
   <tr class="fz-thead-row">
     {% for col in col_keys %}
     <th>{{ col }}</th>
@@ -115,16 +115,13 @@
 {% endif %}
 
 {# ── Raw JSON dropdown ───────────────────────────────────────────────────── #}
-<details style="margin-top:8px;">
-  <summary style="cursor:pointer;font-weight:600;color:var(--am-text-mid);">Raw JSON</summary>
-  <pre style="overflow:auto;max-height:400px;font-size:0.8em;
-              background:var(--am-surface,#f8fafc);padding:0.75em;
-              border:1px solid var(--am-border,#ddd);border-radius:4px;
-              margin-top:6px;">{{ spec_json }}</pre>
+<details class="am-mt-8">
+  <summary class="am-lib-summary-muted">Raw JSON</summary>
+  <pre class="am-lib-raw-json-var">{{ spec_json }}</pre>
 </details>
 
 {% elif not error %}
-<p style="color:var(--am-text-muted);">No data available for this CRF specialization.</p>
+<p class="am-text-muted">No data available for this CRF specialization.</p>
 {% endif %}
 
 {% endblock %}

@@ -18,11 +18,11 @@
       <td class="fz-td-version"><span class="obj-uid">{{ o.organization_uid }}</span></td>
       <td>
         <input name="name" value="{{ o.name }}" required
-               class="am-input-compact" style="width:120px;" />
+               class="am-input-compact am-w-120" />
       </td>
       <td>
         <input name="label" value="{{ o.label or '' }}" placeholder="Label"
-               class="am-input-compact" style="width:80px;" />
+               class="am-input-compact am-w-80" />
       </td>
       <td>
         <select name="type_code" class="am-select-compact"
@@ -40,23 +40,23 @@
       </td>
       <td>
         <input name="identifier_scheme" value="{{ o.identifier_scheme or '' }}"
-               placeholder="Scheme" class="am-input-compact" style="width:65px;" />
+               placeholder="Scheme" class="am-input-compact am-w-55" />
       </td>
       <td>
         <input name="identifier" value="{{ o.identifier or '' }}"
-               placeholder="ID" class="am-input-compact" style="width:80px;" />
+               placeholder="ID" class="am-input-compact am-w-80" />
       </td>
       <td>
         <input name="addr_city" value="{{ o.addr_city or '' }}"
-               placeholder="City" class="am-input-compact" style="width:80px;" />
+               placeholder="City" class="am-input-compact am-w-80" />
       </td>
       <td>
         <input name="addr_state" value="{{ o.addr_state or '' }}"
-               placeholder="State" class="am-input-compact" style="width:55px;" />
+               placeholder="State" class="am-input-compact am-w-55" />
       </td>
       <td>
         <input name="addr_postal_code" value="{{ o.addr_postal_code or '' }}"
-               placeholder="ZIP" class="am-input-compact" style="width:60px;" />
+               placeholder="ZIP" class="am-input-compact am-w-55" />
       </td>
       <td>
         <select name="addr_country_numeric" class="am-select-compact"
@@ -72,7 +72,7 @@
         <input type="hidden" name="addr_country_name"
                value="{{ o.country_decode or '' }}" />
       </td>
-      <td class="am-td-center" style="white-space:nowrap;">
+      <td class="am-td-center am-nowrap">
         <button type="button" class="am-btn am-btn-slate am-btn-xs"
                 hx-post="/ui/soa/{{ soa_id }}/organizations/{{ o.id }}/update"
                 hx-target="#organizations-section"
@@ -81,7 +81,7 @@
         <form hx-post="/ui/soa/{{ soa_id }}/organizations/{{ o.id }}/delete"
               hx-target="#organizations-section"
               hx-swap="outerHTML"
-              style="display:inline;">
+              class="am-inline-form">
           <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
         </form>
       </td>
@@ -91,7 +91,7 @@
     {% endfor %}
   </table>
 
-  <hr style="margin:14px 0 10px;border:none;border-top:1px solid var(--am-border,#ddd);" />
+  <hr class="am-subsection-divider" />
 
   <form hx-post="/ui/soa/{{ soa_id }}/organizations-add"
         hx-target="#organizations-section"
@@ -130,9 +130,8 @@
       <input type="hidden" name="type_decode" id="org-type-decode-{{ soa_id }}" value="" />
     </div>
 
-    <div class="am-field am-field-span" style="margin-top:6px;">
-      <span style="font-size:0.78em;font-weight:600;letter-spacing:.05em;
-                   color:var(--am-text-mid);text-transform:uppercase;">
+    <div class="am-field am-field-span am-mt-6">
+      <span class="am-form-subheading">
         Legal Address
       </span>
     </div>
@@ -182,7 +181,7 @@
              id="org-country-name-{{ soa_id }}" value="" />
     </div>
 
-    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+    <div class="am-field-span am-flex-center-row" style="gap:8px;">
       <button type="submit" class="am-btn am-btn-info am-btn-sm">
         Add Organization
       </button>

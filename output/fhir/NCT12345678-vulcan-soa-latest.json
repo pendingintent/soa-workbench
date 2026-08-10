@@ -1,0 +1,2649 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-ProtocolDesign",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-ProtocolDesign",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyProtocolSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-ProtocolDesign",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-ProtocolDesign-1"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT CDISC Pilot LZZT Protocol Schedule of Activities",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "purpose": "The purpose of this PlanDefinition is to illustrate the planned study encounters.",
+        "action": [
+          {
+            "id": "Study-Visit-SCREEN1",
+            "title": "Screen 1",
+            "description": "Planned Visit [Screen 1]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-SCREEN1",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "before",
+                "offsetDuration": {
+                  "value": 14.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-SCREEN2",
+            "title": "Screen 2",
+            "description": "Planned Visit [Screen 2]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-SCREEN2",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "before",
+                "offsetDuration": {
+                  "value": 2.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 1.833,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 2.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-DOSE",
+            "title": "Dose",
+            "description": "Planned Visit [Dose]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-DOSE"
+          },
+          {
+            "id": "Study-Visit-WEEK2",
+            "title": "Week 2",
+            "description": "Planned Visit [Week 2]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK2",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 14.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 11.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 17.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK4",
+            "title": "Week 4",
+            "description": "Planned Visit [Week 4]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK4",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 28.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 25.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 31.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK6",
+            "title": "Week 6",
+            "description": "Planned Visit [Week 6]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK6",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 42.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 39.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 45.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK8",
+            "title": "Week 8",
+            "description": "Planned Visit [Week 8]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK8",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 56.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 53.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 59.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK8N",
+            "title": "Week 8 NPI",
+            "description": "Planned Visit [Week 8 NPI]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK8N",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-WEEK8",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 14.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK12",
+            "title": "Week 12",
+            "description": "Planned Visit [Week 12]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK12",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 84.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 80.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 88.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK12N",
+            "title": "Week 12 NPI",
+            "description": "Planned Visit [Week 12 NPI]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK12N",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-WEEK12",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 14.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK16",
+            "title": "Week 16",
+            "description": "Planned Visit [Week 16]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK16",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 112.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 108.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 116.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK16N",
+            "title": "Week 16 NPI",
+            "description": "Planned Visit [Week 16 NPI]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK16N",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-WEEK16",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 14.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK20",
+            "title": "Week 20",
+            "description": "Planned Visit [Week 20]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK20",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 140.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 136.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 144.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK20N",
+            "title": "Week 20 NPI",
+            "description": "Planned Visit [Week 20 NPI]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK20N",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-WEEK20",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 14.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK24",
+            "title": "Week 24",
+            "description": "Planned Visit [Week 24]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK24",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 168.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 164.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 172.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "Study-Visit-WEEK26",
+            "title": "Week 26",
+            "description": "Planned Visit [Week 26]",
+            "definitionUri": "PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK26",
+            "relatedAction": [
+              {
+                "actionId": "Study-Visit-DOSE",
+                "relationship": "after",
+                "offsetDuration": {
+                  "value": 182.0,
+                  "system": "http://unitsofmeasure.org",
+                  "code": "d"
+                },
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/AcceptableOffsetRangeSoa",
+                    "valueRange": {
+                      "low": {
+                        "value": 179.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      },
+                      "high": {
+                        "value": 185.0,
+                        "system": "http://unitsofmeasure.org",
+                        "code": "d"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-SCREEN1",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-SCREEN1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-SCREEN1",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-SCREEN1"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Screen 1",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Screen 1 Activity Instance",
+        "action": [
+          {
+            "title": "Informed Consent",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Informed-Consent"
+          },
+          {
+            "title": "Inclusion/Exclusion Criteria",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Inclusion-Exclusion-Criteria"
+          },
+          {
+            "title": "Patient Number assigned",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Patient-number-assigned"
+          },
+          {
+            "title": "Demographics",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Demographics"
+          },
+          {
+            "title": "Education",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Education"
+          },
+          {
+            "title": "Hachinski",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hachinski"
+          },
+          {
+            "title": "MMSE",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-MMSE"
+          },
+          {
+            "title": "Physical examination",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Physical-examination"
+          },
+          {
+            "title": "Medical History",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Medical-History"
+          },
+          {
+            "title": "Habits",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Habits"
+          },
+          {
+            "title": "Chest X-ray",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chest-X-ray"
+          },
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Placebo TTS Test",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Placebo-TTS-Test"
+          },
+          {
+            "title": "CT Scan",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-CT-Scan"
+          },
+          {
+            "title": "MRI",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-MRI"
+          },
+          {
+            "title": "MRI, CT Scan",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-MRI-CT-Scan"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Urinalysis",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Urinalysis"
+          },
+          {
+            "title": "Hemoglobin A1C",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hemoglobin-A1C"
+          },
+          {
+            "title": "CIBIC+",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-CIBIC"
+          },
+          {
+            "title": "DAD",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-DAD"
+          },
+          {
+            "title": "ADAS-Cog",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ADAS-Cog"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-SCREEN2",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-SCREEN2",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-SCREEN2",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-SCREEN2"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Screen 2",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Screen 2 Activity Instance",
+        "action": [
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "Ambulatory ECG placed",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Ambulatory-ECG-placed"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-DOSE",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-DOSE",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-DOSE",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-DOSE"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Dose",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Dose Activity Instance",
+        "action": [
+          {
+            "title": "Patient randomized",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Patient-randomised"
+          },
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "Ambulatory ECG removed",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Ambulatory-ECG-removed"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "Plasma Specimen (Xanomeline)",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline"
+          },
+          {
+            "title": "ADAS-Cog",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ADAS-Cog"
+          },
+          {
+            "title": "CIBIC+",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-CIBIC"
+          },
+          {
+            "title": "DAD",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-DAD"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK2",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK2",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK2",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK2"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 2",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 2 Activity Instance",
+        "action": [
+          {
+            "title": "Apo E genotyping",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Apo-E-genotyping"
+          },
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Urinalysis",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Urinalysis"
+          },
+          {
+            "title": "Plasma Specimen (Xanomeline)",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK4",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK4",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK4",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK4"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 4",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 4 Activity Instance",
+        "action": [
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Plasma Specimen (Xanomeline)",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK6",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK6",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK6",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK6"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 6",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 6 Activity Instance",
+        "action": [
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Plasma Specimen (Xanomeline)",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK8",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK8",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK8",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK8"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 8",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 8 Activity Instance",
+        "action": [
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "ADAS-Cog",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ADAS-Cog"
+          },
+          {
+            "title": "CIBIC+",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-CIBIC"
+          },
+          {
+            "title": "DAD",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-DAD"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK8N",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK8N",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK8N",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK8N"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 8 NPI",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 8 NPI Activity Instance",
+        "action": [
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "ADAS-Cog",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ADAS-Cog"
+          },
+          {
+            "title": "CIBIC+",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-CIBIC"
+          },
+          {
+            "title": "DAD",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-DAD"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK12",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK12",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK12",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK12"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 12",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 12",
+        "action": [
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          },
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Urinalysis",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Urinalysis"
+          },
+          {
+            "title": "Plasma Specimen (Xanomeline)",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK12N",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK12N",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK12N",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK12N"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 12 NPI",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 12 NPI",
+        "action": [
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          },
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Urinalysis",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Urinalysis"
+          },
+          {
+            "title": "Plasma Specimen (Xanomeline)",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK16",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK16",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK16",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK16"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 16",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 16",
+        "action": [
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "ADAS-Cog",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ADAS-Cog"
+          },
+          {
+            "title": "DAD",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-DAD"
+          },
+          {
+            "title": "CIBIC+",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-CIBIC"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK16N",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK16N",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK16N",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK16N"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 16 NPI",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 16 NPI",
+        "action": [
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "ADAS-Cog",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ADAS-Cog"
+          },
+          {
+            "title": "DAD",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-DAD"
+          },
+          {
+            "title": "CIBIC+",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-CIBIC"
+          },
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK20",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK20",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK20",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK20"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 20",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 20",
+        "action": [
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          },
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Plasma Specimen (Xanomeline)",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK20N",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK20N",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK20N",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK20N"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 20 NPI",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 20 NPI",
+        "action": [
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          },
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Plasma Specimen (Xanomeline)",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK24",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK24",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK24",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK24"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 24",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 24",
+        "action": [
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          },
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Urinalysis",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Urinalysis"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "ADAS-Cog",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ADAS-Cog"
+          },
+          {
+            "title": "DAD",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-DAD"
+          },
+          {
+            "title": "CIBIC+",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-CIBIC"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK26",
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "H2Q-MC-LZZT-Study-Visit-WEEK26",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyVisitSoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/PlanDefinition/H2Q-MC-LZZT-Study-Visit-WEEK26",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "H2Q-MC-LZZT-Study-Visit-WEEK26"
+          }
+        ],
+        "version": "1.0.0",
+        "title": "H2Q-MC-LZZT Week 26",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "clinical-protocol"
+            }
+          ]
+        },
+        "status": "active",
+        "description": "Week 26",
+        "action": [
+          {
+            "title": "NPI-X",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X"
+          },
+          {
+            "title": "Vital Signs",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs"
+          },
+          {
+            "title": "ECG",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-ECG"
+          },
+          {
+            "title": "Concomitant medications",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications"
+          },
+          {
+            "title": "Hematology",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology"
+          },
+          {
+            "title": "Chemistry",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry"
+          },
+          {
+            "title": "Study Drug",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug"
+          },
+          {
+            "title": "TTS Acceptability Survey",
+            "definitionUri": "ActivityDefinition/H2Q-MC-LZZT-Activity-TTS-Acceptability-Survey"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-NPI-X",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-NPI-X",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "NPI-X"
+          }
+        ],
+        "name": "NPI_X",
+        "title": "NPI-X",
+        "status": "active",
+        "description": "NPI-X results"
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Urinalysis",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Urinalysis",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Urinalysis",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Urinalysis"
+          }
+        ],
+        "name": "Urinalysis",
+        "title": "Urinalysis",
+        "status": "active",
+        "description": "Urinalysis results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C64546",
+              "display": "Color Assessment"
+            }
+          ],
+          "text": "Color Assessment"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Hachinski",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Hachinski",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Hachinski",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Hachinski"
+          }
+        ],
+        "name": "Hachinski",
+        "title": "Hachinski",
+        "status": "active",
+        "description": "Hachinski test"
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Study-Drug",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Study-Drug",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Study Drug"
+          }
+        ],
+        "name": "Study_Drug",
+        "title": "Study Drug",
+        "status": "active",
+        "description": "Study Drug activity",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C117466",
+              "display": "Exposure as Collected Domain"
+            }
+          ],
+          "text": "Exposure as Collected Domain"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Education",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Education",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Education",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Education"
+          }
+        ],
+        "name": "Education",
+        "title": "Education",
+        "status": "active",
+        "description": "Education activity",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C17953",
+              "display": "Education Level"
+            }
+          ],
+          "text": "Education Level"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Ambulatory-ECG-placed",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Ambulatory-ECG-placed",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Ambulatory-ECG-placed",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Ambulatory ECG placed"
+          }
+        ],
+        "name": "Ambulatory_ECG_placed",
+        "title": "Ambulatory ECG placed",
+        "status": "active",
+        "description": "Ambulatory ECG placed activity",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C119561",
+              "display": "ECG Continuous Monitoring Indicator"
+            }
+          ],
+          "text": "ECG Continuous Monitoring Indicator"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-ECG",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-ECG",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-ECG",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "ECG"
+          }
+        ],
+        "name": "ECG",
+        "title": "ECG",
+        "status": "active",
+        "description": "ECG results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C181655",
+              "display": "Electrocardiogram Analysis"
+            }
+          ],
+          "text": "Electrocardiogram Analysis"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-MRI",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-MRI",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-MRI",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "MRI"
+          }
+        ],
+        "name": "MRI",
+        "title": "MRI",
+        "status": "active",
+        "description": "MRI results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C16809",
+              "display": "Magnetic Resonance Imaging"
+            }
+          ],
+          "text": "Magnetic Resonance Imaging"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Demographics",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Demographics",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Demographics",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Demographics"
+          }
+        ],
+        "name": "Demographics",
+        "title": "Demographics",
+        "status": "active",
+        "description": "Demographics activity",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C17049",
+              "display": "Race"
+            }
+          ],
+          "text": "Race"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Habits",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Habits",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Habits",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Habits"
+          }
+        ],
+        "name": "Habits",
+        "title": "Habits",
+        "status": "active",
+        "description": "List of habits",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C81229",
+              "display": "Alcohol Use History"
+            }
+          ],
+          "text": "Alcohol Use History"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Vital-Signs",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Vital-Signs",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Vital Signs"
+          }
+        ],
+        "name": "Vital_Signs",
+        "title": "Vital Signs",
+        "status": "active",
+        "description": "Vital Signs result",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C174446",
+              "display": "Body Temperature"
+            }
+          ],
+          "text": "Body Temperature"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Apo-E-genotyping",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Apo-E-genotyping",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Apo-E-genotyping",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Apo E genotyping"
+          }
+        ],
+        "name": "Apo_E_genotyping",
+        "title": "Apo E genotyping",
+        "status": "active",
+        "description": "Apo E genotyping test"
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-CT-Scan",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-CT-Scan",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-CT-Scan",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "CT Scan"
+          }
+        ],
+        "name": "CT_Scan",
+        "title": "CT Scan",
+        "status": "active",
+        "description": "CT Scan results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C17204",
+              "display": "Computed Tomography"
+            }
+          ],
+          "text": "Computed Tomography"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Medical-History",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Medical-History",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Medical-History",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Medical History"
+          }
+        ],
+        "name": "Medical_History",
+        "title": "Medical History",
+        "status": "active",
+        "description": "Medical History response",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C200145",
+              "display": "Solicited Medical History"
+            }
+          ],
+          "text": "Solicited Medical History"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Ambulatory-ECG-removed",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Ambulatory-ECG-removed",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Ambulatory-ECG-removed",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Ambulatory ECG removed"
+          }
+        ],
+        "name": "Ambulatory_ECG_removed",
+        "title": "Ambulatory ECG removed",
+        "status": "active",
+        "description": "Ambulatory ECG removed activity",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C119561",
+              "display": "ECG Continuous Monitoring Indicator"
+            }
+          ],
+          "text": "ECG Continuous Monitoring Indicator"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Physical-examination",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Physical-examination",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Physical-examination",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Physical examination"
+          }
+        ],
+        "name": "Physical_examination",
+        "title": "Physical examination",
+        "status": "active",
+        "description": "Physical examination results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C138967",
+              "display": "Isometric Muscle Strength"
+            }
+          ],
+          "text": "Isometric Muscle Strength"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Placebo-TTS-Test",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Placebo-TTS-Test",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Placebo-TTS-Test",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Placebo TTS Test"
+          }
+        ],
+        "name": "Placebo_TTS_Test",
+        "title": "Placebo TTS Test",
+        "status": "active",
+        "description": "Placebo TTS Test results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "NEW_LZZT",
+              "display": "TTS Acceptability Survey"
+            }
+          ],
+          "text": "TTS Acceptability Survey"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-DAD",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-DAD",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-DAD",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "DAD"
+          }
+        ],
+        "name": "DAD",
+        "title": "DAD",
+        "status": "active",
+        "description": "DAD results"
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Concomitant-medications",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Concomitant-medications",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Concomitant medications"
+          }
+        ],
+        "name": "Concomitant_medications",
+        "title": "Concomitant medications",
+        "status": "active",
+        "description": "Concomitant medications information",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C83056",
+              "display": "Concomitant Medication Yes No Indicator"
+            }
+          ],
+          "text": "Concomitant Medication Yes No Indicator"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Hematology",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Hematology",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Hematology"
+          }
+        ],
+        "name": "Hematology",
+        "title": "Hematology",
+        "status": "active",
+        "description": "Hematology results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C64848",
+              "display": "Hemoglobin Measurement"
+            }
+          ],
+          "text": "Hemoglobin Measurement"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-MMSE",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-MMSE",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-MMSE",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "MMSE"
+          }
+        ],
+        "name": "MMSE",
+        "title": "MMSE",
+        "status": "active",
+        "description": "MMSE test"
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-CIBIC",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-CIBIC",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-CIBIC",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "CIBIC+"
+          }
+        ],
+        "name": "CIBIC",
+        "title": "CIBIC+",
+        "status": "active",
+        "description": "CIBIC+ results"
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-TTS-Acceptability-Survey",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-TTS-Acceptability-Survey",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-TTS-Acceptability-Survey",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "TTS Acceptability Survey"
+          }
+        ],
+        "name": "TTS_Acceptability_Survey",
+        "title": "TTS Acceptability Survey",
+        "status": "active",
+        "description": "TTS Acceptability Survey results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "NEW_LZZT",
+              "display": "TTS Acceptability Survey"
+            }
+          ],
+          "text": "TTS Acceptability Survey"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Patient-randomised",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Patient-randomised",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Patient-randomised",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Patient randomised"
+          }
+        ],
+        "name": "Patient_randomised",
+        "title": "Patient randomized",
+        "status": "active",
+        "description": "Patient randomized activity",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C114209",
+              "display": "Subject is Randomized"
+            }
+          ],
+          "text": "Subject is Randomized"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Plasma-Specimen-Xanomeline",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Plasma Specimen (Xanomeline)"
+          }
+        ],
+        "name": "Plasma_Specimen_Xanomeline",
+        "title": "Plasma Specimen (Xanomeline)",
+        "status": "active",
+        "description": "Plasma Specimen (Xanomeline) results"
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Inclusion-Exclusion-Criteria",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Inclusion-Exclusion-Criteria",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Inclusion-Exclusion-Criteria",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Inclusion/Exclusion Criteria"
+          }
+        ],
+        "name": "Inclusion_Exclusion_Criteria",
+        "title": "Inclusion/Exclusion Criteria",
+        "status": "active",
+        "description": "Inclusion/Exclusion Criteria activity",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C25532",
+              "display": "Inclusion Criteria"
+            }
+          ],
+          "text": "Inclusion Criteria"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Chemistry",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Chemistry",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Chemistry"
+          }
+        ],
+        "name": "Chemistry",
+        "title": "Chemistry",
+        "status": "active",
+        "description": "Chemistry test results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C64433",
+              "display": "Alanine Aminotransferase Measurement"
+            }
+          ],
+          "text": "Alanine Aminotransferase Measurement"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-MRI-CT-Scan",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-MRI-CT-Scan",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-MRI-CT-Scan",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "MRI, CT Scan"
+          }
+        ],
+        "name": "MRI_CT_Scan",
+        "title": "MRI, CT Scan",
+        "status": "active",
+        "description": "MRI, CT Scan results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C16809",
+              "display": "Magnetic Resonance Imaging"
+            }
+          ],
+          "text": "Magnetic Resonance Imaging"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Hemoglobin-A1C",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Hemoglobin-A1C",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Hemoglobin-A1C",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Hemoglobin A1C"
+          }
+        ],
+        "name": "Hemoglobin_A1C",
+        "title": "Hemoglobin A1C",
+        "status": "active",
+        "description": "Hemoglobin A1C results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C64849",
+              "display": "Hemoglobin A1C Measurement"
+            }
+          ],
+          "text": "Hemoglobin A1C Measurement"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Patient-number-assigned",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Patient-number-assigned",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Patient-number-assigned",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Patient number assigned"
+          }
+        ],
+        "name": "Patient_number_assigned",
+        "title": "Patient Number assigned",
+        "status": "active",
+        "description": "Patient Number assigned activity",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C114209",
+              "display": "Subject is Randomized"
+            }
+          ],
+          "text": "Subject is Randomized"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Chest-X-ray",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Chest-X-ray",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Chest-X-ray",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Chest X-ray"
+          }
+        ],
+        "name": "Chest_X_ray",
+        "title": "Chest X-ray",
+        "status": "active",
+        "description": "Chest X-ray result",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C38101",
+              "display": "X-Ray Imaging"
+            }
+          ],
+          "text": "X-Ray Imaging"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Informed-Consent",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-Informed-Consent",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-Informed-Consent",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "Informed Consent"
+          }
+        ],
+        "name": "Informed_Consent",
+        "title": "Informed Consent",
+        "status": "active",
+        "description": "Informed consent activity",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C16735",
+              "display": "Informed Consent"
+            }
+          ],
+          "text": "Informed Consent"
+        }
+      }
+    },
+    {
+      "fullUrl": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-ADAS-Cog",
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "H2Q-MC-LZZT-Activity-ADAS-Cog",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/uv/vulcan-schedule/StructureDefinition/StudyActivitySoa"
+          ]
+        },
+        "url": "http://hl7.org/fhir/uv/vulcan-schedule/ActivityDefinition/H2Q-MC-LZZT-Activity-ADAS-Cog",
+        "identifier": [
+          {
+            "use": "usual",
+            "value": "ADAS-Cog"
+          }
+        ],
+        "name": "ADAS_Cog",
+        "title": "ADAS-Cog",
+        "status": "active",
+        "description": "ADAS-Cog results",
+        "code": {
+          "coding": [
+            {
+              "system": "https://ncithesaurus.nci.nih.gov",
+              "code": "C100177",
+              "display": "CDISC ADAS-Cog - Word Recall Average Score"
+            }
+          ],
+          "text": "CDISC ADAS-Cog - Word Recall Average Score"
+        }
+      }
+    }
+  ]
+}

@@ -1,15 +1,13 @@
 <div id="study-identifiers-section">
   {% if study_identifiers %}
-  <ul style="list-style:none;margin:0 0 10px 0;padding:0;">
+  <ul class="am-plain-list">
     {% for si in study_identifiers %}
-    <li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;
-               background:var(--am-row-bg,#f8f8fa);border-radius:4px;
-               padding:6px 8px;border:1px solid var(--am-border,#ddd);">
-      <div style="flex:1;min-width:0;">
-        <span class="obj-uid" style="margin-right:6px;">{{ si.study_identifier_uid }}</span>
-        <span style="font-size:0.9em;color:var(--am-text);">{{ si.text }}</span>
+    <li class="am-list-row">
+      <div class="am-flex-1 am-minw-0">
+        <span class="obj-uid am-mr-6">{{ si.study_identifier_uid }}</span>
+        <span class="am-text am-fz-90">{{ si.text }}</span>
         {% if si.org_name %}
-        <span style="font-size:0.78em;color:var(--am-text-muted);margin-left:6px;">
+        <span class="am-text-muted am-fz-78 am-ml-6">
           ({{ si.org_name }})
         </span>
         {% endif %}
@@ -17,7 +15,7 @@
       <form hx-post="/ui/soa/{{ soa_id }}/study-identifiers/{{ si.id }}/delete"
             hx-target="#study-identifiers-section"
             hx-swap="outerHTML"
-            style="flex-shrink:0;">
+            class="am-flex-shrink-0">
         <button type="submit"
                 class="am-btn am-btn-danger am-btn-xs"
                 title="Remove identifier">
@@ -33,28 +31,22 @@
   <form hx-post="/ui/soa/{{ soa_id }}/study-identifiers-add"
         hx-target="#study-identifiers-section"
         hx-swap="outerHTML"
-        style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">
-    <div style="flex:2;min-width:160px;">
-      <label class="am-field-label"
-             style="display:block;font-size:0.8em;color:var(--am-text-muted);
-                    margin-bottom:2px;">
+        class="fz-form-row" style="gap:6px;">
+    <div class="am-flex-2 am-minw-160">
+      <label class="am-field-label am-field-label-inline">
         Text <span class="am-required">*</span>
       </label>
       <input name="text"
              class="am-input"
-             placeholder="Identifier text (e.g. NCT12345678)"
-             style="width:100%;box-sizing:border-box;" />
+             placeholder="Identifier text (e.g. NCT12345678)" />
     </div>
-    <div style="flex:1;min-width:160px;">
-      <label class="am-field-label"
-             style="display:block;font-size:0.8em;color:var(--am-text-muted);
-                    margin-bottom:2px;">
+    <div class="am-field-grow">
+      <label class="am-field-label am-field-label-inline">
         Organization
       </label>
       {% if orgs %}
       <select name="scope_org_uid"
-              class="am-input"
-              style="width:100%;box-sizing:border-box;">
+              class="am-input">
         <option value="">— none —</option>
         {% for org in orgs %}
         <option value="{{ org.organization_uid }}">
@@ -65,13 +57,12 @@
       {% else %}
       <select name="scope_org_uid"
               class="am-input"
-              disabled
-              style="width:100%;box-sizing:border-box;">
+              disabled>
         <option value="">No organizations defined</option>
       </select>
       {% endif %}
     </div>
-    <div style="flex-shrink:0;padding-bottom:1px;">
+    <div class="am-flex-shrink-0 am-pb-1">
       <button type="submit"
               class="am-btn am-btn-info am-btn-sm">
         Add Identifier

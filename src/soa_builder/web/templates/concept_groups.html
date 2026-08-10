@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/" class="am-back-link">&larr; Home</a>
 </div>
 
@@ -9,14 +9,23 @@
 
 <h2>CDISC Concept Groups</h2>
 
-<div class="fz-create-card fz-create-card-full">
-  <h3>__PLACEHOLDER__</h3>
+<div id="bc-status-notice"
+     hx-get="/ui/concept-groups/bc-status"
+     hx-trigger="load"
+     hx-swap="outerHTML">
+</div>
+
+<div id="bc-explorer-root"
+     hx-get="/ui/concept-groups/bc-explorer"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+  <div class="bc-explorer-loading">Loading BC Grouping Explorer…</div>
 </div>
 
 <hr class="fz-section-divider" />
 
 <h2>Custom Concept Groups</h2>
-<p style="font-size:0.9em;color:var(--am-text-mid);">
+<p class="am-fz-90 am-text-mid">
   Custom Groups are global (not SOA-specific) and can be assigned to activities in any SoA.
   Biomedical Concepts added to a Custom Group via an activity assignment can be individually
   removed from that activity without affecting the group definition.
@@ -61,19 +70,18 @@
 {% endif %}
 
 {% for g in groups %}
-<div class="am-change-card" style="margin-bottom:10px;">
+<div class="am-change-card am-mb-10">
 
-  <div class="am-change-summary" style="cursor:default;">
+  <div class="am-change-summary am-cursor-default">
     <span class="am-change-uid">{{ g.concept_group_uid }}</span>
-    <span class="am-change-name"
-          style="cursor:pointer;color:var(--am-info);"
+    <span class="am-change-name am-cursor-pointer am-instance-label"
           onclick="toggleGroupBody('body-{{ g.id }}', 'arrow-{{ g.id }}')"
           title="Click to expand / collapse">
-      <span id="arrow-{{ g.id }}" style="font-size:0.7em;margin-right:3px;">▸</span>{{ g.name }}
-      {% if g.label %}<span style="font-weight:400;color:var(--am-text-mid);font-size:0.9em;"> — {{ g.label }}</span>{% endif %}
+      <span id="arrow-{{ g.id }}" class="am-lib-arrow">▸</span>{{ g.name }}
+      {% if g.label %}<span class="am-lib-label-suffix"> — {{ g.label }}</span>{% endif %}
     </span>
-    <span style="font-size:0.8em;color:var(--am-text-muted);">{{ g.concepts|length }} concept(s)</span>
-    <span style="margin-left:auto;display:flex;gap:6px;">
+    <span class="am-fz-80 am-text-muted">{{ g.concepts|length }} concept(s)</span>
+    <span class="am-ml-auto am-flex-row" style="gap:6px;">
       <button onclick="toggleEdit('edit-{{ g.id }}')" class="am-btn am-btn-slate am-btn-xs">Edit</button>
       <form action="/ui/concept-groups/{{ g.id }}/delete" method="post" class="am-inline-form"
             onsubmit="return confirm('Delete group \'{{ g.name }}\'? This will also remove it from all activities.');">
@@ -82,14 +90,14 @@
     </span>
   </div>
 
-  <div id="body-{{ g.id }}" style="display:none;padding:10px 14px;">
+  <div id="body-{{ g.id }}" class="am-lib-collapse-body" style="display:none;">
 
     {% if g.description %}
-    <p style="color:var(--am-text-mid);font-size:0.85em;margin:0 0 8px;">{{ g.description }}</p>
+    <p class="am-lib-group-desc">{{ g.description }}</p>
     {% endif %}
 
     <!-- Edit form -->
-    <div id="edit-{{ g.id }}" style="display:none;margin-bottom:10px;border-bottom:1px solid var(--am-border);padding-bottom:10px;">
+    <div id="edit-{{ g.id }}" class="am-mb-10 am-lib-edit-panel" style="display:none;">
       <form action="/ui/concept-groups/{{ g.id }}/update" method="post" class="fz-form-2row">
         <div class="am-field">
           <label class="am-field-label">Name <span class="am-required">*</span></label>
@@ -103,23 +111,22 @@
           <label class="am-field-label">Description</label>
           <input type="text" name="description" value="{{ g.description or '' }}" class="am-input-compact" />
         </div>
-        <button type="submit" class="am-btn am-btn-slate am-btn-sm" style="grid-row:2;align-self:center;">Save</button>
-        <button type="button" onclick="toggleEdit('edit-{{ g.id }}')" class="am-btn am-btn-slate am-btn-sm" style="grid-row:2;align-self:center;">Cancel</button>
+        <button type="submit" class="am-btn am-btn-slate am-btn-sm am-btn-grid-row2">Save</button>
+        <button type="button" onclick="toggleEdit('edit-{{ g.id }}')" class="am-btn am-btn-slate am-btn-sm am-btn-grid-row2">Cancel</button>
       </form>
     </div>
 
     <!-- Member concepts -->
-    <div style="margin-bottom:8px;">
+    <div class="am-mb-8">
       <h5 class="am-sections-header">Concepts</h5>
       {% if g.concepts %}
-      <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px;">
+      <div class="am-lib-stack-list" style="gap:3px;">
         {% for c in g.concepts %}
-        <span style="display:inline-flex;align-items:center;gap:4px;background:#e8f5e9;
-                     color:#1b5e20;padding:2px 10px;border-radius:999px;font-size:0.82em;align-self:flex-start;">
+        <span class="am-lib-concept-chip">
           <span title="{{ c.code }}">{{ c.title }}</span>
           <form action="/ui/concept-groups/{{ g.id }}/concepts/remove" method="post" class="am-inline-form">
             <input type="hidden" name="concept_code" value="{{ c.code }}" />
-            <button type="submit" style="border:none;background:transparent;color:#c62828;font-weight:bold;cursor:pointer;padding:0 2px;line-height:1;" title="Remove from group">×</button>
+            <button type="submit" class="am-lib-remove-btn" title="Remove from group">×</button>
           </form>
         </span>
         {% endfor %}
@@ -128,19 +135,19 @@
       <p class="am-no-changes">No concepts assigned to this group.</p>
       {% endif %}
 
-      <details class="am-add-change-panel" style="margin-top:4px;">
+      <details class="am-add-change-panel am-mt-4">
         <summary class="am-add-change-summary">+ Add concept</summary>
         <form action="/ui/concept-groups/{{ g.id }}/concepts/add" method="post"
-              style="padding:8px 14px 12px;display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;">
+              class="am-lib-add-form-row" style="gap:6px;flex-wrap:wrap;">
           <div class="am-field">
             <label class="am-field-label">Search</label>
             <input type="text" id="concept-search-{{ g.id }}" placeholder="Search concepts..."
-                   class="am-input-compact" style="width:200px;"
+                   class="am-input-compact am-w-200"
                    oninput="filterConceptSelect('{{ g.id }}', this.value)" />
           </div>
           <div class="am-field">
             <label class="am-field-label">Concept</label>
-            <select name="concept_code" id="concept-select-{{ g.id }}" class="am-select-compact" style="max-width:300px;">
+            <select name="concept_code" id="concept-select-{{ g.id }}" class="am-select-compact am-maxw-300">
               <option value="" disabled selected>Select concept...</option>
               {% for c in concepts %}
               <option value="{{ c.code }}">{{ c.title }}</option>
@@ -152,13 +159,13 @@
       </details>
 
       {% if categories %}
-      <details class="am-add-change-panel" style="margin-top:4px;">
+      <details class="am-add-change-panel am-mt-4">
         <summary class="am-add-change-summary">+ Add all from CDISC category</summary>
         <form action="/ui/concept-groups/{{ g.id }}/concepts/add-category" method="post"
-              style="padding:8px 14px 12px;display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;">
+              class="am-lib-add-form-row" style="gap:6px;flex-wrap:wrap;">
           <div class="am-field">
             <label class="am-field-label">Category</label>
-            <select name="category" class="am-select-compact" style="max-width:300px;">
+            <select name="category" class="am-select-compact am-maxw-300">
               <option value="" disabled selected>Select category...</option>
               {% for cat in categories %}
               <option value="{{ cat.name }}">{{ cat.title or cat.name }}</option>
@@ -172,17 +179,16 @@
     </div>
 
     <!-- Member surrogates -->
-    <div style="border-top:1px solid var(--am-border);padding-top:8px;">
+    <div class="am-lib-divider-top">
       <h5 class="am-sections-header">BC Surrogates</h5>
       {% if g.surrogates %}
-      <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:6px;">
+      <div class="am-lib-stack-list" style="gap:3px;">
         {% for s in g.surrogates %}
-        <span style="display:inline-flex;align-items:center;background:#fff3e0;color:#4e342e;
-                     padding:2px 8px;border-radius:999px;font-size:0.8em;gap:4px;align-self:flex-start;">
+        <span class="am-lib-surrogate-chip">
           <span title="SOA: {{ s.soa_name }} | {{ s.surrogate_uid }}">[{{ s.soa_name }}] {{ s.label or s.name }}</span>
           <form action="/ui/concept-groups/{{ g.id }}/surrogates/remove" method="post" class="am-inline-form">
             <input type="hidden" name="surrogate_id" value="{{ s.id }}" />
-            <button type="submit" style="border:none;background:transparent;color:#c62828;font-weight:bold;cursor:pointer;padding:0 2px;line-height:1;" title="Remove">×</button>
+            <button type="submit" class="am-lib-remove-btn" title="Remove">×</button>
           </form>
         </span>
         {% endfor %}
@@ -193,13 +199,13 @@
 
       {% set _available_for_group = all_unassigned_surrogates if all_unassigned_surrogates is defined else [] %}
       {% if _available_for_group %}
-      <details class="am-add-change-panel" style="margin-top:4px;">
+      <details class="am-add-change-panel am-mt-4">
         <summary class="am-add-change-summary">+ Add surrogate</summary>
         <form action="/ui/concept-groups/{{ g.id }}/surrogates/add" method="post"
-              style="padding:8px 14px 12px;display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;">
+              class="am-lib-add-form-row" style="gap:6px;flex-wrap:wrap;">
           <div class="am-field">
             <label class="am-field-label">Surrogate</label>
-            <select name="surrogate_id" class="am-select-compact" style="max-width:340px;">
+            <select name="surrogate_id" class="am-select-compact am-maxw-340">
               <option value="" disabled selected>Select surrogate...</option>
               {% for s in _available_for_group %}
               <option value="{{ s.id }}">[{{ s.soa_name }}] {{ s.label or s.name }}</option>

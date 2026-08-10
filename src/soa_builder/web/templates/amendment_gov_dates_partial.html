@@ -5,8 +5,8 @@
       <th>Name</th>
       <th>Type</th>
       <th>Date</th>
-      <th style="width:1%;white-space:nowrap;">Save</th>
-      <th style="width:1%;white-space:nowrap;">Delete</th>
+      <th class="am-td-shrink">Save</th>
+      <th class="am-td-shrink">Delete</th>
     </tr>
     {% for d in gov_dates %}
     <tr>
@@ -21,15 +21,15 @@
       </td>
       <td>
         <input name="date_value" type="date" value="{{ d.date_value }}"
-               required class="am-input-compact" style="width:130px;" />
+               required class="am-input-compact am-w-130" />
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-slate am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-date/{{ d.id }}/update"
                 hx-target="#gov-dates-section" hx-swap="outerHTML"
                 hx-include="closest tr">Save</button>
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-danger am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-date/{{ d.id }}/delete"
                 hx-target="#gov-dates-section" hx-swap="outerHTML"
@@ -37,17 +37,17 @@
       </td>
     </tr>
     <tr>
-      <td colspan="6" style="padding:0 11px 12px 30px; background:var(--am-surface); border-bottom:2px solid var(--am-border-med);">
-        <div style="font-size:0.72em; font-weight:700; color:var(--am-text-mid); text-transform:uppercase; letter-spacing:0.07em; margin:8px 0 4px;">Geographic Scopes</div>
-        <table class="fz-table" style="font-size:0.82em;">
+      <td colspan="6" class="am-subsection-td-bordered-sm">
+        <div class="am-subsection-header">Geographic Scopes</div>
+        <table class="fz-table am-fz-82">
           <tr class="fz-thead-row">
             <th>Scope UID</th>
-            <th style="width:1%;white-space:nowrap;">Unlink</th>
+            <th class="am-td-shrink">Unlink</th>
           </tr>
           {% for s_uid in d.scope_uids %}
           <tr>
             <td>{{ s_uid }}</td>
-            <td style="width:1%;white-space:nowrap;">
+            <td class="am-td-shrink">
               <button type="button" class="am-btn am-btn-danger am-btn-sm"
                       hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-date/{{ d.id }}/unlink-scope/{{ s_uid }}"
                       hx-target="#gov-dates-section" hx-swap="outerHTML"
@@ -61,8 +61,8 @@
         {% if geo_scopes %}
         <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-date/{{ d.id }}/link-scope"
               hx-target="#gov-dates-section" hx-swap="outerHTML"
-              style="display:flex; gap:6px; align-items:flex-end; margin-top:8px; padding-top:8px; border-top:1px dashed var(--am-border-med);">
-          <select name="scope_uid" required class="am-select-compact" style="min-width:160px;">
+              class="am-inline-add-row" style="gap:6px;">
+          <select name="scope_uid" required class="am-select-compact am-minw-160">
             <option value="" disabled selected>— select scope —</option>
             {% for s in geo_scopes %}
             {% if s.scope_uid not in d.scope_uids %}
@@ -80,7 +80,7 @@
     {% endfor %}
   </table>
 
-  <details class="am-add-change-panel" style="margin-top:10px;">
+  <details class="am-add-change-panel am-mt-10">
     <summary class="am-add-change-summary">+ Add Governance Date</summary>
     <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/governance-dates/add"
           hx-target="#gov-dates-section" hx-swap="outerHTML"

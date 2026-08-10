@@ -5,27 +5,27 @@
 <strong>Index:</strong> {{ index }} of {{ total }}<br/>
 {% if href %}<strong>API HREF:</strong> <a href="{{ href }}" target="_blank" rel="noopener">{{ href }}</a>{% else %}<em>No href available</em>{% endif %}</p>
 {% if missing_key %}
-<div style="padding:0.5em;margin:0.5em 0;border:1px solid #cc9;background:#ffd;color:#660;font-size:0.85em;">
+<div class="am-lib-key-notice">
   <strong>Notice:</strong> No API key detected; set <code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code> to retrieve live JSON.
 </div>
 {% endif %}
 {% if error %}
-<div style="padding:0.5em;margin:0.5em 0;border:1px solid #c33;background:#fee;color:#900;font-size:0.85em;">
+<div class="am-lib-error-notice-em">
   <strong>Error:</strong> {{ error }}<br/>
-  {% if raw_text_snippet %}<details style="margin-top:0.5em;">
+  {% if raw_text_snippet %}<details class="am-mt-05em">
     <summary>Raw response snippet</summary>
-    <pre style="max-height:200px;overflow:auto;white-space:pre-wrap;">{{ raw_text_snippet }}</pre>
+    <pre class="am-lib-raw-snippet">{{ raw_text_snippet }}</pre>
   </details>{% endif %}
 </div>
 {% elif pretty_json %}
 
 {% if summary is defined and summary %}
-<h3 style="margin-top:1em;">Summary</h3>
-<table style="border-collapse:collapse;font-size:0.9em;margin-bottom:1em;">
+<h3 class="am-mt-1em">Summary</h3>
+<table class="am-lib-kv-table">
   {% for key, val in summary.items() %}
   <tr>
-    <td style="padding:4px 12px 4px 0;font-weight:600;white-space:nowrap;vertical-align:top;">{{ key }}</td>
-    <td style="padding:4px 0;">{{ val }}</td>
+    <td class="am-lib-summary-key">{{ key }}</td>
+    <td class="am-lib-summary-val">{{ val }}</td>
   </tr>
   {% endfor %}
 </table>
@@ -33,42 +33,42 @@
 
 {% if variables is defined and variables %}
 <h3>Variables</h3>
-<table style="border-collapse:collapse;width:100%;font-size:0.85em;">
+<table class="am-lib-table">
   <thead>
-    <tr style="background:#f2f2f2;">
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Name</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Data Element Concept</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Ordinal</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Role</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Data Type</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Length</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Relationship</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Mandatory Variable</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Mandatory Value</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Origin Type</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Origin Source</th>
-      <th style="border:1px solid #ccc;padding:4px 8px;text-align:left;">Assigned Value / Codelist</th>
+    <tr class="am-lib-thead-row">
+      <th class="am-lib-th">Name</th>
+      <th class="am-lib-th">Data Element Concept</th>
+      <th class="am-lib-th">Ordinal</th>
+      <th class="am-lib-th">Role</th>
+      <th class="am-lib-th">Data Type</th>
+      <th class="am-lib-th">Length</th>
+      <th class="am-lib-th">Relationship</th>
+      <th class="am-lib-th">Mandatory Variable</th>
+      <th class="am-lib-th">Mandatory Value</th>
+      <th class="am-lib-th">Origin Type</th>
+      <th class="am-lib-th">Origin Source</th>
+      <th class="am-lib-th">Assigned Value / Codelist</th>
     </tr>
   </thead>
   <tbody>
     {% for v in variables %}
     <tr>
-      <td style="border:1px solid #ccc;padding:4px 8px;font-weight:600;">{{ v.name or '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;">{{ v.dataElementConceptId or '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;text-align:center;">{{ v.ordinal or '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;">{{ v.role or '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;">{{ v.dataType or '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;text-align:center;">{{ v.length or '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;">
+      <td class="am-lib-td-strong">{{ v.name or '' }}</td>
+      <td class="am-lib-td">{{ v.dataElementConceptId or '' }}</td>
+      <td class="am-lib-td-center">{{ v.ordinal or '' }}</td>
+      <td class="am-lib-td">{{ v.role or '' }}</td>
+      <td class="am-lib-td">{{ v.dataType or '' }}</td>
+      <td class="am-lib-td-center">{{ v.length or '' }}</td>
+      <td class="am-lib-td">
         {%- if v.relationship is defined and v.relationship -%}
           {{ v.relationship.subject or '' }} {{ v.relationship.linkingPhrase or '' }} {{ v.relationship.predicateTerm or '' }} {{ v.relationship.object or '' }}
         {%- endif -%}
       </td>
-      <td style="border:1px solid #ccc;padding:4px 8px;text-align:center;">{{ v.mandatoryVariable if v.mandatoryVariable is defined else '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;text-align:center;">{{ v.mandatoryValue if v.mandatoryValue is defined else '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;">{{ v.originType or '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;">{{ v.originSource or '' }}</td>
-      <td style="border:1px solid #ccc;padding:4px 8px;">
+      <td class="am-lib-td-center">{{ v.mandatoryVariable if v.mandatoryVariable is defined else '' }}</td>
+      <td class="am-lib-td-center">{{ v.mandatoryValue if v.mandatoryValue is defined else '' }}</td>
+      <td class="am-lib-td">{{ v.originType or '' }}</td>
+      <td class="am-lib-td">{{ v.originSource or '' }}</td>
+      <td class="am-lib-td">
         {%- if v.assignedTerm is defined and v.assignedTerm -%}
           {{ v.assignedTerm.value or v.assignedTerm.conceptId or '' }}
         {%- elif v.valueList is defined and v.valueList -%}
@@ -83,16 +83,16 @@
 </table>
 {% endif %}
 
-<div style="margin:0.75em 0;">
+<div class="am-my-075em">
   <details>
-    <summary style="cursor:pointer;font-weight:bold;">Raw JSON</summary>
-    <pre style="max-height:600px;overflow:auto; font-size:0.8em; background:#f7f7f7; padding:0.75em; border:1px solid #ccc;">{{ pretty_json }}</pre>
+    <summary class="am-modal-summary">Raw JSON</summary>
+    <pre class="am-lib-raw-json">{{ pretty_json }}</pre>
   </details>
 </div>
 {% else %}
 <p><em>No JSON payload available.</em></p>
 {% endif %}
-<p style="margin-top:1em;">
+<p class="am-mt-1em">
   {% if back_url %}<a href="{{ back_url }}">Back to Activities</a> | {% endif %}
   <a href="/ui/sdtm/specializations">Back to list</a>
 </p>

@@ -5,13 +5,13 @@
       <th>Role</th>
       <th>Reason</th>
       <th>Other Reason</th>
-      <th style="width:1%;white-space:nowrap;">Save</th>
-      <th style="width:1%;white-space:nowrap;">Delete</th>
+      <th class="am-td-shrink">Save</th>
+      <th class="am-td-shrink">Delete</th>
     </tr>
     {% if primary_reason %}
     <tr>
       <td class="fz-td-version"><span class="obj-uid">{{ primary_reason.reason_uid }}</span></td>
-      <td><span class="am-substantial-yes" style="font-size:0.78em;">Primary</span></td>
+      <td><span class="am-substantial-yes am-fz-78">Primary</span></td>
       <td>
         <select name="code" required class="am-select-compact">
           {% for code, sv in reason_terms.items()|sort(attribute='1') %}
@@ -23,19 +23,19 @@
         <input name="other_reason" value="{{ primary_reason.other_reason or '' }}"
                class="am-input-compact" placeholder="Required if Other" />
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-slate am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/reason/{{ primary_reason.id }}/update"
                 hx-target="#reasons-section" hx-swap="outerHTML"
                 hx-include="closest tr">Save</button>
       </td>
-      <td style="width:1%;white-space:nowrap;"></td>
+      <td class="am-td-shrink"></td>
     </tr>
     {% endif %}
     {% for r in secondary_reasons %}
     <tr>
       <td class="fz-td-version"><span class="obj-uid">{{ r.reason_uid }}</span></td>
-      <td><span class="am-substantial-no" style="font-size:0.78em;">Secondary</span></td>
+      <td><span class="am-substantial-no am-fz-78">Secondary</span></td>
       <td>
         <select name="code" required class="am-select-compact">
           {% for code, sv in reason_terms.items()|sort(attribute='1') %}
@@ -47,13 +47,13 @@
         <input name="other_reason" value="{{ r.other_reason or '' }}"
                class="am-input-compact" placeholder="Required if Other" />
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-slate am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/reason/{{ r.id }}/update"
                 hx-target="#reasons-section" hx-swap="outerHTML"
                 hx-include="closest tr">Save</button>
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-danger am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/reason/{{ r.id }}/delete"
                 hx-target="#reasons-section" hx-swap="outerHTML"
@@ -67,7 +67,7 @@
     {% endfor %}
   </table>
 
-  <details class="am-add-change-panel" style="margin-top:10px;">
+  <details class="am-add-change-panel am-mt-10">
     <summary class="am-add-change-summary">+ Add Secondary Reason</summary>
     <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/reasons/add"
           hx-target="#reasons-section" hx-swap="outerHTML"

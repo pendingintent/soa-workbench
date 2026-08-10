@@ -3,10 +3,10 @@
 
 <h2 class="am-page-title">Study Interventions</h2>
 {% if study_label %}
-<p style="color:var(--am-text-mid);margin-bottom:8px;">{{ study_label }}</p>
+<p class="am-text-mid am-mb-8">{{ study_label }}</p>
 {% endif %}
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
@@ -62,12 +62,10 @@
 
     <div class="am-field am-field-span">
       <label class="am-field-label">Minimum Response Duration</label>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div class="am-flex-center-row am-flex-wrap" style="gap:8px;">
         <input name="mrd_value" type="number" step="any" min="0"
-               class="am-input" placeholder="Value"
-               style="max-width:120px;" />
-        <select name="mrd_unit_code" class="am-select"
-                style="flex:1;min-width:180px;"
+               class="am-input am-maxw-120" placeholder="Value" />
+        <select name="mrd_unit_code" class="am-select am-flex-1 am-minw-180"
                 onchange="syncDecode(this,'si-mrd-unit-decode')">
           <option value="">— select unit —</option>
           {% for opt in unit_options %}
@@ -78,7 +76,7 @@
       </div>
     </div>
 
-    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+    <div class="am-field-span am-flex-center-row" style="gap:8px;">
       <button type="submit" class="am-btn am-btn-info">Add Intervention</button>
     </div>
 

@@ -17,34 +17,34 @@
       <td class="fz-td-version"><span class="obj-uid">{{ p.person_name_uid }}</span></td>
       <td>
         <input name="name" value="{{ p.name }}" required
-               class="am-input-compact" style="width:110px;" />
+               class="am-input-compact am-w-110" />
       </td>
       <td>
         <input name="job_title" value="{{ p.job_title or '' }}"
-               placeholder="Job title" class="am-input-compact" style="width:120px;" />
+               placeholder="Job title" class="am-input-compact am-w-120" />
       </td>
       <td>
         <input name="text" value="{{ p.text or '' }}" placeholder="Text"
-               class="am-input-compact" style="width:120px;" />
+               class="am-input-compact am-w-120" />
       </td>
       <td>
         <input name="family_name" value="{{ p.family_name or '' }}"
-               placeholder="Family name" class="am-input-compact" style="width:90px;" />
+               placeholder="Family name" class="am-input-compact am-w-90" />
       </td>
       <td>
         <input name="given_names"
                value="{{ p.given_names | join(', ') if p.given_names else '' }}"
-               placeholder="Given names" class="am-input-compact" style="width:90px;" />
+               placeholder="Given names" class="am-input-compact am-w-90" />
       </td>
       <td>
         <input name="prefixes"
                value="{{ p.prefixes | join(', ') if p.prefixes else '' }}"
-               placeholder="e.g. Dr" class="am-input-compact" style="width:55px;" />
+               placeholder="e.g. Dr" class="am-input-compact am-w-55" />
       </td>
       <td>
         <input name="suffixes"
                value="{{ p.suffixes | join(', ') if p.suffixes else '' }}"
-               placeholder="e.g. MD" class="am-input-compact" style="width:55px;" />
+               placeholder="e.g. MD" class="am-input-compact am-w-55" />
       </td>
       <td>
         <select name="organization_uid" class="am-select-compact">
@@ -57,7 +57,7 @@
           {% endfor %}
         </select>
       </td>
-      <td class="am-td-center" style="white-space:nowrap;">
+      <td class="am-td-center am-nowrap">
         <button type="button" class="am-btn am-btn-slate am-btn-xs"
                 hx-post="/ui/soa/{{ soa_id }}/persons/{{ p.id }}/update"
                 hx-target="#persons-section"
@@ -66,7 +66,7 @@
         <form hx-post="/ui/soa/{{ soa_id }}/persons/{{ p.id }}/delete"
               hx-target="#persons-section"
               hx-swap="outerHTML"
-              style="display:inline;">
+              class="am-inline-form">
           <button type="submit" class="am-btn am-btn-danger am-btn-xs">&times;</button>
         </form>
       </td>
@@ -76,7 +76,7 @@
     {% endfor %}
   </table>
 
-  <hr style="margin:14px 0 10px;border:none;border-top:1px solid var(--am-border,#ddd);" />
+  <hr class="am-subsection-divider" />
 
   <form hx-post="/ui/soa/{{ soa_id }}/persons-add"
         hx-target="#persons-section"
@@ -138,7 +138,7 @@
       </select>
     </div>
 
-    <div class="am-field-span" style="display:flex;gap:8px;align-items:center;">
+    <div class="am-field-span am-flex-center-row" style="gap:8px;">
       <button type="submit" class="am-btn am-btn-info am-btn-sm">
         Add Person Name
       </button>

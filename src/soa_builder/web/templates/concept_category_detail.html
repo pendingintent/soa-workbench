@@ -3,7 +3,7 @@
 <h2>Biomedical Concepts in Category: {{ category }}</h2>
 <p>
   <a href="/ui/concept_categories/view?name={{ category }}&force=1">Refresh (bypass cache)</a>
-  {% if force %}<small style="color:#555;">Cache bypassed</small>{% endif %}
+  {% if force %}<small class="am-color-subtle">Cache bypassed</small>{% endif %}
   | <a href="/ui/concept_categories">Back to Categories</a>
 </p>
 <p>Total concepts: <strong>{{ count }}</strong></p>
@@ -12,15 +12,15 @@
 <table border="1" cellspacing="0" cellpadding="4" id="conceptsTable">
   <thead>
     <tr>
-      <th style="text-align:left;">Title</th>
-      <th style="text-align:center;">Biomedical Concept Code</th>
+      <th class="am-td-left">Title</th>
+      <th class="am-td-center">Biomedical Concept Code</th>
     </tr>
   </thead>
   <tbody>
   {% for r in rows %}
     <tr>
       <td>{{ r.title }}</td>
-      <td style="text-align:center;">
+      <td class="am-td-center">
         {% if r.code %}
           <a href="/ui/concepts/{{ r.code }}">{{ r.code }}</a>
         {% else %}<em>n/a</em>{% endif %}

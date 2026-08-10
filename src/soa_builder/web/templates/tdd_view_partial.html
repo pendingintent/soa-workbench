@@ -1,21 +1,20 @@
-<div id="tdd-preview" style="margin-top:20px;">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-    <h3 style="margin:0;font-size:1em;color:var(--am-text);">
+<div id="tdd-preview" class="am-mt-20">
+  <div class="am-flex-center-row am-mb-8" style="gap:12px;">
+    <h3 class="am-m-0 am-text am-fz-100">
       {{ domain }} &mdash; {{ rows|length }} record(s)
     </h3>
     <button onclick="document.getElementById('tdd-preview').outerHTML='<div id=\'tdd-preview\'></div>'"
-            class="am-btn am-btn-slate am-btn-xs"
-            style="margin-left:auto;">
+            class="am-btn am-btn-slate am-btn-xs am-ml-auto">
       Close
     </button>
   </div>
   {% if rows %}
-  <div style="overflow-x:auto;">
-    <table class="am-data-table" style="font-size:0.78em;width:100%;">
+  <div class="am-overflow-x-auto">
+    <table class="am-data-table am-fz-78 am-w-full">
       <thead>
         <tr>
           {% for col in fieldnames %}
-          <th style="white-space:nowrap;">{{ col }}</th>
+          <th class="am-nowrap">{{ col }}</th>
           {% endfor %}
         </tr>
       </thead>
@@ -31,7 +30,7 @@
     </table>
   </div>
   {% else %}
-  <p style="color:var(--am-text-muted);font-style:italic;font-size:0.85em;">
+  <p class="am-empty-note-italic">
     No records generated for this domain.
   </p>
   {% endif %}

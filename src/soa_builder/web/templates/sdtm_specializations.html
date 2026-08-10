@@ -1,36 +1,36 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>SDTM Dataset Specializations (<span id="specTotal">{{ count }}</span>)</h2>
-<p style="font-size:0.9em;color:var(--am-text-mid);">
+<p class="am-fz-90 am-text-mid">
   Data sourced from CDISC Library <code>/mdr/specializations/sdtm/datasetspecializations</code>.
 </p>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/" class="am-back-link">&larr; Home</a>
 </div>
 
 {% if last_error %}
-<div style="padding:8px 12px;margin-bottom:12px;border:1px solid #c33;background:#fee;color:#900;font-size:0.85em;border-radius:4px;">
+<div class="am-legacy-error-notice">
   <strong>Fetch diagnostics:</strong> Status {{ last_status }}{% if last_url %} from <code>{{ last_url }}</code>{% endif %}.<br/>
   Error: {{ last_error }}<br/>
   {% if missing_key %}<em>No API key detected — set <code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code>.</em>{% endif %}
 </div>
 {% elif missing_key %}
-<div style="padding:8px 12px;margin-bottom:12px;border:1px solid #cc9;background:#ffd;color:#660;font-size:0.85em;border-radius:4px;">
+<div class="am-legacy-warn-notice">
   <strong>Notice:</strong> No API key provided; response may be empty or unauthorized. Set <code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code>.
 </div>
 {% endif %}
 
 <hr class="fz-section-divider" />
 
-<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<div class="am-mb-12 am-flex-center-row" style="gap:10px;flex-wrap:wrap;">
   <div class="am-field">
     <label class="am-field-label" for="specSearch">Search</label>
     <input id="specSearch" type="text" placeholder="Filter specializations..."
-           class="fz-version-input" style="width:300px;" oninput="filterSpecs()" />
+           class="fz-version-input am-w-300" oninput="filterSpecs()" />
   </div>
-  <span id="searchCount" style="font-size:0.84em;color:var(--am-text-mid);margin-top:18px;"></span>
-  <div style="margin-top:18px;display:flex;gap:8px;">
+  <span id="searchCount" class="am-lib-search-count"></span>
+  <div class="am-mt-18 am-flex-row" style="gap:8px;">
     <form action="/ui/sdtm/specializations/refresh" method="post" class="am-inline-form">
       <button type="submit" class="am-btn am-btn-slate am-btn-sm">&#x21bb; Refresh</button>
     </form>
@@ -56,7 +56,7 @@
 </table>
 {% else %}
 <p class="fz-no-data">No SDTM dataset specializations available.</p>
-<ul style="font-size:0.85em;color:var(--am-text-mid);margin-top:6px;">
+<ul class="am-lib-help-list">
   <li>Verify API key env (<code>CDISC_SUBSCRIPTION_KEY</code> or <code>CDISC_API_KEY</code>).</li>
   <li>If testing offline, export <code>CDISC_SDTM_SPECIALIZATIONS_JSON</code> with sample JSON.</li>
   <li>Confirm network access to the CDISC Library domain.</li>

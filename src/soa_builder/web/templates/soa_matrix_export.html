@@ -9,6 +9,7 @@
     /* Export-only overrides */
     body { font-size: 0.82em; padding: 18px; }
     .matrix td.cell { cursor: default; }
+    .matrix { font-size: 0.78em; }
     details > summary { cursor: pointer; }
     .matrix-container { margin-bottom: 32px; }
     @media print {
@@ -18,16 +19,16 @@
   </style>
 </head>
 <body>
-  <h2 style="margin-bottom:4px;">
+  <h2 class="am-mb-4">
     SoA Matrix:
     {{ study.study_label or study.name or ("SoA " ~ soa_id) }}
   </h2>
   {% if study.study_id %}
-  <p style="margin:0 0 4px 0;color:var(--am-text-mid);font-size:0.85em;">
+  <p class="am-export-subtitle">
     Study ID: {{ study.study_id }}
   </p>
   {% endif %}
-  <p style="margin:0 0 16px 0;color:var(--am-text-muted);font-size:0.78em;">
+  <p class="am-export-meta">
     Generated {{ generated_at }}
   </p>
 
@@ -36,18 +37,18 @@
   {% set tl_instances = instances_by_tl.get(tl_uid, []) %}
   {% if tl_instances %}
   <div class="matrix-container">
-    <h3 style="margin-bottom:6px;">
+    <h3 class="am-mb-6">
       {{ tl.name }}{% if tl.main_timeline %}
-      <span style="font-size:0.7em;color:var(--am-text-muted);font-weight:normal;">
+      <span class="am-export-main-tag">
         (main timeline)
       </span>{% endif %}
     </h3>
-    <div style="overflow-x:auto;">
-    <table class="matrix" style="font-size:0.78em;">
+    <div class="am-overflow-x-auto">
+    <table class="matrix">
       <!-- Epoch row -->
       <tr class="matrix-epoch-row">
         <th></th>
-        <th style="text-align:right;font-size:0.50em;">Epoch:-&gt;</th>
+        <th class="am-matrix-label-th">Epoch:-&gt;</th>
         {% set prev_epoch = namespace(value=None, count=0, superscript=None) %}
         {% for inst in tl_instances %}
           {% set cur_epoch = inst.epoch_label if inst.epoch_label else inst.epoch_name %}
@@ -55,7 +56,7 @@
             {% set prev_epoch.count = prev_epoch.count + 1 %}
           {% else %}
             {% if prev_epoch.value is not none %}
-              <th style="text-align:center;font-size:0.50em;"
+              <th class="am-matrix-value-th"
                   colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}{% if prev_epoch.superscript %}<sup>{{ prev_epoch.superscript }}</sup>{% endif %}</th>
             {% endif %}
             {% set prev_epoch.value = cur_epoch %}
@@ -63,7 +64,7 @@
             {% set prev_epoch.superscript = inst.epoch_superscript %}
           {% endif %}
           {% if loop.last %}
-            <th style="text-align:center;font-size:0.50em;"
+            <th class="am-matrix-value-th"
                 colspan="{{ prev_epoch.count }}">{{ prev_epoch.value }}{% if prev_epoch.superscript %}<sup>{{ prev_epoch.superscript }}</sup>{% endif %}</th>
           {% endif %}
         {% endfor %}
@@ -71,9 +72,9 @@
       <!-- Encounter row -->
       <tr class="matrix-encounter-row">
         <th></th>
-        <th style="text-align:right;font-size:0.50em;">Encounter:-&gt;</th>
+        <th class="am-matrix-label-th">Encounter:-&gt;</th>
         {% for inst in tl_instances %}
-        <th style="text-align:center;font-size:0.50em;">
+        <th class="am-matrix-value-th">
           {{ inst.encounter_label or inst.encounter_name or '' }}{% if inst.encounter_superscript %}<sup>{{ inst.encounter_superscript }}</sup>{% endif %}
         </th>
         {% endfor %}
@@ -81,19 +82,19 @@
       <!-- Instance row -->
       <tr class="matrix-instance-row">
         <th></th>
-        <th style="text-align:right;font-size:0.50em;">Instance:-&gt;</th>
+        <th class="am-matrix-label-th">Instance:-&gt;</th>
         {% for inst in tl_instances %}
-        <th style="min-width:70px;vertical-align:top;text-align:center;">
-          <div style="color:#1976d2;">{{ inst.label or inst.name }}</div>
+        <th class="am-matrix-instance-th">
+          <div class="am-instance-label">{{ inst.label or inst.name }}</div>
         </th>
         {% endfor %}
       </tr>
       <!-- Study Day row -->
       <tr class="matrix-study-day-row">
         <th></th>
-        <th style="text-align:right;font-size:0.50em;">Study Day:-&gt;</th>
+        <th class="am-matrix-label-th">Study Day:-&gt;</th>
         {% for inst in tl_instances %}
-        <th style="text-align:center;font-size:0.50em;">
+        <th class="am-matrix-value-th">
           {{ inst.study_day or '' }}
         </th>
         {% endfor %}
@@ -101,9 +102,9 @@
       <!-- Timing row -->
       <tr class="matrix-timing-label-row">
         <th></th>
-        <th style="text-align:right;font-size:0.50em;">Timing:-&gt;</th>
+        <th class="am-matrix-label-th">Timing:-&gt;</th>
         {% for inst in tl_instances %}
-        <th style="text-align:center;font-size:0.50em;">
+        <th class="am-matrix-value-th">
           {{ inst.timing_label or inst.timing_name or '' }}
         </th>
         {% endfor %}
@@ -111,9 +112,9 @@
       <!-- Visit Window row -->
       <tr class="matrix-visit-window-row">
         <th></th>
-        <th style="text-align:right;font-size:0.50em;">Visit Window:-&gt;</th>
+        <th class="am-matrix-label-th">Visit Window:-&gt;</th>
         {% for inst in tl_instances %}
-        <th style="text-align:center;font-size:0.50em;">
+        <th class="am-matrix-value-th">
           {{ inst.window_label or '' }}
         </th>
         {% endfor %}
@@ -121,9 +122,9 @@
       <!-- Column header row -->
       <tr>
         <th>Activity</th>
-        <th style="min-width:220px;">Concepts</th>
+        <th class="am-minw-220">Concepts</th>
         {% for inst in tl_instances %}
-        <th style="min-width:70px;"></th>
+        <th class="am-minw-70"></th>
         {% endfor %}
       </tr>
       <!-- Activity rows -->
@@ -135,26 +136,22 @@
           {% set act_surrogates = surrogates_map.get(act.id, []) %}
           {% if act_concepts or act_surrogates %}
           <details>
-            <summary class="concept-count-pill"
-                     style="font-size:0.8em;list-style:none;cursor:pointer;
-                            display:inline-block;">
+            <summary class="concept-count-pill am-export-concept-summary">
               {{ act_concepts | length + act_surrogates | length }}
               concept(s) &#9656;
             </summary>
-            <ul style="margin:4px 0 0 8px;padding:0;list-style:none;">
+            <ul class="am-export-concept-list">
               {% for c in act_concepts %}
-              <li style="background:#eef;border-radius:3px;margin:2px 0;
-                         padding:2px 6px;font-size:0.8em;"
+              <li class="am-export-concept-item"
                   title="{{ c.code }}">
                 {{ c.title }}
-                <span style="color:var(--am-text-muted);">({{ c.code }})</span>
+                <span class="am-color-muted">({{ c.code }})</span>
               </li>
               {% endfor %}
               {% for s in act_surrogates %}
-              <li style="background:#fff3e0;border-radius:3px;margin:2px 0;
-                         padding:2px 6px;font-size:0.8em;">
+              <li class="am-export-surrogate-item">
                 [S] {{ s.label or s.name }}
-                <span style="color:var(--am-text-muted);">
+                <span class="am-color-muted">
                   ({{ s.surrogate_uid }})
                 </span>
               </li>
@@ -162,13 +159,13 @@
             </ul>
           </details>
           {% else %}
-          <span style="color:var(--am-text-muted);font-size:0.75em;">—</span>
+          <span class="am-export-empty-note">—</span>
           {% endif %}
         </td>
         {% for inst in tl_instances %}
         {% set status = cell_map.get((inst.id, act.id), '') %}
         {% set sup = superscript_map.get((inst.id, act.id)) %}
-        <td class="cell" style="text-align:center;">
+        <td class="cell am-td-center">
           {{ status or '' }}{% if sup %}<sup>{{ sup }}</sup>{% endif %}
         </td>
         {% endfor %}
@@ -181,12 +178,10 @@
   {% endfor %}
 
   {% if footnotes %}
-  <div class="footnotes-display"
-       style="margin-top:18px;font-size:0.85em;
-              border-top:1px solid var(--am-border);padding-top:8px;">
+  <div class="footnotes-display am-export-footnotes">
     <strong>Footnotes</strong>
     {% for fn in footnotes %}
-    <div style="margin-top:4px;">
+    <div class="am-mt-4">
       <strong>{{ fn.name }}</strong>: {{ fn.text | safe }}
     </div>
     {% endfor %}

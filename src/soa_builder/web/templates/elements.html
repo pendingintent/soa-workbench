@@ -2,7 +2,7 @@
 {% block content %}
 <h2>Elements for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
@@ -44,7 +44,7 @@
     {% if interventions %}
     <div class="am-field">
       <label class="am-field-label">Interventions</label>
-      <select name="intervention_ids" multiple class="fz-version-input" style="min-height:80px;">
+      <select name="intervention_ids" multiple class="fz-version-input am-minh-80">
         {% for iv in interventions %}
         <option value="{{ iv.intervention_uid }}">{{ iv.name }}</option>
         {% endfor %}
@@ -93,7 +93,7 @@
         </select>
       </td>
       <td>
-        <select name="intervention_ids" multiple class="am-select-compact" style="min-height:60px;min-width:140px;">
+        <select name="intervention_ids" multiple class="am-select-compact am-minh-60 am-minw-140">
           {% for iv in (interventions or []) %}
           <option value="{{ iv.intervention_uid }}"
             {% if iv.intervention_uid in (e.intervention_ids or []) %}selected{% endif %}>

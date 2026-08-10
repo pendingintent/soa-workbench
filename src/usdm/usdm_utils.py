@@ -3,9 +3,9 @@ import os
 import functools
 import requests
 import logging
-from urllib.parse import urlparse
 from typing import List, Dict, Optional, Any, Tuple
 
+from soa_builder.web.codelist_config import EPOCH_TYPE_CODELIST
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href
 
@@ -189,6 +189,19 @@ def _get_dss_response_codes(
 
 
 @functools.lru_cache(maxsize=1)
+def _get_latest_sdtmct_version() -> str:
+    """Return the latest SDTM CT package date string (e.g. '2025-09-26').
+
+    Wraps ``_get_latest_sdtm_ct_href`` (which reads ``_links.packages``
+    from the CDISC Library packages endpoint) and strips the
+    ``sdtmct-`` prefix, so every SDTM-CT-derived ``codeSystemVersion``
+    in the USDM export is pinned to the same, current package.
+    Falls back to '' on any error.
+    """
+    return (_get_latest_sdtm_ct_href() or "").removeprefix("sdtmct-")
+
+
+@functools.lru_cache(maxsize=1)
 def _get_latest_bc_package_version() -> str:
     """Return the latest CDISC BC package date string (e.g. '2024-09-27').
 
@@ -242,18 +255,36 @@ def _get_latest_bc_package_version() -> str:
     return latest_version
 
 
-@functools.lru_cache(maxsize=256)
+_biomedical_concept_cache: Dict[str, Dict[str, Any]] = {}
+
+
 def _get_biomedical_concept_data(concept_code: str) -> Dict[str, Any]:
-    """Fetch the full CDISC Biomedical Concept API response. Cached per code."""
+    """Fetch the full CDISC Biomedical Concept API response.
+
+    Cached per code, but only successful (200) responses are cached —
+    a transient failure (rate limit, timeout, auth hiccup) must not
+    permanently poison the cache for the life of the process.
+    """
+    if concept_code in _biomedical_concept_cache:
+        return _biomedical_concept_cache[concept_code]
     url = URL_PREFIX + "mdr/bc/biomedicalconcepts/" + concept_code
     try:
         resp = requests.get(url, headers=_build_api_headers(), timeout=15)
         if resp.status_code != 200:
+            logger.warning(
+                "_get_biomedical_concept_data: %s returned %s",
+                url,
+                resp.status_code,
+            )
             return {}
-        return resp.json()
+        data = resp.json()
     except (requests.RequestException, ValueError) as e:
-        print(f"Error fetching biomedical concept: {e}")
+        logger.warning(
+            "_get_biomedical_concept_data failed for %s: %s", concept_code, e
+        )
         return {}
+    _biomedical_concept_cache[concept_code] = data
+    return data
 
 
 def _absolute_url(href: str) -> str:
@@ -810,7 +841,18 @@ def _get_epoch_code_values(
     code_system_version = ""
     decode = ""
 
-    url = "https://library.cdisc.org/api/mdr/ct/packages/sdtmct-2025-09-26/codelists/C99079"
+    package_slug = _get_latest_sdtm_ct_href()
+    if not package_slug:
+        logger.warning(
+            "Could not discover latest SDTM CT package for epoch code %s",
+            code,
+        )
+        return code_system, code_system_version, decode
+
+    url = (
+        "https://library.cdisc.org/api/mdr/ct/packages/"
+        f"{package_slug}/codelists/{EPOCH_TYPE_CODELIST}"
+    )
 
     try:
         resp = requests.get(url, headers=_build_api_headers(), timeout=10)
@@ -824,9 +866,8 @@ def _get_epoch_code_values(
             return code_system, code_system_version, decode
 
         content = resp.json()
-        parsed_url = urlparse(url)
-        code_system = parsed_url.scheme + "://" + parsed_url.netloc
-        code_system_version = parsed_url.path.split("/", 7)[5]
+        code_system = "http://www.cdisc.org"
+        code_system_version = package_slug.removeprefix("sdtmct-")
 
         # Guard against missing 'terms' key
         top_terms = content.get("terms") or []

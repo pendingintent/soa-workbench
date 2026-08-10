@@ -176,6 +176,27 @@ def get_cdisc_api_key():
     return os.environ.get("CDISC_API_KEY")
 
 
+def get_cdisc_crf_api_key():
+    """Return the API key for the CDISC Library CRF Specializations API.
+
+    Falls back to `CDISC_API_KEY` when `CDISC_CRF_API_KEY` is unset,
+    since the CRF Specializations API may share credentials with the
+    main CDISC Library API in some environments.
+    """
+    return os.environ.get("CDISC_CRF_API_KEY") or os.environ.get("CDISC_API_KEY")
+
+
+def get_cdisc_crf_subscription_key():
+    """Return the subscription key for the CDISC Library CRF API.
+
+    Falls back to `CDISC_SUBSCRIPTION_KEY` when
+    `CDISC_CRF_SUBSCRIPTION_KEY` is unset.
+    """
+    return os.environ.get("CDISC_CRF_SUBSCRIPTION_KEY") or os.environ.get(
+        "CDISC_SUBSCRIPTION_KEY"
+    )
+
+
 def get_concepts_override():
     return os.environ.get("CDISC_CONCEPTS_JSON")
 
@@ -681,8 +702,9 @@ def get_next_response_code_uid(cur: Any, soa_id: int) -> str:
 def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique ExtensionAttribute_N for the given SOA.
 
-    Scans both activity_concept_dss and activity_concept_crf to ensure
-    the returned UID does not collide with any existing EA UID.
+    Scans activity_concept_dss, activity_concept_crf,
+    soa_tool_extension, and activity_grouping_extension to ensure the
+    returned UID does not collide with any existing EA UID.
     Assumes `cur` is a sqlite cursor within an open transaction.
     """
     cur.execute(
@@ -692,8 +714,25 @@ def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
         " UNION ALL"
         " SELECT extension_attribute_uid FROM activity_concept_crf"
         " WHERE soa_id=?"
-        " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'",
-        (soa_id, soa_id),
+        " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'"
+        " UNION ALL"
+        " SELECT ea_outer_uid FROM soa_tool_extension WHERE soa_id=?"
+        " UNION ALL"
+        " SELECT ea_name_uid FROM soa_tool_extension WHERE soa_id=?"
+        " UNION ALL"
+        " SELECT ea_version_uid FROM soa_tool_extension WHERE soa_id=?"
+        " UNION ALL"
+        " SELECT ea_date_uid FROM soa_tool_extension WHERE soa_id=?"
+        " UNION ALL"
+        " SELECT ea_outer_uid FROM activity_grouping_extension"
+        " WHERE soa_id=?"
+        " UNION ALL"
+        " SELECT ea_scheme_uid FROM activity_grouping_extension"
+        " WHERE soa_id=?"
+        " UNION ALL"
+        " SELECT ea_value_uid FROM activity_grouping_extension"
+        " WHERE soa_id=?",
+        (soa_id,) * 9,
     )
     existing = [x[0] for x in cur.fetchall() if x[0]]
     n = 1
@@ -708,14 +747,19 @@ def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
 def get_next_extension_class_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique ExtensionClass_N for the given SOA.
 
-    Scans soa_tool_extension.ec_uid for existing ExtensionClass UIDs.
-    Assumes `cur` is a sqlite cursor within an open transaction.
+    Scans soa_tool_extension.ec_uid and
+    activity_grouping_extension.ec_uid for existing ExtensionClass
+    UIDs. Assumes `cur` is a sqlite cursor within an open transaction.
     """
     cur.execute(
         "SELECT ec_uid FROM soa_tool_extension"
         " WHERE soa_id=?"
+        " AND ec_uid LIKE 'ExtensionClass_%'"
+        " UNION ALL"
+        " SELECT ec_uid FROM activity_grouping_extension"
+        " WHERE soa_id=?"
         " AND ec_uid LIKE 'ExtensionClass_%'",
-        (soa_id,),
+        (soa_id, soa_id),
     )
     existing = [x[0] for x in cur.fetchall() if x[0]]
     n = 1

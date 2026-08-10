@@ -2,15 +2,15 @@
 {% block content %}
 <h2>Activities for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
-<div style="margin-bottom:12px;">
+<div class="am-mb-12">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
 
-<div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<div class="am-flex-center-row am-flex-wrap am-mb-10" style="gap:10px;">
   <form hx-post="/ui/soa/{{ soa_id }}/activities/concepts_refresh" class="am-inline-form">
     <button type="submit" class="am-btn am-btn-slate">&#x21bb; Refresh Biomedical Concepts</button>
   </form>
-  <small style="color:#555;">(forces remote re-fetch &amp; cache reset)</small>
+  <small class="am-color-subtle">(forces remote re-fetch &amp; cache reset)</small>
 </div>
 
 <hr class="fz-section-divider" />
@@ -96,7 +96,7 @@
 
 <details id="surrogates-section" open class="collapsible">
 <summary>Biomedical Concept Surrogates ({{ surrogates|length }})</summary>
-<p style="font-size:0.85em;color:#666;margin:0 0 10px;">
+<p class="am-fz-85 am-color-666 am-m-0 am-mb-10">
   Add named placeholders for concepts not yet available in the CDISC Library.
   Once a CDISC Biomedical Concept is assigned, remove the surrogate.
 </p>

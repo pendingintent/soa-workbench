@@ -5,15 +5,15 @@
       <th>Name</th>
       <th>Quantity</th>
       <th>Geographic Scope</th>
-      <th style="width:1%;white-space:nowrap;">Save</th>
-      <th style="width:1%;white-space:nowrap;">Delete</th>
+      <th class="am-td-shrink">Save</th>
+      <th class="am-td-shrink">Delete</th>
     </tr>
     {% for e in enrollments %}
     <tr>
       <td class="fz-td-version"><span class="obj-uid">{{ e.enrollment_uid }}</span></td>
       <td><input name="name" value="{{ e.name }}" required class="am-input-compact" /></td>
       <td><input name="quantity_value" type="number" step="any" value="{{ e.quantity_value }}"
-                 required class="am-input-compact" style="width:80px;" /></td>
+                 required class="am-input-compact am-w-80" /></td>
       <td>
         <select name="for_scope_uid" class="am-select-compact">
           <option value="">— none —</option>
@@ -24,13 +24,13 @@
           {% endfor %}
         </select>
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-slate am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/enrollment/{{ e.id }}/update"
                 hx-target="#enrollments-section" hx-swap="outerHTML"
                 hx-include="closest tr">Save</button>
       </td>
-      <td style="width:1%;white-space:nowrap;">
+      <td class="am-td-shrink">
         <button type="button" class="am-btn am-btn-danger am-btn-sm"
                 hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/enrollment/{{ e.id }}/delete"
                 hx-target="#enrollments-section" hx-swap="outerHTML"
@@ -42,7 +42,7 @@
     {% endfor %}
   </table>
 
-  <details class="am-add-change-panel" style="margin-top:10px;">
+  <details class="am-add-change-panel am-mt-10">
     <summary class="am-add-change-summary">+ Add Enrollment</summary>
     <form hx-post="/ui/soa/{{ soa_id }}/amendment/{{ amendment.id }}/enrollments/add"
           hx-target="#enrollments-section" hx-swap="outerHTML"

@@ -1,25 +1,25 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Biomedical Concept Categories (<span id="conceptTotal">{{ count }}</span>)</h2>
-<p style="color:#555;font-size:0.9em;">
+<p class="am-color-subtle am-fz-90">
   Derived from the CDISC Library API. Each link lists biomedical concepts in that category.
 </p>
 
-<div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+<div class="am-mb-12 am-flex-center-row" style="gap:8px;flex-wrap:wrap;">
   <a href="/" class="am-back-link">&larr; Home</a>
   <a href="/ui/concept_categories?force=1" class="am-btn am-btn-slate am-btn-sm">&#x21bb; Refresh</a>
-  {% if force %}<small style="color:var(--am-text-mid);">Cache refreshed</small>{% endif %}
+  {% if force %}<small class="am-text-mid">Cache refreshed</small>{% endif %}
 </div>
 
 <hr class="fz-section-divider" />
 
-<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<div class="am-mb-12 am-flex-center-row" style="gap:10px;flex-wrap:wrap;">
   <div class="am-field">
     <label class="am-field-label" for="categorySearch">Search</label>
     <input id="categorySearch" type="text" placeholder="Filter categories..."
-           class="fz-version-input" style="width:280px;" oninput="filterCategories()" />
+           class="fz-version-input am-w-280" oninput="filterCategories()" />
   </div>
-  <span id="searchCount" style="font-size:0.84em;color:var(--am-text-mid);margin-top:18px;"></span>
+  <span id="searchCount" class="am-lib-search-count"></span>
 </div>
 
 {% if rows %}
