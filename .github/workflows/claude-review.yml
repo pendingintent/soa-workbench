@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  id-token: write
 
 jobs:
   claude-review:
@@ -16,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history needed for diff analysis
+          fetch-depth: 0 # Full history needed for diff analysis
 
       - name: Claude Code claude-review
         uses: anthropics/claude-code-action@v1
