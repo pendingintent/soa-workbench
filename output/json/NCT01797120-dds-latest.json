@@ -3,7 +3,7 @@
   "name": "MDV None",
   "description": "Data Definitions for None",
   "fileOID": "ODM.DEFINE-JSON.None.Version1.Design1",
-  "creationDateTime": "2026-08-06T13:27:49.607773+00:00",
+  "creationDateTime": "2026-08-11T12:09:21.260985+00:00",
   "odmVersion": "1.3.2",
   "fileType": "Snapshot",
   "originator": "Define-JSON Processor",
@@ -2789,6 +2789,874 @@
       "implementsConcept": "CONC.BiomedicalConcept_120"
     },
     {
+      "OID": "IG.EC",
+      "name": "EC",
+      "description": "Exposure as Collected",
+      "domain": "EC",
+      "purpose": "Tabulation",
+      "structure": "One record per protocol-specified study treatment, collected-dosing interval, per subject, per mood",
+      "isReferenceData": false,
+      "keySequence": [
+        "STUDYID",
+        "USUBJID",
+        "ECSEQ"
+      ],
+      "standard": "STD.SDTMIG",
+      "observationClass": {
+        "name": "INTERVENTIONS"
+      },
+      "items": [
+        {
+          "OID": "IT.EC.STUDYID",
+          "mandatory": true,
+          "name": "STUDYID",
+          "description": "Study Identifier",
+          "role": "Identifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.EC.DOMAIN",
+          "mandatory": true,
+          "name": "DOMAIN",
+          "description": "Domain Abbreviation",
+          "role": "Identifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.EC.USUBJID",
+          "mandatory": true,
+          "name": "USUBJID",
+          "description": "Unique Subject Identifier",
+          "role": "Identifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.EC.ECSEQ",
+          "mandatory": true,
+          "name": "ECSEQ",
+          "description": "Sequence Number",
+          "role": "Identifier",
+          "dataType": "integer",
+          "length": null,
+          "origin": {
+            "type": "Derived",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.EC.ECREFID",
+          "mandatory": false,
+          "name": "ECREFID",
+          "description": "Reference ID",
+          "role": "Identifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.EC.ECTRT",
+          "mandatory": true,
+          "name": "ECTRT",
+          "description": "Name of Treatment",
+          "role": "Topic",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.EC.ECDOSE",
+          "mandatory": false,
+          "name": "ECDOSE",
+          "description": "Dose",
+          "role": "Record Qualifier",
+          "dataType": "integer",
+          "length": 20,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.EC.ECDOSTXT",
+          "mandatory": false,
+          "name": "ECDOSTXT",
+          "description": "Dose Description",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 100,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.EC.ECDOSU",
+          "mandatory": false,
+          "name": "ECDOSU",
+          "description": "Dose Units",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.UNIT"
+        },
+        {
+          "OID": "IT.EC.ECDOSFRM",
+          "mandatory": false,
+          "name": "ECDOSFRM",
+          "description": "Dose Form",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.FRM"
+        },
+        {
+          "OID": "IT.EC.ECDOSFRQ",
+          "mandatory": false,
+          "name": "ECDOSFRQ",
+          "description": "Dosing Frequency per Interval",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.FREQ"
+        },
+        {
+          "OID": "IT.EC.ECDOSRGM",
+          "mandatory": false,
+          "name": "ECDOSRGM",
+          "description": "Intended Dose Regimen",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.EC.ECROUTE",
+          "mandatory": false,
+          "name": "ECROUTE",
+          "description": "Route of Administration",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.ROUTE"
+        },
+        {
+          "OID": "IT.EC.ECLOC",
+          "mandatory": false,
+          "name": "ECLOC",
+          "description": "Location of Dose Administration",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.LOC"
+        },
+        {
+          "OID": "IT.EC.ECLAT",
+          "mandatory": false,
+          "name": "ECLAT",
+          "description": "Laterality",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.LAT"
+        },
+        {
+          "OID": "IT.EC.ECDIR",
+          "mandatory": false,
+          "name": "ECDIR",
+          "description": "Directionality",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.DIR"
+        },
+        {
+          "OID": "IT.EC.ECSTDTC",
+          "mandatory": false,
+          "name": "ECSTDTC",
+          "description": "Start Date/Time of Treatment",
+          "role": "Timing",
+          "dataType": "datetime",
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.EC.ECENDTC",
+          "mandatory": false,
+          "name": "ECENDTC",
+          "description": "End Date/Time of Treatment",
+          "role": "Timing",
+          "dataType": "datetime",
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        }
+      ],
+      "implementsConcept": "CONC.BiomedicalConcept_126"
+    },
+    {
+      "OID": "IG.AE",
+      "name": "AE",
+      "description": "Adverse Events",
+      "domain": "AE",
+      "purpose": "Tabulation",
+      "structure": "One record per adverse event per subject",
+      "isReferenceData": false,
+      "keySequence": [
+        "STUDYID",
+        "USUBJID",
+        "AESEQ"
+      ],
+      "standard": "STD.SDTMIG",
+      "observationClass": {
+        "name": "EVENTS"
+      },
+      "items": [
+        {
+          "OID": "IT.AE.STUDYID",
+          "mandatory": true,
+          "name": "STUDYID",
+          "description": "Study Identifier",
+          "role": "Identifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.DOMAIN",
+          "mandatory": true,
+          "name": "DOMAIN",
+          "description": "Domain Abbreviation",
+          "role": "Identifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.USUBJID",
+          "mandatory": true,
+          "name": "USUBJID",
+          "description": "Unique Subject Identifier",
+          "role": "Identifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AESEQ",
+          "mandatory": true,
+          "name": "AESEQ",
+          "description": "Sequence Number",
+          "role": "Identifier",
+          "dataType": "integer",
+          "length": null,
+          "origin": {
+            "type": "Derived",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AETERM",
+          "mandatory": true,
+          "name": "AETERM",
+          "description": "Reported Term for the Adverse Event",
+          "role": "Topic",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.AE.AELLT",
+          "mandatory": false,
+          "name": "AELLT",
+          "description": "Lowest Level Term",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AELLTCD",
+          "mandatory": false,
+          "name": "AELLTCD",
+          "description": "Lowest Level Term Code",
+          "role": "Variable Qualifier",
+          "dataType": "integer",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AEDECOD",
+          "mandatory": true,
+          "name": "AEDECOD",
+          "description": "Dictionary-Derived Term",
+          "role": "Synonym Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AEPTCD",
+          "mandatory": false,
+          "name": "AEPTCD",
+          "description": "Preferred Term Code",
+          "role": "Variable Qualifier",
+          "dataType": "integer",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AEHLT",
+          "mandatory": false,
+          "name": "AEHLT",
+          "description": "High Level Term",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AEHLTCD",
+          "mandatory": false,
+          "name": "AEHLTCD",
+          "description": "High Level Term Code",
+          "role": "Variable Qualifier",
+          "dataType": "integer",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AEHLGT",
+          "mandatory": false,
+          "name": "AEHLGT",
+          "description": "High Level Group Term",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AEHLGTCD",
+          "mandatory": false,
+          "name": "AEHLGTCD",
+          "description": "High Level Group Term Code",
+          "role": "Variable Qualifier",
+          "dataType": "integer",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AECAT",
+          "mandatory": false,
+          "name": "AECAT",
+          "description": "Category for Adverse Event",
+          "role": "Grouping Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AESCAT",
+          "mandatory": false,
+          "name": "AESCAT",
+          "description": "Subcategory for Adverse Event",
+          "role": "Grouping Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AEPRESP",
+          "mandatory": false,
+          "name": "AEPRESP",
+          "description": "Pre-Specified Adverse Event",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AEBODSYS",
+          "mandatory": false,
+          "name": "AEBODSYS",
+          "description": "Body System or Organ Class",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.AE.AEBDSYCD",
+          "mandatory": false,
+          "name": "AEBDSYCD",
+          "description": "Body System or Organ Class Code",
+          "role": "Variable Qualifier",
+          "dataType": "integer",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AESOC",
+          "mandatory": false,
+          "name": "AESOC",
+          "description": "Primary System Organ Class",
+          "role": "Variable Qualifier",
+          "dataType": "text",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AESOCCD",
+          "mandatory": false,
+          "name": "AESOCCD",
+          "description": "Primary System Organ Class Code",
+          "role": "Variable Qualifier",
+          "dataType": "integer",
+          "length": null,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        },
+        {
+          "OID": "IT.AE.AELOC",
+          "mandatory": false,
+          "name": "AELOC",
+          "description": "Location of Event",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.LOC"
+        },
+        {
+          "OID": "IT.AE.AESEV",
+          "mandatory": false,
+          "name": "AESEV",
+          "description": "Severity/Intensity",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.AESEV"
+        },
+        {
+          "OID": "IT.AE.AESER",
+          "mandatory": false,
+          "name": "AESER",
+          "description": "Serious Event",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AEACN",
+          "mandatory": false,
+          "name": "AEACN",
+          "description": "Action Taken with Study Treatment",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.ACN"
+        },
+        {
+          "OID": "IT.AE.AEACNOTH",
+          "mandatory": false,
+          "name": "AEACNOTH",
+          "description": "Other Action Taken",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.AE.AEREL",
+          "mandatory": false,
+          "name": "AEREL",
+          "description": "Causality",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.AE.AERELNST",
+          "mandatory": false,
+          "name": "AERELNST",
+          "description": "Relationship to Non-Study Treatment",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.AE.AEPATT",
+          "mandatory": false,
+          "name": "AEPATT",
+          "description": "Pattern of Adverse Event",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.AE.AEOUT",
+          "mandatory": false,
+          "name": "AEOUT",
+          "description": "Outcome of Adverse Event",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 200,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.OUT"
+        },
+        {
+          "OID": "IT.AE.AESCAN",
+          "mandatory": false,
+          "name": "AESCAN",
+          "description": "Involves Cancer",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AESCONG",
+          "mandatory": false,
+          "name": "AESCONG",
+          "description": "Congenital Anomaly or Birth Defect",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AESDISAB",
+          "mandatory": false,
+          "name": "AESDISAB",
+          "description": "Persist or Signif Disability/Incapacity",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AESDTH",
+          "mandatory": false,
+          "name": "AESDTH",
+          "description": "Results in Death",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AESHOSP",
+          "mandatory": false,
+          "name": "AESHOSP",
+          "description": "Requires or Prolongs Hospitalization",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AESLIFE",
+          "mandatory": false,
+          "name": "AESLIFE",
+          "description": "Is Life Threatening",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AESOD",
+          "mandatory": false,
+          "name": "AESOD",
+          "description": "Occurred with Overdose",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AESMIE",
+          "mandatory": false,
+          "name": "AESMIE",
+          "description": "Other Medically Important Serious Event",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AECONTRT",
+          "mandatory": false,
+          "name": "AECONTRT",
+          "description": "Concomitant or Additional Trtmnt Given",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          },
+          "codeList": "CL.NY"
+        },
+        {
+          "OID": "IT.AE.AETOXGR",
+          "mandatory": false,
+          "name": "AETOXGR",
+          "description": "Standard Toxicity Grade",
+          "role": "Record Qualifier",
+          "dataType": "text",
+          "length": 1,
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.AE.AESTDTC",
+          "mandatory": false,
+          "name": "AESTDTC",
+          "description": "Start Date/Time of Adverse Event",
+          "role": "Timing",
+          "dataType": "datetime",
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.AE.AEENDTC",
+          "mandatory": false,
+          "name": "AEENDTC",
+          "description": "End Date/Time of Adverse Event",
+          "role": "Timing",
+          "dataType": "datetime",
+          "origin": {
+            "type": "Collected",
+            "source": "Investigator"
+          }
+        },
+        {
+          "OID": "IT.AE.AEENRF",
+          "mandatory": false,
+          "name": "AEENRF",
+          "description": "End Relative to Reference Period",
+          "role": "Timing",
+          "dataType": "text",
+          "length": 20,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          },
+          "codeList": "CL.STENRF"
+        },
+        {
+          "OID": "IT.AE.AEENRTPT",
+          "mandatory": false,
+          "name": "AEENRTPT",
+          "description": "End Relative to Reference Time Point",
+          "role": "Timing",
+          "dataType": "text",
+          "length": 20,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          },
+          "codeList": "CL.STENRF"
+        },
+        {
+          "OID": "IT.AE.AEENTPT",
+          "mandatory": false,
+          "name": "AEENTPT",
+          "description": "End Reference Time Point",
+          "role": "Timing",
+          "dataType": "text",
+          "length": 20,
+          "origin": {
+            "type": "Assigned",
+            "source": "Sponsor"
+          }
+        }
+      ],
+      "implementsConcept": "CONC.BiomedicalConcept_127"
+    },
+    {
       "OID": "IG.TA",
       "name": "TA",
       "description": "Trial Arms",
@@ -4697,6 +5565,60 @@
       ]
     },
     {
+      "OID": "CL.AESEV",
+      "name": "Severity/Intensity Scale for Adverse Events",
+      "dataType": "text",
+      "standard": "STD.SDTMCT",
+      "coding": [
+        {
+          "code": "C66769",
+          "codeSystem": "nci:ExtCodeID"
+        }
+      ],
+      "codeListItems": [
+        {
+          "codedValue": "__PLACEHOLDER__",
+          "decode": "__PLACEHOLDER__"
+        }
+      ]
+    },
+    {
+      "OID": "CL.ACN",
+      "name": "Action Taken with Study Treatment",
+      "dataType": "text",
+      "standard": "STD.SDTMCT",
+      "coding": [
+        {
+          "code": "C66767",
+          "codeSystem": "nci:ExtCodeID"
+        }
+      ],
+      "codeListItems": [
+        {
+          "codedValue": "__PLACEHOLDER__",
+          "decode": "__PLACEHOLDER__"
+        }
+      ]
+    },
+    {
+      "OID": "CL.OUT",
+      "name": "Outcome of Event",
+      "dataType": "text",
+      "standard": "STD.SDTMCT",
+      "coding": [
+        {
+          "code": "C66768",
+          "codeSystem": "nci:ExtCodeID"
+        }
+      ],
+      "codeListItems": [
+        {
+          "codedValue": "__PLACEHOLDER__",
+          "decode": "__PLACEHOLDER__"
+        }
+      ]
+    },
+    {
       "OID": "CL.CNTMODE",
       "name": "Mode of Subject Contact",
       "dataType": "text",
@@ -4910,22 +5832,6 @@
           "codeSystem": "http://www.cdisc.org",
           "codeSystemVersion": "2025-09-23",
           "decode": "ECOG - Performance Status"
-        }
-      ]
-    },
-    {
-      "OID": "CONC.BiomedicalConcept_6",
-      "name": "Physical Examination Finding",
-      "label": "Physical Examination Finding",
-      "aliases": null,
-      "href": "/mdr/bc/biomedicalconcepts/C83119",
-      "properties": [],
-      "coding": [
-        {
-          "code": "C83119",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2024-04-02",
-          "decode": "Physical Examination Finding"
         }
       ]
     },
@@ -6926,22 +7832,6 @@
       ]
     },
     {
-      "OID": "CONC.BiomedicalConcept_60",
-      "name": "ECOG Clinical Classification Question",
-      "label": "ECOG Clinical Classification Question",
-      "aliases": null,
-      "href": "/mdr/bc/biomedicalconcepts/C101874",
-      "properties": [],
-      "coding": [
-        {
-          "code": "C101874",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2025-09-23",
-          "decode": "ECOG Clinical Classification Question"
-        }
-      ]
-    },
-    {
       "OID": "CONC.BiomedicalConcept_61",
       "name": "Leukocyte Count",
       "label": "Leukocyte Count",
@@ -8146,375 +9036,6 @@
           "codeSystem": "http://www.cdisc.org",
           "codeSystemVersion": "2026-07-14",
           "decode": "Solicited Medical History"
-        }
-      ]
-    },
-    {
-      "OID": "CONC.BiomedicalConcept_79",
-      "name": "Unsolicited Adverse Event",
-      "label": "Unsolicited Adverse Event",
-      "aliases": [
-        "Adverse Event"
-      ],
-      "href": "/mdr/bc/biomedicalconcepts/C179176",
-      "properties": [
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_559",
-          "name": "Adverse Event Verbatim Description",
-          "label": "Adverse Event Verbatim Description",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C78541",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Verbatim Description"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_560",
-          "name": "Adverse Event Dictionary Derived Term",
-          "label": "Adverse Event Dictionary Derived Term",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83344",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Dictionary Derived Term"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_561",
-          "name": "Adverse Event Category",
-          "label": "Adverse Event Category",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83198",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Category"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_562",
-          "name": "Adverse Event Subcategory",
-          "label": "Adverse Event Subcategory",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83212",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Subcategory"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_563",
-          "name": "Adverse Event Location",
-          "label": "Adverse Event Location",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83205",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Location"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_564",
-          "name": "Severity of Adverse Event",
-          "label": "Severity of Adverse Event",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C53253",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Severity of Adverse Event"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_565",
-          "name": "Seriousness of Adverse Event",
-          "label": "Seriousness of Adverse Event",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C53252",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Seriousness of Adverse Event"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_566",
-          "name": "Adverse Event Toxicity Grade",
-          "label": "Adverse Event Toxicity Grade",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C78605",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Toxicity Grade"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_567",
-          "name": "Adverse Event Action Taken with Study Treatment",
-          "label": "Adverse Event Action Taken with Study Treatment",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83013",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Action Taken with Study Treatment"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_568",
-          "name": "Other Actions taken in Response to Adverse Event",
-          "label": "Other Actions taken in Response to Adverse Event",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83109",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Other Actions taken in Response to Adverse Event"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_569",
-          "name": "Adverse Event Attribution to Product or Procedure",
-          "label": "Adverse Event Attribution to Product or Procedure",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C41358",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Attribution to Product or Procedure"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_570",
-          "name": "Adverse Event Relationship to Non Study Treatment",
-          "label": "Adverse Event Relationship to Non Study Treatment",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83210",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Relationship to Non Study Treatment"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_571",
-          "name": "Adverse Event Pattern",
-          "label": "Adverse Event Pattern",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83208",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Pattern"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_572",
-          "name": "Adverse Event Outcome",
-          "label": "Adverse Event Outcome",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C49489",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Outcome"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_573",
-          "name": "Adverse Event Involves Cancer",
-          "label": "Adverse Event Involves Cancer",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83211",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Involves Cancer"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_574",
-          "name": "Adverse Event Seriousness Due to Congenital Anomaly",
-          "label": "Adverse Event Seriousness Due to Congenital Anomaly",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83117",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Seriousness Due to Congenital Anomaly"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_575",
-          "name": "Disabling Adverse Event",
-          "label": "Disabling Adverse Event",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C113380",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Disabling Adverse Event"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_576",
-          "name": "Death Related to Adverse Event",
-          "label": "Death Related to Adverse Event",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C48275",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Death Related to Adverse Event"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_577",
-          "name": "Adverse Event associated with Hospitalization",
-          "label": "Adverse Event associated with Hospitalization",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83052",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event associated with Hospitalization"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_578",
-          "name": "Life Threatening Adverse Event",
-          "label": "Life Threatening Adverse Event",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C84266",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Life Threatening Adverse Event"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_579",
-          "name": "Adverse Event Occurred with Overdose",
-          "label": "Adverse Event Occurred with Overdose",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83214",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Occurred with Overdose"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_580",
-          "name": "Adverse Event Associated with Serious Medical Event",
-          "label": "Adverse Event Associated with Serious Medical Event",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83053",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Associated with Serious Medical Event"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_581",
-          "name": "Adverse Event Concomitant Treatment",
-          "label": "Adverse Event Concomitant Treatment",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83199",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Concomitant Treatment"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_582",
-          "name": "Adverse Event Start Date Time",
-          "label": "Adverse Event Start Date Time",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83215",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event Start Date Time"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_583",
-          "name": "Adverse Event End Date Time",
-          "label": "Adverse Event End Date Time",
-          "mandatory": true,
-          "coding": [
-            {
-              "code": "C83201",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2023-10-03",
-              "decode": "Adverse Event End Date Time"
-            }
-          ]
-        }
-      ],
-      "coding": [
-        {
-          "code": "C179176",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Unsolicited Adverse Event"
         }
       ]
     },
@@ -11833,68 +12354,6 @@
       ]
     },
     {
-      "OID": "CONC.BiomedicalConcept_117",
-      "name": "Diffusion Capacity of the Lung for Carbon Monoxide/Alveolar Volume Ratio",
-      "label": "Diffusion Capacity of the Lung for Carbon Monoxide/Alveolar Volume Ratio",
-      "aliases": [
-        "DLCO/VA",
-        "DLCOVA"
-      ],
-      "href": "/mdr/bc/biomedicalconcepts/C120830",
-      "properties": [
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_656",
-          "name": "REORRES",
-          "label": "REORRES",
-          "mandatory": false,
-          "coding": [
-            {
-              "code": "C70856",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2026-05-26",
-              "decode": "Observation Result"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_657",
-          "name": "REORRESU",
-          "label": "REORRESU",
-          "mandatory": false,
-          "coding": [
-            {
-              "code": "C48570",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2026-05-26",
-              "decode": "Percent Unit"
-            }
-          ]
-        },
-        {
-          "OID": "CONCPROP.BiomedicalConceptProperty_658",
-          "name": "REDTC",
-          "label": "REDTC",
-          "mandatory": false,
-          "coding": [
-            {
-              "code": "C82515",
-              "codeSystem": "http://www.cdisc.org",
-              "codeSystemVersion": "2026-05-26",
-              "decode": "Collection Date Time"
-            }
-          ]
-        }
-      ],
-      "coding": [
-        {
-          "code": "C120830",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2026-03-31",
-          "decode": "Diffusion Capacity of the Lung for Carbon Monoxide/Alveolar Volume Ratio"
-        }
-      ]
-    },
-    {
       "OID": "CONC.BiomedicalConcept_118",
       "name": "Phosphate Measurement",
       "label": "Phosphate Measurement",
@@ -12393,23 +12852,119 @@
       ]
     },
     {
-      "OID": "CONC.BiomedicalConcept_123",
-      "name": "Pulmonary Function Test",
-      "label": "Pulmonary Function Test",
+      "OID": "CONC.BiomedicalConcept_124",
+      "name": "Solicited Medical History",
+      "label": "Solicited Medical History",
       "aliases": [
-        "Pulmonary Function Test",
-        "lung function test",
-        "PFT",
-        "Pulmonary Function Testing"
+        "Medical History",
+        "Medical History Collection"
       ],
-      "href": "/mdr/bc/biomedicalconcepts/C38081",
+      "href": "/mdr/bc/biomedicalconcepts/C200145",
       "properties": [],
       "coding": [
         {
-          "code": "C38081",
+          "code": "C200145",
+          "codeSystem": "http://www.cdisc.org",
+          "codeSystemVersion": "2026-07-14",
+          "decode": "Solicited Medical History"
+        }
+      ]
+    },
+    {
+      "OID": "CONC.BiomedicalConcept_125",
+      "name": "Magnesium Measurement",
+      "label": "Magnesium Measurement",
+      "aliases": [
+        "Magnesium",
+        "MG"
+      ],
+      "href": "/mdr/bc/biomedicalconcepts/C64840",
+      "properties": [],
+      "coding": [
+        {
+          "code": "C64840",
+          "codeSystem": "http://www.cdisc.org",
+          "codeSystemVersion": "2026-07-14",
+          "decode": "Magnesium Measurement"
+        }
+      ]
+    },
+    {
+      "OID": "CONC.BiomedicalConcept_126",
+      "name": "Exposure as Collected Domain",
+      "label": "Exposure as Collected Domain",
+      "aliases": [
+        "EC",
+        "Exposure as Collected"
+      ],
+      "href": "/mdr/bc/biomedicalconcepts/C117466",
+      "properties": [],
+      "coding": [
+        {
+          "code": "C117466",
+          "codeSystem": "http://www.cdisc.org",
+          "codeSystemVersion": "2023-10-03",
+          "decode": "Exposure as Collected Domain"
+        }
+      ]
+    },
+    {
+      "OID": "CONC.BiomedicalConcept_127",
+      "name": "Solicited Adverse Event",
+      "label": "Solicited Adverse Event",
+      "aliases": [
+        "Adverse Event"
+      ],
+      "href": "/mdr/bc/biomedicalconcepts/C179175",
+      "properties": [],
+      "coding": [
+        {
+          "code": "C179175",
+          "codeSystem": "http://www.cdisc.org",
+          "codeSystemVersion": "2025-07-01",
+          "decode": "Solicited Adverse Event"
+        }
+      ]
+    },
+    {
+      "OID": "CONC.BiomedicalConcept_128",
+      "name": "Body Height",
+      "label": "Body Height",
+      "aliases": [
+        "HEIGHT"
+      ],
+      "href": "/mdr/bc/biomedicalconcepts/C164634",
+      "properties": [],
+      "coding": [
+        {
+          "code": "C164634",
+          "codeSystem": "http://www.cdisc.org",
+          "codeSystemVersion": "2025-11-18",
+          "decode": "Body Height"
+        }
+      ]
+    },
+    {
+      "OID": "CONC.BiomedicalConcept_129",
+      "name": "Carbon Monoxide Diffusing Capability Test",
+      "label": "Carbon Monoxide Diffusing Capability Test",
+      "aliases": [
+        "Diffusion Capacity of Lung for CO",
+        "DLCO",
+        "TLCO",
+        "Transfer Factor of Lung for CO",
+        "Diffusion Capacity of the Lung for Carbon Monoxide",
+        "PFT/DLCO",
+        "Pulmonary Function Test/Carbon Monoxide Diffusing Capability"
+      ],
+      "href": "/mdr/bc/biomedicalconcepts/C38083",
+      "properties": [],
+      "coding": [
+        {
+          "code": "C38083",
           "codeSystem": "http://www.cdisc.org",
           "codeSystemVersion": "2026-03-31",
-          "decode": "Pulmonary Function Test"
+          "decode": "Carbon Monoxide Diffusing Capability Test"
         }
       ]
     }
@@ -15083,356 +15638,6 @@
       ]
     },
     {
-      "OID": "CONCPROP.BiomedicalConceptProperty_559",
-      "name": "Adverse Event Verbatim Description",
-      "label": "Adverse Event Verbatim Description",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C78541",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Verbatim Description"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_560",
-      "name": "Adverse Event Dictionary Derived Term",
-      "label": "Adverse Event Dictionary Derived Term",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83344",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Dictionary Derived Term"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_561",
-      "name": "Adverse Event Category",
-      "label": "Adverse Event Category",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83198",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Category"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_562",
-      "name": "Adverse Event Subcategory",
-      "label": "Adverse Event Subcategory",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83212",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Subcategory"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_563",
-      "name": "Adverse Event Location",
-      "label": "Adverse Event Location",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83205",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Location"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_564",
-      "name": "Severity of Adverse Event",
-      "label": "Severity of Adverse Event",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C53253",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Severity of Adverse Event"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_565",
-      "name": "Seriousness of Adverse Event",
-      "label": "Seriousness of Adverse Event",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C53252",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Seriousness of Adverse Event"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_566",
-      "name": "Adverse Event Toxicity Grade",
-      "label": "Adverse Event Toxicity Grade",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C78605",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Toxicity Grade"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_567",
-      "name": "Adverse Event Action Taken with Study Treatment",
-      "label": "Adverse Event Action Taken with Study Treatment",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83013",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Action Taken with Study Treatment"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_568",
-      "name": "Other Actions taken in Response to Adverse Event",
-      "label": "Other Actions taken in Response to Adverse Event",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83109",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Other Actions taken in Response to Adverse Event"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_569",
-      "name": "Adverse Event Attribution to Product or Procedure",
-      "label": "Adverse Event Attribution to Product or Procedure",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C41358",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Attribution to Product or Procedure"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_570",
-      "name": "Adverse Event Relationship to Non Study Treatment",
-      "label": "Adverse Event Relationship to Non Study Treatment",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83210",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Relationship to Non Study Treatment"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_571",
-      "name": "Adverse Event Pattern",
-      "label": "Adverse Event Pattern",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83208",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Pattern"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_572",
-      "name": "Adverse Event Outcome",
-      "label": "Adverse Event Outcome",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C49489",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Outcome"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_573",
-      "name": "Adverse Event Involves Cancer",
-      "label": "Adverse Event Involves Cancer",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83211",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Involves Cancer"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_574",
-      "name": "Adverse Event Seriousness Due to Congenital Anomaly",
-      "label": "Adverse Event Seriousness Due to Congenital Anomaly",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83117",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Seriousness Due to Congenital Anomaly"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_575",
-      "name": "Disabling Adverse Event",
-      "label": "Disabling Adverse Event",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C113380",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Disabling Adverse Event"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_576",
-      "name": "Death Related to Adverse Event",
-      "label": "Death Related to Adverse Event",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C48275",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Death Related to Adverse Event"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_577",
-      "name": "Adverse Event associated with Hospitalization",
-      "label": "Adverse Event associated with Hospitalization",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83052",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event associated with Hospitalization"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_578",
-      "name": "Life Threatening Adverse Event",
-      "label": "Life Threatening Adverse Event",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C84266",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Life Threatening Adverse Event"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_579",
-      "name": "Adverse Event Occurred with Overdose",
-      "label": "Adverse Event Occurred with Overdose",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83214",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Occurred with Overdose"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_580",
-      "name": "Adverse Event Associated with Serious Medical Event",
-      "label": "Adverse Event Associated with Serious Medical Event",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83053",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Associated with Serious Medical Event"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_581",
-      "name": "Adverse Event Concomitant Treatment",
-      "label": "Adverse Event Concomitant Treatment",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83199",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Concomitant Treatment"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_582",
-      "name": "Adverse Event Start Date Time",
-      "label": "Adverse Event Start Date Time",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83215",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event Start Date Time"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_583",
-      "name": "Adverse Event End Date Time",
-      "label": "Adverse Event End Date Time",
-      "mandatory": true,
-      "coding": [
-        {
-          "code": "C83201",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2023-10-03",
-          "decode": "Adverse Event End Date Time"
-        }
-      ]
-    },
-    {
       "OID": "CONCPROP.BiomedicalConceptProperty_440",
       "name": "Category",
       "label": "Category",
@@ -18011,48 +18216,6 @@
     },
     {
       "OID": "CONCPROP.BiomedicalConceptProperty_655",
-      "name": "REDTC",
-      "label": "REDTC",
-      "mandatory": false,
-      "coding": [
-        {
-          "code": "C82515",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2026-05-26",
-          "decode": "Collection Date Time"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_656",
-      "name": "REORRES",
-      "label": "REORRES",
-      "mandatory": false,
-      "coding": [
-        {
-          "code": "C70856",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2026-05-26",
-          "decode": "Observation Result"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_657",
-      "name": "REORRESU",
-      "label": "REORRESU",
-      "mandatory": false,
-      "coding": [
-        {
-          "code": "C48570",
-          "codeSystem": "http://www.cdisc.org",
-          "codeSystemVersion": "2026-05-26",
-          "decode": "Percent Unit"
-        }
-      ]
-    },
-    {
-      "OID": "CONCPROP.BiomedicalConceptProperty_658",
       "name": "REDTC",
       "label": "REDTC",
       "mandatory": false,

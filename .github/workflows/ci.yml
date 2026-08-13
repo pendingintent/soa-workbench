@@ -1,11 +1,12 @@
-# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+# yaml-language-server: 
+# $schema=https://json.schemastore.org/github-workflow.json
 name: CI (Python)
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
 
 permissions:
   contents: read
@@ -21,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.11", "3.12", "3.13", "3.14" ]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - name: Checkout

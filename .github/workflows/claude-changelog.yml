@@ -1,0 +1,58 @@
+---
+name: Generate Changelog
+
+on:
+  push:
+    tags:
+      - 'release-v*'
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get commits since last tag
+        id: commits
+        run: |
+          PREVIOUS_TAG=$(git describe --tags
+            --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --oneline)
+          else
+            COMMITS=$(git log --oneline -20)
+          fi
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            Generate a changelog for release ${{ github.ref_name }}.
+
+            Commits since last release:
+            ${{ steps.commits.outputs.commits }}
+
+            Format:
+            ## What's New in ${{ github.ref_name }}
+
+            ### Features
+            - ...
+
+            ### Bug Fixes
+            - ...
+
+            ### Breaking Changes
+            - ... (only if any)
+
+            Write the changelog to CHANGELOG.md (prepared before existing
+              content).
+            Then commit and push the updated CHANGELOG.md.

@@ -1,0 +1,34 @@
+---
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history needed for diff analysis
+
+      - name: Claude Code claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review this pull request and post inline comments for:
+            1. Logic errors and edge cases
+            2. Security vulnerabilities (SQL injection, XSS, auth bypasses)
+            3. Performance issues (N+1 queries, blocking calls, memory leaks)
+            4. Missing error handling
+            5. Missing unit tests
+            6. Non conformance with USDM v4.0 schema (schema/dataStructure.yml)
+            Focus on changed files only, Be specific - cite line numbers
