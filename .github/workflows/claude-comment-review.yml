@@ -1,3 +1,4 @@
+---
 name: Claude PR Comment Review
 
 on:
@@ -18,15 +19,16 @@ jobs:
                 github.event.pull_request != null) }}
         runs-on: ubuntu-latest
         steps:
-            -   name: Checkout
-                uses:  actions/checkout@v4
+            - name: Checkout
+              uses: actions/checkout@v4
 
-            -   name: Run Claude Code Action (comment-triggered)
-                uses: anthropics/claude-code-action@v1
-                with:
-                    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY}}
-                    prompt: |
-                        You are reviewing a GitHub Pull Request. Focus on security, correctness, clarity.
-                        - Only comment on files that changed in this PR.
-                        - Prioritize actionable fixes and cite specific lines.
-                        - Keep comments concise; avoid restating code.
+            - name: Run Claude Code Action (comment-triggered)
+              uses: anthropics/claude-code-action@v1
+              with:
+                  anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY}}
+                  prompt: |
+                      You are reviewing a GitHub Pull Request. Focus on
+                      security, correctness, clarity.
+                      - Only comment on files that changed in this PR.
+                      - Prioritize actionable fixes and cite specific lines.
+                      - Keep comments concise; avoid restating code.

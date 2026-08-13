@@ -1,70 +1,72 @@
+---
 name: Deploy to Azure App Service
 
 on:
-    push:
-        branches:
-            - master
-            # - release-*
-    workflow_dispatch: #Allow manual triggers
+  push:
+    branches:
+      - master
+      # - release-*
+  workflow_dispatch:  # Allow manual triggers
 
 permissions:
-    contents: read
-    
+  contents: read
+
 jobs:
-    build-and-test:
-        name: Build and Test
-        runs-on: ubuntu-latest
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-              with:
-                submodules: recursive # Include cdisc-json-validation submodule
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive  # Include cdisc-json-validation submodule
 
-            - name: Set up Python 3.13
-              uses: actions/setup-python@v5
-              with:
-                python-version: '3.13'
-                cache: 'pip'
-                cache-dependency-path: |
-                    pyproject.toml
-                    requirements.txt
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
 
-            - name: Install dependencies
-              run: |
-                python -m pip install --upgrade pip
-                pip install -e ".[dev]"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
 
-            - name: Run tests
-              run: |
-                pytest -q tests --disable-warnings --tb=short
-              env:
-                CDISC_CONCEPTS_JSON: '[]' # Bypass CDISC API for tests
+      - name: Run tests
+        run: |
+          pytest -q tests --disable-warnings --tb=short
+        env:
+          CDISC_CONCEPTS_JSON: "[]"  # Bypass CDISC API for tests
 
-            - name: Create deployment package
-              run: |
-                # Nothing special needed - Azure will handle pip install
-                echo "Build successful"
+      - name: Create deployment package
+        run: |
+          # Nothing special needed - Azure will handle pip install
+          echo "Build successful"
 
-    deploy:
-        name: Deploy to Azure
-        needs: build-and-test
-        runs-on: ubuntu-latest
-        environment: production     # Optional: requires manual approval
+  deploy:
+    name: Deploy to Azure
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    environment: production  # Optional: requires manual approval
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-              with:
-                submodules: recursive
-            - name: Deploy to Azure Web App
-              uses: azure/webapps-deploy@v2
-              with:
-                app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-                publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-                package: .
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .
 
-            - name: Verify deployment
-              run: |
-                echo "Deployment complete!"
-                echo "App URL: https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+      - name: Verify deployment
+        run: |
+          echo "Deployment complete!"
+          echo "App URL:
+            https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net"

@@ -25,13 +25,13 @@
                 {
                   "id": "ExtensionAttribute_46",
                   "url": "tool-version",
-                  "valueString": "1.6.0",
+                  "valueString": "master",
                   "instanceType": "ExtensionAttribute"
                 },
                 {
                   "id": "ExtensionAttribute_47",
                   "url": "usdm-creation-date",
-                  "valueString": "20260806T13:12",
+                  "valueString": "20260811T12:04",
                   "instanceType": "ExtensionAttribute"
                 }
               ],
@@ -975,7 +975,7 @@
                 "childIds": [],
                 "definedProcedures": [],
                 "biomedicalConceptIds": [
-                  "BiomedicalConcept_6"
+                  "BiomedicalConcept_124"
                 ],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1017,7 +1017,8 @@
                   "BiomedicalConcept_8",
                   "BiomedicalConcept_9",
                   "BiomedicalConcept_10",
-                  "BiomedicalConcept_11"
+                  "BiomedicalConcept_11",
+                  "BiomedicalConcept_128"
                 ],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1036,8 +1037,7 @@
                 "childIds": [],
                 "definedProcedures": [],
                 "biomedicalConceptIds": [
-                  "BiomedicalConcept_5",
-                  "BiomedicalConcept_60"
+                  "BiomedicalConcept_5"
                 ],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1056,8 +1056,8 @@
                 "childIds": [],
                 "definedProcedures": [],
                 "biomedicalConceptIds": [
-                  "BiomedicalConcept_79",
-                  "BiomedicalConcept_81"
+                  "BiomedicalConcept_81",
+                  "BiomedicalConcept_127"
                 ],
                 "bcCategoryIds": [],
                 "bcSurrogateIds": [],
@@ -1245,12 +1245,11 @@
                   "BiomedicalConcept_70",
                   "BiomedicalConcept_71",
                   "BiomedicalConcept_72",
-                  "BiomedicalConcept_118"
+                  "BiomedicalConcept_118",
+                  "BiomedicalConcept_125"
                 ],
                 "bcCategoryIds": [],
-                "bcSurrogateIds": [
-                  "BiomedicalConceptSurrogate_1"
-                ],
+                "bcSurrogateIds": [],
                 "timelineId": null,
                 "notes": [],
                 "instanceType": "Activity"
@@ -1363,16 +1362,11 @@
                 "nextId": "Activity_31",
                 "childIds": [],
                 "definedProcedures": [],
-                "biomedicalConceptIds": [],
-                "bcCategoryIds": [],
-                "bcSurrogateIds": [
-                  "BiomedicalConceptSurrogate_19",
-                  "BiomedicalConceptSurrogate_20",
-                  "BiomedicalConceptSurrogate_21",
-                  "BiomedicalConceptSurrogate_22",
-                  "BiomedicalConceptSurrogate_23",
-                  "BiomedicalConceptSurrogate_24"
+                "biomedicalConceptIds": [
+                  "BiomedicalConcept_126"
                 ],
+                "bcCategoryIds": [],
+                "bcSurrogateIds": [],
                 "timelineId": null,
                 "notes": [],
                 "instanceType": "Activity"
@@ -1397,13 +1391,10 @@
                   "BiomedicalConcept_114",
                   "BiomedicalConcept_115",
                   "BiomedicalConcept_116",
-                  "BiomedicalConcept_117",
-                  "BiomedicalConcept_123"
+                  "BiomedicalConcept_129"
                 ],
                 "bcCategoryIds": [],
-                "bcSurrogateIds": [
-                  "BiomedicalConceptSurrogate_25"
-                ],
+                "bcSurrogateIds": [],
                 "timelineId": null,
                 "notes": [],
                 "instanceType": "Activity"
@@ -4339,32 +4330,6 @@
                 "codeSystem": "http://www.cdisc.org",
                 "codeSystemVersion": "2025-09-23",
                 "decode": "ECOG - Performance Status",
-                "instanceType": "Code"
-              },
-              "standardCodeAliases": [],
-              "instanceType": "AliasCode"
-            },
-            "notes": [],
-            "instanceType": "BiomedicalConcept"
-          },
-          {
-            "id": "BiomedicalConcept_6",
-            "extensionAttributes": [],
-            "name": "Physical Examination Finding",
-            "label": "Physical Examination Finding",
-            "synonyms": [],
-            "reference": "/mdr/bc/biomedicalconcepts/C83119",
-            "properties": [],
-            "code": {
-              "id": "AliasCode_21",
-              "extensionAttributes": [],
-              "standardCode": {
-                "id": "Code_28",
-                "extensionAttributes": [],
-                "code": "C83119",
-                "codeSystem": "http://www.cdisc.org",
-                "codeSystemVersion": "2024-04-02",
-                "decode": "Physical Examination Finding",
                 "instanceType": "Code"
               },
               "standardCodeAliases": [],
@@ -8337,32 +8302,6 @@
             "instanceType": "BiomedicalConcept"
           },
           {
-            "id": "BiomedicalConcept_60",
-            "extensionAttributes": [],
-            "name": "ECOG Clinical Classification Question",
-            "label": "ECOG Clinical Classification Question",
-            "synonyms": [],
-            "reference": "/mdr/bc/biomedicalconcepts/C101874",
-            "properties": [],
-            "code": {
-              "id": "AliasCode_9912",
-              "extensionAttributes": [],
-              "standardCode": {
-                "id": "Code_10668",
-                "extensionAttributes": [],
-                "code": "C101874",
-                "codeSystem": "http://www.cdisc.org",
-                "codeSystemVersion": "2025-09-23",
-                "decode": "ECOG Clinical Classification Question",
-                "instanceType": "Code"
-              },
-              "standardCodeAliases": [],
-              "instanceType": "AliasCode"
-            },
-            "notes": [],
-            "instanceType": "BiomedicalConcept"
-          },
-          {
             "id": "BiomedicalConcept_61",
             "extensionAttributes": [
               {
@@ -10733,660 +10672,6 @@
             "instanceType": "BiomedicalConcept"
           },
           {
-            "id": "BiomedicalConcept_79",
-            "extensionAttributes": [],
-            "name": "Unsolicited Adverse Event",
-            "label": "Unsolicited Adverse Event",
-            "synonyms": [
-              "Adverse Event"
-            ],
-            "reference": "/mdr/bc/biomedicalconcepts/C179176",
-            "properties": [
-              {
-                "id": "BiomedicalConceptProperty_559",
-                "extensionAttributes": [],
-                "name": "Adverse Event Verbatim Description",
-                "label": "Adverse Event Verbatim Description",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10082",
-                  "standardCode": {
-                    "id": "Code_10838",
-                    "extensionAttributes": [],
-                    "code": "C78541",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Verbatim Description",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_560",
-                "extensionAttributes": [],
-                "name": "Adverse Event Dictionary Derived Term",
-                "label": "Adverse Event Dictionary Derived Term",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10083",
-                  "standardCode": {
-                    "id": "Code_10839",
-                    "extensionAttributes": [],
-                    "code": "C83344",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Dictionary Derived Term",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_561",
-                "extensionAttributes": [],
-                "name": "Adverse Event Category",
-                "label": "Adverse Event Category",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10084",
-                  "standardCode": {
-                    "id": "Code_10840",
-                    "extensionAttributes": [],
-                    "code": "C83198",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Category",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_562",
-                "extensionAttributes": [],
-                "name": "Adverse Event Subcategory",
-                "label": "Adverse Event Subcategory",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10085",
-                  "standardCode": {
-                    "id": "Code_10841",
-                    "extensionAttributes": [],
-                    "code": "C83212",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Subcategory",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_563",
-                "extensionAttributes": [],
-                "name": "Adverse Event Location",
-                "label": "Adverse Event Location",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10086",
-                  "standardCode": {
-                    "id": "Code_10842",
-                    "extensionAttributes": [],
-                    "code": "C83205",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Location",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_564",
-                "extensionAttributes": [],
-                "name": "Severity of Adverse Event",
-                "label": "Severity of Adverse Event",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10087",
-                  "standardCode": {
-                    "id": "Code_10843",
-                    "extensionAttributes": [],
-                    "code": "C53253",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Severity of Adverse Event",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_565",
-                "extensionAttributes": [],
-                "name": "Seriousness of Adverse Event",
-                "label": "Seriousness of Adverse Event",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10088",
-                  "standardCode": {
-                    "id": "Code_10844",
-                    "extensionAttributes": [],
-                    "code": "C53252",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Seriousness of Adverse Event",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_566",
-                "extensionAttributes": [],
-                "name": "Adverse Event Toxicity Grade",
-                "label": "Adverse Event Toxicity Grade",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10089",
-                  "standardCode": {
-                    "id": "Code_10845",
-                    "extensionAttributes": [],
-                    "code": "C78605",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Toxicity Grade",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_567",
-                "extensionAttributes": [],
-                "name": "Adverse Event Action Taken with Study Treatment",
-                "label": "Adverse Event Action Taken with Study Treatment",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10090",
-                  "standardCode": {
-                    "id": "Code_10846",
-                    "extensionAttributes": [],
-                    "code": "C83013",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Action Taken with Study Treatment",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_568",
-                "extensionAttributes": [],
-                "name": "Other Actions taken in Response to Adverse Event",
-                "label": "Other Actions taken in Response to Adverse Event",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10091",
-                  "standardCode": {
-                    "id": "Code_10847",
-                    "extensionAttributes": [],
-                    "code": "C83109",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Other Actions taken in Response to Adverse Event",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_569",
-                "extensionAttributes": [],
-                "name": "Adverse Event Attribution to Product or Procedure",
-                "label": "Adverse Event Attribution to Product or Procedure",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10092",
-                  "standardCode": {
-                    "id": "Code_10848",
-                    "extensionAttributes": [],
-                    "code": "C41358",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Attribution to Product or Procedure",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_570",
-                "extensionAttributes": [],
-                "name": "Adverse Event Relationship to Non Study Treatment",
-                "label": "Adverse Event Relationship to Non Study Treatment",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10093",
-                  "standardCode": {
-                    "id": "Code_10849",
-                    "extensionAttributes": [],
-                    "code": "C83210",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Relationship to Non Study Treatment",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_571",
-                "extensionAttributes": [],
-                "name": "Adverse Event Pattern",
-                "label": "Adverse Event Pattern",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10094",
-                  "standardCode": {
-                    "id": "Code_10850",
-                    "extensionAttributes": [],
-                    "code": "C83208",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Pattern",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_572",
-                "extensionAttributes": [],
-                "name": "Adverse Event Outcome",
-                "label": "Adverse Event Outcome",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "string",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10095",
-                  "standardCode": {
-                    "id": "Code_10851",
-                    "extensionAttributes": [],
-                    "code": "C49489",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Outcome",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_573",
-                "extensionAttributes": [],
-                "name": "Adverse Event Involves Cancer",
-                "label": "Adverse Event Involves Cancer",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10096",
-                  "standardCode": {
-                    "id": "Code_10852",
-                    "extensionAttributes": [],
-                    "code": "C83211",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Involves Cancer",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_574",
-                "extensionAttributes": [],
-                "name": "Adverse Event Seriousness Due to Congenital Anomaly",
-                "label": "Adverse Event Seriousness Due to Congenital Anomaly",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10097",
-                  "standardCode": {
-                    "id": "Code_10853",
-                    "extensionAttributes": [],
-                    "code": "C83117",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Seriousness Due to Congenital Anomaly",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_575",
-                "extensionAttributes": [],
-                "name": "Disabling Adverse Event",
-                "label": "Disabling Adverse Event",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10098",
-                  "standardCode": {
-                    "id": "Code_10854",
-                    "extensionAttributes": [],
-                    "code": "C113380",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Disabling Adverse Event",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_576",
-                "extensionAttributes": [],
-                "name": "Death Related to Adverse Event",
-                "label": "Death Related to Adverse Event",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10099",
-                  "standardCode": {
-                    "id": "Code_10855",
-                    "extensionAttributes": [],
-                    "code": "C48275",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Death Related to Adverse Event",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_577",
-                "extensionAttributes": [],
-                "name": "Adverse Event associated with Hospitalization",
-                "label": "Adverse Event associated with Hospitalization",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10100",
-                  "standardCode": {
-                    "id": "Code_10856",
-                    "extensionAttributes": [],
-                    "code": "C83052",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event associated with Hospitalization",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_578",
-                "extensionAttributes": [],
-                "name": "Life Threatening Adverse Event",
-                "label": "Life Threatening Adverse Event",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10101",
-                  "standardCode": {
-                    "id": "Code_10857",
-                    "extensionAttributes": [],
-                    "code": "C84266",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Life Threatening Adverse Event",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_579",
-                "extensionAttributes": [],
-                "name": "Adverse Event Occurred with Overdose",
-                "label": "Adverse Event Occurred with Overdose",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10102",
-                  "standardCode": {
-                    "id": "Code_10858",
-                    "extensionAttributes": [],
-                    "code": "C83214",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Occurred with Overdose",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_580",
-                "extensionAttributes": [],
-                "name": "Adverse Event Associated with Serious Medical Event",
-                "label": "Adverse Event Associated with Serious Medical Event",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10103",
-                  "standardCode": {
-                    "id": "Code_10859",
-                    "extensionAttributes": [],
-                    "code": "C83053",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Associated with Serious Medical Event",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_581",
-                "extensionAttributes": [],
-                "name": "Adverse Event Concomitant Treatment",
-                "label": "Adverse Event Concomitant Treatment",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "boolean",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10104",
-                  "standardCode": {
-                    "id": "Code_10860",
-                    "extensionAttributes": [],
-                    "code": "C83199",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Concomitant Treatment",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_582",
-                "extensionAttributes": [],
-                "name": "Adverse Event Start Date Time",
-                "label": "Adverse Event Start Date Time",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "datetime",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10105",
-                  "standardCode": {
-                    "id": "Code_10861",
-                    "extensionAttributes": [],
-                    "code": "C83215",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event Start Date Time",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_583",
-                "extensionAttributes": [],
-                "name": "Adverse Event End Date Time",
-                "label": "Adverse Event End Date Time",
-                "isRequired": true,
-                "isEnabled": true,
-                "datatype": "datetime",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10106",
-                  "standardCode": {
-                    "id": "Code_10862",
-                    "extensionAttributes": [],
-                    "code": "C83201",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2023-10-03",
-                    "decode": "Adverse Event End Date Time",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              }
-            ],
-            "code": {
-              "id": "AliasCode_9915",
-              "extensionAttributes": [],
-              "standardCode": {
-                "id": "Code_10671",
-                "extensionAttributes": [],
-                "code": "C179176",
-                "codeSystem": "http://www.cdisc.org",
-                "codeSystemVersion": "2023-10-03",
-                "decode": "Unsolicited Adverse Event",
-                "instanceType": "Code"
-              },
-              "standardCodeAliases": [],
-              "instanceType": "AliasCode"
-            },
-            "notes": [],
-            "instanceType": "BiomedicalConcept"
-          },
-          {
             "id": "BiomedicalConcept_80",
             "extensionAttributes": [],
             "name": "Physical Examination Finding",
@@ -13498,9 +12783,9 @@
             "id": "BiomedicalConcept_92",
             "extensionAttributes": [
               {
-                "id": "ExtensionAttribute_56",
+                "id": "ExtensionAttribute_96",
                 "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
-                "valueString": "/mdr/specializations/sdtm/datasetspecializations/BESTRESP",
+                "valueString": "/mdr/specializations/sdtm/datasetspecializations/OVRLRESP",
                 "instanceType": "ExtensionAttribute"
               }
             ],
@@ -17580,118 +16865,6 @@
             "instanceType": "BiomedicalConcept"
           },
           {
-            "id": "BiomedicalConcept_117",
-            "extensionAttributes": [
-              {
-                "id": "ExtensionAttribute_84",
-                "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
-                "valueString": "/mdr/specializations/sdtm/datasetspecializations/DLCOVA_RE",
-                "instanceType": "ExtensionAttribute"
-              }
-            ],
-            "name": "Diffusion Capacity of the Lung for Carbon Monoxide/Alveolar Volume Ratio",
-            "label": "Diffusion Capacity of the Lung for Carbon Monoxide/Alveolar Volume Ratio",
-            "synonyms": [
-              "DLCO/VA",
-              "DLCOVA"
-            ],
-            "reference": "/mdr/bc/biomedicalconcepts/C120830",
-            "properties": [
-              {
-                "id": "BiomedicalConceptProperty_656",
-                "extensionAttributes": [],
-                "name": "REORRES",
-                "label": "REORRES",
-                "isRequired": false,
-                "isEnabled": true,
-                "datatype": "float",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10190",
-                  "standardCode": {
-                    "id": "Code_10946",
-                    "extensionAttributes": [],
-                    "code": "C70856",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2026-05-26",
-                    "decode": "Observation Result",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_657",
-                "extensionAttributes": [],
-                "name": "REORRESU",
-                "label": "REORRESU",
-                "isRequired": false,
-                "isEnabled": true,
-                "datatype": "text",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10191",
-                  "standardCode": {
-                    "id": "Code_10947",
-                    "extensionAttributes": [],
-                    "code": "C48570",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2026-05-26",
-                    "decode": "Percent Unit",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              },
-              {
-                "id": "BiomedicalConceptProperty_658",
-                "extensionAttributes": [],
-                "name": "REDTC",
-                "label": "REDTC",
-                "isRequired": false,
-                "isEnabled": true,
-                "datatype": "datetime",
-                "responseCodes": [],
-                "code": {
-                  "id": "AliasCode_10192",
-                  "standardCode": {
-                    "id": "Code_10948",
-                    "extensionAttributes": [],
-                    "code": "C82515",
-                    "codeSystem": "http://www.cdisc.org",
-                    "codeSystemVersion": "2026-05-26",
-                    "decode": "Collection Date Time",
-                    "instanceType": "Code"
-                  },
-                  "instanceType": "AliasCode"
-                },
-                "notes": [],
-                "instanceType": "BiomedicalConceptProperty"
-              }
-            ],
-            "code": {
-              "id": "AliasCode_10069",
-              "extensionAttributes": [],
-              "standardCode": {
-                "id": "Code_10825",
-                "extensionAttributes": [],
-                "code": "C120830",
-                "codeSystem": "http://www.cdisc.org",
-                "codeSystemVersion": "2026-03-31",
-                "decode": "Diffusion Capacity of the Lung for Carbon Monoxide/Alveolar Volume Ratio",
-                "instanceType": "Code"
-              },
-              "standardCodeAliases": [],
-              "instanceType": "AliasCode"
-            },
-            "notes": [],
-            "instanceType": "BiomedicalConcept"
-          },
-          {
             "id": "BiomedicalConcept_118",
             "extensionAttributes": [
               {
@@ -18656,28 +17829,234 @@
             "instanceType": "BiomedicalConcept"
           },
           {
-            "id": "BiomedicalConcept_123",
-            "extensionAttributes": [],
-            "name": "Pulmonary Function Test",
-            "label": "Pulmonary Function Test",
-            "synonyms": [
-              "Pulmonary Function Test",
-              "lung function test",
-              "PFT",
-              "Pulmonary Function Testing"
+            "id": "BiomedicalConcept_124",
+            "extensionAttributes": [
+              {
+                "id": "ExtensionAttribute_90",
+                "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
+                "valueString": "/mdr/specializations/sdtm/datasetspecializations/MHBRCADIAG",
+                "instanceType": "ExtensionAttribute"
+              },
+              {
+                "id": "ExtensionAttribute_91",
+                "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
+                "valueString": "/mdr/specializations/sdtm/datasetspecializations/MHBRCARELAPSE",
+                "instanceType": "ExtensionAttribute"
+              }
             ],
-            "reference": "/mdr/bc/biomedicalconcepts/C38081",
+            "name": "Solicited Medical History",
+            "label": "Solicited Medical History",
+            "synonyms": [
+              "Medical History",
+              "Medical History Collection"
+            ],
+            "reference": "/mdr/bc/biomedicalconcepts/C200145",
             "properties": [],
             "code": {
-              "id": "AliasCode_10226",
+              "id": "AliasCode_10227",
               "extensionAttributes": [],
               "standardCode": {
-                "id": "Code_10982",
+                "id": "Code_10983",
                 "extensionAttributes": [],
-                "code": "C38081",
+                "code": "C200145",
+                "codeSystem": "http://www.cdisc.org",
+                "codeSystemVersion": "2026-07-14",
+                "decode": "Solicited Medical History",
+                "instanceType": "Code"
+              },
+              "standardCodeAliases": [],
+              "instanceType": "AliasCode"
+            },
+            "notes": [],
+            "instanceType": "BiomedicalConcept"
+          },
+          {
+            "id": "BiomedicalConcept_125",
+            "extensionAttributes": [
+              {
+                "id": "ExtensionAttribute_92",
+                "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
+                "valueString": "/mdr/specializations/sdtm/datasetspecializations/MGSERPL",
+                "instanceType": "ExtensionAttribute"
+              }
+            ],
+            "name": "Magnesium Measurement",
+            "label": "Magnesium Measurement",
+            "synonyms": [
+              "Magnesium",
+              "MG"
+            ],
+            "reference": "/mdr/bc/biomedicalconcepts/C64840",
+            "properties": [],
+            "code": {
+              "id": "AliasCode_10228",
+              "extensionAttributes": [],
+              "standardCode": {
+                "id": "Code_10984",
+                "extensionAttributes": [],
+                "code": "C64840",
+                "codeSystem": "http://www.cdisc.org",
+                "codeSystemVersion": "2026-07-14",
+                "decode": "Magnesium Measurement",
+                "instanceType": "Code"
+              },
+              "standardCodeAliases": [],
+              "instanceType": "AliasCode"
+            },
+            "notes": [],
+            "instanceType": "BiomedicalConcept"
+          },
+          {
+            "id": "BiomedicalConcept_126",
+            "extensionAttributes": [
+              {
+                "id": "ExtensionAttribute_93",
+                "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
+                "valueString": "/mdr/specializations/sdtm/datasetspecializations/EXPOSCOLL",
+                "instanceType": "ExtensionAttribute"
+              }
+            ],
+            "name": "Exposure as Collected Domain",
+            "label": "Exposure as Collected Domain",
+            "synonyms": [
+              "EC",
+              "Exposure as Collected"
+            ],
+            "reference": "/mdr/bc/biomedicalconcepts/C117466",
+            "properties": [],
+            "code": {
+              "id": "AliasCode_10229",
+              "extensionAttributes": [],
+              "standardCode": {
+                "id": "Code_10985",
+                "extensionAttributes": [],
+                "code": "C117466",
+                "codeSystem": "http://www.cdisc.org",
+                "codeSystemVersion": "2023-10-03",
+                "decode": "Exposure as Collected Domain",
+                "instanceType": "Code"
+              },
+              "standardCodeAliases": [],
+              "instanceType": "AliasCode"
+            },
+            "notes": [],
+            "instanceType": "BiomedicalConcept"
+          },
+          {
+            "id": "BiomedicalConcept_127",
+            "extensionAttributes": [
+              {
+                "id": "ExtensionAttribute_94",
+                "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
+                "valueString": "/mdr/specializations/sdtm/datasetspecializations/AEPRESP",
+                "instanceType": "ExtensionAttribute"
+              },
+              {
+                "id": "ExtensionAttribute_95",
+                "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
+                "valueString": "/mdr/specializations/sdtm/datasetspecializations/AE",
+                "instanceType": "ExtensionAttribute"
+              }
+            ],
+            "name": "Solicited Adverse Event",
+            "label": "Solicited Adverse Event",
+            "synonyms": [
+              "Adverse Event"
+            ],
+            "reference": "/mdr/bc/biomedicalconcepts/C179175",
+            "properties": [],
+            "code": {
+              "id": "AliasCode_10230",
+              "extensionAttributes": [],
+              "standardCode": {
+                "id": "Code_10986",
+                "extensionAttributes": [],
+                "code": "C179175",
+                "codeSystem": "http://www.cdisc.org",
+                "codeSystemVersion": "2025-07-01",
+                "decode": "Solicited Adverse Event",
+                "instanceType": "Code"
+              },
+              "standardCodeAliases": [],
+              "instanceType": "AliasCode"
+            },
+            "notes": [],
+            "instanceType": "BiomedicalConcept"
+          },
+          {
+            "id": "BiomedicalConcept_128",
+            "extensionAttributes": [
+              {
+                "id": "ExtensionAttribute_97",
+                "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
+                "valueString": "/mdr/specializations/sdtm/datasetspecializations/HEIGHT",
+                "instanceType": "ExtensionAttribute"
+              },
+              {
+                "id": "ExtensionAttribute_99",
+                "url": "http://www.cdisc.org/usdm/extensions/specializations/crf",
+                "valueString": "/mdr/specializations/crf/specializations/HEIGHT_DENORMALIZED",
+                "instanceType": "ExtensionAttribute"
+              }
+            ],
+            "name": "Body Height",
+            "label": "Body Height",
+            "synonyms": [
+              "HEIGHT"
+            ],
+            "reference": "/mdr/bc/biomedicalconcepts/C164634",
+            "properties": [],
+            "code": {
+              "id": "AliasCode_10231",
+              "extensionAttributes": [],
+              "standardCode": {
+                "id": "Code_10987",
+                "extensionAttributes": [],
+                "code": "C164634",
+                "codeSystem": "http://www.cdisc.org",
+                "codeSystemVersion": "2025-11-18",
+                "decode": "Body Height",
+                "instanceType": "Code"
+              },
+              "standardCodeAliases": [],
+              "instanceType": "AliasCode"
+            },
+            "notes": [],
+            "instanceType": "BiomedicalConcept"
+          },
+          {
+            "id": "BiomedicalConcept_129",
+            "extensionAttributes": [
+              {
+                "id": "ExtensionAttribute_98",
+                "url": "http://www.cdisc.org/usdm/extensions/specializations/sdtm",
+                "valueString": "/mdr/specializations/sdtm/datasetspecializations/DLCO_RE",
+                "instanceType": "ExtensionAttribute"
+              }
+            ],
+            "name": "Carbon Monoxide Diffusing Capability Test",
+            "label": "Carbon Monoxide Diffusing Capability Test",
+            "synonyms": [
+              "Diffusion Capacity of Lung for CO",
+              "DLCO",
+              "TLCO",
+              "Transfer Factor of Lung for CO",
+              "Diffusion Capacity of the Lung for Carbon Monoxide",
+              "PFT/DLCO",
+              "Pulmonary Function Test/Carbon Monoxide Diffusing Capability"
+            ],
+            "reference": "/mdr/bc/biomedicalconcepts/C38083",
+            "properties": [],
+            "code": {
+              "id": "AliasCode_10232",
+              "extensionAttributes": [],
+              "standardCode": {
+                "id": "Code_10988",
+                "extensionAttributes": [],
+                "code": "C38083",
                 "codeSystem": "http://www.cdisc.org",
                 "codeSystemVersion": "2026-03-31",
-                "decode": "Pulmonary Function Test",
+                "decode": "Carbon Monoxide Diffusing Capability Test",
                 "instanceType": "Code"
               },
               "standardCodeAliases": [],
@@ -18687,88 +18066,7 @@
             "instanceType": "BiomedicalConcept"
           }
         ],
-        "bcSurrogates": [
-          {
-            "id": "BiomedicalConceptSurrogate_1",
-            "extensionAttributes": [],
-            "name": "Magnesium Measurement",
-            "label": "Magnesium Measurement (C64840)",
-            "description": "A quantitative measurement of the amount of magnesium present in a sample.",
-            "reference": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C64840",
-            "notes": [],
-            "instanceType": "BiomedicalConceptSurrogate"
-          },
-          {
-            "id": "BiomedicalConceptSurrogate_19",
-            "extensionAttributes": [],
-            "name": "Adherence",
-            "label": "Adherence (C25729)",
-            "description": "The act of abiding by a stated treatment plan or protocol.",
-            "reference": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C25729",
-            "notes": [],
-            "instanceType": "BiomedicalConceptSurrogate"
-          },
-          {
-            "id": "BiomedicalConceptSurrogate_20",
-            "extensionAttributes": [],
-            "name": "Patient Compliance",
-            "label": "Patient Compliance (C39490)",
-            "description": "The extent to which a patient conforms to medical advice regarding prescribed regimen, lifestyle, dietary changes, follow-up schedule and other recommendations.",
-            "reference": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C39490",
-            "notes": [],
-            "instanceType": "BiomedicalConceptSurrogate"
-          },
-          {
-            "id": "BiomedicalConceptSurrogate_21",
-            "extensionAttributes": [],
-            "name": "Compliance Monitoring",
-            "label": "Compliance Monitoring (C62737)",
-            "description": "The act of continuously assessing whether an individual is adhering to their treatment plan.",
-            "reference": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C62737",
-            "notes": [],
-            "instanceType": "BiomedicalConceptSurrogate"
-          },
-          {
-            "id": "BiomedicalConceptSurrogate_22",
-            "extensionAttributes": [],
-            "name": "Non-Compliance With Study Drug",
-            "label": "Non-Compliance With Study Drug (C49631)",
-            "description": "An indication that a subject has not agreed with or followed the instructions related to the study medication. (NCI)",
-            "reference": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C49631",
-            "notes": [],
-            "instanceType": "BiomedicalConceptSurrogate"
-          },
-          {
-            "id": "BiomedicalConceptSurrogate_23",
-            "extensionAttributes": [],
-            "name": "Non-Compliance with Study Product",
-            "label": "Non-Compliance with Study Product (C210354)",
-            "description": "An indication that a subject has not agreed with or followed the instructions related to the study product.",
-            "reference": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C210354",
-            "notes": [],
-            "instanceType": "BiomedicalConceptSurrogate"
-          },
-          {
-            "id": "BiomedicalConceptSurrogate_24",
-            "extensionAttributes": [],
-            "name": "Trial Compliance",
-            "label": "Trial Compliance (C142734)",
-            "description": "Adherence to clinical trial-related requirements, good clinical practice (GCP) requirements, and the applicable regulatory requirements. (ICH)",
-            "reference": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C142734",
-            "notes": [],
-            "instanceType": "BiomedicalConceptSurrogate"
-          },
-          {
-            "id": "BiomedicalConceptSurrogate_25",
-            "extensionAttributes": [],
-            "name": "DLCO",
-            "label": "DLCO (C38083)",
-            "description": "The volume of the carbon monoxide that is transferred from inspired air into the pulmonary capillary blood.",
-            "reference": "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/C38083",
-            "notes": [],
-            "instanceType": "BiomedicalConceptSurrogate"
-          }
-        ],
+        "bcSurrogates": [],
         "bcCategories": [],
         "eligibilityCriterionItems": [],
         "narrativeContentItems": [
@@ -20772,5 +20070,5 @@
   },
   "usdmVersion": "4.0",
   "systemName": "SOA Workbench",
-  "systemVersion": "1.6.0"
+  "systemVersion": "master"
 }
