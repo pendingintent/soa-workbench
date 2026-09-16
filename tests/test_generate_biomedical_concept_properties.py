@@ -102,6 +102,7 @@ def _seed_bc(soa_id=SOA_ID, bc_uid=BC_UID, concept_code=CONCEPT_CODE):
     cur.execute("DELETE FROM activity_concept WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM alias_code WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM code WHERE soa_id=?", (soa_id,))
+    cur.execute("DELETE FROM uid_counter WHERE soa_id=?", (soa_id,))
 
     cur.execute(
         "INSERT INTO code (code_uid, soa_id, code, code_system,"
