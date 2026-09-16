@@ -2636,6 +2636,14 @@ def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
             """,
             (label, label, description, soa_id, soa_id, concept_code),
         )
+        if label:
+            cur.execute(
+                """
+                UPDATE activity_concept SET concept_title=?
+                WHERE soa_id=? AND concept_code=?
+                """,
+                (label, soa_id, concept_code),
+            )
         conn.commit()
     except Exception:
         pass
