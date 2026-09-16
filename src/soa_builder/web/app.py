@@ -147,6 +147,7 @@ from .migrate_database import (
     _migrate_add_element_intervention_table,
     _migrate_backfill_crf_href_latest_version,
     _migrate_add_activity_grouping_extension_table,
+    _migrate_add_uid_counter_table,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -212,7 +213,6 @@ from usdm.generate_biomedical_concept_properties import (
 from .schemas import (
     SOACreate,
     SOAMetadataUpdate,
-    ConceptsUpdate,
     ElementCreate,
     ElementUpdate,
     CellCreate,
@@ -427,6 +427,7 @@ _migrate_soa_add_tool_extension_uids()
 _migrate_add_element_intervention_table()
 _migrate_backfill_crf_href_latest_version()
 _migrate_add_activity_grouping_extension_table()
+_migrate_add_uid_counter_table()
 
 
 # Include routers
@@ -2180,114 +2181,6 @@ def update_soa_metadata(soa_id: int, payload: SOAMetadataUpdate):
     return {"id": soa_id, "updated": True}
 
 
-# API endpont for assigning BC to activity
-@app.post("/soa/{soa_id}/activities/{activity_id}/concepts")
-def set_activity_concepts(soa_id: int, activity_id: int, payload: ConceptsUpdate):
-    """Update Biomedical Concept assigned to an Activity."""
-    if not soa_exists(soa_id):
-        raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM activity WHERE id=? AND soa_id=?", (activity_id, soa_id))
-    if not cur.fetchone():
-        conn.close()
-        raise HTTPException(404, "Activity not found")
-    # Clear existing mappings; include soa_id if column exists
-    ac_has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
-    ac_has_actuid = _table_has_columns(cur, "activity_concept", ("activity_uid",))
-    ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
-    # Capture existing pairs before delete for cascade cleanup
-    if ac_has_soa:
-        if ac_has_conceptuid:
-            cur.execute(
-                "SELECT concept_code, concept_uid FROM activity_concept"
-                " WHERE activity_id=? AND soa_id=?",
-                (activity_id, soa_id),
-            )
-        else:
-            cur.execute(
-                "SELECT concept_code, NULL FROM activity_concept"
-                " WHERE activity_id=? AND soa_id=?",
-                (activity_id, soa_id),
-            )
-    else:
-        cur.execute(
-            "SELECT concept_code, NULL FROM activity_concept WHERE activity_id=?",
-            (activity_id,),
-        )
-    old_pairs = cur.fetchall()
-    if ac_has_soa:
-        cur.execute(
-            "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
-            (activity_id, soa_id),
-        )
-    else:
-        cur.execute("DELETE FROM activity_concept WHERE activity_id=?", (activity_id,))
-    concepts = fetch_biomedical_concepts()
-    lookup = {c["code"]: c["title"] for c in concepts}
-    # Fetch activity_uid once
-    cur.execute("SELECT activity_uid FROM activity WHERE id=?", (activity_id,))
-    r = cur.fetchone()
-    activity_uid = r[0] if r else None
-    inserted = 0
-    for code in payload.concept_codes:
-        ccode = code.strip()
-        if not ccode:
-            continue
-        title = lookup.get(ccode, ccode)
-        concept_uid = _get_next_concept_uid(cur, soa_id) if ac_has_conceptuid else None
-        if ac_has_soa and ac_has_actuid:
-            if ac_has_conceptuid:
-                cur.execute(
-                    "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?,?)",
-                    (soa_id, activity_id, activity_uid, concept_uid, ccode, title),
-                )
-            else:
-                cur.execute(
-                    "INSERT INTO activity_concept (soa_id, activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
-                    (soa_id, activity_id, activity_uid, ccode, title),
-                )
-        elif ac_has_actuid:
-            if ac_has_conceptuid:
-                cur.execute(
-                    "INSERT INTO activity_concept (activity_id, activity_uid, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
-                    (activity_id, activity_uid, concept_uid, ccode, title),
-                )
-            else:
-                cur.execute(
-                    "INSERT INTO activity_concept (activity_id, activity_uid, concept_code, concept_title) VALUES (?,?,?,?)",
-                    (activity_id, activity_uid, ccode, title),
-                )
-        elif ac_has_soa:
-            if ac_has_conceptuid:
-                cur.execute(
-                    "INSERT INTO activity_concept (soa_id, activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?,?)",
-                    (soa_id, activity_id, concept_uid, ccode, title),
-                )
-            else:
-                cur.execute(
-                    "INSERT INTO activity_concept (soa_id, activity_id, concept_code, concept_title) VALUES (?,?,?,?)",
-                    (soa_id, activity_id, ccode, title),
-                )
-        else:
-            if ac_has_conceptuid:
-                cur.execute(
-                    "INSERT INTO activity_concept (activity_id, concept_uid, concept_code, concept_title) VALUES (?,?,?,?)",
-                    (activity_id, concept_uid, ccode, title),
-                )
-            else:
-                cur.execute(
-                    "INSERT INTO activity_concept (activity_id, concept_code, concept_title) VALUES (?,?,?)",
-                    (activity_id, ccode, title),
-                )
-        _upsert_biomedical_concept(cur, soa_id, concept_uid, title, ccode)
-        inserted += 1
-    _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
-    conn.commit()
-    conn.close()
-    return {"activity_id": activity_id, "concepts_set": inserted}
-
-
 # API endpoint for returning BC associated with an Activity
 def _get_activity_concepts(activity_id: int):
     """Return list of concepts including concept_group_uid and group_name."""
@@ -2824,6 +2717,14 @@ def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
 
     for concept_code, concept_uid in removed_pairs:
         if concept_uid:
+            cur.execute(
+                "SELECT 1 FROM activity_concept"
+                " WHERE soa_id=? AND concept_uid=? LIMIT 1",
+                (soa_id, concept_uid),
+            )
+            if cur.fetchone():
+                # UID is still referenced by a live row — do not delete it.
+                continue
             cur.execute(
                 "SELECT id, code FROM biomedical_concept"
                 " WHERE biomedical_concept_uid=? AND soa_id=?",
@@ -6077,8 +5978,9 @@ def ui_set_activity_concepts(
     concept_codes: List[str] = Form([]),
 ):
     """Form handler to set Biomedical Concepts related to an Activity."""
-    payload = ConceptsUpdate(concept_codes=list(dict.fromkeys(concept_codes)))
-    set_activity_concepts(soa_id, activity_id, payload)
+    activities_router.set_activity_concepts(
+        soa_id, activity_id, concept_codes, background_tasks
+    )
     # Queue background DSS lookup for any concept without a DSS assigned
     conn = _connect()
     cur = conn.cursor()
@@ -6095,12 +5997,6 @@ def ui_set_activity_concepts(
             (activity_id,),
         )
     conn.close()
-    for code in payload.concept_codes:
-        if code.strip():
-            background_tasks.add_task(
-                _enrich_biomedical_concept_bg, code.strip(), soa_id
-            )
-            background_tasks.add_task(_enrich_code_bg, code.strip(), soa_id)
     # HTMX inline update support
     if request.headers.get("HX-Request") == "true":
         concepts = fetch_biomedical_concepts()

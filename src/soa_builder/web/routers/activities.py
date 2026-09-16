@@ -462,6 +462,7 @@ def set_activity_concepts(
     concept_codes: List[str],
     background_tasks: BackgroundTasks,
 ):
+    """Reconcile assigned concept codes; unchanged codes keep their UID untouched."""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
@@ -470,11 +471,10 @@ def set_activity_concepts(
     if not cur.fetchone():
         conn.close()
         raise HTTPException(404, "Activity not found")
-    # Clear existing mappings; include soa_id if column exists
     ac_has_soa = _table_has_columns(cur, "activity_concept", ("soa_id",))
     ac_has_actuid = _table_has_columns(cur, "activity_concept", ("activity_uid",))
     ac_has_conceptuid = _table_has_columns(cur, "activity_concept", ("concept_uid",))
-    # Capture existing pairs before delete for cascade cleanup
+    # Capture existing (code, uid) pairs to diff against the request.
     if ac_has_soa:
         if ac_has_conceptuid:
             cur.execute(
@@ -494,13 +494,29 @@ def set_activity_concepts(
             (activity_id,),
         )
     old_pairs = cur.fetchall()
-    if ac_has_soa:
-        cur.execute(
-            "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
-            (activity_id, soa_id),
-        )
-    else:
-        cur.execute("DELETE FROM activity_concept WHERE activity_id=?", (activity_id,))
+    old_codes = {code for code, _uid in old_pairs}
+    new_codes = list(dict.fromkeys(c.strip() for c in concept_codes if c.strip()))
+    new_codes_set = set(new_codes)
+    to_remove_pairs = [
+        (code, uid) for code, uid in old_pairs if code not in new_codes_set
+    ]
+    to_add = [code for code in new_codes if code not in old_codes]
+
+    if to_remove_pairs:
+        remove_codes = [code for code, _uid in to_remove_pairs]
+        placeholders = ",".join("?" for _ in remove_codes)
+        if ac_has_soa:
+            cur.execute(
+                "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?"
+                f" AND concept_code IN ({placeholders})",
+                (activity_id, soa_id, *remove_codes),
+            )
+        else:
+            cur.execute(
+                "DELETE FROM activity_concept WHERE activity_id=?"
+                f" AND concept_code IN ({placeholders})",
+                (activity_id, *remove_codes),
+            )
     concepts = fetch_biomedical_concepts()
     lookup = {c["code"]: c["title"] for c in concepts}
     # Fetch activity_uid once for inserts
@@ -516,10 +532,7 @@ def set_activity_concepts(
     )
 
     inserted = 0
-    for code in concept_codes:
-        ccode = code.strip()
-        if not ccode:
-            continue
+    for ccode in to_add:
         title = lookup.get(ccode, ccode)
         concept_uid = _get_next_concept_uid(cur, soa_id) if ac_has_conceptuid else None
         if ac_has_soa and ac_has_actuid:
@@ -576,10 +589,10 @@ def set_activity_concepts(
             soa_id,
         )
         inserted += 1
-    _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
+    _cleanup_orphaned_concept_rows(cur, soa_id, to_remove_pairs)
     conn.commit()
     conn.close()
-    return {"activity_id": activity_id, "concepts_set": inserted}
+    return {"activity_id": activity_id, "concepts_set": len(new_codes)}
 
 
 # ---------------------------------------------------------------------------
