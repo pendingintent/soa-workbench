@@ -23,6 +23,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: --model claude-sonnet-5
           prompt: |
             Review this pull request and post inline comments for:
             1. Logic errors and edge cases
