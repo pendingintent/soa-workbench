@@ -3422,3 +3422,23 @@ def _migrate_backfill_crf_href_latest_version():
         conn.close()
     except Exception as e:
         logger.warning("_migrate_backfill_crf_href_latest_version failed: %s", e)
+
+
+def _migrate_add_uid_counter_table():
+    """Create uid_counter, a durable per-(soa, prefix) UID sequence."""
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS uid_counter ("
+            "soa_id INTEGER NOT NULL,"
+            "prefix TEXT NOT NULL,"
+            "next_n INTEGER NOT NULL,"
+            "PRIMARY KEY (soa_id, prefix)"
+            ")"
+        )
+        conn.commit()
+        conn.close()
+        logger.info("_migrate_add_uid_counter_table complete")
+    except Exception as e:
+        logger.warning("_migrate_add_uid_counter_table failed: %s", e)

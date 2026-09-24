@@ -3,6 +3,7 @@
 from fastapi.testclient import TestClient
 
 from soa_builder.web.app import app
+from soa_builder.web.db import _connect
 
 client = TestClient(app)
 
@@ -132,13 +133,11 @@ def test_assign_concepts_to_activity():
     activity_resp = client.post(f"/soa/{soa_id}/activities", json={"name": "Lab Test"})
     activity_id = activity_resp.json()["activity_id"]
 
-    # Assign concepts
-    concepts_data = {"concept_codes": ["C12345", "C67890"]}
-    resp = client.post(
-        f"/soa/{soa_id}/activities/{activity_id}/concepts", json=concepts_data
-    )
-    # Concepts endpoint may require specific schema or return 422
-    assert resp.status_code in (200, 422)
+    # Assign concepts (request body is the bare code list)
+    codes = ["C12345", "C67890"]
+    resp = client.post(f"/soa/{soa_id}/activities/{activity_id}/concepts", json=codes)
+    assert resp.status_code == 200
+    assert resp.json() == {"activity_id": activity_id, "concepts_set": len(codes)}
 
 
 def test_assign_concepts_router_version():
@@ -153,12 +152,74 @@ def test_assign_concepts_router_version():
     activity_id = activity_resp.json()["activity_id"]
 
     # Assign concepts via router
-    concepts_data = {"concept_codes": ["C11111"]}
-    resp = client.post(
-        f"/soa/{soa_id}/activities/{activity_id}/concepts", json=concepts_data
+    codes = ["C11111"]
+    resp = client.post(f"/soa/{soa_id}/activities/{activity_id}/concepts", json=codes)
+    assert resp.status_code == 200
+    assert resp.json() == {"activity_id": activity_id, "concepts_set": len(codes)}
+
+
+def _concept_rows(soa_id, activity_id):
+    """Return {concept_code: (concept_uid, biomedical_concept.id)} for an activity."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT ac.concept_code, ac.concept_uid, bc.id"
+        " FROM activity_concept ac"
+        " LEFT JOIN biomedical_concept bc"
+        " ON bc.biomedical_concept_uid = ac.concept_uid AND bc.soa_id = ac.soa_id"
+        " WHERE ac.soa_id=? AND ac.activity_id=?",
+        (soa_id, activity_id),
     )
-    # Concepts endpoint may require specific schema
-    assert resp.status_code in (200, 422)
+    rows = {code: (uid, bc_id) for code, uid, bc_id in cur.fetchall()}
+    conn.close()
+    return rows
+
+
+def test_reassign_same_concept_code_is_a_noop():
+    """Reassigning an unchanged code must not touch its UID or BC row."""
+    r = client.post("/soa", json={"name": "Concept Noop Test"})
+    soa_id = r.json()["id"]
+    activity_resp = client.post(
+        f"/soa/{soa_id}/activities", json={"name": "Randomization"}
+    )
+    activity_id = activity_resp.json()["activity_id"]
+
+    resp = client.post(f"/soa/{soa_id}/activities/{activity_id}/concepts", json=["C1"])
+    assert resp.status_code == 200
+    before = _concept_rows(soa_id, activity_id)
+
+    resp = client.post(f"/soa/{soa_id}/activities/{activity_id}/concepts", json=["C1"])
+    assert resp.status_code == 200
+    after = _concept_rows(soa_id, activity_id)
+
+    assert after == before
+    assert before["C1"][0] is not None
+    assert before["C1"][1] is not None
+
+
+def test_reassign_add_and_remove_preserves_kept_uid():
+    """Adding + removing codes in one call must not disturb the kept code's UID."""
+    r = client.post("/soa", json={"name": "Concept Diff Test"})
+    soa_id = r.json()["id"]
+    activity_resp = client.post(f"/soa/{soa_id}/activities", json={"name": "Labs"})
+    activity_id = activity_resp.json()["activity_id"]
+
+    resp = client.post(
+        f"/soa/{soa_id}/activities/{activity_id}/concepts", json=["C1", "C2"]
+    )
+    assert resp.status_code == 200
+    before = _concept_rows(soa_id, activity_id)
+
+    resp = client.post(
+        f"/soa/{soa_id}/activities/{activity_id}/concepts", json=["C2", "C3"]
+    )
+    assert resp.status_code == 200
+    after = _concept_rows(soa_id, activity_id)
+
+    assert "C1" not in after
+    assert after["C2"] == before["C2"]
+    assert "C3" in after
+    assert after["C3"][0] != before["C1"][0]
 
 
 def test_reorder_activities():

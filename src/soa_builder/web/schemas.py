@@ -265,10 +265,6 @@ class SOAMetadataUpdate(BaseModel):
 
 
 # moved from app.py
-class ConceptsUpdate(BaseModel):
-    concept_codes: List[str]
-
-
 class ObjectiveCreate(BaseModel):
     name: str
     level: str

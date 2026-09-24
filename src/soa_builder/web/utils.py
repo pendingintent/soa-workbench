@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
+import json
 import logging
 import os
 import re
@@ -419,284 +420,292 @@ def get_epoch_parent_package_href_cached() -> str | None:
     return str(val) if val else None
 
 
+def _next_uid_from_counter(
+    cur: Any, soa_id: int, prefix: str, seed_fn: Callable[[], int]
+) -> str:
+    """Return the next `{prefix}{N}` UID for this SoA from the durable
+    uid_counter table, never reusing a freed number. Lazily seeds the
+    counter on first use from seed_fn() (a max-over-existing-rows
+    scan), so a SoA that already has UIDs picks up where its current
+    numbering left off. Assumes `cur` is a sqlite cursor within an
+    open transaction.
+    """
+    cur.execute(
+        "SELECT next_n FROM uid_counter WHERE soa_id=? AND prefix=?",
+        (soa_id, prefix),
+    )
+    row = cur.fetchone()
+    if row is None:
+        n = seed_fn() + 1
+        cur.execute(
+            "INSERT INTO uid_counter (soa_id, prefix, next_n) VALUES (?,?,?)",
+            (soa_id, prefix, n + 1),
+        )
+        return f"{prefix}{n}"
+    n = row[0]
+    cur.execute(
+        "UPDATE uid_counter SET next_n=? WHERE soa_id=? AND prefix=?",
+        (n + 1, soa_id, prefix),
+    )
+    return f"{prefix}{n}"
+
+
+def _max_suffix(rows) -> int:
+    """Return the max numeric `_N` suffix among a `fetchall()` of uid rows."""
+    existing = [x[0] for x in rows if x[0]]
+    if not existing:
+        return 0
+    try:
+        return max(int(x.split("_")[1]) for x in existing)
+    except Exception:
+        return len(existing)
+
+
 # Helper function to generate new quantity_uid value
 def get_next_quantity_uid(cur: Any, soa_id: int) -> str:
-    """Compute next unique Quantity_N for the given SOA.
+    """Compute next unique Quantity_N for the given SOA."""
 
-    Scans both the live study_intervention table and audit JSON so
-    deleted UIDs are never reused. Assumes `cur` is a sqlite cursor
-    within an open transaction.
-    """
-    max_n = 0
-    try:
-        cur.execute(
-            "SELECT mrd_quantity_uid FROM study_intervention"
-            " WHERE soa_id=? AND mrd_quantity_uid LIKE 'Quantity_%'",
-            (soa_id,),
-        )
-        for (uid,) in cur.fetchall():
-            try:
-                n = int(uid.split("_")[-1])
-                if n > max_n:
-                    max_n = n
-            except (ValueError, IndexError):
-                pass
-    except Exception:
-        pass
-    try:
-        cur.execute(
-            "SELECT before_json, after_json FROM study_intervention_audit"
-            " WHERE soa_id=?",
-            (soa_id,),
-        )
-        import json as _json
-
-        for before_raw, after_raw in cur.fetchall():
-            for raw in (before_raw, after_raw):
-                if not raw:
-                    continue
+    def _seed() -> int:
+        max_n = 0
+        try:
+            cur.execute(
+                "SELECT mrd_quantity_uid FROM study_intervention"
+                " WHERE soa_id=? AND mrd_quantity_uid LIKE 'Quantity_%'",
+                (soa_id,),
+            )
+            for (uid,) in cur.fetchall():
                 try:
-                    uid = _json.loads(raw).get("mrd_quantity_uid", "")
-                    if isinstance(uid, str) and uid.startswith("Quantity_"):
-                        n = int(uid.split("_")[-1])
-                        if n > max_n:
-                            max_n = n
-                except Exception:
+                    n = int(uid.split("_")[-1])
+                    if n > max_n:
+                        max_n = n
+                except (ValueError, IndexError):
                     pass
-    except Exception:
-        pass
-    return f"Quantity_{max_n + 1}"
-
-
-def get_next_intercurrent_event_uid(cur: Any, soa_id: int) -> str:
-    """Compute next unique IntercurrentEvent_N for the given SOA.
-
-    Scans both the live intercurrent_event table and estimand_audit
-    JSON so deleted UIDs are never reused. Assumes `cur` is a sqlite
-    cursor within an open transaction.
-    """
-    max_n = 0
-    try:
-        cur.execute(
-            "SELECT event_uid FROM intercurrent_event"
-            " WHERE soa_id=? AND event_uid LIKE 'IntercurrentEvent_%'",
-            (soa_id,),
-        )
-        for (uid,) in cur.fetchall():
-            try:
-                n = int(uid.split("_")[-1])
-                if n > max_n:
-                    max_n = n
-            except (ValueError, IndexError):
-                pass
-    except Exception:
-        pass
-    try:
-        cur.execute(
-            "SELECT before_json, after_json FROM estimand_audit WHERE soa_id=?",
-            (soa_id,),
-        )
-        import json as _json
-
-        for before_raw, after_raw in cur.fetchall():
-            for raw in (before_raw, after_raw):
-                if not raw:
-                    continue
-                try:
-                    data = _json.loads(raw)
-                    ices = data.get("intercurrent_events") or []
-                    for ice in ices:
-                        uid = ice.get("event_uid", "")
-                        if isinstance(uid, str) and uid.startswith(
-                            "IntercurrentEvent_"
-                        ):
+        except Exception:
+            pass
+        try:
+            cur.execute(
+                "SELECT before_json, after_json FROM study_intervention_audit"
+                " WHERE soa_id=?",
+                (soa_id,),
+            )
+            for before_raw, after_raw in cur.fetchall():
+                for raw in (before_raw, after_raw):
+                    if not raw:
+                        continue
+                    try:
+                        uid = json.loads(raw).get("mrd_quantity_uid", "")
+                        if isinstance(uid, str) and uid.startswith("Quantity_"):
                             n = int(uid.split("_")[-1])
                             if n > max_n:
                                 max_n = n
-                except Exception:
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        return max_n
+
+    return _next_uid_from_counter(cur, soa_id, "Quantity_", _seed)
+
+
+def get_next_intercurrent_event_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique IntercurrentEvent_N for the given SOA."""
+
+    def _seed() -> int:
+        max_n = 0
+        try:
+            cur.execute(
+                "SELECT event_uid FROM intercurrent_event"
+                " WHERE soa_id=? AND event_uid LIKE 'IntercurrentEvent_%'",
+                (soa_id,),
+            )
+            for (uid,) in cur.fetchall():
+                try:
+                    n = int(uid.split("_")[-1])
+                    if n > max_n:
+                        max_n = n
+                except (ValueError, IndexError):
                     pass
-    except Exception:
-        pass
-    return f"IntercurrentEvent_{max_n + 1}"
+        except Exception:
+            pass
+        try:
+            cur.execute(
+                "SELECT before_json, after_json FROM estimand_audit WHERE soa_id=?",
+                (soa_id,),
+            )
+            for before_raw, after_raw in cur.fetchall():
+                for raw in (before_raw, after_raw):
+                    if not raw:
+                        continue
+                    try:
+                        data = json.loads(raw)
+                        ices = data.get("intercurrent_events") or []
+                        for ice in ices:
+                            uid = ice.get("event_uid", "")
+                            if isinstance(uid, str) and uid.startswith(
+                                "IntercurrentEvent_"
+                            ):
+                                n = int(uid.split("_")[-1])
+                                if n > max_n:
+                                    max_n = n
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        return max_n
+
+    return _next_uid_from_counter(cur, soa_id, "IntercurrentEvent_", _seed)
 
 
 def get_next_indication_uid(cur: Any, soa_id: int) -> str:
-    """Compute next unique Indication_N for the given SOA.
+    """Compute next unique Indication_N for the given SOA."""
 
-    Scans both the live indication table and indication_audit
-    JSON so deleted UIDs are never reused. Assumes `cur` is a sqlite
-    cursor within an open transaction.
-    """
-    max_n = 0
-    try:
-        cur.execute(
-            "SELECT indication_uid FROM indication"
-            " WHERE soa_id=? AND indication_uid LIKE 'Indication_%'",
-            (soa_id,),
-        )
-        for (uid,) in cur.fetchall():
-            try:
-                n = int(uid.split("_")[-1])
-                if n > max_n:
-                    max_n = n
-            except (ValueError, IndexError):
-                pass
-    except Exception:
-        pass
-    try:
-        cur.execute(
-            "SELECT before_json, after_json FROM indication_audit WHERE soa_id=?",
-            (soa_id,),
-        )
-        import json as _json
-
-        for before_raw, after_raw in cur.fetchall():
-            for raw in (before_raw, after_raw):
-                if not raw:
-                    continue
+    def _seed() -> int:
+        max_n = 0
+        try:
+            cur.execute(
+                "SELECT indication_uid FROM indication"
+                " WHERE soa_id=? AND indication_uid LIKE 'Indication_%'",
+                (soa_id,),
+            )
+            for (uid,) in cur.fetchall():
                 try:
-                    uid = _json.loads(raw).get("indication_uid", "")
-                    if isinstance(uid, str) and uid.startswith("Indication_"):
-                        n = int(uid.split("_")[-1])
-                        if n > max_n:
-                            max_n = n
-                except Exception:
+                    n = int(uid.split("_")[-1])
+                    if n > max_n:
+                        max_n = n
+                except (ValueError, IndexError):
                     pass
-    except Exception:
-        pass
-    return f"Indication_{max_n + 1}"
+        except Exception:
+            pass
+        try:
+            cur.execute(
+                "SELECT before_json, after_json FROM indication_audit WHERE soa_id=?",
+                (soa_id,),
+            )
+            for before_raw, after_raw in cur.fetchall():
+                for raw in (before_raw, after_raw):
+                    if not raw:
+                        continue
+                    try:
+                        uid = json.loads(raw).get("indication_uid", "")
+                        if isinstance(uid, str) and uid.startswith("Indication_"):
+                            n = int(uid.split("_")[-1])
+                            if n > max_n:
+                                max_n = n
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        return max_n
+
+    return _next_uid_from_counter(cur, soa_id, "Indication_", _seed)
 
 
 def get_next_study_identifier_uid(cur: Any, soa_id: int) -> str:
-    """Compute next unique StudyIdentifier_N for the given SOA.
+    """Compute next unique StudyIdentifier_N for the given SOA."""
 
-    Scans both the live study_identifier table and audit JSON so
-    deleted UIDs are never reused. Assumes `cur` is a sqlite cursor
-    within an open transaction.
-    """
-    max_n = 0
-    try:
-        cur.execute(
-            "SELECT study_identifier_uid FROM study_identifier"
-            " WHERE soa_id=? AND study_identifier_uid"
-            " LIKE 'StudyIdentifier_%'",
-            (soa_id,),
-        )
-        for (uid,) in cur.fetchall():
-            try:
-                n = int(uid.split("_")[-1])
-                if n > max_n:
-                    max_n = n
-            except (ValueError, IndexError):
-                pass
-    except Exception:
-        pass
-    try:
-        cur.execute(
-            "SELECT before_json, after_json FROM study_identifier_audit WHERE soa_id=?",
-            (soa_id,),
-        )
-        import json as _json
-
-        for before_raw, after_raw in cur.fetchall():
-            for raw in (before_raw, after_raw):
-                if not raw:
-                    continue
+    def _seed() -> int:
+        max_n = 0
+        try:
+            cur.execute(
+                "SELECT study_identifier_uid FROM study_identifier"
+                " WHERE soa_id=? AND study_identifier_uid"
+                " LIKE 'StudyIdentifier_%'",
+                (soa_id,),
+            )
+            for (uid,) in cur.fetchall():
                 try:
-                    uid = _json.loads(raw).get("study_identifier_uid", "")
-                    if isinstance(uid, str) and uid.startswith("StudyIdentifier_"):
-                        n = int(uid.split("_")[-1])
-                        if n > max_n:
-                            max_n = n
-                except Exception:
+                    n = int(uid.split("_")[-1])
+                    if n > max_n:
+                        max_n = n
+                except (ValueError, IndexError):
                     pass
-    except Exception:
-        pass
-    return f"StudyIdentifier_{max_n + 1}"
+        except Exception:
+            pass
+        try:
+            cur.execute(
+                "SELECT before_json, after_json FROM study_identifier_audit"
+                " WHERE soa_id=?",
+                (soa_id,),
+            )
+            for before_raw, after_raw in cur.fetchall():
+                for raw in (before_raw, after_raw):
+                    if not raw:
+                        continue
+                    try:
+                        uid = json.loads(raw).get("study_identifier_uid", "")
+                        if isinstance(uid, str) and uid.startswith("StudyIdentifier_"):
+                            n = int(uid.split("_")[-1])
+                            if n > max_n:
+                                max_n = n
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        return max_n
+
+    return _next_uid_from_counter(cur, soa_id, "StudyIdentifier_", _seed)
 
 
 # Helper function to generate new alias_code_uid value
 def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
-    """Compute next unique AliasCode_ for the given SOA.
-    Assumes `cur` is a sqlite cursor within an open transaction.
-    """
-    cur.execute(
-        "SELECT alias_code_uid from alias_code WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
-        (soa_id,),
-    )
-    existing = [x[0] for x in cur.fetchall() if x[0]]
-    n = 1
-    if existing:
-        try:
-            n = max(int(x.split("_")[1]) for x in existing) + 1
-        except Exception:
-            n = len(existing) + 1
-    return f"AliasCode_{n}"
+    """Compute next unique AliasCode_N for the given SOA."""
+
+    def _seed() -> int:
+        cur.execute(
+            "SELECT alias_code_uid from alias_code"
+            " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
+            (soa_id,),
+        )
+        return _max_suffix(cur.fetchall())
+
+    return _next_uid_from_counter(cur, soa_id, "AliasCode_", _seed)
 
 
 # Helper function to generate new code_uid value
 def get_next_code_uid(cur: Any, soa_id: int) -> str:
-    """Compute next unique Code_N for the given SOA.
+    """Compute next unique Code_N for the given SOA."""
 
-    Assumes `cur` is a sqlite cursor within an open transaction.
-    """
-    cur.execute(
-        "SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'"
-        " UNION"
-        " SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-        (soa_id, soa_id),
-    )
-    existing = [x[0] for x in cur.fetchall() if x[0]]
-    n = 1
-    if existing:
-        try:
-            n = max(int(x.split("_")[1]) for x in existing) + 1
-        except Exception:
-            n = len(existing) + 1
-    return f"Code_{n}"
+    def _seed() -> int:
+        cur.execute(
+            "SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'"
+            " UNION"
+            " SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
+            (soa_id, soa_id),
+        )
+        return _max_suffix(cur.fetchall())
+
+    return _next_uid_from_counter(cur, soa_id, "Code_", _seed)
 
 
 def get_next_biomedical_concept_property_uid(cur: Any, soa_id: int) -> str:
-    """Compute next unique BiomedicalConceptProperty_N for the given SOA.
+    """Compute next unique BiomedicalConceptProperty_N for the given SOA."""
 
-    Assumes `cur` is a sqlite cursor within an open transaction.
-    """
-    cur.execute(
-        "SELECT biomedical_concept_property_uid FROM"
-        " biomedical_concept_property WHERE soa_id=?"
-        " AND biomedical_concept_property_uid LIKE"
-        " 'BiomedicalConceptProperty_%'",
-        (soa_id,),
-    )
-    existing = [x[0] for x in cur.fetchall() if x[0]]
-    n = 1
-    if existing:
-        try:
-            n = max(int(x.split("_")[1]) for x in existing) + 1
-        except Exception:
-            n = len(existing) + 1
-    return f"BiomedicalConceptProperty_{n}"
+    def _seed() -> int:
+        cur.execute(
+            "SELECT biomedical_concept_property_uid FROM"
+            " biomedical_concept_property WHERE soa_id=?"
+            " AND biomedical_concept_property_uid LIKE"
+            " 'BiomedicalConceptProperty_%'",
+            (soa_id,),
+        )
+        return _max_suffix(cur.fetchall())
+
+    return _next_uid_from_counter(cur, soa_id, "BiomedicalConceptProperty_", _seed)
 
 
 def get_next_response_code_uid(cur: Any, soa_id: int) -> str:
-    """Compute next unique ResponseCode_N for the given SOA.
+    """Compute next unique ResponseCode_N for the given SOA."""
 
-    Assumes `cur` is a sqlite cursor within an open transaction.
-    """
-    cur.execute(
-        "SELECT response_code_uid FROM bcp_response_code"
-        " WHERE soa_id=?"
-        " AND response_code_uid LIKE 'ResponseCode_%'",
-        (soa_id,),
-    )
-    existing = [x[0] for x in cur.fetchall() if x[0]]
-    n = 1
-    if existing:
-        try:
-            n = max(int(x.split("_")[1]) for x in existing) + 1
-        except Exception:
-            n = len(existing) + 1
-    return f"ResponseCode_{n}"
+    def _seed() -> int:
+        cur.execute(
+            "SELECT response_code_uid FROM bcp_response_code"
+            " WHERE soa_id=?"
+            " AND response_code_uid LIKE 'ResponseCode_%'",
+            (soa_id,),
+        )
+        return _max_suffix(cur.fetchall())
+
+    return _next_uid_from_counter(cur, soa_id, "ResponseCode_", _seed)
 
 
 def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
@@ -704,103 +713,109 @@ def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
 
     Scans activity_concept_dss, activity_concept_crf,
     soa_tool_extension, and activity_grouping_extension to ensure the
-    returned UID does not collide with any existing EA UID.
-    Assumes `cur` is a sqlite cursor within an open transaction.
+    seeded counter does not collide with any existing EA UID.
     """
-    cur.execute(
-        "SELECT extension_attribute_uid FROM activity_concept_dss"
-        " WHERE soa_id=?"
-        " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'"
-        " UNION ALL"
-        " SELECT extension_attribute_uid FROM activity_concept_crf"
-        " WHERE soa_id=?"
-        " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'"
-        " UNION ALL"
-        " SELECT ea_outer_uid FROM soa_tool_extension WHERE soa_id=?"
-        " UNION ALL"
-        " SELECT ea_name_uid FROM soa_tool_extension WHERE soa_id=?"
-        " UNION ALL"
-        " SELECT ea_version_uid FROM soa_tool_extension WHERE soa_id=?"
-        " UNION ALL"
-        " SELECT ea_date_uid FROM soa_tool_extension WHERE soa_id=?"
-        " UNION ALL"
-        " SELECT ea_outer_uid FROM activity_grouping_extension"
-        " WHERE soa_id=?"
-        " UNION ALL"
-        " SELECT ea_scheme_uid FROM activity_grouping_extension"
-        " WHERE soa_id=?"
-        " UNION ALL"
-        " SELECT ea_value_uid FROM activity_grouping_extension"
-        " WHERE soa_id=?",
-        (soa_id,) * 9,
-    )
-    existing = [x[0] for x in cur.fetchall() if x[0]]
-    n = 1
-    if existing:
-        try:
-            n = max(int(x.split("_")[1]) for x in existing) + 1
-        except Exception:
-            n = len(existing) + 1
-    return f"ExtensionAttribute_{n}"
+
+    def _seed() -> int:
+        cur.execute(
+            "SELECT extension_attribute_uid FROM activity_concept_dss"
+            " WHERE soa_id=?"
+            " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'"
+            " UNION ALL"
+            " SELECT extension_attribute_uid FROM activity_concept_crf"
+            " WHERE soa_id=?"
+            " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'"
+            " UNION ALL"
+            " SELECT ea_outer_uid FROM soa_tool_extension WHERE soa_id=?"
+            " UNION ALL"
+            " SELECT ea_name_uid FROM soa_tool_extension WHERE soa_id=?"
+            " UNION ALL"
+            " SELECT ea_version_uid FROM soa_tool_extension WHERE soa_id=?"
+            " UNION ALL"
+            " SELECT ea_date_uid FROM soa_tool_extension WHERE soa_id=?"
+            " UNION ALL"
+            " SELECT ea_outer_uid FROM activity_grouping_extension"
+            " WHERE soa_id=?"
+            " UNION ALL"
+            " SELECT ea_scheme_uid FROM activity_grouping_extension"
+            " WHERE soa_id=?"
+            " UNION ALL"
+            " SELECT ea_value_uid FROM activity_grouping_extension"
+            " WHERE soa_id=?",
+            (soa_id,) * 9,
+        )
+        return _max_suffix(cur.fetchall())
+
+    return _next_uid_from_counter(cur, soa_id, "ExtensionAttribute_", _seed)
 
 
 def get_next_extension_class_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique ExtensionClass_N for the given SOA.
 
     Scans soa_tool_extension.ec_uid and
-    activity_grouping_extension.ec_uid for existing ExtensionClass
-    UIDs. Assumes `cur` is a sqlite cursor within an open transaction.
+    activity_grouping_extension.ec_uid to seed the counter.
     """
-    cur.execute(
-        "SELECT ec_uid FROM soa_tool_extension"
-        " WHERE soa_id=?"
-        " AND ec_uid LIKE 'ExtensionClass_%'"
-        " UNION ALL"
-        " SELECT ec_uid FROM activity_grouping_extension"
-        " WHERE soa_id=?"
-        " AND ec_uid LIKE 'ExtensionClass_%'",
-        (soa_id, soa_id),
-    )
-    existing = [x[0] for x in cur.fetchall() if x[0]]
-    n = 1
-    if existing:
-        try:
-            n = max(int(x.split("_")[1]) for x in existing) + 1
-        except Exception:
-            n = len(existing) + 1
-    return f"ExtensionClass_{n}"
+
+    def _seed() -> int:
+        cur.execute(
+            "SELECT ec_uid FROM soa_tool_extension"
+            " WHERE soa_id=?"
+            " AND ec_uid LIKE 'ExtensionClass_%'"
+            " UNION ALL"
+            " SELECT ec_uid FROM activity_grouping_extension"
+            " WHERE soa_id=?"
+            " AND ec_uid LIKE 'ExtensionClass_%'",
+            (soa_id, soa_id),
+        )
+        return _max_suffix(cur.fetchall())
+
+    return _next_uid_from_counter(cur, soa_id, "ExtensionClass_", _seed)
 
 
 def get_next_concept_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique BiomedicalConcept_N for the given SOA.
 
-    Assumes `cur` is a sqlite cursor within an open transaction.
-    Uses activity_concept table when available; falls back safely if table missing.
+    Seeds from the biomedical_concept table AND its audit trail, so a
+    UID retired via _cleanup_orphaned_concept_rows is never reissued.
     """
-    try:
-        cur.execute("PRAGMA table_info(activity_concept)")
-        cols = {r[1] for r in cur.fetchall()}
-        if "concept_uid" not in cols:
-            return "BiomedicalConcept_1"
-        if "soa_id" in cols:
+
+    def _seed() -> int:
+        max_n = 0
+        try:
             cur.execute(
-                "SELECT concept_uid FROM activity_concept WHERE soa_id=? AND concept_uid LIKE 'BiomedicalConcept_%'",
+                "SELECT biomedical_concept_uid FROM biomedical_concept"
+                " WHERE soa_id=?"
+                " AND biomedical_concept_uid LIKE 'BiomedicalConcept_%'",
                 (soa_id,),
             )
-        else:
+            max_n = _max_suffix(cur.fetchall())
+        except Exception:
+            pass
+        try:
             cur.execute(
-                "SELECT concept_uid FROM activity_concept WHERE concept_uid LIKE 'BiomedicalConcept_%'"
+                "SELECT before_json, after_json FROM biomedical_concept_audit"
+                " WHERE soa_id=?",
+                (soa_id,),
             )
-        existing = [x[0] for x in cur.fetchall() if x[0]]
-        n = 1
-        if existing:
-            try:
-                n = max(int(x.split("_")[1]) for x in existing) + 1
-            except Exception:
-                n = len(existing) + 1
-        return f"BiomedicalConcept_{n}"
-    except Exception:
-        return "BiomedicalConcept_1"
+            for before_raw, after_raw in cur.fetchall():
+                for raw in (before_raw, after_raw):
+                    if not raw:
+                        continue
+                    try:
+                        uid = json.loads(raw).get("biomedical_concept_uid", "")
+                        if isinstance(uid, str) and uid.startswith(
+                            "BiomedicalConcept_"
+                        ):
+                            n = int(uid.split("_")[-1])
+                            if n > max_n:
+                                max_n = n
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        return max_n
+
+    return _next_uid_from_counter(cur, soa_id, "BiomedicalConcept_", _seed)
 
 
 def soa_exists(soa_id: int) -> bool:

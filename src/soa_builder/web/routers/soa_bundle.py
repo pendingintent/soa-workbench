@@ -280,7 +280,6 @@ def _import_soa_bundle(
             "study_amendment",
             bundle.get("study_amendment", []),
             new_soa_id,
-            extra_skip={"freeze_id"},
             col_overrides={"freeze_id": 0},
         )
 
