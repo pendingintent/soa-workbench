@@ -24,7 +24,6 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: --model claude-sonnet-5
-          show_full_output: true
           prompt: |
             Review this pull request and post inline comments for:
             1. Logic errors and edge cases
