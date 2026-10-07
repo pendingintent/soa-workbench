@@ -26,10 +26,16 @@ This will ensure the submodule is always up-to-date.
 
 
 ## Installation
+**Prerequisite: Python 3.11 or newer.** On macOS the built-in
+`python3` is 3.9, which is too old. Install a newer one with
+Homebrew (`brew install python@3.13`), from python.org, or use
+`uv venv --python 3.13` in place of the `venv` step below.
+
 Recommended: editable install for development.
 ```bash
 > python3 -m venv .venv
 > source .venv/bin/activate
+> pip install --upgrade pip
 > pip install -r requirements.txt
 > pre-commit install
 > pre-commit run --all-files
