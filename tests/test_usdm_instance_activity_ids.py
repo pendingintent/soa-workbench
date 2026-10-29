@@ -126,3 +126,36 @@ def test_legacy_visit_cell_on_shared_encounter_is_excluded():
     out = {i["id"]: i for i in build_usdm_instances(soa)}
     assert out["ScheduledActivityInstance_2"]["activityIds"] == []
     assert out["ScheduledActivityInstance_3"]["activityIds"] == []
+
+
+def test_batch_lookup_returns_all_instances_in_one_call():
+    from usdm.usdm_utils import _get_activity_ids_by_instance
+
+    soa = _seed_legacy()
+    result = _get_activity_ids_by_instance(soa)
+    assert result == {"ScheduledActivityInstance_1": ["Activity_1"]}
+
+
+def test_batch_lookup_orders_by_activity_id_and_dedupes():
+    from usdm.usdm_utils import _get_activity_ids_by_instance
+
+    _seed()
+    conn = _connect()
+    cur = conn.cursor()
+    iid = cur.execute(
+        "SELECT id FROM instances WHERE soa_id=? AND instance_uid=?",
+        (SOA_ID, "ScheduledActivityInstance_1"),
+    ).fetchone()[0]
+    aid = cur.execute(
+        "SELECT id FROM activity WHERE soa_id=? AND activity_uid=?",
+        (SOA_ID, "Activity_2"),
+    ).fetchone()[0]
+    cur.execute(
+        "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, "
+        "status) VALUES (?,?,?,?)",
+        (SOA_ID, iid, aid, "X"),
+    )
+    conn.commit()
+    conn.close()
+    result = _get_activity_ids_by_instance(SOA_ID)
+    assert result == {"ScheduledActivityInstance_1": ["Activity_1", "Activity_2"]}
