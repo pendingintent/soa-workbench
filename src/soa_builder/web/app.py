@@ -160,6 +160,7 @@ from .routers._freeze_helpers import (
     _diff_freezes_limited,
     _get_freeze,
     _list_freezes,
+    ROLLBACK_AUDIT_COLUMNS,
     _list_rollback_audit,
 )
 from .routers import rollback as rollback_router
@@ -3488,18 +3489,7 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     )
     audit_df = pd.DataFrame(audit_rows)
     if audit_df.empty:
-        audit_df = pd.DataFrame(
-            columns=[
-                "id",
-                "freeze_id",
-                "performed_at",
-                "visits_restored",
-                "activities_restored",
-                "cells_restored",
-                "concepts_restored",
-                "cells_skipped",
-            ]
-        )
+        audit_df = pd.DataFrame(columns=list(ROLLBACK_AUDIT_COLUMNS))
     bio = io.BytesIO()
     # Prepare cover sheet metadata
     # Fetch study core metadata (name, study fields, created_at)
