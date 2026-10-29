@@ -1,13 +1,19 @@
 # utils for usdm generators
 import os
 import functools
+import re
 import requests
 import logging
 from typing import List, Dict, Optional, Any, Tuple
 
 from soa_builder.web.codelist_config import EPOCH_TYPE_CODELIST
 from soa_builder.web.db import _connect
-from soa_builder.web.utils import get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href
+from soa_builder.web.utils import (
+    get_latest_ddf_ct_href as _get_latest_ddf_ct_href,
+    get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href,
+)
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 logger = logging.getLogger("usdm.usdm_utils")
 URL_PREFIX = (
@@ -199,6 +205,16 @@ def _get_latest_sdtmct_version() -> str:
     Falls back to '' on any error.
     """
     return (_get_latest_sdtm_ct_href() or "").removeprefix("sdtmct-")
+
+
+@functools.lru_cache(maxsize=1)
+def _get_latest_ddfct_version() -> str:
+    """Return the latest DDF CT package date string (e.g. '2026-03-27').
+
+    Counterpart of ``_get_latest_sdtmct_version`` for DDF codelists.
+    Falls back to '' on any error.
+    """
+    return (_get_latest_ddf_ct_href() or "").removeprefix("ddfct-")
 
 
 @functools.lru_cache(maxsize=1)
@@ -663,6 +679,9 @@ def _build_level_code(
         parts = slug.split("-")
         if len(parts) >= 4:
             version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+    if not _ISO_DATE_RE.match(version):
+        # codelist_table may be an undated "/mdr/ct/packages" path
+        version = _get_latest_ddfct_version()
     return {
         "id": code_uid,
         "extensionAttributes": [],
