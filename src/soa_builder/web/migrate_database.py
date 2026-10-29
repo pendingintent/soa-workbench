@@ -951,6 +951,16 @@ def _migrate_matrix_cells_backfill_instance_id() -> int:
         if "instance_id" not in {r[1] for r in cur.fetchall()}:
             conn.close()
             return 0
+        # Back the visit -> encounter -> instance joins used below, by
+        # the resolver, and by the activityIds lookup
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_instances_soa_encounter "
+            "ON instances(soa_id, encounter_uid)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_visit_soa_encounter "
+            "ON visit(soa_id, encounter_uid)"
+        )
         cur.execute(
             "UPDATE matrix_cells SET instance_id = ("
             "SELECT i.id FROM visit v "

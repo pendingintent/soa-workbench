@@ -2,7 +2,7 @@
 
 from fastapi.testclient import TestClient
 
-from soa_builder.web.app import app
+from soa_builder.web.app import _fetch_matrix, app
 from soa_builder.web.db import _connect
 from soa_builder.web.migrate_database import (
     _migrate_matrix_cells_backfill_instance_id,
@@ -169,3 +169,108 @@ def test_legacy_toggle_writes_instance_id_when_visit_resolves():
     ).fetchone()
     conn.close()
     assert row[0] == ids["instance"]["ScheduledActivityInstance_1"]
+
+
+def _cell_count(soa_id):
+    conn = _connect()
+    n = conn.execute(
+        "SELECT COUNT(*) FROM matrix_cells WHERE soa_id=?", (soa_id,)
+    ).fetchone()[0]
+    conn.close()
+    return n
+
+
+def test_legacy_toggle_rejects_ambiguous_visit_and_writes_nothing():
+    soa_id = _new_soa()
+    ids = _seed(soa_id)
+    resp = client.post(
+        f"/ui/soa/{soa_id}/toggle_cell",
+        data={
+            "visit_id": ids["visit"]["Encounter_2"],
+            "activity_id": ids["activity"][1],
+        },
+    )
+    assert resp.status_code == 409, resp.text
+    assert _cell_count(soa_id) == 0
+
+
+def test_legacy_toggle_rejects_visit_without_instances():
+    soa_id = _new_soa()
+    ids = _seed(soa_id)
+    resp = client.post(
+        f"/ui/soa/{soa_id}/toggle_cell",
+        data={
+            "visit_id": ids["visit"]["Encounter_3"],
+            "activity_id": ids["activity"][1],
+        },
+    )
+    assert resp.status_code == 409, resp.text
+    assert _cell_count(soa_id) == 0
+
+
+def test_set_cell_flags_whether_the_cell_will_render():
+    soa_id = _new_soa()
+    ids = _seed(soa_id)
+    resolved = client.post(
+        f"/soa/{soa_id}/cells",
+        json={
+            "visit_id": ids["visit"]["Encounter_1"],
+            "activity_id": ids["activity"][1],
+            "status": "X",
+        },
+    ).json()
+    orphan = client.post(
+        f"/soa/{soa_id}/cells",
+        json={
+            "visit_id": ids["visit"]["Encounter_2"],
+            "activity_id": ids["activity"][1],
+            "status": "X",
+        },
+    ).json()
+    assert resolved["instance_resolved"] is True
+    assert orphan["instance_resolved"] is False
+
+
+def test_set_cell_update_reports_existing_resolution():
+    soa_id = _new_soa()
+    ids = _seed(soa_id)
+    payload = {
+        "visit_id": ids["visit"]["Encounter_2"],
+        "activity_id": ids["activity"][1],
+        "status": "X",
+    }
+    client.post(f"/soa/{soa_id}/cells", json=payload)
+    payload["status"] = "Y"
+    again = client.post(f"/soa/{soa_id}/cells", json=payload).json()
+    assert again["instance_resolved"] is False
+
+
+def test_matrix_read_shows_resolved_but_not_orphan_cells():
+    soa_id = _new_soa()
+    ids = _seed(soa_id)
+    for enc in ("Encounter_1", "Encounter_2"):
+        client.post(
+            f"/soa/{soa_id}/cells",
+            json={
+                "visit_id": ids["visit"][enc],
+                "activity_id": ids["activity"][1],
+                "status": "X",
+            },
+        )
+    _, _, cells = _fetch_matrix(soa_id)
+    assert [c["instance_id"] for c in cells] == [
+        ids["instance"]["ScheduledActivityInstance_1"]
+    ]
+
+
+def test_backfill_creates_encounter_lookup_indexes():
+    _migrate_matrix_cells_backfill_instance_id()
+    conn = _connect()
+    names = {
+        r[1]
+        for table in ("instances", "visit")
+        for r in conn.execute(f"PRAGMA index_list({table})")
+    }
+    conn.close()
+    assert "idx_instances_soa_encounter" in names
+    assert "idx_visit_soa_encounter" in names
