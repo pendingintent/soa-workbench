@@ -746,24 +746,23 @@ def _load_generate_decision_instances():
 
 
 # Helpers for Scheduled Activity Instances
-def _get_activity_ids(soa_id: int, encounter_uid: str) -> List[str]:
+def _get_activity_ids(soa_id: int, instance_uid: str) -> List[str]:
+    """Return activity UIDs marked in the matrix for one instance."""
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT a.activity_uid from activity a "
-        "INNER JOIN matrix_cells m ON a.id = m.activity_id AND a.soa_id = m.soa_id "
-        "INNER JOIN visit v ON m.visit_id = v.id AND m.soa_id = v.soa_id "
-        "INNER JOIN instances i ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id "
-        "WHERE i.soa_id=? and i.encounter_uid=?",
-        (
-            soa_id,
-            encounter_uid,
-        ),
+        "SELECT a.activity_uid FROM matrix_cells m "
+        "INNER JOIN activity a "
+        "ON a.id = m.activity_id AND a.soa_id = m.soa_id "
+        "INNER JOIN instances i "
+        "ON i.id = m.instance_id AND i.soa_id = m.soa_id "
+        "WHERE m.soa_id=? AND i.instance_uid=? "
+        "ORDER BY a.id",
+        (soa_id, instance_uid),
     )
     rows = cur.fetchall()
     conn.close()
-    activity_uids = [r[0] for r in rows] or []
-    return activity_uids
+    return [r[0] for r in rows]
 
 
 # Helpers for Scheduled Decision Instances
