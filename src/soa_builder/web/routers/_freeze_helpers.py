@@ -1183,6 +1183,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     has_cell_superscript = _table_has_columns(cur, "matrix_cells", ("superscript",))
     inserted_cells = 0
     skipped_missing_instance = 0
+    nonblank_cells = sum(1 for c in cells if c.get("status", "").strip() != "")
     for c in cells:
         old_aid = c.get("activity_id")
         status = c.get("status", "").strip()
@@ -1334,6 +1335,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         "activities_restored": len(activities),
         "cells_restored": inserted_cells,
         "cells_skipped_missing_instance": skipped_missing_instance,
+        "cells_skipped": nonblank_cells - inserted_cells,
         "concept_mappings_restored": inserted_concepts,
         "elements_restored": elements_restored,
         "epochs_restored": len(snap_epochs),
@@ -1352,7 +1354,7 @@ def _record_rollback_audit(soa_id: int, freeze_id: int, stats: dict):
         "INSERT INTO rollback_audit"
         " (soa_id, freeze_id, performed_at, visits_restored,"
         " activities_restored, cells_restored, concepts_restored,"
-        " elements_restored) VALUES (?,?,?,?,?,?,?,?)",
+        " elements_restored, cells_skipped) VALUES (?,?,?,?,?,?,?,?,?)",
         (
             soa_id,
             freeze_id,
@@ -1362,6 +1364,7 @@ def _record_rollback_audit(soa_id: int, freeze_id: int, stats: dict):
             stats.get("cells_restored"),
             stats.get("concept_mappings_restored"),
             stats.get("elements_restored"),
+            stats.get("cells_skipped"),
         ),
     )
     conn.commit()
@@ -1373,7 +1376,8 @@ def _list_rollback_audit(soa_id: int) -> list:
     cur = conn.cursor()
     cur.execute(
         "SELECT id, freeze_id, performed_at, visits_restored,"
-        " activities_restored, cells_restored, concepts_restored"
+        " activities_restored, cells_restored, concepts_restored,"
+        " cells_skipped"
         " FROM rollback_audit WHERE soa_id=? ORDER BY id DESC",
         (soa_id,),
     )
@@ -1386,6 +1390,7 @@ def _list_rollback_audit(soa_id: int) -> list:
             "activities_restored": r[4],
             "cells_restored": r[5],
             "concepts_restored": r[6],
+            "cells_skipped": r[7],
         }
         for r in cur.fetchall()
     ]

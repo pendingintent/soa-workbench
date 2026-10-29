@@ -82,6 +82,7 @@ def export_rollback_audit_xlsx(soa_id: int):
                 "cells_restored",
                 "concepts_restored",
                 "elements_restored",
+                "cells_skipped",
             ]
         )
     bio = io.BytesIO()

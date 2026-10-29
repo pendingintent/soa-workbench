@@ -14,6 +14,7 @@
             <th class="am-modal-th">Visits</th>
             <th class="am-modal-th">Activities</th>
             <th class="am-modal-th">Cells</th>
+            <th class="am-modal-th">Skipped</th>
             <th class="am-modal-th">Concepts</th>
           </tr>
         </thead>
@@ -26,6 +27,7 @@
               <td class="am-modal-td">{{ r.visits_restored }}</td>
               <td class="am-modal-td">{{ r.activities_restored }}</td>
               <td class="am-modal-td">{{ r.cells_restored }}</td>
+              <td class="am-modal-td">{{ r.cells_skipped if r.cells_skipped is not none else "–" }}</td>
               <td class="am-modal-td">{{ r.concepts_restored }}</td>
             </tr>
           {% endfor %}
