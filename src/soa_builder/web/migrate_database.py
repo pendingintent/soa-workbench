@@ -951,6 +951,68 @@ def _migrate_matrix_cells_add_instance_id():
         logger.warning("matrix_cells instance_id migration failed: %s", e)
 
 
+def _migrate_matrix_cells_backfill_instance_id() -> int:
+    """Set instance_id on legacy visit-only matrix cells (idempotent).
+
+    A cell is resolved through visit.encounter_uid, but only when that
+    encounter maps to exactly one instance. Ambiguous cells, cells with
+    no matching instance, and cells that would duplicate an existing
+    instance-keyed cell are left untouched. visit_id is kept. Returns
+    the number of cells updated.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(matrix_cells)")
+        if "instance_id" not in {r[1] for r in cur.fetchall()}:
+            conn.close()
+            return 0
+        cur.execute(
+            "UPDATE matrix_cells SET instance_id = ("
+            "SELECT i.id FROM visit v "
+            "INNER JOIN instances i "
+            "ON i.encounter_uid = v.encounter_uid "
+            "AND i.soa_id = v.soa_id "
+            "WHERE v.id = matrix_cells.visit_id "
+            "AND v.soa_id = matrix_cells.soa_id) "
+            "WHERE instance_id IS NULL AND visit_id IS NOT NULL "
+            "AND (SELECT COUNT(*) FROM visit v "
+            "INNER JOIN instances i "
+            "ON i.encounter_uid = v.encounter_uid "
+            "AND i.soa_id = v.soa_id "
+            "WHERE v.id = matrix_cells.visit_id "
+            "AND v.soa_id = matrix_cells.soa_id "
+            "AND v.encounter_uid IS NOT NULL) = 1 "
+            "AND NOT EXISTS (SELECT 1 FROM matrix_cells x "
+            "INNER JOIN visit v ON v.id = matrix_cells.visit_id "
+            "INNER JOIN instances i "
+            "ON i.encounter_uid = v.encounter_uid "
+            "AND i.soa_id = v.soa_id "
+            "WHERE x.soa_id = matrix_cells.soa_id "
+            "AND x.instance_id = i.id "
+            "AND x.activity_id = matrix_cells.activity_id)"
+        )
+        updated = cur.rowcount
+        conn.commit()
+        cur.execute(
+            "SELECT COUNT(*) FROM matrix_cells "
+            "WHERE instance_id IS NULL AND visit_id IS NOT NULL"
+        )
+        remaining = cur.fetchone()[0]
+        conn.close()
+        if updated or remaining:
+            logger.info(
+                "matrix_cells instance_id backfill: %d updated, "
+                "%d legacy cells left unresolved",
+                updated,
+                remaining,
+            )
+        return updated
+    except Exception as e:
+        logger.warning("matrix_cells instance_id backfill failed: %s", e)
+        return 0
+
+
 def _migrate_activity_concept_add_href():
     """Add href column to store the API URI from which codeSystem and codeSystemVersion USDM properties can be derived"""
     try:

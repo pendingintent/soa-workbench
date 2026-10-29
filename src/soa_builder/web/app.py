@@ -63,6 +63,7 @@ from .migrate_database import (
     _migrate_timing_add_member_of_timeline,
     _migrate_instances_add_member_of_timeline,
     _migrate_matrix_cells_add_instance_id,
+    _migrate_matrix_cells_backfill_instance_id,
     _migrate_activity_concept_add_href,
     _migrate_activity_concept_add_dss,
     _migrate_study_cell_add_order_index,
@@ -228,6 +229,7 @@ from .utils import (
     get_next_concept_uid as _get_next_concept_uid,
     load_epoch_type_options,
     soa_exists,
+    resolve_instance_id_for_visit,
     load_epoch_type_map,
     table_has_columns as _table_has_columns,
     iso_duration_to_days,
@@ -320,6 +322,7 @@ _migrate_study_cell_add_order_index()
 _migrate_activity_concept_add_href()
 _migrate_activity_concept_add_dss()
 _migrate_matrix_cells_add_instance_id()
+_migrate_matrix_cells_backfill_instance_id()
 _migrate_instances_add_member_of_timeline()
 _migrate_timing_add_member_of_timeline()
 _migrate_visit_columns()
@@ -3082,9 +3085,25 @@ def set_cell(soa_id: int, payload: CellCreate):
         )
         cid = row[0]
     else:
+        inst_id = resolve_instance_id_for_visit(cur, soa_id, payload.visit_id)
+        if inst_id is None:
+            logger.warning(
+                "visit-only matrix cell written (soa=%s visit=%s): visit "
+                "does not map to exactly one instance; use the "
+                "instance-based endpoints",
+                soa_id,
+                payload.visit_id,
+            )
         cur.execute(
-            "INSERT INTO matrix_cells (soa_id, visit_id, activity_id, status) VALUES (?,?,?,?)",
-            (soa_id, payload.visit_id, payload.activity_id, payload.status),
+            "INSERT INTO matrix_cells (soa_id, visit_id, instance_id, "
+            "activity_id, status) VALUES (?,?,?,?,?)",
+            (
+                soa_id,
+                payload.visit_id,
+                inst_id,
+                payload.activity_id,
+                payload.status,
+            ),
         )
         cid = cur.lastrowid
     conn.commit()
@@ -6180,9 +6199,18 @@ def ui_toggle_cell(
             conn.close()
             current = ""
         else:
+            inst_id = resolve_instance_id_for_visit(cur, soa_id, int(visit_id))
+            if inst_id is None:
+                logger.warning(
+                    "visit-only matrix cell written (soa=%s visit=%s): "
+                    "visit does not map to exactly one instance",
+                    soa_id,
+                    int(visit_id),
+                )
             cur.execute(
-                "INSERT INTO matrix_cells (soa_id, visit_id, activity_id, status) VALUES (?,?,?,?)",
-                (soa_id, int(visit_id), activity_id, "X"),
+                "INSERT INTO matrix_cells (soa_id, visit_id, instance_id, "
+                "activity_id, status) VALUES (?,?,?,?,?)",
+                (soa_id, int(visit_id), inst_id, activity_id, "X"),
             )
             conn.commit()
             conn.close()
