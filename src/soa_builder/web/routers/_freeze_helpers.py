@@ -1146,24 +1146,72 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         )
         new_id = cur.lastrowid
         visit_id_map[v.get("id")] = new_id
+    cur.execute("PRAGMA table_info(activity)")
+    activity_cols = {r[1] for r in cur.fetchall()}
+    optional_activity_cols = [
+        c
+        for c in ("activity_uid", "label", "description", "superscript")
+        if c in activity_cols
+    ]
     activity_id_map = {}
     for a in sorted(activities, key=lambda x: x.get("order_index", 0)):
+        cols = ["soa_id", "name", "order_index"]
+        vals = [soa_id, a.get("name"), a.get("order_index")]
+        for col in optional_activity_cols:
+            if a.get(col) is not None:
+                cols.append(col)
+                vals.append(a.get(col))
         cur.execute(
-            "INSERT INTO activity (soa_id,name,order_index) VALUES (?,?,?)",
-            (soa_id, a.get("name"), a.get("order_index")),
+            f"INSERT INTO activity ({','.join(cols)}) "
+            f"VALUES ({','.join('?' * len(cols))})",
+            vals,
         )
         new_id = cur.lastrowid
         activity_id_map[a.get("id")] = new_id
+    # Snapshots store the matrix axis under "visits" (instance rows
+    # carrying instance_uid) and cells keyed on instance_id. Instances
+    # are not rebuilt by rollback, so map each snapshot instance id to
+    # the live row through its immutable instance_uid.
+    snap_instance_uid = {
+        v.get("id"): v.get("instance_uid") for v in visits if v.get("instance_uid")
+    }
+    cur.execute(
+        "SELECT instance_uid, id FROM instances WHERE soa_id=?",
+        (soa_id,),
+    )
+    live_instance_id = {r[0]: r[1] for r in cur.fetchall()}
+    has_cell_superscript = _table_has_columns(cur, "matrix_cells", ("superscript",))
     inserted_cells = 0
+    skipped_missing_instance = 0
     for c in cells:
-        old_vid = c.get("visit_id")
         old_aid = c.get("activity_id")
         status = c.get("status", "").strip()
         if status == "":
             continue
-        vid = visit_id_map.get(old_vid)
         aid = activity_id_map.get(old_aid)
-        if vid and aid:
+        if not aid:
+            continue
+        if c.get("instance_id") is not None:
+            inst_uid = snap_instance_uid.get(c.get("instance_id"))
+            inst_id = live_instance_id.get(inst_uid)
+            if inst_id is None:
+                skipped_missing_instance += 1
+                continue
+            cols = ["soa_id", "instance_id", "activity_id", "status"]
+            vals = [soa_id, inst_id, aid, status]
+            if has_cell_superscript and c.get("superscript") is not None:
+                cols.append("superscript")
+                vals.append(c.get("superscript"))
+            cur.execute(
+                f"INSERT INTO matrix_cells ({','.join(cols)}) "
+                f"VALUES ({','.join('?' * len(cols))})",
+                vals,
+            )
+            inserted_cells += 1
+            continue
+        # Legacy snapshot: cell keyed on visit_id only
+        vid = visit_id_map.get(c.get("visit_id"))
+        if vid:
             cur.execute(
                 "INSERT INTO matrix_cells (soa_id, visit_id, activity_id, status)"
                 " VALUES (?,?,?,?)",
@@ -1285,6 +1333,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         "visits_restored": len(visits),
         "activities_restored": len(activities),
         "cells_restored": inserted_cells,
+        "cells_skipped_missing_instance": skipped_missing_instance,
         "concept_mappings_restored": inserted_concepts,
         "elements_restored": elements_restored,
         "epochs_restored": len(snap_epochs),
