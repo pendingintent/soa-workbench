@@ -746,25 +746,28 @@ def _load_generate_decision_instances():
 
 
 # Helpers for Scheduled Activity Instances
-def _get_activity_ids(soa_id: int, instance_uid: str) -> List[str]:
-    """Return activity UIDs marked in the matrix for one instance.
+def _get_activity_ids_by_instance(soa_id: int) -> Dict[str, List[str]]:
+    """Map instance_uid to the activity UIDs marked in the matrix.
 
     Cells keyed on instance_id are matched directly. Legacy cells with
     only visit_id are matched through visit.encounter_uid, but only
     when that encounter maps to exactly one instance; otherwise the
-    cell is ambiguous and is excluded.
+    cell is ambiguous and is excluded. Instances with no activities
+    are absent from the result.
     """
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT a.activity_uid, a.id FROM matrix_cells m "
+        "SELECT i.instance_uid, a.activity_uid, a.id "
+        "FROM matrix_cells m "
         "INNER JOIN activity a "
         "ON a.id = m.activity_id AND a.soa_id = m.soa_id "
         "INNER JOIN instances i "
         "ON i.id = m.instance_id AND i.soa_id = m.soa_id "
-        "WHERE m.soa_id=? AND i.instance_uid=? "
+        "WHERE m.soa_id=? "
         "UNION "
-        "SELECT a.activity_uid, a.id FROM matrix_cells m "
+        "SELECT i.instance_uid, a.activity_uid, a.id "
+        "FROM matrix_cells m "
         "INNER JOIN activity a "
         "ON a.id = m.activity_id AND a.soa_id = m.soa_id "
         "INNER JOIN visit v "
@@ -772,16 +775,18 @@ def _get_activity_ids(soa_id: int, instance_uid: str) -> List[str]:
         "INNER JOIN instances i "
         "ON i.encounter_uid = v.encounter_uid AND i.soa_id = m.soa_id "
         "WHERE m.soa_id=? AND m.instance_id IS NULL "
-        "AND i.instance_uid=? "
-        "AND (SELECT COUNT(*) FROM instances i2 "
-        "WHERE i2.soa_id = m.soa_id "
-        "AND i2.encounter_uid = v.encounter_uid) = 1 "
-        "ORDER BY 2",
-        (soa_id, instance_uid, soa_id, instance_uid),
+        "AND v.encounter_uid IN ("
+        "SELECT encounter_uid FROM instances WHERE soa_id=? "
+        "GROUP BY encounter_uid HAVING COUNT(*) = 1) "
+        "ORDER BY 3",
+        (soa_id, soa_id, soa_id),
     )
     rows = cur.fetchall()
     conn.close()
-    return [r[0] for r in rows]
+    by_instance: Dict[str, List[str]] = {}
+    for instance_uid, activity_uid, _ in rows:
+        by_instance.setdefault(instance_uid, []).append(activity_uid)
+    return by_instance
 
 
 # Helpers for Scheduled Decision Instances
