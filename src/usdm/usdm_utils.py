@@ -747,18 +747,37 @@ def _load_generate_decision_instances():
 
 # Helpers for Scheduled Activity Instances
 def _get_activity_ids(soa_id: int, instance_uid: str) -> List[str]:
-    """Return activity UIDs marked in the matrix for one instance."""
+    """Return activity UIDs marked in the matrix for one instance.
+
+    Cells keyed on instance_id are matched directly. Legacy cells with
+    only visit_id are matched through visit.encounter_uid, but only
+    when that encounter maps to exactly one instance; otherwise the
+    cell is ambiguous and is excluded.
+    """
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT a.activity_uid FROM matrix_cells m "
+        "SELECT a.activity_uid, a.id FROM matrix_cells m "
         "INNER JOIN activity a "
         "ON a.id = m.activity_id AND a.soa_id = m.soa_id "
         "INNER JOIN instances i "
         "ON i.id = m.instance_id AND i.soa_id = m.soa_id "
         "WHERE m.soa_id=? AND i.instance_uid=? "
-        "ORDER BY a.id",
-        (soa_id, instance_uid),
+        "UNION "
+        "SELECT a.activity_uid, a.id FROM matrix_cells m "
+        "INNER JOIN activity a "
+        "ON a.id = m.activity_id AND a.soa_id = m.soa_id "
+        "INNER JOIN visit v "
+        "ON v.id = m.visit_id AND v.soa_id = m.soa_id "
+        "INNER JOIN instances i "
+        "ON i.encounter_uid = v.encounter_uid AND i.soa_id = m.soa_id "
+        "WHERE m.soa_id=? AND m.instance_id IS NULL "
+        "AND i.instance_uid=? "
+        "AND (SELECT COUNT(*) FROM instances i2 "
+        "WHERE i2.soa_id = m.soa_id "
+        "AND i2.encounter_uid = v.encounter_uid) = 1 "
+        "ORDER BY 2",
+        (soa_id, instance_uid, soa_id, instance_uid),
     )
     rows = cur.fetchall()
     conn.close()
