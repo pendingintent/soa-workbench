@@ -87,7 +87,7 @@ def build_usdm_instances(
             "instanceType": "ScheduledActivityInstance",
             "timelineId": _nz(timeline_id),
             "timelineExitId": _nz(timeline_exit_id),
-            "activityIds": _get_activity_ids(soa_id, encounter_uid),
+            "activityIds": _get_activity_ids(soa_id, instance_uid),
             "encounterId": _nz(encounter_uid),
         }
         out.append(instances)
