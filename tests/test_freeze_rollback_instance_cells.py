@@ -370,3 +370,22 @@ def test_audit_columns_constant_matches_list_and_empty_export():
 
     _record_rollback_audit(soa_id, freeze_id, {"cells_restored": 1})
     assert list(_list_rollback_audit(soa_id)[0]) == list(ROLLBACK_AUDIT_COLUMNS)
+
+
+def test_audit_modal_renders_dash_for_null_counts_on_old_rows():
+    soa_id = _new_soa()
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO rollback_audit (soa_id, freeze_id, performed_at, "
+        "visits_restored, activities_restored, cells_restored, "
+        "concepts_restored, elements_restored, cells_skipped) "
+        "VALUES (?,?,?,?,?,?,?,NULL,NULL)",
+        (soa_id, 1, "2025-01-01T00:00:00", 1, 2, 3, 4),
+    )
+    conn.commit()
+    conn.close()
+
+    html = _modal_html(soa_id)
+
+    assert ">None<" not in html
+    assert html.count("–") >= 2

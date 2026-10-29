@@ -30,7 +30,7 @@
               <td class="am-modal-td">{{ r.cells_restored }}</td>
               <td class="am-modal-td">{{ r.cells_skipped if r.cells_skipped is not none else "–" }}</td>
               <td class="am-modal-td">{{ r.concepts_restored }}</td>
-              <td class="am-modal-td">{{ r.elements_restored }}</td>
+              <td class="am-modal-td">{{ r.elements_restored if r.elements_restored is not none else "–" }}</td>
             </tr>
           {% endfor %}
         </tbody>
