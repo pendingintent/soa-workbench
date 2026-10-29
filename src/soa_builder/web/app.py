@@ -3061,7 +3061,8 @@ def set_cell(soa_id: int, payload: CellCreate):
     cur = conn.cursor()
     # Upsert semantics: find existing
     cur.execute(
-        "SELECT id FROM matrix_cells WHERE soa_id=? AND visit_id=? AND activity_id=?",
+        "SELECT id, instance_id FROM matrix_cells "
+        "WHERE soa_id=? AND visit_id=? AND activity_id=?",
         (soa_id, payload.visit_id, payload.activity_id),
     )
     row = cur.fetchone()
@@ -3082,6 +3083,7 @@ def set_cell(soa_id: int, payload: CellCreate):
             (payload.status, row[0]),
         )
         cid = row[0]
+        inst_id = row[1]
     else:
         inst_id = resolve_instance_id_for_visit(cur, soa_id, payload.visit_id)
         if inst_id is None:
@@ -3106,7 +3108,12 @@ def set_cell(soa_id: int, payload: CellCreate):
         cid = cur.lastrowid
     conn.commit()
     conn.close()
-    return {"cell_id": cid, "status": payload.status}
+    # Cells without an instance never render in the matrix or export
+    return {
+        "cell_id": cid,
+        "status": payload.status,
+        "instance_resolved": inst_id is not None,
+    }
 
 
 # API endpoint fr returning a matrix for a Study/SOA
@@ -6198,11 +6205,11 @@ def ui_toggle_cell(
         else:
             inst_id = resolve_instance_id_for_visit(cur, soa_id, int(visit_id))
             if inst_id is None:
-                logger.warning(
-                    "visit-only matrix cell written (soa=%s visit=%s): "
-                    "visit does not map to exactly one instance",
-                    soa_id,
-                    int(visit_id),
+                conn.close()
+                raise HTTPException(
+                    409,
+                    "visit does not map to exactly one instance; "
+                    "toggle the cell with instance_id instead",
                 )
             cur.execute(
                 "INSERT INTO matrix_cells (soa_id, visit_id, instance_id, "
