@@ -1182,21 +1182,23 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     live_instance_id = {r[0]: r[1] for r in cur.fetchall()}
     has_cell_superscript = _table_has_columns(cur, "matrix_cells", ("superscript",))
     inserted_cells = 0
+    skipped_cells = 0
     skipped_missing_instance = 0
-    nonblank_cells = sum(1 for c in cells if c.get("status", "").strip() != "")
     for c in cells:
         old_aid = c.get("activity_id")
-        status = c.get("status", "").strip()
+        status = (c.get("status") or "").strip()
         if status == "":
             continue
         aid = activity_id_map.get(old_aid)
         if not aid:
+            skipped_cells += 1
             continue
         if c.get("instance_id") is not None:
             inst_uid = snap_instance_uid.get(c.get("instance_id"))
             inst_id = live_instance_id.get(inst_uid)
             if inst_id is None:
                 skipped_missing_instance += 1
+                skipped_cells += 1
                 continue
             cols = ["soa_id", "instance_id", "activity_id", "status"]
             vals = [soa_id, inst_id, aid, status]
@@ -1219,6 +1221,8 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
                 (soa_id, vid, aid, status),
             )
             inserted_cells += 1
+        else:
+            skipped_cells += 1
     elements_restored = 0
     for el in sorted(elements, key=lambda x: x.get("order_index", 0)):
         cur.execute(
@@ -1335,7 +1339,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         "activities_restored": len(activities),
         "cells_restored": inserted_cells,
         "cells_skipped_missing_instance": skipped_missing_instance,
-        "cells_skipped": nonblank_cells - inserted_cells,
+        "cells_skipped": skipped_cells,
         "concept_mappings_restored": inserted_concepts,
         "elements_restored": elements_restored,
         "epochs_restored": len(snap_epochs),
@@ -1345,6 +1349,21 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         "endpoints_restored": len(snap_endpoints),
         "code_associations_restored": len(snap_code_assocs),
     }
+
+
+# Columns returned by _list_rollback_audit, in order; also the header
+# row for the audit exports when there are no rows.
+ROLLBACK_AUDIT_COLUMNS = (
+    "id",
+    "freeze_id",
+    "performed_at",
+    "visits_restored",
+    "activities_restored",
+    "cells_restored",
+    "concepts_restored",
+    "elements_restored",
+    "cells_skipped",
+)
 
 
 def _record_rollback_audit(soa_id: int, freeze_id: int, stats: dict):
@@ -1377,7 +1396,7 @@ def _list_rollback_audit(soa_id: int) -> list:
     cur.execute(
         "SELECT id, freeze_id, performed_at, visits_restored,"
         " activities_restored, cells_restored, concepts_restored,"
-        " cells_skipped"
+        " elements_restored, cells_skipped"
         " FROM rollback_audit WHERE soa_id=? ORDER BY id DESC",
         (soa_id,),
     )
@@ -1390,7 +1409,8 @@ def _list_rollback_audit(soa_id: int) -> list:
             "activities_restored": r[4],
             "cells_restored": r[5],
             "concepts_restored": r[6],
-            "cells_skipped": r[7],
+            "elements_restored": r[7],
+            "cells_skipped": r[8],
         }
         for r in cur.fetchall()
     ]
@@ -1419,7 +1439,7 @@ def _rollback_preview(soa_id: int, freeze_id: int) -> dict:
     snap = freeze["snapshot"]
     visits = snap.get("visits", [])
     activities = snap.get("activities", [])
-    cells = [c for c in snap.get("cells", []) if c.get("status", "").strip() != ""]
+    cells = [c for c in snap.get("cells", []) if (c.get("status") or "").strip() != ""]
     concepts_map = snap.get("activity_concepts", {}) or {}
     return {
         "freeze_id": freeze_id,

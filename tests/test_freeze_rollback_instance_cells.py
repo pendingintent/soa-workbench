@@ -256,3 +256,117 @@ def test_cells_skipped_migration_adds_column_once(tmp_path, monkeypatch):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(rollback_audit)")]
     conn.close()
     assert cols.count("cells_skipped") == 1
+
+
+def _legacy_freeze(soa_id, cells, label="legacy3"):
+    snapshot = {
+        "soa_id": soa_id,
+        "visits": [{"id": 1, "name": "V1", "order_index": 0}],
+        "activities": [{"id": 1, "name": "A1", "order_index": 0}],
+        "cells": cells,
+    }
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO soa_freeze (soa_id, version_label, created_at, "
+        "snapshot_json) VALUES (?,?,?,?)",
+        (soa_id, label, "2025-01-01T00:00:00", json.dumps(snapshot)),
+    )
+    freeze_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return freeze_id
+
+
+def test_rollback_tolerates_null_cell_status():
+    soa_id = _new_soa()
+    freeze_id = _legacy_freeze(
+        soa_id,
+        [
+            {"visit_id": 1, "activity_id": 1, "status": "X"},
+            {"visit_id": 1, "activity_id": 1, "status": None},
+        ],
+    )
+
+    stats = _rollback_freeze(soa_id, freeze_id)
+
+    # a null status is blank: neither restored nor counted as skipped
+    assert stats["cells_restored"] == 1
+    assert stats["cells_skipped"] == 0
+
+
+def test_rollback_preview_tolerates_null_cell_status():
+    from soa_builder.web.routers._freeze_helpers import _rollback_preview
+
+    soa_id = _new_soa()
+    freeze_id = _legacy_freeze(
+        soa_id,
+        [
+            {"visit_id": 1, "activity_id": 1, "status": "X"},
+            {"visit_id": 1, "activity_id": 1, "status": None},
+        ],
+        label="legacy4",
+    )
+
+    assert _rollback_preview(soa_id, freeze_id)["cells_to_restore"] == 1
+
+
+def test_skipped_count_covers_every_unrestorable_cell_kind():
+    soa_id = _new_soa()
+    freeze_id = _legacy_freeze(
+        soa_id,
+        [
+            {"visit_id": 1, "activity_id": 1, "status": "X"},
+            {"visit_id": 99, "activity_id": 1, "status": "X"},
+            {"visit_id": 1, "activity_id": 77, "status": "X"},
+            {"visit_id": 1, "activity_id": 1, "status": ""},
+            {"visit_id": 1, "activity_id": 1, "status": None},
+        ],
+        label="legacy5",
+    )
+
+    stats = _rollback_freeze(soa_id, freeze_id)
+
+    assert stats["cells_restored"] == 1
+    assert stats["cells_skipped"] == 2
+
+
+def test_audit_list_includes_elements_restored():
+    from soa_builder.web.routers._freeze_helpers import (
+        _list_rollback_audit,
+        _record_rollback_audit,
+    )
+
+    soa_id = _new_soa()
+    freeze_id = _legacy_freeze(soa_id, [], label="legacy6")
+    _record_rollback_audit(
+        soa_id,
+        freeze_id,
+        {"cells_restored": 2, "elements_restored": 3, "cells_skipped": 1},
+    )
+
+    row = _list_rollback_audit(soa_id)[0]
+
+    assert row["elements_restored"] == 3
+    assert "Elements" in _modal_html(soa_id)
+
+
+def test_audit_columns_constant_matches_list_and_empty_export():
+    import io
+
+    import pandas as pd
+
+    from soa_builder.web.routers._freeze_helpers import (
+        ROLLBACK_AUDIT_COLUMNS,
+        _list_rollback_audit,
+        _record_rollback_audit,
+    )
+
+    soa_id = _new_soa()
+    freeze_id = _legacy_freeze(soa_id, [], label="legacy7")
+    resp = client.get(f"/soa/{soa_id}/rollback_audit/export/xlsx")
+    empty = pd.read_excel(io.BytesIO(resp.content))
+    assert list(empty.columns) == list(ROLLBACK_AUDIT_COLUMNS)
+
+    _record_rollback_audit(soa_id, freeze_id, {"cells_restored": 1})
+    assert list(_list_rollback_audit(soa_id)[0]) == list(ROLLBACK_AUDIT_COLUMNS)
