@@ -818,6 +818,24 @@ def get_next_concept_uid(cur: Any, soa_id: int) -> str:
     return _next_uid_from_counter(cur, soa_id, "BiomedicalConcept_", _seed)
 
 
+def resolve_instance_id_for_visit(cur, soa_id: int, visit_id: int) -> Optional[int]:
+    """Return the single instance id behind a visit, else None.
+
+    A visit maps to instances through its encounter_uid. The result is
+    None when the visit has no encounter or when zero or several
+    instances share it (ambiguous), so callers never guess.
+    """
+    cur.execute(
+        "SELECT i.id FROM visit v "
+        "INNER JOIN instances i "
+        "ON i.encounter_uid = v.encounter_uid AND i.soa_id = v.soa_id "
+        "WHERE v.soa_id=? AND v.id=? AND v.encounter_uid IS NOT NULL",
+        (soa_id, visit_id),
+    )
+    rows = cur.fetchall()
+    return rows[0][0] if len(rows) == 1 else None
+
+
 def soa_exists(soa_id: int) -> bool:
     """Return True if an SOA row exists with the given id."""
     try:
