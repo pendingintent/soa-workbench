@@ -57,6 +57,7 @@ from .migrate_database import (
     _migrate_element_table,
     _migrate_rename_cell_table,
     _migrate_rollback_add_elements_restored,
+    _migrate_rollback_add_cells_skipped,
     _migrate_add_epoch_type,
     _migrate_visit_columns,
     _migrate_timing_add_member_of_timeline,
@@ -340,6 +341,7 @@ _migrate_rename_cell_table()
 _migrate_copy_cell_data()
 _migrate_element_id()
 _migrate_rollback_add_elements_restored()
+_migrate_rollback_add_cells_skipped()
 _migrate_activity_add_uid()
 _migrate_arm_add_type_fields()
 _migrate_element_audit_columns()
@@ -3495,6 +3497,7 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
                 "activities_restored",
                 "cells_restored",
                 "concepts_restored",
+                "cells_skipped",
             ]
         )
     bio = io.BytesIO()
