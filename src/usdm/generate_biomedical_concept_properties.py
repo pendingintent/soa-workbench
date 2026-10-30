@@ -27,6 +27,7 @@ from .usdm_utils import (
     _fetch_dss_spec,
     _get_biomedical_concept_data,
     _get_latest_bc_package_version,
+    _get_latest_sdtmct_version,
 )
 
 logger = logging.getLogger("usdm.generate_biomedical_concept_properties")
@@ -725,7 +726,7 @@ def _build_response_codes(cur, soa_id: int, bcp_uid: str) -> List[Dict[str, Any]
                 "extensionAttributes": [],
                 "code": ncit_code or "",
                 "codeSystem": BCP_CODE_SYSTEM,
-                "codeSystemVersion": code_system_version or "",
+                "codeSystemVersion": _get_latest_sdtmct_version(),
                 "decode": decode or "",
                 "instanceType": "Code",
             }
@@ -802,7 +803,7 @@ def build_usdm_biomedical_concept_properties(
                             "extensionAttributes": [],
                             "code": ncit_code,
                             "codeSystem": BCP_CODE_SYSTEM,
-                            "codeSystemVersion": code_system_version or "",
+                            "codeSystemVersion": _get_latest_sdtmct_version(),
                             "decode": decode,
                             "instanceType": "Code",
                         },
