@@ -1,13 +1,19 @@
 # utils for usdm generators
 import os
 import functools
+import re
 import requests
 import logging
 from typing import List, Dict, Optional, Any, Tuple
 
 from soa_builder.web.codelist_config import EPOCH_TYPE_CODELIST
 from soa_builder.web.db import _connect
-from soa_builder.web.utils import get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href
+from soa_builder.web.utils import (
+    get_latest_ddf_ct_href as _get_latest_ddf_ct_href,
+    get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href,
+)
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 logger = logging.getLogger("usdm.usdm_utils")
 URL_PREFIX = (
@@ -199,6 +205,16 @@ def _get_latest_sdtmct_version() -> str:
     Falls back to '' on any error.
     """
     return (_get_latest_sdtm_ct_href() or "").removeprefix("sdtmct-")
+
+
+@functools.lru_cache(maxsize=1)
+def _get_latest_ddfct_version() -> str:
+    """Return the latest DDF CT package date string (e.g. '2026-03-27').
+
+    Counterpart of ``_get_latest_sdtmct_version`` for DDF codelists.
+    Falls back to '' on any error.
+    """
+    return (_get_latest_ddf_ct_href() or "").removeprefix("ddfct-")
 
 
 @functools.lru_cache(maxsize=1)
@@ -663,6 +679,9 @@ def _build_level_code(
         parts = slug.split("-")
         if len(parts) >= 4:
             version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+    if not _ISO_DATE_RE.match(version):
+        # codelist_table may be an undated "/mdr/ct/packages" path
+        version = _get_latest_ddfct_version()
     return {
         "id": code_uid,
         "extensionAttributes": [],
@@ -746,24 +765,47 @@ def _load_generate_decision_instances():
 
 
 # Helpers for Scheduled Activity Instances
-def _get_activity_ids(soa_id: int, encounter_uid: str) -> List[str]:
+def _get_activity_ids_by_instance(soa_id: int) -> Dict[str, List[str]]:
+    """Map instance_uid to the activity UIDs marked in the matrix.
+
+    Cells keyed on instance_id are matched directly. Legacy cells with
+    only visit_id are matched through visit.encounter_uid, but only
+    when that encounter maps to exactly one instance; otherwise the
+    cell is ambiguous and is excluded. Instances with no activities
+    are absent from the result.
+    """
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT a.activity_uid from activity a "
-        "INNER JOIN matrix_cells m ON a.id = m.activity_id AND a.soa_id = m.soa_id "
-        "INNER JOIN visit v ON m.visit_id = v.id AND m.soa_id = v.soa_id "
-        "INNER JOIN instances i ON v.encounter_uid = i.encounter_uid AND v.soa_id = i.soa_id "
-        "WHERE i.soa_id=? and i.encounter_uid=?",
-        (
-            soa_id,
-            encounter_uid,
-        ),
+        "SELECT i.instance_uid, a.activity_uid, a.id "
+        "FROM matrix_cells m "
+        "INNER JOIN activity a "
+        "ON a.id = m.activity_id AND a.soa_id = m.soa_id "
+        "INNER JOIN instances i "
+        "ON i.id = m.instance_id AND i.soa_id = m.soa_id "
+        "WHERE m.soa_id=? "
+        "UNION "
+        "SELECT i.instance_uid, a.activity_uid, a.id "
+        "FROM matrix_cells m "
+        "INNER JOIN activity a "
+        "ON a.id = m.activity_id AND a.soa_id = m.soa_id "
+        "INNER JOIN visit v "
+        "ON v.id = m.visit_id AND v.soa_id = m.soa_id "
+        "INNER JOIN instances i "
+        "ON i.encounter_uid = v.encounter_uid AND i.soa_id = m.soa_id "
+        "WHERE m.soa_id=? AND m.instance_id IS NULL "
+        "AND v.encounter_uid IN ("
+        "SELECT encounter_uid FROM instances WHERE soa_id=? "
+        "GROUP BY encounter_uid HAVING COUNT(*) = 1) "
+        "ORDER BY 3",
+        (soa_id, soa_id, soa_id),
     )
     rows = cur.fetchall()
     conn.close()
-    activity_uids = [r[0] for r in rows] or []
-    return activity_uids
+    by_instance: Dict[str, List[str]] = {}
+    for instance_uid, activity_uid, _ in rows:
+        by_instance.setdefault(instance_uid, []).append(activity_uid)
+    return by_instance
 
 
 # Helpers for Scheduled Decision Instances

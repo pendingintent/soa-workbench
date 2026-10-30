@@ -57,11 +57,13 @@ from .migrate_database import (
     _migrate_element_table,
     _migrate_rename_cell_table,
     _migrate_rollback_add_elements_restored,
+    _migrate_rollback_add_cells_skipped,
     _migrate_add_epoch_type,
     _migrate_visit_columns,
     _migrate_timing_add_member_of_timeline,
     _migrate_instances_add_member_of_timeline,
     _migrate_matrix_cells_add_instance_id,
+    _migrate_matrix_cells_backfill_instance_id,
     _migrate_activity_concept_add_href,
     _migrate_activity_concept_add_dss,
     _migrate_study_cell_add_order_index,
@@ -158,6 +160,7 @@ from .routers._freeze_helpers import (
     _diff_freezes_limited,
     _get_freeze,
     _list_freezes,
+    ROLLBACK_AUDIT_COLUMNS,
     _list_rollback_audit,
 )
 from .routers import rollback as rollback_router
@@ -227,6 +230,7 @@ from .utils import (
     get_next_concept_uid as _get_next_concept_uid,
     load_epoch_type_options,
     soa_exists,
+    resolve_instance_id_for_visit,
     load_epoch_type_map,
     table_has_columns as _table_has_columns,
     iso_duration_to_days,
@@ -319,6 +323,7 @@ _migrate_study_cell_add_order_index()
 _migrate_activity_concept_add_href()
 _migrate_activity_concept_add_dss()
 _migrate_matrix_cells_add_instance_id()
+_migrate_matrix_cells_backfill_instance_id()
 _migrate_instances_add_member_of_timeline()
 _migrate_timing_add_member_of_timeline()
 _migrate_visit_columns()
@@ -337,6 +342,7 @@ _migrate_rename_cell_table()
 _migrate_copy_cell_data()
 _migrate_element_id()
 _migrate_rollback_add_elements_restored()
+_migrate_rollback_add_cells_skipped()
 _migrate_activity_add_uid()
 _migrate_arm_add_type_fields()
 _migrate_element_audit_columns()
@@ -3058,7 +3064,8 @@ def set_cell(soa_id: int, payload: CellCreate):
     cur = conn.cursor()
     # Upsert semantics: find existing
     cur.execute(
-        "SELECT id FROM matrix_cells WHERE soa_id=? AND visit_id=? AND activity_id=?",
+        "SELECT id, instance_id FROM matrix_cells "
+        "WHERE soa_id=? AND visit_id=? AND activity_id=?",
         (soa_id, payload.visit_id, payload.activity_id),
     )
     row = cur.fetchone()
@@ -3079,15 +3086,37 @@ def set_cell(soa_id: int, payload: CellCreate):
             (payload.status, row[0]),
         )
         cid = row[0]
+        inst_id = row[1]
     else:
+        inst_id = resolve_instance_id_for_visit(cur, soa_id, payload.visit_id)
+        if inst_id is None:
+            logger.warning(
+                "visit-only matrix cell written (soa=%s visit=%s): visit "
+                "does not map to exactly one instance; use the "
+                "instance-based endpoints",
+                soa_id,
+                payload.visit_id,
+            )
         cur.execute(
-            "INSERT INTO matrix_cells (soa_id, visit_id, activity_id, status) VALUES (?,?,?,?)",
-            (soa_id, payload.visit_id, payload.activity_id, payload.status),
+            "INSERT INTO matrix_cells (soa_id, visit_id, instance_id, "
+            "activity_id, status) VALUES (?,?,?,?,?)",
+            (
+                soa_id,
+                payload.visit_id,
+                inst_id,
+                payload.activity_id,
+                payload.status,
+            ),
         )
         cid = cur.lastrowid
     conn.commit()
     conn.close()
-    return {"cell_id": cid, "status": payload.status}
+    # Cells without an instance never render in the matrix or export
+    return {
+        "cell_id": cid,
+        "status": payload.status,
+        "instance_resolved": inst_id is not None,
+    }
 
 
 # API endpoint fr returning a matrix for a Study/SOA
@@ -3460,17 +3489,7 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
     )
     audit_df = pd.DataFrame(audit_rows)
     if audit_df.empty:
-        audit_df = pd.DataFrame(
-            columns=[
-                "id",
-                "freeze_id",
-                "performed_at",
-                "visits_restored",
-                "activities_restored",
-                "cells_restored",
-                "concepts_restored",
-            ]
-        )
+        audit_df = pd.DataFrame(columns=list(ROLLBACK_AUDIT_COLUMNS))
     bio = io.BytesIO()
     # Prepare cover sheet metadata
     # Fetch study core metadata (name, study fields, created_at)
@@ -6177,9 +6196,18 @@ def ui_toggle_cell(
             conn.close()
             current = ""
         else:
+            inst_id = resolve_instance_id_for_visit(cur, soa_id, int(visit_id))
+            if inst_id is None:
+                conn.close()
+                raise HTTPException(
+                    409,
+                    "visit does not map to exactly one instance; "
+                    "toggle the cell with instance_id instead",
+                )
             cur.execute(
-                "INSERT INTO matrix_cells (soa_id, visit_id, activity_id, status) VALUES (?,?,?,?)",
-                (soa_id, int(visit_id), activity_id, "X"),
+                "INSERT INTO matrix_cells (soa_id, visit_id, instance_id, "
+                "activity_id, status) VALUES (?,?,?,?,?)",
+                (soa_id, int(visit_id), inst_id, activity_id, "X"),
             )
             conn.commit()
             conn.close()

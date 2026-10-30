@@ -542,10 +542,14 @@ def test_build_returns_usdm_shape():
             "usdm.generate_biomedical_concept_properties._get_dss_href_for_bc",
             return_value="",
         ),
+        patch(
+            "usdm.generate_biomedical_concept_properties._get_latest_sdtmct_version",
+            return_value="2026-03-27",
+        ),
     ):
         populate_biomedical_concept_properties(SOA_ID)
 
-    out = build_usdm_biomedical_concept_properties(SOA_ID, BC_UID)
+        out = build_usdm_biomedical_concept_properties(SOA_ID, BC_UID)
     assert len(out) == 3
     p = out[0]
     assert p["instanceType"] == "BiomedicalConceptProperty"
@@ -562,7 +566,8 @@ def test_build_returns_usdm_shape():
     sc = p["code"]["standardCode"]
     assert sc["code"] == "C25347"
     assert sc["codeSystem"] == "http://www.cdisc.org"
-    assert sc["codeSystemVersion"] == "2024-09-27"
+    # CT release date, not the BC package date stored on the row (#296)
+    assert sc["codeSystemVersion"] == "2026-03-27"
     assert sc["decode"] == "Height"
 
 

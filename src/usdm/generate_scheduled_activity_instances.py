@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 import sys
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import _nz
-from .usdm_utils import _get_activity_ids
+from .usdm_utils import _get_activity_ids_by_instance
 
 
 def build_usdm_instances(
@@ -50,6 +50,7 @@ def build_usdm_instances(
     rows = cur.fetchall()
     conn.close()
     out: List[Dict[str, Any]] = []
+    activity_ids = _get_activity_ids_by_instance(soa_id)
 
     for i, r in enumerate(rows):
         (
@@ -87,7 +88,7 @@ def build_usdm_instances(
             "instanceType": "ScheduledActivityInstance",
             "timelineId": _nz(timeline_id),
             "timelineExitId": _nz(timeline_exit_id),
-            "activityIds": _get_activity_ids(soa_id, encounter_uid),
+            "activityIds": activity_ids.get(instance_uid, []),
             "encounterId": _nz(encounter_uid),
         }
         out.append(instances)
