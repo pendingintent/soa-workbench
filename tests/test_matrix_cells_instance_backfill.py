@@ -274,3 +274,87 @@ def test_backfill_creates_encounter_lookup_indexes():
     conn.close()
     assert "idx_instances_soa_encounter" in names
     assert "idx_visit_soa_encounter" in names
+
+
+def _instance_cell(soa_id, instance_id, activity_id):
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, "
+        "status) VALUES (?,?,?,?)",
+        (soa_id, instance_id, activity_id, "X"),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _cells_for_instance(soa_id, instance_id, activity_id):
+    conn = _connect()
+    n = conn.execute(
+        "SELECT COUNT(*) FROM matrix_cells "
+        "WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (soa_id, instance_id, activity_id),
+    ).fetchone()[0]
+    conn.close()
+    return n
+
+
+def test_set_cell_does_not_duplicate_existing_instance_cell():
+    soa_id = _new_soa()
+    ids = _seed(soa_id)
+    inst = ids["instance"]["ScheduledActivityInstance_1"]
+    _instance_cell(soa_id, inst, ids["activity"][1])
+    resp = client.post(
+        f"/soa/{soa_id}/cells",
+        json={
+            "visit_id": ids["visit"]["Encounter_1"],
+            "activity_id": ids["activity"][1],
+            "status": "X",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert _cells_for_instance(soa_id, inst, ids["activity"][1]) == 1
+
+
+def test_set_cell_blank_clears_existing_instance_cell():
+    soa_id = _new_soa()
+    ids = _seed(soa_id)
+    inst = ids["instance"]["ScheduledActivityInstance_1"]
+    _instance_cell(soa_id, inst, ids["activity"][1])
+    resp = client.post(
+        f"/soa/{soa_id}/cells",
+        json={
+            "visit_id": ids["visit"]["Encounter_1"],
+            "activity_id": ids["activity"][1],
+            "status": "",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert _cells_for_instance(soa_id, inst, ids["activity"][1]) == 0
+
+
+def test_legacy_toggle_does_not_duplicate_existing_instance_cell():
+    soa_id = _new_soa()
+    ids = _seed(soa_id)
+    inst = ids["instance"]["ScheduledActivityInstance_1"]
+    _instance_cell(soa_id, inst, ids["activity"][1])
+    resp = client.post(
+        f"/ui/soa/{soa_id}/toggle_cell",
+        data={
+            "visit_id": ids["visit"]["Encounter_1"],
+            "activity_id": ids["activity"][1],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    # the existing cell is toggled off, not shadowed by a second row
+    assert _cells_for_instance(soa_id, inst, ids["activity"][1]) == 0
+
+
+def test_backfill_resolves_only_one_of_sibling_legacy_cells():
+    soa_id = _new_soa()
+    ids = _seed(soa_id)
+    visit = ids["visit"]["Encounter_1"]
+    _legacy_cell(soa_id, visit, ids["activity"][1])
+    _legacy_cell(soa_id, visit, ids["activity"][1])
+    _migrate_matrix_cells_backfill_instance_id()
+    inst = ids["instance"]["ScheduledActivityInstance_1"]
+    assert _cells_for_instance(soa_id, inst, ids["activity"][1]) == 1
