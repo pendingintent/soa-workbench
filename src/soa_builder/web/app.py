@@ -230,7 +230,7 @@ from .utils import (
     get_next_concept_uid as _get_next_concept_uid,
     load_epoch_type_options,
     soa_exists,
-    resolve_instance_id_for_visit,
+    find_visit_cell,
     load_epoch_type_map,
     table_has_columns as _table_has_columns,
     iso_duration_to_days,
@@ -3062,13 +3062,8 @@ def set_cell(soa_id: int, payload: CellCreate):
         raise HTTPException(404, "SOA not found")
     conn = _connect()
     cur = conn.cursor()
-    # Upsert semantics: find existing
-    cur.execute(
-        "SELECT id, instance_id FROM matrix_cells "
-        "WHERE soa_id=? AND visit_id=? AND activity_id=?",
-        (soa_id, payload.visit_id, payload.activity_id),
-    )
-    row = cur.fetchone()
+    # Upsert semantics: find existing (visit- or instance-keyed)
+    row, inst_id = find_visit_cell(cur, soa_id, payload.visit_id, payload.activity_id)
     # If blank status => delete existing cell (clear) and do not create new row
     if payload.status.strip() == "":
         if row:
@@ -3086,9 +3081,7 @@ def set_cell(soa_id: int, payload: CellCreate):
             (payload.status, row[0]),
         )
         cid = row[0]
-        inst_id = row[1]
     else:
-        inst_id = resolve_instance_id_for_visit(cur, soa_id, payload.visit_id)
         if inst_id is None:
             logger.warning(
                 "visit-only matrix cell written (soa=%s visit=%s): visit "
@@ -6185,18 +6178,13 @@ def ui_toggle_cell(
         if visit_id is None:
             conn.close()
             raise HTTPException(400, "visit_id or instance_id required")
-        cur.execute(
-            "SELECT status,id FROM matrix_cells WHERE soa_id=? AND visit_id=? AND activity_id=?",
-            (soa_id, int(visit_id), activity_id),
-        )
-        row = cur.fetchone()
+        row, inst_id = find_visit_cell(cur, soa_id, int(visit_id), activity_id)
         if row:
-            cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
+            cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[0],))
             conn.commit()
             conn.close()
             current = ""
         else:
-            inst_id = resolve_instance_id_for_visit(cur, soa_id, int(visit_id))
             if inst_id is None:
                 conn.close()
                 raise HTTPException(

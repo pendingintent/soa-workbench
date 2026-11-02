@@ -1180,6 +1180,19 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         (soa_id,),
     )
     live_instance_id = {r[0]: r[1] for r in cur.fetchall()}
+    # encounter_uid -> instance id, only where exactly one instance
+    # shares the encounter
+    cur.execute(
+        "SELECT encounter_uid, MIN(id) FROM instances "
+        "WHERE soa_id=? AND encounter_uid IS NOT NULL "
+        "GROUP BY encounter_uid HAVING COUNT(*) = 1",
+        (soa_id,),
+    )
+    unique_instance_by_encounter = {r[0]: r[1] for r in cur.fetchall()}
+    snap_encounter_uid = {
+        v.get("id"): v.get("encounter_uid") for v in visits if v.get("encounter_uid")
+    }
+    restored_instance_cells = set()
     has_cell_superscript = _table_has_columns(cur, "matrix_cells", ("superscript",))
     inserted_cells = 0
     skipped_cells = 0
@@ -1210,15 +1223,27 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
                 f"VALUES ({','.join('?' * len(cols))})",
                 vals,
             )
+            restored_instance_cells.add((soa_id, inst_id, aid))
             inserted_cells += 1
             continue
         # Legacy snapshot: cell keyed on visit_id only
         vid = visit_id_map.get(c.get("visit_id"))
         if vid:
+            # Resolve through the snapshot visit's encounter_uid: the
+            # restored visit row does not carry it, and the startup
+            # backfill will not run again.
+            inst_id = unique_instance_by_encounter.get(
+                snap_encounter_uid.get(c.get("visit_id"))
+            )
+            if (soa_id, inst_id, aid) in restored_instance_cells:
+                inst_id = None
+            if inst_id is not None:
+                restored_instance_cells.add((soa_id, inst_id, aid))
             cur.execute(
-                "INSERT INTO matrix_cells (soa_id, visit_id, activity_id, status)"
-                " VALUES (?,?,?,?)",
-                (soa_id, vid, aid, status),
+                "INSERT INTO matrix_cells "
+                "(soa_id, visit_id, instance_id, activity_id, status)"
+                " VALUES (?,?,?,?,?)",
+                (soa_id, vid, inst_id, aid, status),
             )
             inserted_cells += 1
         else:

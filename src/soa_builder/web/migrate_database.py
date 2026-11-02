@@ -977,32 +977,46 @@ def _migrate_matrix_cells_backfill_instance_id() -> int:
             "CREATE INDEX IF NOT EXISTS idx_visit_soa_encounter "
             "ON visit(soa_id, encounter_uid)"
         )
+        # Resolve in Python rather than one self-referential UPDATE:
+        # sibling legacy rows sharing a visit and activity must not all
+        # claim the same instance, which a NOT EXISTS subquery cannot
+        # see while the statement is still running.
         cur.execute(
-            "UPDATE matrix_cells SET instance_id = ("
-            "SELECT i.id FROM visit v "
+            "SELECT m.id, m.soa_id, m.activity_id, i.id "
+            "FROM matrix_cells m "
+            "INNER JOIN visit v "
+            "ON v.id = m.visit_id AND v.soa_id = m.soa_id "
             "INNER JOIN instances i "
-            "ON i.encounter_uid = v.encounter_uid "
-            "AND i.soa_id = v.soa_id "
-            "WHERE v.id = matrix_cells.visit_id "
-            "AND v.soa_id = matrix_cells.soa_id) "
-            "WHERE instance_id IS NULL AND visit_id IS NOT NULL "
-            "AND (SELECT COUNT(*) FROM visit v "
-            "INNER JOIN instances i "
-            "ON i.encounter_uid = v.encounter_uid "
-            "AND i.soa_id = v.soa_id "
-            "WHERE v.id = matrix_cells.visit_id "
-            "AND v.soa_id = matrix_cells.soa_id "
-            "AND v.encounter_uid IS NOT NULL) = 1 "
-            "AND NOT EXISTS (SELECT 1 FROM matrix_cells x "
-            "INNER JOIN visit v ON v.id = matrix_cells.visit_id "
-            "INNER JOIN instances i "
-            "ON i.encounter_uid = v.encounter_uid "
-            "AND i.soa_id = v.soa_id "
-            "WHERE x.soa_id = matrix_cells.soa_id "
-            "AND x.instance_id = i.id "
-            "AND x.activity_id = matrix_cells.activity_id)"
+            "ON i.encounter_uid = v.encounter_uid AND i.soa_id = v.soa_id "
+            "WHERE m.instance_id IS NULL AND m.visit_id IS NOT NULL "
+            "AND v.encounter_uid IS NOT NULL "
+            "AND m.id IN (SELECT m2.id FROM matrix_cells m2 "
+            "INNER JOIN visit v2 ON v2.id = m2.visit_id "
+            "AND v2.soa_id = m2.soa_id "
+            "INNER JOIN instances i2 "
+            "ON i2.encounter_uid = v2.encounter_uid "
+            "AND i2.soa_id = v2.soa_id "
+            "WHERE m2.instance_id IS NULL "
+            "GROUP BY m2.id HAVING COUNT(*) = 1) "
+            "ORDER BY m.id"
         )
-        updated = cur.rowcount
+        candidates = cur.fetchall()
+        cur.execute(
+            "SELECT soa_id, instance_id, activity_id FROM matrix_cells "
+            "WHERE instance_id IS NOT NULL"
+        )
+        taken = {tuple(r) for r in cur.fetchall()}
+        updated = 0
+        for cell_id, cell_soa, activity_id, inst_id in candidates:
+            key = (cell_soa, inst_id, activity_id)
+            if key in taken:
+                continue
+            cur.execute(
+                "UPDATE matrix_cells SET instance_id=? WHERE id=?",
+                (inst_id, cell_id),
+            )
+            taken.add(key)
+            updated += 1
         conn.commit()
         cur.execute(
             "SELECT COUNT(*) FROM matrix_cells "

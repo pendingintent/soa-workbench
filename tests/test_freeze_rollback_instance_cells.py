@@ -389,3 +389,69 @@ def test_audit_modal_renders_dash_for_null_counts_on_old_rows():
 
     assert ">None<" not in html
     assert html.count("–") >= 2
+
+
+def _legacy_snapshot_freeze(soa_id, encounter_uid):
+    snapshot = {
+        "soa_id": soa_id,
+        "visits": [
+            {
+                "id": 1,
+                "name": "V1",
+                "order_index": 0,
+                "encounter_uid": encounter_uid,
+            }
+        ],
+        "activities": [{"id": 1, "name": "A1", "order_index": 0}],
+        "cells": [{"visit_id": 1, "activity_id": 1, "status": "X"}],
+    }
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO soa_freeze (soa_id, version_label, created_at, "
+        "snapshot_json) VALUES (?,?,?,?)",
+        (soa_id, "legacy", "2025-01-01T00:00:00", json.dumps(snapshot)),
+    )
+    freeze_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return freeze_id
+
+
+def _live_instance(soa_id, uid, encounter_uid):
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO instances (soa_id, instance_uid, name, "
+        "encounter_uid) VALUES (?,?,?,?)",
+        (soa_id, uid, uid, encounter_uid),
+    )
+    conn.commit()
+    new_id = cur.lastrowid
+    conn.close()
+    return new_id
+
+
+def test_rollback_resolves_legacy_cell_to_unique_instance():
+    soa_id = _new_soa()
+    inst = _live_instance(soa_id, "ScheduledActivityInstance_L1", "Encounter_L1")
+    freeze_id = _legacy_snapshot_freeze(soa_id, "Encounter_L1")
+
+    stats = _rollback_freeze(soa_id, freeze_id)
+
+    assert stats["cells_restored"] == 1
+    cells = _cells(soa_id)
+    assert len(cells) == 1
+    assert cells[0][0] == inst
+
+
+def test_rollback_leaves_ambiguous_legacy_cell_unresolved():
+    soa_id = _new_soa()
+    _live_instance(soa_id, "ScheduledActivityInstance_L2", "Encounter_L2")
+    _live_instance(soa_id, "ScheduledActivityInstance_L3", "Encounter_L2")
+    freeze_id = _legacy_snapshot_freeze(soa_id, "Encounter_L2")
+
+    stats = _rollback_freeze(soa_id, freeze_id)
+
+    assert stats["cells_restored"] == 1
+    assert _cells(soa_id)[0][0] is None

@@ -836,6 +836,35 @@ def resolve_instance_id_for_visit(cur, soa_id: int, visit_id: int) -> Optional[i
     return rows[0][0] if len(rows) == 1 else None
 
 
+def find_visit_cell(cur, soa_id: int, visit_id: int, activity_id: int):
+    """Find the matrix cell a visit-keyed write should act on.
+
+    Looks for a cell keyed on visit_id first, then for an instance-keyed
+    cell on the single instance the visit resolves to, so visit- and
+    instance-keyed writes converge on one row per instance and
+    activity. Returns ``(row, instance_id)`` where row is
+    ``(id, instance_id)`` or None, and instance_id is the resolved
+    instance (None when the visit does not map to exactly one).
+    """
+    cur.execute(
+        "SELECT id, instance_id FROM matrix_cells "
+        "WHERE soa_id=? AND visit_id=? AND activity_id=?",
+        (soa_id, visit_id, activity_id),
+    )
+    row = cur.fetchone()
+    if row:
+        return row, row[1]
+    inst_id = resolve_instance_id_for_visit(cur, soa_id, visit_id)
+    if inst_id is None:
+        return None, None
+    cur.execute(
+        "SELECT id, instance_id FROM matrix_cells "
+        "WHERE soa_id=? AND instance_id=? AND activity_id=?",
+        (soa_id, inst_id, activity_id),
+    )
+    return cur.fetchone(), inst_id
+
+
 def soa_exists(soa_id: int) -> bool:
     """Return True if an SOA row exists with the given id."""
     try:
