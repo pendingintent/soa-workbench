@@ -68,22 +68,12 @@ def export_rollback_audit_xlsx(soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
     from ..app import _list_rollback_audit  # type: ignore
+    from ._freeze_helpers import ROLLBACK_AUDIT_COLUMNS
 
     rows = _list_rollback_audit(soa_id)
     df = pd.DataFrame(rows)
     if df.empty:
-        df = pd.DataFrame(
-            columns=[
-                "id",
-                "freeze_id",
-                "performed_at",
-                "visits_restored",
-                "activities_restored",
-                "cells_restored",
-                "concepts_restored",
-                "elements_restored",
-            ]
-        )
+        df = pd.DataFrame(columns=list(ROLLBACK_AUDIT_COLUMNS))
     bio = io.BytesIO()
     with pd.ExcelWriter(bio, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="RollbackAudit")

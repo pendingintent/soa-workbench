@@ -1,0 +1,37 @@
+name: Feature/Enhancement Request
+description: A request for a new Feature or Enhancement
+projects:
+  - pendingintent/soa-workbench
+type: Feature
+body:
+  - type: dropdown
+    id: topic
+    validations:
+      required: true
+    attributes:
+      label: Topic
+      multiple: true
+      options:
+        - User Interface
+        - Class Entity
+        - Biomedical Concepts
+        - SDTM Dataset Specializations
+        - Custom
+  - type: textarea
+    id: feature-request
+    validations:
+      required: true
+    attributes:
+      label: Describe the feature you would like in detail.
+  - type: textarea
+    id: screenshots
+    validations:
+      required: false
+    attributes:
+      label: Paste any screenshots or diagrams that help describe the new feature.
+  - type: textarea
+    id: files
+    validations:
+      required: false
+    attributes:
+      label: Attach any files that help demonstrate or explain your new feature. 

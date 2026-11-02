@@ -465,7 +465,8 @@ def _init_db():
             activities_restored INTEGER,
             cells_restored INTEGER,
             concepts_restored INTEGER,
-            elements_restored INTEGER
+            elements_restored INTEGER,
+            cells_skipped INTEGER
         )"""
     )
     # Reorder audit (tracks manual drag reorder operations for visits & activities)

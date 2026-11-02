@@ -656,6 +656,22 @@ def _migrate_rollback_add_elements_restored():
         logger.warning("rollback_audit migration failed: %s", e)
 
 
+# Migration: Add cells_skipped to rollback_audit
+def _migrate_rollback_add_cells_skipped():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(rollback_audit)")
+        cols = {r[1] for r in cur.fetchall()}
+        if "cells_skipped" not in cols:
+            cur.execute("ALTER TABLE rollback_audit ADD COLUMN cells_skipped INTEGER")
+            conn.commit()
+            logger.info("Added cells_skipped column to rollback_audit")
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.warning("rollback_audit cells_skipped migration failed: %s", e)
+
+
 # Migration: Add activity_uid to activity
 def _migrate_activity_add_uid():
     """Add activity_uid column if missing; backfill as Activity_<order_index>."""
@@ -933,6 +949,92 @@ def _migrate_matrix_cells_add_instance_id():
         conn.close()
     except Exception as e:
         logger.warning("matrix_cells instance_id migration failed: %s", e)
+
+
+def _migrate_matrix_cells_backfill_instance_id() -> int:
+    """Set instance_id on legacy visit-only matrix cells (idempotent).
+
+    A cell is resolved through visit.encounter_uid, but only when that
+    encounter maps to exactly one instance. Ambiguous cells, cells with
+    no matching instance, and cells that would duplicate an existing
+    instance-keyed cell are left untouched. visit_id is kept. Returns
+    the number of cells updated.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(matrix_cells)")
+        if "instance_id" not in {r[1] for r in cur.fetchall()}:
+            conn.close()
+            return 0
+        # Back the visit -> encounter -> instance joins used below, by
+        # the resolver, and by the activityIds lookup
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_instances_soa_encounter "
+            "ON instances(soa_id, encounter_uid)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_visit_soa_encounter "
+            "ON visit(soa_id, encounter_uid)"
+        )
+        # Resolve in Python rather than one self-referential UPDATE:
+        # sibling legacy rows sharing a visit and activity must not all
+        # claim the same instance, which a NOT EXISTS subquery cannot
+        # see while the statement is still running.
+        cur.execute(
+            "SELECT m.id, m.soa_id, m.activity_id, i.id "
+            "FROM matrix_cells m "
+            "INNER JOIN visit v "
+            "ON v.id = m.visit_id AND v.soa_id = m.soa_id "
+            "INNER JOIN instances i "
+            "ON i.encounter_uid = v.encounter_uid AND i.soa_id = v.soa_id "
+            "WHERE m.instance_id IS NULL AND m.visit_id IS NOT NULL "
+            "AND v.encounter_uid IS NOT NULL "
+            "AND m.id IN (SELECT m2.id FROM matrix_cells m2 "
+            "INNER JOIN visit v2 ON v2.id = m2.visit_id "
+            "AND v2.soa_id = m2.soa_id "
+            "INNER JOIN instances i2 "
+            "ON i2.encounter_uid = v2.encounter_uid "
+            "AND i2.soa_id = v2.soa_id "
+            "WHERE m2.instance_id IS NULL "
+            "GROUP BY m2.id HAVING COUNT(*) = 1) "
+            "ORDER BY m.id"
+        )
+        candidates = cur.fetchall()
+        cur.execute(
+            "SELECT soa_id, instance_id, activity_id FROM matrix_cells "
+            "WHERE instance_id IS NOT NULL"
+        )
+        taken = {tuple(r) for r in cur.fetchall()}
+        updated = 0
+        for cell_id, cell_soa, activity_id, inst_id in candidates:
+            key = (cell_soa, inst_id, activity_id)
+            if key in taken:
+                continue
+            cur.execute(
+                "UPDATE matrix_cells SET instance_id=? WHERE id=?",
+                (inst_id, cell_id),
+            )
+            taken.add(key)
+            updated += 1
+        conn.commit()
+        cur.execute(
+            "SELECT COUNT(*) FROM matrix_cells "
+            "WHERE instance_id IS NULL AND visit_id IS NOT NULL"
+        )
+        remaining = cur.fetchone()[0]
+        conn.close()
+        if updated or remaining:
+            logger.info(
+                "matrix_cells instance_id backfill: %d updated, "
+                "%d legacy cells left unresolved",
+                updated,
+                remaining,
+            )
+        return updated
+    except Exception as e:
+        logger.warning("matrix_cells instance_id backfill failed: %s", e)
+        return 0
 
 
 def _migrate_activity_concept_add_href():

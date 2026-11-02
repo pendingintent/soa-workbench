@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 
 from soa_builder.web.db import _connect
 from .usdm_utils import (
+    _get_latest_sdtmct_version,
     _get_biomedical_concept_synonyms as _get_biomedical_concept_synonyms,
     _get_biomedical_concept_reference as _get_biomedical_concept_reference,
 )
@@ -87,7 +88,8 @@ def build_usdm_biomedical_concepts(soa_id: int) -> List[Dict[str, Any]]:
         alias_code = r[3]
         concept_code = r[4]
         code_uid = r[5]
-        code_system_version = r[6]
+        # BC package dates are not CT releases; pin to the latest CT
+        code_system_version = _get_latest_sdtmct_version()
         decode = r[7]
         synonyms = synonyms_map[concept_code]
         reference = reference_map[concept_code]

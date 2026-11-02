@@ -273,6 +273,7 @@ def ui_freeze_rollback(request: Request, soa_id: int, freeze_id: int):
             "cells_restored": result["cells_restored"],
             "concept_mappings_restored": result["concept_mappings_restored"],
             "elements_restored": result.get("elements_restored"),
+            "cells_skipped": result.get("cells_skipped"),
         },
     )
     if request.headers.get("HX-Request") == "true":
