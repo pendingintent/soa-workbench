@@ -12,6 +12,7 @@ from ..schemas import DecisionInstanceCreate, DecisionInstanceUpdate
 from ..utils import (
     soa_exists,
     get_epoch_uid,
+    get_next_decision_instance_uid,
     get_schedule_timeline,
     redirect_url_from_referer as _redirect_url,
     _nz as _nz,
@@ -118,24 +119,8 @@ def create_decision_instance(soa_id: int, payload: DecisionInstanceCreate):
     )
     next_ord = (cur.fetchone() or [0])[0] + 1
 
-    cur.execute(
-        "SELECT instance_uid FROM decision_instances WHERE soa_id=? "
-        "AND instance_uid LIKE 'ScheduledDecisionInstance_%'",
-        (soa_id,),
-    )
-    existing_uids = [r[0] for r in cur.fetchall() if r[0]]
-    used_nums = set()
-    for uid in existing_uids:
-        if uid.startswith("ScheduledDecisionInstance_"):
-            tail = uid[len("ScheduledDecisionInstance_") :]
-            if tail.isdigit():
-                used_nums.add(int(tail))
-            else:
-                logger.warning(
-                    "Invalid decision instance uid format (ignored): %s", uid
-                )
-    next_n = (max(used_nums) if used_nums else 0) + 1
-    new_uid = f"ScheduledDecisionInstance_{next_n}"
+    # Draw from the durable uid_counter so freed numbers are never reused
+    new_uid = get_next_decision_instance_uid(cur, soa_id)
 
     cur.execute(
         "INSERT INTO decision_instances (soa_id, instance_uid, name, label, description, "

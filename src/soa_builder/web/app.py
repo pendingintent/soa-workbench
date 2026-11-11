@@ -58,6 +58,7 @@ from .migrate_database import (
     _migrate_rename_cell_table,
     _migrate_rollback_add_elements_restored,
     _migrate_rollback_add_cells_skipped,
+    _migrate_rollback_add_encounters_instances,
     _migrate_add_epoch_type,
     _migrate_visit_columns,
     _migrate_timing_add_member_of_timeline,
@@ -228,6 +229,7 @@ from .utils import (
     get_concepts_override as _get_concepts_override,
     get_next_code_uid as _get_next_code_uid,
     get_next_concept_uid as _get_next_concept_uid,
+    get_next_instance_uid,
     load_epoch_type_options,
     soa_exists,
     find_visit_cell,
@@ -343,6 +345,7 @@ _migrate_copy_cell_data()
 _migrate_element_id()
 _migrate_rollback_add_elements_restored()
 _migrate_rollback_add_cells_skipped()
+_migrate_rollback_add_encounters_instances()
 _migrate_activity_add_uid()
 _migrate_arm_add_type_fields()
 _migrate_element_audit_columns()
@@ -4206,14 +4209,6 @@ def import_matrix(soa_id: int, payload: MatrixImport):
     inst_cols = {row[1] for row in cur.fetchall()}
     has_label = "label" in inst_cols
     has_instance_uid = "instance_uid" in inst_cols
-    next_instance_seq = 1
-    if has_instance_uid:
-        cur.execute(
-            "SELECT COALESCE(MAX(CAST(substr(instance_uid, instr(instance_uid, '_') + 1) AS INTEGER)), 0) "
-            "FROM instances WHERE soa_id=?",
-            (soa_id,),
-        )
-        next_instance_seq = (cur.fetchone() or [0])[0] + 1
     ordered_instance_ids: List[int] = []
     for inst in payload.instances:
         cols = ["soa_id", "name"]
@@ -4223,8 +4218,7 @@ def import_matrix(soa_id: int, payload: MatrixImport):
             vals.append((inst.label or inst.name).strip())
         if has_instance_uid:
             cols.append("instance_uid")
-            vals.append(f"ScheduledActivityInstance_{soa_id}_{next_instance_seq}")
-            next_instance_seq += 1
+            vals.append(get_next_instance_uid(cur, soa_id))
         cur.execute(
             f"INSERT INTO instances ({','.join(cols)}) VALUES ({','.join(['?'] * len(vals))})",
             vals,

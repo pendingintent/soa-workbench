@@ -49,6 +49,23 @@ def _freeze(soa_id):
     return row[0]
 
 
+def _strip_instances(freeze_id):
+    """Make a freeze look like an older, instance-axis-only snapshot."""
+    conn = _connect()
+    raw = conn.execute(
+        "SELECT snapshot_json FROM soa_freeze WHERE id=?", (freeze_id,)
+    ).fetchone()[0]
+    snap = json.loads(raw)
+    snap.pop("instances", None)
+    snap.pop("encounters_full", None)
+    conn.execute(
+        "UPDATE soa_freeze SET snapshot_json=? WHERE id=?",
+        (json.dumps(snap), freeze_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 def _cells(soa_id):
     conn = _connect()
     rows = conn.execute(
@@ -78,7 +95,17 @@ def test_rollback_restores_instance_cells_with_activity_uid():
     stats = _rollback_freeze(soa_id, freeze_id)
 
     assert stats["cells_restored"] == 1
-    assert _cells(soa_id) == [(inst, None, original_uid, "X")]
+    cells = _cells(soa_id)
+    assert len(cells) == 1
+    # Instances are restored from the snapshot, so the row id is new;
+    # the cell must follow the immutable instance_uid.
+    conn = _connect()
+    cell_uid = conn.execute(
+        "SELECT instance_uid FROM instances WHERE id=?", (cells[0][0],)
+    ).fetchone()[0]
+    conn.close()
+    assert cell_uid == "ScheduledActivityInstance_1"
+    assert cells[0][1:] == (None, original_uid, "X")
 
 
 def test_rollback_skips_cell_whose_instance_was_deleted():
@@ -89,6 +116,7 @@ def test_rollback_skips_cell_whose_instance_was_deleted():
     _toggle(soa_id, keep, act)
     _toggle(soa_id, gone, act)
     freeze_id = _freeze(soa_id)
+    _strip_instances(freeze_id)
     conn = _connect()
     conn.execute("DELETE FROM matrix_cells WHERE soa_id=?", (soa_id,))
     conn.execute("DELETE FROM instances WHERE id=?", (gone,))
@@ -143,6 +171,7 @@ def test_rollback_audit_records_and_shows_skipped_cells():
     _toggle(soa_id, keep, act)
     _toggle(soa_id, gone, act)
     freeze_id = _freeze(soa_id)
+    _strip_instances(freeze_id)
     conn = _connect()
     conn.execute("DELETE FROM instances WHERE id=?", (gone,))
     conn.commit()

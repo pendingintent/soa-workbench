@@ -13,6 +13,7 @@ from ..utils import (
     soa_exists,
     get_encounter_id,
     get_epoch_uid,
+    get_next_instance_uid,
     get_schedule_timeline,
     get_scheduled_activity_instance,
     redirect_url_from_referer as _redirect_url,
@@ -128,25 +129,8 @@ def create_instance(soa_id: int, payload: InstanceCreate):
         (soa_id,),
     )
     next_ord = (cur.fetchone() or [0])[0] + 1
-    cur.execute(
-        "SELECT instance_uid FROM instances WHERE soa_id=? AND instance_uid LIKE 'ScheduledActivityInstance_%'",
-        (soa_id,),
-    )
-    existing_uids = [r[0] for r in cur.fetchall() if r[0]]
-    used_nums = set()
-    for uid in existing_uids:
-        if uid.startswith("ScheduledActivityInstance_"):
-            tail = uid[len("ScheduledActivityInstance_") :]
-            if tail.isdigit():
-                used_nums.add(int(tail))
-            else:
-                logger.warning(
-                    "Invalid instance_uid format encountered (ignored): %s",
-                    uid,
-                )
-    # Always pick max(existing) + 1, do not fill gaps
-    next_n = (max(used_nums) if used_nums else 0) + 1
-    new_uid = f"ScheduledActivityInstance_{next_n}"
+    # Draw from the durable uid_counter so freed numbers are never reused
+    new_uid = get_next_instance_uid(cur, soa_id)
     cur.execute(
         "INSERT INTO instances (soa_id,instance_uid,name,label,description,default_condition_uid,epoch_uid,"
         "timeline_id,timeline_exit_id,order_index,encounter_uid,member_of_timeline) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
