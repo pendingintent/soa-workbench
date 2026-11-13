@@ -29,6 +29,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
 from soa_builder.web.db import _connect
+from soa_builder.web.utils import get_next_encounter_uid
 
 logger = logging.getLogger("soa_builder.mcp")
 
@@ -448,23 +449,7 @@ def _create_visit(args: dict) -> dict:
         )
         order_index = cur.fetchone()[0] + 1
 
-        cur.execute(
-            "SELECT encounter_uid FROM visit"
-            " WHERE soa_id=? AND encounter_uid LIKE 'Encounter_%'",
-            (soa_id,),
-        )
-        existing_uids = [r[0] for r in cur.fetchall()]
-        next_n = 1
-        if existing_uids:
-            nums = []
-            for uid in existing_uids:
-                try:
-                    nums.append(int(uid.split("_")[1]))
-                except (IndexError, ValueError):
-                    pass
-            if nums:
-                next_n = max(nums) + 1
-        encounter_uid = f"Encounter_{next_n}"
+        encounter_uid = get_next_encounter_uid(cur, soa_id)
 
         cur.execute(
             "INSERT INTO visit"

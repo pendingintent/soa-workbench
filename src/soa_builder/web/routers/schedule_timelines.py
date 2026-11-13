@@ -18,6 +18,7 @@ from ..utils import (
     get_scheduled_activity_instance,
     get_schedule_timeline,
     get_encounter_id,
+    get_next_timeline_uid,
     get_epoch_uid,
     get_study_timing_type,
     redirect_url_from_referer as _redirect_url,
@@ -247,26 +248,8 @@ def create_schedule_timeline(soa_id: int, payload: ScheduleTimelineCreate):
         (soa_id,),
     )
     next_ord = (cur.fetchone() or [0])[0] + 1
-    cur.execute(
-        "SELECT schedule_timeline_uid FROM schedule_timelines WHERE soa_id=? AND schedule_timeline_uid LIKE 'ScheduleTimeline_%'",
-        (soa_id,),
-    )
-    existing_uids = [r[0] for r in cur.fetchall() if r[0]]
-    used_nums = set()
-    for uid in existing_uids:
-        if uid.startswith("ScheduleTimeline_"):
-            tail = uid[len("ScheduleTimeline_") :]
-            if tail.isdigit():
-                used_nums.add(int(tail))
-            else:
-                logger.warning(
-                    "Invalid schedule_timeline_uid format encountered (ignored): %s",
-                    uid,
-                )
-
-    # Always pick max(existing) + 1; do not fill gaps
-    next_n = (max(used_nums) if used_nums else 0) + 1
-    new_uid = f"ScheduleTimeline_{next_n}"
+    # Draw from the durable uid_counter so freed numbers are never reused
+    new_uid = get_next_timeline_uid(cur, soa_id)
     cur.execute(
         """INSERT INTO schedule_timelines (soa_id,schedule_timeline_uid,name,label,description,main_timeline,
         entry_condition,entry_id,exit_id,order_index) VALUES (?,?,?,?,?,?,?,?,?,?)""",

@@ -450,6 +450,183 @@ def _next_uid_from_counter(
     return f"{prefix}{n}"
 
 
+def _max_numeric_suffix(rows, prefix: str) -> int:
+    """Return the max `{prefix}{N}` suffix among uid rows (N digits only).
+
+    Unlike `_max_suffix`, uids that do not match `{prefix}<digits>`
+    (for example the legacy `Prefix_<soa>_<n>` form) are ignored
+    rather than mis-parsed.
+    """
+    best = 0
+    for row in rows:
+        uid = row[0]
+        if not uid or not uid.startswith(prefix):
+            continue
+        tail = uid[len(prefix) :]
+        if tail.isdigit():
+            best = max(best, int(tail))
+    return best
+
+
+def reserve_uid_floor(
+    cur: Any,
+    soa_id: int,
+    prefix: str,
+    uids,
+    seed_fn: Callable[[], int],
+) -> None:
+    """Make sure the uid_counter for (soa_id, prefix) is past every uid
+    in `uids`, so a UID that is freed or restored never gets reissued.
+
+    Never lowers an existing counter. Seeds from `seed_fn()` first when
+    the counter row does not exist yet, so call this *before* deleting
+    rows that the seed depends on.
+    """
+    cur.execute(
+        "SELECT next_n FROM uid_counter WHERE soa_id=? AND prefix=?",
+        (soa_id, prefix),
+    )
+    row = cur.fetchone()
+    base = row[0] if row is not None else seed_fn() + 1
+    floor = _max_numeric_suffix([(u,) for u in uids], prefix) + 1
+    target = max(base, floor)
+    if row is None:
+        cur.execute(
+            "INSERT INTO uid_counter (soa_id, prefix, next_n) VALUES (?,?,?)",
+            (soa_id, prefix, target),
+        )
+    elif target != row[0]:
+        cur.execute(
+            "UPDATE uid_counter SET next_n=? WHERE soa_id=? AND prefix=?",
+            (target, soa_id, prefix),
+        )
+
+
+ENCOUNTER_UID_PREFIX = "Encounter_"
+INSTANCE_UID_PREFIX = "ScheduledActivityInstance_"
+
+
+def _encounter_uid_seed(cur: Any, soa_id: int) -> int:
+    cur.execute(
+        "SELECT encounter_uid FROM visit WHERE soa_id=?"
+        " AND encounter_uid LIKE 'Encounter_%'",
+        (soa_id,),
+    )
+    return _max_numeric_suffix(cur.fetchall(), ENCOUNTER_UID_PREFIX)
+
+
+def _instance_uid_seed(cur: Any, soa_id: int) -> int:
+    cur.execute(
+        "SELECT instance_uid FROM instances WHERE soa_id=?"
+        " AND instance_uid LIKE 'ScheduledActivityInstance_%'",
+        (soa_id,),
+    )
+    return _max_numeric_suffix(cur.fetchall(), INSTANCE_UID_PREFIX)
+
+
+TIMELINE_UID_PREFIX = "ScheduleTimeline_"
+DECISION_UID_PREFIX = "ScheduledDecisionInstance_"
+
+
+def _timeline_uid_seed(cur: Any, soa_id: int) -> int:
+    cur.execute(
+        "SELECT schedule_timeline_uid FROM schedule_timelines"
+        " WHERE soa_id=? AND schedule_timeline_uid LIKE 'ScheduleTimeline_%'",
+        (soa_id,),
+    )
+    return _max_numeric_suffix(cur.fetchall(), TIMELINE_UID_PREFIX)
+
+
+def _decision_uid_seed(cur: Any, soa_id: int) -> int:
+    cur.execute(
+        "SELECT instance_uid FROM decision_instances WHERE soa_id=?"
+        " AND instance_uid LIKE 'ScheduledDecisionInstance_%'",
+        (soa_id,),
+    )
+    return _max_numeric_suffix(cur.fetchall(), DECISION_UID_PREFIX)
+
+
+def get_next_timeline_uid(cur: Any, soa_id: int) -> str:
+    """Next unique ScheduleTimeline_N, never reusing a freed N."""
+    return _next_uid_from_counter(
+        cur,
+        soa_id,
+        TIMELINE_UID_PREFIX,
+        lambda: _timeline_uid_seed(cur, soa_id),
+    )
+
+
+def get_next_decision_instance_uid(cur: Any, soa_id: int) -> str:
+    """Next unique ScheduledDecisionInstance_N, never reusing a freed N."""
+    return _next_uid_from_counter(
+        cur,
+        soa_id,
+        DECISION_UID_PREFIX,
+        lambda: _decision_uid_seed(cur, soa_id),
+    )
+
+
+def reserve_timeline_uid_floor(cur: Any, soa_id: int, uids) -> None:
+    reserve_uid_floor(
+        cur,
+        soa_id,
+        TIMELINE_UID_PREFIX,
+        uids,
+        lambda: _timeline_uid_seed(cur, soa_id),
+    )
+
+
+def reserve_decision_uid_floor(cur: Any, soa_id: int, uids) -> None:
+    reserve_uid_floor(
+        cur,
+        soa_id,
+        DECISION_UID_PREFIX,
+        uids,
+        lambda: _decision_uid_seed(cur, soa_id),
+    )
+
+
+def get_next_encounter_uid(cur: Any, soa_id: int) -> str:
+    """Next unique Encounter_N for the SOA, never reusing a freed N."""
+    return _next_uid_from_counter(
+        cur,
+        soa_id,
+        ENCOUNTER_UID_PREFIX,
+        lambda: _encounter_uid_seed(cur, soa_id),
+    )
+
+
+def get_next_instance_uid(cur: Any, soa_id: int) -> str:
+    """Next unique ScheduledActivityInstance_N for the SOA, never
+    reusing a freed N."""
+    return _next_uid_from_counter(
+        cur,
+        soa_id,
+        INSTANCE_UID_PREFIX,
+        lambda: _instance_uid_seed(cur, soa_id),
+    )
+
+
+def reserve_encounter_uid_floor(cur: Any, soa_id: int, uids) -> None:
+    reserve_uid_floor(
+        cur,
+        soa_id,
+        ENCOUNTER_UID_PREFIX,
+        uids,
+        lambda: _encounter_uid_seed(cur, soa_id),
+    )
+
+
+def reserve_instance_uid_floor(cur: Any, soa_id: int, uids) -> None:
+    reserve_uid_floor(
+        cur,
+        soa_id,
+        INSTANCE_UID_PREFIX,
+        uids,
+        lambda: _instance_uid_seed(cur, soa_id),
+    )
+
+
 def _max_suffix(rows) -> int:
     """Return the max numeric `_N` suffix among a `fetchall()` of uid rows."""
     existing = [x[0] for x in rows if x[0]]

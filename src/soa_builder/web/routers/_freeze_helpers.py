@@ -15,10 +15,24 @@ from ..db import _connect
 from ..utils import (
     soa_exists,
     get_next_concept_uid as _get_next_concept_uid,
+    reserve_encounter_uid_floor,
+    reserve_decision_uid_floor,
+    reserve_instance_uid_floor,
+    reserve_timeline_uid_floor,
     table_has_columns as _table_has_columns,
 )
 
 logger = logging.getLogger("soa_builder.web.routers._freeze_helpers")
+
+# Bumped when the snapshot gains data that rollback depends on:
+# 2 = element_id on elements and element_uid on study cells.
+CAPTURE_VERSION = 2
+
+
+def _table_columns(cur, table: str) -> set:
+    """Return the set of column names for ``table``."""
+    cur.execute(f"PRAGMA table_info({table})")
+    return {row[1] for row in cur.fetchall()}
 
 
 def _capture_code_associations(cur, soa_id: int) -> list:
@@ -184,7 +198,7 @@ def _capture_study_cells(cur, soa_id: int) -> list:
     if not _table_has_columns(cur, "study_cell", ("study_cell_uid",)):
         return []
     cur.execute(
-        "SELECT study_cell_uid,arm_uid,epoch_uid,order_index"
+        "SELECT study_cell_uid,arm_uid,epoch_uid,order_index,element_uid"
         " FROM study_cell WHERE soa_id=? ORDER BY order_index, id",
         (soa_id,),
     )
@@ -194,6 +208,7 @@ def _capture_study_cells(cur, soa_id: int) -> list:
             "arm_uid": r[1],
             "epoch_uid": r[2],
             "order_index": r[3],
+            "element_uid": r[4],
         }
         for r in cur.fetchall()
     ]
@@ -204,7 +219,7 @@ def _capture_schedule_timelines(cur, soa_id: int) -> list:
         return []
     cur.execute(
         "SELECT schedule_timeline_uid,name,label,description,"
-        "main_timeline,entry_condition,entry_id,exit_id"
+        "main_timeline,entry_condition,entry_id,exit_id,order_index"
         " FROM schedule_timelines WHERE soa_id=? ORDER BY id",
         (soa_id,),
     )
@@ -218,6 +233,7 @@ def _capture_schedule_timelines(cur, soa_id: int) -> list:
             "entry_condition": r[5],
             "entry_id": r[6],
             "exit_id": r[7],
+            "order_index": r[8],
         }
         for r in cur.fetchall()
     ]
@@ -228,7 +244,8 @@ def _capture_instances(cur, soa_id: int) -> list:
         return []
     cur.execute(
         "SELECT instance_uid,name,label,description,epoch_uid,"
-        "timeline_id,encounter_uid,member_of_timeline"
+        "timeline_id,encounter_uid,member_of_timeline,"
+        "default_condition_uid,timeline_exit_id,order_index"
         " FROM instances WHERE soa_id=? ORDER BY id",
         (soa_id,),
     )
@@ -242,6 +259,9 @@ def _capture_instances(cur, soa_id: int) -> list:
             "timeline_id": r[5],
             "encounter_uid": r[6],
             "member_of_timeline": r[7],
+            "default_condition_uid": r[8],
+            "timeline_exit_id": r[9],
+            "order_index": r[10],
         }
         for r in cur.fetchall()
     ]
@@ -252,7 +272,7 @@ def _capture_decision_instances(cur, soa_id: int) -> list:
         return []
     cur.execute(
         "SELECT instance_uid,name,label,description,epoch_uid,"
-        "member_of_timeline"
+        "member_of_timeline,default_condition_uid,order_index"
         " FROM decision_instances WHERE soa_id=? ORDER BY id",
         (soa_id,),
     )
@@ -264,6 +284,8 @@ def _capture_decision_instances(cur, soa_id: int) -> list:
             "description": r[3],
             "epoch_uid": r[4],
             "member_of_timeline": r[5],
+            "default_condition_uid": r[6],
+            "order_index": r[7],
         }
         for r in cur.fetchall()
     ]
@@ -519,13 +541,16 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
     conn2.close()
     conn_el = _connect()
     cur_el = conn_el.cursor()
+    has_element_id = _table_has_columns(cur_el, "element", ("element_id",))
     cur_el.execute(
         "SELECT id,name,label,description,testrl,teenrl,order_index"
-        " FROM element WHERE soa_id=? ORDER BY order_index",
+        + (",element_id" if has_element_id else "")
+        + " FROM element WHERE soa_id=? ORDER BY order_index",
         (soa_id,),
     )
-    elements = [
-        dict(
+    elements = []
+    for r in cur_el.fetchall():
+        el = dict(
             id=r[0],
             name=r[1],
             label=r[2],
@@ -534,8 +559,9 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
             teenrl=r[5],
             order_index=r[6],
         )
-        for r in cur_el.fetchall()
-    ]
+        if has_element_id:
+            el["element_id"] = r[7]
+        elements.append(el)
     conn_el.close()
     activity_ids = [a["id"] for a in activities]
     concepts_map: dict = {}
@@ -595,6 +621,7 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
         "study_label": study_label_val,
         "study_description": study_description_val,
         "version_label": version_label,
+        "capture_version": CAPTURE_VERSION,
         "frozen_at": datetime.now(timezone.utc).isoformat(),
         "epochs": epochs,
         "elements": elements,
@@ -968,6 +995,39 @@ def _diff_freezes_limited(
     }
 
 
+def _safety_freeze_label(soa_id: int, target_label: Optional[str]) -> str:
+    """Unique label for the automatic pre-rollback freeze."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("SELECT version_label FROM soa_freeze WHERE soa_id=?", (soa_id,))
+    existing = {r[0] for r in cur.fetchall()}
+    conn.close()
+    base = f"pre-rollback-to-{target_label or 'unnamed'}"
+    label, n = base, 2
+    while label in existing:
+        label = f"{base}-{n}"
+        n += 1
+    return label
+
+
+def _restore_rows(cur, soa_id: int, table: str, rows, enabled: bool) -> int:
+    """Insert snapshot ``rows`` for ``soa_id`` into ``table`` using the
+    columns they share with the live table (id/soa_id excluded)."""
+    if not enabled:
+        return 0
+    table_cols = _table_columns(cur, table)
+    written = 0
+    for row in rows:
+        keys = [k for k in row if k not in ("id", "soa_id") and k in table_cols]
+        cur.execute(
+            f"INSERT INTO {table} (soa_id,{','.join(keys)}) "
+            f"VALUES ({','.join('?' * (len(keys) + 1))})",
+            [soa_id] + [row[k] for k in keys],
+        )
+        written += 1
+    return written
+
+
 def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     # Lazy import to avoid circular dependency with app.py
     from ..app import _upsert_biomedical_concept
@@ -978,6 +1038,11 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     snap = freeze["snapshot"]
     if snap.get("soa_id") != soa_id:
         raise HTTPException(400, "Snapshot SoA mismatch")
+    # Safety net: freeze the current state first so the rollback can be
+    # undone. Any failure here aborts before anything is deleted.
+    safety_id, safety_label = _create_freeze(
+        soa_id, _safety_freeze_label(soa_id, freeze.get("version_label"))
+    )
     visits = snap.get("visits", [])
     activities = snap.get("activities", [])
     cells = snap.get("cells", [])
@@ -989,8 +1054,67 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     snap_timings = snap.get("timings", []) or []
     snap_objectives = snap.get("objectives", []) or []
     snap_endpoints = snap.get("endpoints", []) or []
+    snap_encounters = snap.get("encounters_full")
+    snap_instances = snap.get("instances")
+    snap_timelines = snap.get("schedule_timelines")
+    snap_decisions = snap.get("decision_instances")
+    snap_study_cells = snap.get("study_cells")
+    restore_encounters = snap_encounters is not None
+    restore_instances = snap_instances is not None
+    restore_timelines = snap_timelines is not None
+    restore_decisions = snap_decisions is not None
+    # Study cells need element_uid (NOT NULL) and elements that kept
+    # their element_id; only newer captures provide both.
+    restore_study_cells = (
+        snap_study_cells is not None
+        and (snap.get("capture_version") or 1) >= 2
+        and all(c.get("element_uid") for c in snap_study_cells)
+    )
+    instance_axis = any(v.get("instance_uid") for v in visits)
+    # Legacy snapshots carry real visits (no instance_uid) under
+    # "visits" and are replayed into the visit table as before.
+    legacy_visits = not instance_axis and not restore_encounters
     conn = _connect()
     cur = conn.cursor()
+    # Rollback re-creates snapshot UIDs and drops post-freeze ones. Keep
+    # the UID counters past both so a removed UID is never reissued.
+    # Must run before the deletes below (the seed reads live rows).
+    reserve_encounter_uid_floor(
+        cur,
+        soa_id,
+        [
+            e.get("encounter_uid")
+            for e in (snap_encounters or [])
+            if e.get("encounter_uid")
+        ],
+    )
+    reserve_instance_uid_floor(
+        cur,
+        soa_id,
+        [
+            i.get("instance_uid")
+            for i in (snap_instances or [])
+            if i.get("instance_uid")
+        ],
+    )
+    reserve_timeline_uid_floor(
+        cur,
+        soa_id,
+        [
+            t.get("schedule_timeline_uid")
+            for t in (snap_timelines or [])
+            if t.get("schedule_timeline_uid")
+        ],
+    )
+    reserve_decision_uid_floor(
+        cur,
+        soa_id,
+        [
+            d.get("instance_uid")
+            for d in (snap_decisions or [])
+            if d.get("instance_uid")
+        ],
+    )
     cur.execute("DELETE FROM matrix_cells WHERE soa_id=?", (soa_id,))
     cur.execute(
         "DELETE FROM activity_concept WHERE activity_id IN"
@@ -1016,7 +1140,19 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         cur.execute("DELETE FROM epoch WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM code_association WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM activity WHERE soa_id=?", (soa_id,))
-    cur.execute("DELETE FROM visit WHERE soa_id=?", (soa_id,))
+    # Encounters live in the visit table. Instance-axis snapshots keep
+    # instance rows under "visits", so only delete encounters when
+    # there is something valid to restore them from.
+    if restore_encounters or legacy_visits:
+        cur.execute("DELETE FROM visit WHERE soa_id=?", (soa_id,))
+    if restore_instances:
+        cur.execute("DELETE FROM instances WHERE soa_id=?", (soa_id,))
+    if restore_timelines:
+        cur.execute("DELETE FROM schedule_timelines WHERE soa_id=?", (soa_id,))
+    if restore_decisions:
+        cur.execute("DELETE FROM decision_instances WHERE soa_id=?", (soa_id,))
+    if restore_study_cells:
+        cur.execute("DELETE FROM study_cell WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM element WHERE soa_id=?", (soa_id,))
     for ca in snap_code_assocs:
         stored_code = ca.get("code")
@@ -1134,18 +1270,53 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
                 ),
             )
     visit_id_map = {}
-    for v in sorted(visits, key=lambda x: x.get("order_index", 0)):
-        cur.execute(
-            "INSERT INTO visit (soa_id,name,label,order_index) VALUES (?,?,?,?)",
-            (
-                soa_id,
-                v.get("name"),
-                v.get("label") or None,
-                v.get("order_index"),
-            ),
-        )
-        new_id = cur.lastrowid
-        visit_id_map[v.get("id")] = new_id
+    encounters_written = 0
+    if restore_encounters:
+        visit_cols = _table_columns(cur, "visit")
+        for enc in sorted(snap_encounters, key=lambda x: x.get("order_index") or 0):
+            cols = ["soa_id"] + [k for k in enc if k != "id" and k in visit_cols]
+            vals = [soa_id] + [enc[k] for k in cols[1:]]
+            cur.execute(
+                f"INSERT INTO visit ({','.join(cols)}) "
+                f"VALUES ({','.join('?' * len(cols))})",
+                vals,
+            )
+            visit_id_map[enc.get("id")] = cur.lastrowid
+            encounters_written += 1
+    elif legacy_visits:
+        for v in sorted(visits, key=lambda x: x.get("order_index", 0)):
+            cur.execute(
+                "INSERT INTO visit (soa_id,name,label,order_index) VALUES (?,?,?,?)",
+                (
+                    soa_id,
+                    v.get("name"),
+                    v.get("label") or None,
+                    v.get("order_index"),
+                ),
+            )
+            visit_id_map[v.get("id")] = cur.lastrowid
+            encounters_written += 1
+    instances_written = 0
+    if restore_instances:
+        instance_cols = _table_columns(cur, "instances")
+        for inst in snap_instances:
+            cols = ["soa_id"] + [k for k in inst if k != "id" and k in instance_cols]
+            vals = [soa_id] + [inst[k] for k in cols[1:]]
+            cur.execute(
+                f"INSERT INTO instances ({','.join(cols)}) "
+                f"VALUES ({','.join('?' * len(cols))})",
+                vals,
+            )
+            instances_written += 1
+    timelines_written = _restore_rows(
+        cur, soa_id, "schedule_timelines", snap_timelines, restore_timelines
+    )
+    decisions_written = _restore_rows(
+        cur, soa_id, "decision_instances", snap_decisions, restore_decisions
+    )
+    study_cells_written = _restore_rows(
+        cur, soa_id, "study_cell", snap_study_cells, restore_study_cells
+    )
     cur.execute("PRAGMA table_info(activity)")
     activity_cols = {r[1] for r in cur.fetchall()}
     optional_activity_cols = [
@@ -1249,21 +1420,27 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         else:
             skipped_cells += 1
     elements_restored = 0
+    element_cols = _table_columns(cur, "element")
     for el in sorted(elements, key=lambda x: x.get("order_index", 0)):
+        el_cols = ["soa_id", "name", "label", "description", "testrl"]
+        el_cols += ["teenrl", "order_index", "created_at"]
+        el_vals = [
+            soa_id,
+            el.get("name"),
+            el.get("label"),
+            el.get("description"),
+            el.get("testrl"),
+            el.get("teenrl"),
+            el.get("order_index"),
+            datetime.now(timezone.utc).isoformat(),
+        ]
+        if el.get("element_id") and "element_id" in element_cols:
+            el_cols.append("element_id")
+            el_vals.append(el.get("element_id"))
         cur.execute(
-            "INSERT INTO element"
-            " (soa_id,name,label,description,testrl,teenrl,order_index,created_at)"
-            " VALUES (?,?,?,?,?,?,?,?)",
-            (
-                soa_id,
-                el.get("name"),
-                el.get("label"),
-                el.get("description"),
-                el.get("testrl"),
-                el.get("teenrl"),
-                el.get("order_index"),
-                datetime.now(timezone.utc).isoformat(),
-            ),
+            f"INSERT INTO element ({','.join(el_cols)}) "
+            f"VALUES ({','.join('?' * len(el_cols))})",
+            el_vals,
         )
         elements_restored += 1
     inserted_concepts = 0
@@ -1360,7 +1537,19 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     conn.close()
     return {
         "rollback_freeze_id": freeze_id,
-        "visits_restored": len(visits),
+        "visits_restored": encounters_written,
+        "encounters_restored": encounters_written,
+        "encounters_untouched": not (restore_encounters or legacy_visits),
+        "instances_restored": instances_written,
+        "instances_untouched": not restore_instances,
+        "timelines_restored": timelines_written,
+        "timelines_untouched": not restore_timelines,
+        "decision_instances_restored": decisions_written,
+        "decision_instances_untouched": not restore_decisions,
+        "study_cells_restored": study_cells_written,
+        "study_cells_untouched": not restore_study_cells,
+        "safety_freeze_id": safety_id,
+        "safety_freeze_label": safety_label,
         "activities_restored": len(activities),
         "cells_restored": inserted_cells,
         "cells_skipped_missing_instance": skipped_missing_instance,
@@ -1388,6 +1577,12 @@ ROLLBACK_AUDIT_COLUMNS = (
     "concepts_restored",
     "elements_restored",
     "cells_skipped",
+    "encounters_restored",
+    "instances_restored",
+    "timelines_restored",
+    "decision_instances_restored",
+    "study_cells_restored",
+    "safety_freeze_id",
 )
 
 
@@ -1398,7 +1593,10 @@ def _record_rollback_audit(soa_id: int, freeze_id: int, stats: dict):
         "INSERT INTO rollback_audit"
         " (soa_id, freeze_id, performed_at, visits_restored,"
         " activities_restored, cells_restored, concepts_restored,"
-        " elements_restored, cells_skipped) VALUES (?,?,?,?,?,?,?,?,?)",
+        " elements_restored, cells_skipped, encounters_restored,"
+        " instances_restored, timelines_restored,"
+        " decision_instances_restored, study_cells_restored,"
+        " safety_freeze_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             soa_id,
             freeze_id,
@@ -1409,6 +1607,12 @@ def _record_rollback_audit(soa_id: int, freeze_id: int, stats: dict):
             stats.get("concept_mappings_restored"),
             stats.get("elements_restored"),
             stats.get("cells_skipped"),
+            stats.get("encounters_restored"),
+            stats.get("instances_restored"),
+            stats.get("timelines_restored"),
+            stats.get("decision_instances_restored"),
+            stats.get("study_cells_restored"),
+            stats.get("safety_freeze_id"),
         ),
     )
     conn.commit()
@@ -1421,7 +1625,10 @@ def _list_rollback_audit(soa_id: int) -> list:
     cur.execute(
         "SELECT id, freeze_id, performed_at, visits_restored,"
         " activities_restored, cells_restored, concepts_restored,"
-        " elements_restored, cells_skipped"
+        " elements_restored, cells_skipped, encounters_restored,"
+        " instances_restored, timelines_restored,"
+        " decision_instances_restored, study_cells_restored,"
+        " safety_freeze_id"
         " FROM rollback_audit WHERE soa_id=? ORDER BY id DESC",
         (soa_id,),
     )
@@ -1436,6 +1643,12 @@ def _list_rollback_audit(soa_id: int) -> list:
             "concepts_restored": r[6],
             "elements_restored": r[7],
             "cells_skipped": r[8],
+            "encounters_restored": r[9],
+            "instances_restored": r[10],
+            "timelines_restored": r[11],
+            "decision_instances_restored": r[12],
+            "study_cells_restored": r[13],
+            "safety_freeze_id": r[14],
         }
         for r in cur.fetchall()
     ]
@@ -1466,10 +1679,24 @@ def _rollback_preview(soa_id: int, freeze_id: int) -> dict:
     activities = snap.get("activities", [])
     cells = [c for c in snap.get("cells", []) if (c.get("status") or "").strip() != ""]
     concepts_map = snap.get("activity_concepts", {}) or {}
+    snap_encounters = snap.get("encounters_full")
+    snap_instances = snap.get("instances")
+    instance_axis = any(v.get("instance_uid") for v in visits)
+    if snap_encounters is not None:
+        encounters_to_restore = len(snap_encounters)
+    elif instance_axis:
+        encounters_to_restore = 0  # live encounters are left untouched
+    else:
+        encounters_to_restore = len(visits)
     return {
         "freeze_id": freeze_id,
         "version_label": freeze.get("version_label"),
         "visits_to_restore": len(visits),
+        "encounters_to_restore": encounters_to_restore,
+        "instances_to_restore": len(snap_instances or []),
+        "timelines_to_restore": len(snap.get("schedule_timelines") or []),
+        "decision_instances_to_restore": len(snap.get("decision_instances") or []),
+        "study_cells_to_restore": len(snap.get("study_cells") or []),
         "activities_to_restore": len(activities),
         "cells_to_restore": len(cells),
         "concept_mappings_to_restore": sum(len(v) for v in concepts_map.values()),

@@ -264,6 +264,12 @@
       <h5 class="am-modal-preview-title">Rollback Preview for {{ freeze.version_label }}</h5>
       <ul class="am-modal-preview-list">
         <li>Visits to restore: {{ preview.visits_to_restore }}</li>
+        <li>Encounters to restore: {{ preview.encounters_to_restore }}</li>
+        <li>Instances to restore: {{ preview.instances_to_restore }}</li>
+        <li>Timelines to restore: {{ preview.timelines_to_restore }}</li>
+        <li>Decision instances to restore: {{ preview.decision_instances_to_restore }}</li>
+        <li>Study cells to restore: {{ preview.study_cells_to_restore }}</li>
+        <li>A safety freeze of the current state is taken first, so this rollback can be undone.</li>
         <li>Activities to restore: {{ preview.activities_to_restore }}</li>
         <li>Cells to restore: {{ preview.cells_to_restore }}</li>
         <li>Concept mappings to restore: {{ preview.concept_mappings_to_restore }}</li>

@@ -14,6 +14,7 @@ from ..db import _connect
 from ..utils import (
     soa_exists,
     get_next_code_uid as _get_next_code_uid,
+    get_next_encounter_uid,
     get_study_transition_rules,
     get_timing_id,
     get_encounter_type_sv,
@@ -210,25 +211,8 @@ def add_visit(soa_id: int, payload: VisitCreate):
     )
     next_ord = (cur.fetchone() or [0])[0] + 1
 
-    # New code to create encounter_uid and increment order_index
-    cur.execute(
-        "SELECT encounter_uid FROM visit WHERE soa_id=? AND encounter_uid LIKE 'Encounter_%'",
-        (soa_id,),
-    )
-    existing_uids = [r[0] for r in cur.fetchall() if r[0]]
-    used_nums = set()
-    for uid in existing_uids:
-        if uid.startswith("Encounter_"):
-            tail = uid[len("Encounter_") :]
-            if tail.isdigit():
-                used_nums.add(int(tail))
-            else:
-                logger.warning(
-                    "Invalid encounter_uid format encountered (ignored): %s", uid
-                )
-    # Always pick max(existing) + 1, do not fill gaps
-    next_n = (max(used_nums) if used_nums else 0) + 1
-    new_uid = f"Encounter_{next_n}"
+    # Draw from the durable uid_counter so freed numbers are never reused
+    new_uid = get_next_encounter_uid(cur, soa_id)
 
     # Generate Code_{N} for encounter.type
     type = _get_next_code_uid(cur, soa_id)

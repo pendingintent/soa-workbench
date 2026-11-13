@@ -17,6 +17,12 @@
             <th class="am-modal-th">Skipped</th>
             <th class="am-modal-th">Concepts</th>
             <th class="am-modal-th">Elements</th>
+            <th class="am-modal-th">Encounters</th>
+            <th class="am-modal-th">Instances</th>
+            <th class="am-modal-th">Timelines</th>
+            <th class="am-modal-th">Decisions</th>
+            <th class="am-modal-th">Study Cells</th>
+            <th class="am-modal-th">Safety Freeze</th>
           </tr>
         </thead>
         <tbody>
@@ -31,6 +37,12 @@
               <td class="am-modal-td">{{ r.cells_skipped if r.cells_skipped is not none else "–" }}</td>
               <td class="am-modal-td">{{ r.concepts_restored }}</td>
               <td class="am-modal-td">{{ r.elements_restored if r.elements_restored is not none else "–" }}</td>
+              <td class="am-modal-td">{{ r.encounters_restored if r.encounters_restored is not none else "–" }}</td>
+              <td class="am-modal-td">{{ r.instances_restored if r.instances_restored is not none else "–" }}</td>
+              <td class="am-modal-td">{{ r.timelines_restored if r.timelines_restored is not none else "–" }}</td>
+              <td class="am-modal-td">{{ r.decision_instances_restored if r.decision_instances_restored is not none else "–" }}</td>
+              <td class="am-modal-td">{{ r.study_cells_restored if r.study_cells_restored is not none else "–" }}</td>
+              <td class="am-modal-td">{{ r.safety_freeze_id if r.safety_freeze_id is not none else "–" }}</td>
             </tr>
           {% endfor %}
         </tbody>

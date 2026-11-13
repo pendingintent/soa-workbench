@@ -274,6 +274,12 @@ def ui_freeze_rollback(request: Request, soa_id: int, freeze_id: int):
             "concept_mappings_restored": result["concept_mappings_restored"],
             "elements_restored": result.get("elements_restored"),
             "cells_skipped": result.get("cells_skipped"),
+            "encounters_restored": result.get("encounters_restored"),
+            "instances_restored": result.get("instances_restored"),
+            "timelines_restored": result.get("timelines_restored"),
+            "decision_instances_restored": result.get("decision_instances_restored"),
+            "study_cells_restored": result.get("study_cells_restored"),
+            "safety_freeze_id": result.get("safety_freeze_id"),
         },
     )
     if request.headers.get("HX-Request") == "true":

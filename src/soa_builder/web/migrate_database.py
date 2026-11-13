@@ -672,6 +672,30 @@ def _migrate_rollback_add_cells_skipped():
         logger.warning("rollback_audit cells_skipped migration failed: %s", e)
 
 
+# Migration: Add encounters_restored/instances_restored to rollback_audit
+def _migrate_rollback_add_encounters_instances():
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(rollback_audit)")
+        cols = {r[1] for r in cur.fetchall()}
+        for col in (
+            "encounters_restored",
+            "instances_restored",
+            "timelines_restored",
+            "decision_instances_restored",
+            "study_cells_restored",
+            "safety_freeze_id",
+        ):
+            if col not in cols:
+                cur.execute(f"ALTER TABLE rollback_audit ADD COLUMN {col} INTEGER")
+                logger.info("Added %s column to rollback_audit", col)
+        conn.commit()
+        conn.close()
+    except Exception as e:  # pragma: no cover
+        logger.warning("rollback_audit encounters/instances migration failed: %s", e)
+
+
 # Migration: Add activity_uid to activity
 def _migrate_activity_add_uid():
     """Add activity_uid column if missing; backfill as Activity_<order_index>."""
