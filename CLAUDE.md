@@ -16,8 +16,10 @@ Clinical trial Schedule of Activities (SoA) workbench: FastAPI web app + CLI too
 - Limit lines to 79 characters for code
 - Limit docstrings/comments to 72 characters
 - Use parentheses for implicit line continuation
-- This is a convention: `.flake8` sets `max-line-length = 127` and
-  ignores E501, so tooling does not enforce 79
+- This is a convention only: pre-commit runs `ruff-format` with its
+  default 88-column width and `ruff-check` with default rules
+  (E501 off), so tooling does not enforce 79. `.flake8` is a
+  leftover and is not run by pre-commit
 
 ### Imports
 - Place imports at the top of the file
@@ -91,7 +93,7 @@ soa-builder validate --normalized-dir normalized/
 
 ### Pre-commit Hooks
 ```bash
-pre-commit run --all-files  # runs black + pytest + flake8
+pre-commit run --all-files  # runs ruff-check --fix, ruff-format, pytest
 ```
 
 ## Architecture
