@@ -73,6 +73,13 @@ pytest tests/test_file.py::test_name -v  # run single test
 
 `pytest.ini` skips `old-tests/` and `cdisc-biomedical-concept-groupings/`.
 
+The suite runs fully offline. `tests/conftest.py` blocks real HTTP
+(at `requests`' transport layer and on non-loopback sockets) and
+strips CDISC credential env vars, so local runs match CI. An
+unmocked call raises `NetworkDisabledError` (a
+`requests.ConnectionError`). New tests must mock remote calls
+(`monkeypatch` `requests.get`, or set `CDISC_CONCEPTS_JSON`).
+
 Tests use isolated database `soa_builder_web_tests.db`. `db.py` selects
 it only when pytest is in `sys.modules`, so run tests exclusively via
 `pytest`. Ad-hoc `python -c` smoke tests are NOT protected: set
