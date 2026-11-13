@@ -108,7 +108,6 @@ output/*.svg
 output/*.json
 SOA Workbench Wishlist.docx
 NCT01750580_limited.json
-CLAUDE.md
 edit-column-collapse.html
 .claude
 api_test.py
