@@ -7,7 +7,7 @@ automatic pickup by Claude Code.
 Write tools call the FastAPI app in-process (see ``_call_api``) so they
 share the routers' validation, UID allocation and audit trail.
 
-Tools (11 total):
+Tools:
   list_soas                 List all Schedules of Activities
   create_soa                Create a new SoA
   get_soa                   Get SoA metadata by id
@@ -19,11 +19,21 @@ Tools (11 total):
   get_soa_matrix            Return the visits-x-activities matrix
   get_usdm_json             Generate a USDM component as JSON
   get_define_json           Generate a Define-JSON document
+  list_freezes / create_freeze / rollback_preview / rollback_freeze /
+  diff_freezes              Versioned snapshots and rollback
+  list/create/update/delete_design_entity
+                            Epochs, arms, elements, study cells, instances
+  get_audit_history         Audit trail across entity types
+  generate_dair             Digital Amendment Impact Report (DOCX file)
+  export_excel              SoA matrix workbook (XLSX file)
 """
 
 import asyncio
 import json
 import logging
+import re
+import tempfile
+from pathlib import Path
 from typing import Any
 
 import mcp.types as types
@@ -305,6 +315,225 @@ _TOOLS = [
 ]
 
 
+# Design entities share one URL convention in the web API:
+#   GET/POST /soa/{soa_id}/{entity}, PATCH/DELETE /soa/{soa_id}/{entity}/{id}
+# Field lists in the tool descriptions come from the API's request models.
+_DESIGN_ENTITIES = {
+    "epochs": ("EpochCreate", "EpochUpdate"),
+    "arms": ("ArmCreate", "ArmUpdate"),
+    "elements": ("ElementCreate", "ElementUpdate"),
+    "study_cells": ("StudyCellCreate", "StudyCellUpdate"),
+    "instances": ("InstanceCreate", "InstanceUpdate"),
+    "decision_instances": ("DecisionInstanceCreate", "DecisionInstanceUpdate"),
+}
+
+
+def _entity_fields_doc(model_index: int) -> str:
+    from soa_builder.web import schemas
+
+    parts = []
+    for entity, models in _DESIGN_ENTITIES.items():
+        fields = getattr(schemas, models[model_index]).model_fields
+        parts.append(f"{entity}: {', '.join(fields)}")
+    return "; ".join(parts)
+
+
+_ENTITY_PROP = {
+    "type": "string",
+    "enum": sorted(_DESIGN_ENTITIES),
+    "description": "Design entity collection",
+}
+_SOA_PROP = {"type": "integer", "description": "SoA identifier"}
+_FREEZE_PROP = {"type": "integer", "description": "Freeze (snapshot) id"}
+_OUTPUT_DIR_PROP = {
+    "type": "string",
+    "description": (
+        "Directory to write the file to (optional; defaults to a "
+        "soa-workbench-exports folder in the system temp directory)"
+    ),
+}
+
+_TOOLS += [
+    types.Tool(
+        name="list_freezes",
+        description="List freezes (versioned snapshots) of a SoA, newest first.",
+        inputSchema={
+            "type": "object",
+            "properties": {"soa_id": _SOA_PROP},
+            "required": ["soa_id"],
+        },
+    ),
+    types.Tool(
+        name="create_freeze",
+        description=(
+            "Freeze the current state of a SoA as a named version. Omit "
+            "version_label to get the next vN label."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "soa_id": _SOA_PROP,
+                "version_label": {
+                    "type": "string",
+                    "description": "Unique label for the freeze (optional)",
+                },
+            },
+            "required": ["soa_id"],
+        },
+    ),
+    types.Tool(
+        name="rollback_preview",
+        description=(
+            "Show what rolling back to a freeze would restore, without "
+            "changing anything."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {"soa_id": _SOA_PROP, "freeze_id": _FREEZE_PROP},
+            "required": ["soa_id", "freeze_id"],
+        },
+    ),
+    types.Tool(
+        name="rollback_freeze",
+        description=(
+            "Replace the SoA's current design with a freeze. Destructive: "
+            "changes made after the freeze are removed. A safety freeze of "
+            "the current state is taken first and returned as "
+            "safety_freeze_id so the rollback can itself be undone. Run "
+            "rollback_preview first."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {"soa_id": _SOA_PROP, "freeze_id": _FREEZE_PROP},
+            "required": ["soa_id", "freeze_id"],
+        },
+    ),
+    types.Tool(
+        name="diff_freezes",
+        description="Compare two freezes of a SoA (added/removed/changed).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "soa_id": _SOA_PROP,
+                "left_freeze_id": _FREEZE_PROP,
+                "right_freeze_id": _FREEZE_PROP,
+                "full": {
+                    "type": "boolean",
+                    "description": "Return every difference (default caps at 1000)",
+                },
+            },
+            "required": ["soa_id", "left_freeze_id", "right_freeze_id"],
+        },
+    ),
+    types.Tool(
+        name="list_design_entities",
+        description="List a SoA's epochs, arms, elements, study cells or instances.",
+        inputSchema={
+            "type": "object",
+            "properties": {"soa_id": _SOA_PROP, "entity": _ENTITY_PROP},
+            "required": ["soa_id", "entity"],
+        },
+    ),
+    types.Tool(
+        name="create_design_entity",
+        description=(
+            "Create an epoch, arm, element, study cell, instance or decision "
+            "instance. UIDs are assigned by the workbench and the change is "
+            "audited. Accepted fields per entity: " + _entity_fields_doc(0)
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "soa_id": _SOA_PROP,
+                "entity": _ENTITY_PROP,
+                "fields": {"type": "object", "description": "Field values"},
+            },
+            "required": ["soa_id", "entity", "fields"],
+        },
+    ),
+    types.Tool(
+        name="update_design_entity",
+        description=(
+            "Update fields of an existing design entity (only the fields "
+            "given change). Accepted fields per entity: " + _entity_fields_doc(1)
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "soa_id": _SOA_PROP,
+                "entity": _ENTITY_PROP,
+                "entity_id": {"type": "integer", "description": "Row id"},
+                "fields": {"type": "object", "description": "Field values"},
+            },
+            "required": ["soa_id", "entity", "entity_id", "fields"],
+        },
+    ),
+    types.Tool(
+        name="delete_design_entity",
+        description="Delete a design entity. The deletion is audited.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "soa_id": _SOA_PROP,
+                "entity": _ENTITY_PROP,
+                "entity_id": {"type": "integer", "description": "Row id"},
+            },
+            "required": ["soa_id", "entity", "entity_id"],
+        },
+    ),
+    types.Tool(
+        name="get_audit_history",
+        description=(
+            "Audit trail entries (create/update/delete with before/after "
+            "values), newest first. entity_type is e.g. 'activity', "
+            "'visit', 'epoch', 'arm', 'element', 'instance'."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "soa_id": _SOA_PROP,
+                "entity_type": {
+                    "type": "string",
+                    "description": "Filter to one entity type (optional)",
+                },
+                "limit": {"type": "integer", "minimum": 0, "default": 50},
+                "offset": {"type": "integer", "minimum": 0, "default": 0},
+            },
+            "required": ["soa_id"],
+        },
+    ),
+    types.Tool(
+        name="generate_dair",
+        description=(
+            "Generate the Digital Amendment Impact Report (DOCX) comparing "
+            "two freezes. Returns the path of the written file."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "soa_id": _SOA_PROP,
+                "base_freeze_id": _FREEZE_PROP,
+                "revised_freeze_id": _FREEZE_PROP,
+                "output_dir": _OUTPUT_DIR_PROP,
+            },
+            "required": ["soa_id", "base_freeze_id", "revised_freeze_id"],
+        },
+    ),
+    types.Tool(
+        name="export_excel",
+        description=(
+            "Export the SoA matrix to an Excel workbook. Returns the path "
+            "of the written file."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {"soa_id": _SOA_PROP, "output_dir": _OUTPUT_DIR_PROP},
+            "required": ["soa_id"],
+        },
+    ),
+]
+
+
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
     return _TOOLS
@@ -335,6 +564,18 @@ def _dispatch(name: str, args: dict) -> Any:
         "get_soa_matrix": _get_soa_matrix,
         "get_usdm_json": _get_usdm_json,
         "get_define_json": _get_define_json,
+        "list_freezes": _list_freezes,
+        "create_freeze": _create_freeze,
+        "rollback_preview": _rollback_preview,
+        "rollback_freeze": _rollback_freeze,
+        "diff_freezes": _diff_freezes,
+        "list_design_entities": _list_design_entities,
+        "create_design_entity": _create_design_entity,
+        "update_design_entity": _update_design_entity,
+        "delete_design_entity": _delete_design_entity,
+        "get_audit_history": _get_audit_history,
+        "generate_dair": _generate_dair,
+        "export_excel": _export_excel,
     }
     fn = handlers.get(name)
     if fn is None:
@@ -377,7 +618,7 @@ def _api():
     return _api_client
 
 
-def _call_api(method: str, path: str, **kwargs) -> Any:
+def _api_response(method: str, path: str, **kwargs):
     """Call the web API; raise ValueError carrying the API's detail."""
     response = _api().request(method, path, **kwargs)
     if response.status_code >= 400:
@@ -386,7 +627,11 @@ def _call_api(method: str, path: str, **kwargs) -> Any:
         except ValueError:
             detail = response.text
         raise ValueError(f"{detail} (HTTP {response.status_code})")
-    return response.json()
+    return response
+
+
+def _call_api(method: str, path: str, **kwargs) -> Any:
+    return _api_response(method, path, **kwargs).json()
 
 
 def _require_name(args: dict) -> str:
@@ -670,6 +915,124 @@ def _get_define_json(args: dict) -> Any:
     from usdm.generate_define_json import build_define_json
 
     return build_define_json(soa_id, sdtmct=sdtmct, sdtmig=sdtmig)
+
+
+def _list_freezes(args: dict) -> list:
+    return _call_api("GET", f"/soa/{int(args['soa_id'])}/freezes")
+
+
+def _create_freeze(args: dict) -> dict:
+    label = (args.get("version_label") or "").strip() or None
+    return _call_api(
+        "POST",
+        f"/soa/{int(args['soa_id'])}/freezes",
+        json={"version_label": label},
+    )
+
+
+def _rollback_preview(args: dict) -> dict:
+    soa_id, freeze_id = int(args["soa_id"]), int(args["freeze_id"])
+    return _call_api("GET", f"/soa/{soa_id}/freeze/{freeze_id}/rollback_preview")
+
+
+def _rollback_freeze(args: dict) -> dict:
+    soa_id, freeze_id = int(args["soa_id"]), int(args["freeze_id"])
+    return _call_api("POST", f"/soa/{soa_id}/freeze/{freeze_id}/rollback")
+
+
+def _diff_freezes(args: dict) -> dict:
+    return _call_api(
+        "GET",
+        f"/soa/{int(args['soa_id'])}/freeze/diff.json",
+        params={
+            "left": int(args["left_freeze_id"]),
+            "right": int(args["right_freeze_id"]),
+            "full": 1 if args.get("full") else 0,
+        },
+    )
+
+
+def _entity_path(args: dict, with_id: bool = False) -> str:
+    entity = str(args.get("entity") or "")
+    if entity not in _DESIGN_ENTITIES:
+        raise ValueError(
+            f"Unknown entity {entity!r}. "
+            f"Valid values: {', '.join(sorted(_DESIGN_ENTITIES))}"
+        )
+    path = f"/soa/{int(args['soa_id'])}/{entity}"
+    if with_id:
+        path += f"/{int(args['entity_id'])}"
+    return path
+
+
+def _entity_fields(args: dict) -> dict:
+    fields = args.get("fields")
+    if not isinstance(fields, dict):
+        raise ValueError("fields must be an object of field values")
+    return fields
+
+
+def _list_design_entities(args: dict) -> Any:
+    return _call_api("GET", _entity_path(args))
+
+
+def _create_design_entity(args: dict) -> Any:
+    return _call_api("POST", _entity_path(args), json=_entity_fields(args))
+
+
+def _update_design_entity(args: dict) -> Any:
+    return _call_api(
+        "PATCH", _entity_path(args, with_id=True), json=_entity_fields(args)
+    )
+
+
+def _delete_design_entity(args: dict) -> Any:
+    return _call_api("DELETE", _entity_path(args, with_id=True))
+
+
+def _get_audit_history(args: dict) -> list:
+    params = {
+        "limit": int(args.get("limit", 50)),
+        "offset": int(args.get("offset", 0)),
+    }
+    if args.get("entity_type"):
+        params["entity_type"] = str(args["entity_type"])
+    return _call_api("GET", f"/soa/{int(args['soa_id'])}/audit", params=params)
+
+
+def _write_export(response, args: dict, fallback_name: str) -> dict:
+    """Save an API file response and return where it went."""
+    output_dir = Path(
+        args.get("output_dir") or Path(tempfile.gettempdir()) / "soa-workbench-exports"
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    disposition = response.headers.get("content-disposition", "")
+    match = re.search(r'filename="?([^";]+)"?', disposition)
+    name = Path(match.group(1)).name if match else fallback_name
+    path = output_dir / name
+    path.write_bytes(response.content)
+    return {
+        "path": str(path),
+        "bytes": len(response.content),
+        "content_type": response.headers.get("content-type"),
+    }
+
+
+def _generate_dair(args: dict) -> dict:
+    soa_id = int(args["soa_id"])
+    base, revised = int(args["base_freeze_id"]), int(args["revised_freeze_id"])
+    response = _api_response(
+        "GET",
+        f"/soa/{soa_id}/dair/download",
+        params={"base_freeze_id": base, "revised_freeze_id": revised},
+    )
+    return _write_export(response, args, f"dair_soa{soa_id}_{base}_{revised}.docx")
+
+
+def _export_excel(args: dict) -> dict:
+    soa_id = int(args["soa_id"])
+    response = _api_response("GET", f"/soa/{soa_id}/export/xlsx")
+    return _write_export(response, args, f"soa_{soa_id}_matrix.xlsx")
 
 
 # ---------------------------------------------------------------------------

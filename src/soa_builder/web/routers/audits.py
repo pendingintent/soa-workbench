@@ -1,5 +1,7 @@
+import json
 import logging
 import os
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.templating import Jinja2Templates
@@ -13,6 +15,101 @@ logger = logging.getLogger("soa_builder.web.routers.audits")
 templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "..", "templates")
 )
+
+_AUDIT_STD_COLUMNS = {
+    "id",
+    "soa_id",
+    "action",
+    "before_json",
+    "after_json",
+    "performed_at",
+}
+
+
+def _entity_audit_tables(cur) -> dict:
+    """Map entity_type -> (audit table, entity id column).
+
+    Covers every ``<entity>_audit`` table with the standard columns plus
+    a single entity id column; rollback_audit and reorder_audit have
+    their own endpoints and shapes.
+    """
+    cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+        " AND name LIKE '%\\_audit' ESCAPE '\\' ORDER BY name"
+    )
+    tables = {}
+    for (table,) in cur.fetchall():
+        cur.execute(f"PRAGMA table_info({table})")
+        cols = {r[1] for r in cur.fetchall()}
+        extra = cols - _AUDIT_STD_COLUMNS
+        if _AUDIT_STD_COLUMNS <= cols and len(extra) == 1:
+            tables[table[: -len("_audit")]] = (table, extra.pop())
+    return tables
+
+
+def _load_json(raw):
+    if raw is None:
+        return None
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        return raw
+
+
+@router.get("/soa/{soa_id}/audit")
+def list_audit_history(
+    soa_id: int,
+    entity_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """Audit entries across entity types, newest first.
+
+    ``entity_type`` is the audit table name without ``_audit`` (e.g.
+    ``activity``, ``visit``, ``epoch``). Rollbacks and reorders are at
+    ``/rollback_audit`` and ``/reorder_audit``.
+    """
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    if limit < 0 or offset < 0:
+        raise HTTPException(400, "limit and offset must be zero or greater")
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+        tables = _entity_audit_tables(cur)
+        if entity_type is not None:
+            if entity_type not in tables:
+                raise HTTPException(
+                    400,
+                    "Unknown entity_type. Valid values: " + ", ".join(sorted(tables)),
+                )
+            tables = {entity_type: tables[entity_type]}
+        selects = [
+            f"SELECT '{name}' AS entity_type, id, {id_col} AS entity_id,"
+            f" action, before_json, after_json, performed_at"
+            f" FROM {table} WHERE soa_id=?"
+            for name, (table, id_col) in sorted(tables.items())
+        ]
+        cur.execute(
+            " UNION ALL ".join(selects)
+            + " ORDER BY performed_at DESC, id DESC LIMIT ? OFFSET ?",
+            [soa_id] * len(selects) + [limit, offset],
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    return [
+        {
+            "entity_type": r[0],
+            "id": r[1],
+            "entity_id": r[2],
+            "action": r[3],
+            "before": _load_json(r[4]),
+            "after": _load_json(r[5]),
+            "performed_at": r[6],
+        }
+        for r in rows
+    ]
 
 
 @router.get("/ui/soa/{soa_id}/audits", response_class=HTMLResponse)
