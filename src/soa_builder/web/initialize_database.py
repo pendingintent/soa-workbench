@@ -505,13 +505,31 @@ def _init_db():
         """CREATE TABLE IF NOT EXISTS schedule_timelines_audit (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 soa_id INTEGER NOT NULL,
-                instance_id INTEGER,
+                schedule_timeline_id INTEGER,
                 action TEXT NOT NULL,
                 before_json TEXT,
                 after_json TEXT,
                 performed_at TEXT NOT NULL
             )"""
     )
+
+    # Audit tables written by _record_decision_instance_audit and
+    # _record_condition_assignment_audit (see migrations/m0114).
+    for audit_table, id_col in (
+        ("decision_instance_audit", "decision_instance_id"),
+        ("condition_assignment_audit", "condition_assignment_id"),
+    ):
+        cur.execute(
+            f"""CREATE TABLE IF NOT EXISTS {audit_table} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                soa_id INTEGER NOT NULL,
+                {id_col} INTEGER,
+                action TEXT NOT NULL,
+                before_json TEXT,
+                after_json TEXT,
+                performed_at TEXT NOT NULL
+            )"""
+        )
 
     # create instance_audit table
     cur.execute(

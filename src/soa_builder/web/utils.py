@@ -7,6 +7,7 @@ import requests
 import time
 from urllib.parse import urlparse, urlunparse
 from fastapi import Request
+from .caching import CachedResource
 from .db import _connect
 from .codelist_config import (
     ARM_DATA_ORIGIN_TYPE_CODELIST,
@@ -18,82 +19,48 @@ from .codelist_config import (
 
 logger = logging.getLogger(__name__)
 
-_epoch_type_cache: dict[str, Any] = {
-    "data": None,
-    "fetched_at": 0,
-    "last_status": None,
-    "last_url": None,
-    "last_error": None,
-    "parent_package_href": None,
-}
 _CACHE_TTL = int(os.environ.get("SOA_BUILDER_CACHE_TTL", "3600"))
+_epoch_type_cache = CachedResource(
+    _CACHE_TTL,
+    data=None,
+    last_status=None,
+    last_url=None,
+    parent_package_href=None,
+)
 _HTTP_TIMEOUT = int(os.environ.get("CDISC_REQUEST_TIMEOUT", "15"))
 
 _EPOCH_TYPE_CACHE_TTL = _CACHE_TTL
 
-_env_setting_cache: dict[str, Any] = {
-    "options": None,
-    "fetched_at": 0,
-    "last_error": None,
-}
 _ENV_SETTING_CACHE_TTL = _CACHE_TTL
+_env_setting_cache = CachedResource(_ENV_SETTING_CACHE_TTL, options=None)
 
-_contact_mode_cache: dict[str, Any] = {
-    "options": None,
-    "fetched_at": 0,
-    "last_error": None,
-}
 _CONTACT_MODE_CACHE_TTL = _CACHE_TTL
+_contact_mode_cache = CachedResource(_CONTACT_MODE_CACHE_TTL, options=None)
 
-_sdtm_ct_cache: dict[str, Any] = {
-    "slug": None,
-    "rows": None,
-    "codelist_count": 0,
-    "fetched_at": 0,
-    "last_error": None,
-    "last_status": None,
-}
 _SDTM_CT_CACHE_TTL = _CACHE_TTL
+_sdtm_ct_cache = CachedResource(
+    _SDTM_CT_CACHE_TTL, slug=None, rows=None, codelist_count=0, last_status=None
+)
 
-_cdash_ct_cache: dict[str, Any] = {
-    "slug": None,
-    "rows": None,
-    "codelist_count": 0,
-    "fetched_at": 0,
-    "last_error": None,
-    "last_status": None,
-}
 _CDASH_CT_CACHE_TTL = _CACHE_TTL
+_cdash_ct_cache = CachedResource(
+    _CDASH_CT_CACHE_TTL, slug=None, rows=None, codelist_count=0, last_status=None
+)
 
-_define_xml_ct_cache: dict[str, Any] = {
-    "slug": None,
-    "rows": None,
-    "codelist_count": 0,
-    "fetched_at": 0,
-    "last_error": None,
-    "last_status": None,
-}
 _DEFINE_XML_CT_CACHE_TTL = _CACHE_TTL
+_define_xml_ct_cache = CachedResource(
+    _DEFINE_XML_CT_CACHE_TTL, slug=None, rows=None, codelist_count=0, last_status=None
+)
 
-_protocol_ct_cache: dict[str, Any] = {
-    "slug": None,
-    "rows": None,
-    "codelist_count": 0,
-    "fetched_at": 0,
-    "last_error": None,
-    "last_status": None,
-}
 _PROTOCOL_CT_CACHE_TTL = _CACHE_TTL
+_protocol_ct_cache = CachedResource(
+    _PROTOCOL_CT_CACHE_TTL, slug=None, rows=None, codelist_count=0, last_status=None
+)
 
-_ddf_ct_cache: dict[str, Any] = {
-    "slug": None,
-    "rows": None,
-    "codelist_count": 0,
-    "fetched_at": 0,
-    "last_error": None,
-    "last_status": None,
-}
 _DDF_CT_CACHE_TTL = _CACHE_TTL
+_ddf_ct_cache = CachedResource(
+    _DDF_CT_CACHE_TTL, slug=None, rows=None, codelist_count=0, last_status=None
+)
 
 
 # Constants for the helper function
@@ -1546,7 +1513,7 @@ def get_latest_ddf_ct_href(timeout: int = 10) -> str | None:
 
 
 def _get_ct_rows(
-    cache: dict,
+    cache: CachedResource,
     ttl: int,
     label: str,
     get_slug_fn,
@@ -1558,7 +1525,7 @@ def _get_ct_rows(
     Returns { slug, rows, codelist_count, error, fetched_at } and never raises.
     """
     now = time.time()
-    if not force and cache["rows"] is not None and now - cache["fetched_at"] < ttl:
+    if not force and cache.is_fresh("rows", now, allow_empty=True, ttl=ttl):
         return {
             "slug": cache["slug"],
             "rows": cache["rows"],
@@ -1568,14 +1535,7 @@ def _get_ct_rows(
         }
 
     def _fail(err: str, slug: str | None, status: int | None) -> dict:
-        cache.update(
-            slug=slug,
-            rows=[],
-            codelist_count=0,
-            fetched_at=now,
-            last_error=err,
-            last_status=status,
-        )
+        cache.fail(err, now, slug=slug, rows=[], codelist_count=0, last_status=status)
         return {
             "slug": slug,
             "rows": [],
@@ -1612,12 +1572,11 @@ def _get_ct_rows(
         return _fail(f"{label} response not JSON.", slug, resp.status_code)
 
     rows, codelist_count = _flatten_ct_package(payload)
-    cache.update(
+    cache.store(
+        now,
         slug=slug,
         rows=rows,
         codelist_count=codelist_count,
-        fetched_at=now,
-        last_error=None,
         last_status=resp.status_code,
     )
     return {
@@ -1962,26 +1921,38 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
     return None
 
 
-# Return environmentalSettings options from CDISC Library API
-def load_environmental_setting_options(force: bool = False) -> List[dict[str, str]]:
-    """Return [{'submissionValue': ..., 'conceptId': ...}, ...] for env settings."""
+def _collect_codelist_terms(payload: Any) -> List[dict]:
+    """Return the term dicts from a CDISC Library codelist payload."""
+    if isinstance(payload, list):
+        return [t for t in payload if isinstance(t, dict)]
+    if isinstance(payload, dict):
+        if isinstance(payload.get("terms"), list):
+            return [t for t in payload["terms"] if isinstance(t, dict)]
+        embedded = payload.get("_embedded", {})
+        if isinstance(embedded, dict) and isinstance(embedded.get("terms"), list):
+            return [t for t in embedded["terms"] if isinstance(t, dict)]
+    return []
+
+
+def _load_codelist_options(
+    cache: CachedResource, codelist: str, force: bool
+) -> List[dict[str, str]]:
+    """Fetch an SDTM CT codelist's terms as sorted dropdown options.
+
+    Returns ``[{'conceptId', 'submissionValue', 'package'}, ...]``,
+    cached in ``cache``. Terms without inline values are fetched one by
+    one through their hrefs. Never raises; failures return ``[]``.
+    """
     now = time.time()
-    if (
-        not force
-        and _env_setting_cache["options"]
-        and now - _env_setting_cache["fetched_at"] < _ENV_SETTING_CACHE_TTL
-    ):
-        return _env_setting_cache["options"]
+    if not force and cache.is_fresh("options", now):
+        return cache["options"]
 
     slug = get_latest_sdtm_ct_href()
     if not slug:
-        _env_setting_cache.update(options=[], fetched_at=now, last_error="missing slug")
+        cache.fail("missing slug", now, options=[])
         return []
 
-    url = (
-        f"https://library.cdisc.org/api/mdr/ct/packages/{slug}"
-        f"/codelists/{ENCOUNTER_ENVIRONMENTAL_SETTING_CODELIST}"
-    )
+    url = f"https://library.cdisc.org/api/mdr/ct/packages/{slug}/codelists/{codelist}"
     headers: dict[str, str] = {"Accept": "application/json"}
     subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
     api_key = os.environ.get("CDISC_API_KEY") or subscription_key
@@ -1991,42 +1962,27 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
         headers["Authorization"] = f"Bearer {api_key}"
         headers["api-key"] = api_key
 
-    def _collect_terms(payload: Any) -> List[dict]:
-        if isinstance(payload, list):
-            return [t for t in payload if isinstance(t, dict)]
-        if isinstance(payload, dict):
-            if isinstance(payload.get("terms"), list):
-                return [t for t in payload["terms"] if isinstance(t, dict)]
-            embedded = payload.get("_embedded", {})
-            if isinstance(embedded, dict) and isinstance(embedded.get("terms"), list):
-                return [t for t in embedded["terms"] if isinstance(t, dict)]
-        return []
-
     options: list[dict[str, str]] = []
+
+    def _add_option(term: dict) -> None:
+        concept = term.get("conceptId") or term.get("code") or term.get("termCode")
+        submission = term.get("submissionValue") or term.get("cdisc_submission_value")
+        if concept and submission:
+            options.append(
+                {
+                    "conceptId": str(concept).strip(),
+                    "submissionValue": str(submission).strip(),
+                    "package": slug,
+                }
+            )
+
     try:
         resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
         if resp.status_code != 200:
             raise RuntimeError(f"HTTP {resp.status_code}")
-        data = resp.json() or {}
-        terms = _collect_terms(data)
-
-        def _ensure_option(term: dict) -> None:
-            concept = term.get("conceptId") or term.get("code") or term.get("termCode")
-            submission = term.get("submissionValue") or term.get(
-                "cdisc_submission_value"
-            )
-            if concept and submission:
-                options.append(
-                    {
-                        "conceptId": str(concept).strip(),
-                        "submissionValue": str(submission).strip(),
-                        "package": slug,
-                    }
-                )
-
+        terms = _collect_codelist_terms(resp.json() or {})
         for term in terms:
-            _ensure_option(term)
-
+            _add_option(term)
         if not options:
             for term in terms:
                 href = term.get("href") or term.get("_href")
@@ -2041,110 +1997,27 @@ def load_environmental_setting_options(force: bool = False) -> List[dict[str, st
                     href = f"https://library.cdisc.org{href}"
                 try:
                     t_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
-                    if t_resp.status_code == 200:
-                        _ensure_option(t_resp.json() or {})
-                except Exception:
+                except requests.RequestException:
                     continue
-
+                if t_resp.status_code == 200:
+                    _add_option(t_resp.json() or {})
         options.sort(key=lambda item: item["submissionValue"])
-        _env_setting_cache.update(options=options, fetched_at=now, last_error=None)
-    except Exception as exc:
-        _env_setting_cache.update(options=[], fetched_at=now, last_error=str(exc))
+        cache.store(now, options=options)
+    except (requests.RequestException, RuntimeError, ValueError) as exc:
+        cache.fail(str(exc), now, options=[])
         options = []
-
     return options
 
 
-# Return contact mode options from CDISC Library API
-def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
-    """Return [{'submissionValue': ..., 'conceptId': ...}] for contact modes"""
-    now = time.time()
-    if (
-        not force
-        and _contact_mode_cache["options"]
-        and now - _contact_mode_cache["fetched_at"] < _ENV_SETTING_CACHE_TTL
-    ):
-        return _contact_mode_cache["options"]
-
-    slug = get_latest_sdtm_ct_href()
-    if not slug:
-        _contact_mode_cache.update(
-            optoins=[], fetched_at=now, last_error="missing_slug"
-        )
-        return []
-
-    url = (
-        f"https://library.cdisc.org/api/mdr/ct/packages/{slug}"
-        f"/codelists/{ENCOUNTER_CONTACT_MODE_CODELIST}"
+def load_environmental_setting_options(force: bool = False) -> List[dict[str, str]]:
+    """Encounter environmentalSettings options from the CDISC Library."""
+    return _load_codelist_options(
+        _env_setting_cache, ENCOUNTER_ENVIRONMENTAL_SETTING_CODELIST, force
     )
-    headers: dict[str, str] = {"Accept": "application/json"}
-    subscription_key = os.environ.get("CDISC_SUBSCRIPTION_KEY")
-    api_key = os.environ.get("CDISC_API_KEY") or subscription_key
-    if subscription_key:
-        headers["Ocp-Apim-Subscription-Key"] = subscription_key
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-        headers["api-key"] = api_key
 
-    def _collect_terms(payload: Any) -> List[dict]:
-        if isinstance(payload, list):
-            return [t for t in payload if isinstance(t, dict)]
-        if isinstance(payload, dict):
-            if isinstance(payload.get("terms"), list):
-                return [t for t in payload["terms"] if isinstance(t, dict)]
-            embedded = payload.get("_embedded", {})
-            if isinstance(embedded, dict) and isinstance(embedded.get("terms"), list):
-                return [t for t in embedded["terms"] if isinstance(t, dict)]
-        return []
 
-    options: list[dict[str, str]] = []
-    try:
-        resp = requests.get(url, headers=headers, timeout=_HTTP_TIMEOUT)
-        if resp.status_code != 200:
-            raise RuntimeError(f"HTTP {resp.status_code}")
-        data = resp.json() or {}
-        terms = _collect_terms(data)
-
-        def _ensure_options(term: dict) -> None:
-            concept = term.get("conceptId") or term.get("code") or term.get("termCode")
-            submission = term.get("submissionValue") or term.get(
-                "cdisc_submission_value"
-            )
-            if concept and submission:
-                options.append(
-                    {
-                        "conceptId": str(concept).strip(),
-                        "submissionValue": str(submission).strip(),
-                        "package": slug,
-                    }
-                )
-
-        for term in terms:
-            _ensure_options(term)
-
-        if not options:
-            for term in terms:
-                href = term.get("href") or term.get("_href")
-                if not href:
-                    link_self = term.gbet("_links", {}).get("self", {})
-                    href = (
-                        link_self.get("href") if isinstance(link_self, dict) else None
-                    )
-                if not href:
-                    continue
-                if href.startswith("/"):
-                    href = f"https://library.cdisc.org{href}"
-                try:
-                    t_resp = requests.get(href, headers=headers, timeout=_HTTP_TIMEOUT)
-                    if t_resp.status_code == 200:
-                        _ensure_options(t_resp.json() or {})
-                except Exception:
-                    continue
-
-            options.sort(key=lambda item: item["submissionValue"])
-            _contact_mode_cache.update(options=options, fetched_at=now, last_error=None)
-    except Exception as exc:
-        _contact_mode_cache.update(options=[], fetched_at=now, last_error=str(exc))
-        options = []
-
-    return options
+def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
+    """Encounter contactModes options from the CDISC Library."""
+    return _load_codelist_options(
+        _contact_mode_cache, ENCOUNTER_CONTACT_MODE_CODELIST, force
+    )
