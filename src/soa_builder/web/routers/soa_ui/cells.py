@@ -11,7 +11,6 @@ from ._shared import (
     _get_activity_surrogates,
     _get_bc_categories_for_cell,
     _get_concept_groups_for_cell,
-    _html,
     _render_activity_td,
     _render_cell_td,
     _render_encounter_th,
@@ -201,12 +200,16 @@ def ui_toggle_cell(
             conn.close()
             current = "X"
         # Legacy path: visit-based cells don't have superscript support
-        cell_html = (
-            f'<td hx-post="/ui/soa/{soa_id}/toggle_cell" '
-            f'hx-vals=\'{{"visit_id": {int(visit_id)}, "activity_id": {activity_id}}}\' '
-            f'hx-swap="outerHTML" class="cell">{current}</td>'
+        return templates.TemplateResponse(
+            request,
+            "_legacy_matrix_cell.html",
+            {
+                "soa_id": soa_id,
+                "visit_id": int(visit_id),
+                "activity_id": activity_id,
+                "current": current,
+            },
         )
-    return HTMLResponse(cell_html)
 
 
 @router.get(
@@ -232,23 +235,19 @@ def ui_cell_superscript_edit(
     conn.close()
     if not row:
         raise HTTPException(404, "Cell not found")
-    sup_val = _html.escape(row[0] or "", quote=True)
-    html = (
-        f'<td class="cell cell-editing" style="background:#fffde7;min-width:70px;">'
-        f"X"
-        f'<form style="display:inline;"'
-        f' hx-post="/ui/soa/{soa_id}/cell_superscript/{instance_id}/{activity_id}"'
-        f' hx-swap="outerHTML" hx-target="closest td">'
-        f'<input name="superscript" value="{sup_val}" size="5"'
-        f' style="width:45px;font-size:0.8em;" autofocus />'
-        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
-        f"</form>"
-        f'<span hx-get="/ui/soa/{soa_id}/cell_superscript_view/{instance_id}/{activity_id}"'
-        f' hx-swap="outerHTML" hx-target="closest td"'
-        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
-        f"</td>"
+    return templates.TemplateResponse(
+        request,
+        "_superscript_editor.html",
+        {
+            "tag": "td",
+            "css_class": "cell cell-editing",
+            "show_x": True,
+            "colspan": None,
+            "post_url": f"/ui/soa/{soa_id}/cell_superscript/{instance_id}/{activity_id}",
+            "view_url": f"/ui/soa/{soa_id}/cell_superscript_view/{instance_id}/{activity_id}",
+            "value": row[0] or "",
+        },
     )
-    return HTMLResponse(html)
 
 
 @router.post(
@@ -342,22 +341,19 @@ def ui_activity_superscript_edit(
     conn.close()
     if not row:
         raise HTTPException(404, "Activity not found")
-    sup_val = _html.escape(row[0] or "", quote=True)
-    html = (
-        f'<td class="cell-editing" style="background:#fffde7;">'
-        f'<form style="display:inline;"'
-        f' hx-post="/ui/soa/{soa_id}/activity_superscript/{activity_id}"'
-        f' hx-swap="outerHTML" hx-target="closest td">'
-        f'<input name="superscript" value="{sup_val}" size="5"'
-        f' style="width:45px;font-size:0.8em;" autofocus />'
-        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
-        f"</form>"
-        f'<span hx-get="/ui/soa/{soa_id}/activity_superscript_view/{activity_id}"'
-        f' hx-swap="outerHTML" hx-target="closest td"'
-        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
-        f"</td>"
+    return templates.TemplateResponse(
+        request,
+        "_superscript_editor.html",
+        {
+            "tag": "td",
+            "css_class": "cell-editing",
+            "show_x": False,
+            "colspan": None,
+            "post_url": f"/ui/soa/{soa_id}/activity_superscript/{activity_id}",
+            "view_url": f"/ui/soa/{soa_id}/activity_superscript_view/{activity_id}",
+            "value": row[0] or "",
+        },
     )
-    return HTMLResponse(html)
 
 
 @router.post(
@@ -447,22 +443,19 @@ def ui_encounter_superscript_edit(
     conn.close()
     if not row:
         raise HTTPException(404, "Encounter not found")
-    sup_val = _html.escape(row[0] or "", quote=True)
-    html = (
-        f'<th class="cell-editing" style="background:#fffde7;">'
-        f'<form style="display:inline;"'
-        f' hx-post="/ui/soa/{soa_id}/encounter_superscript/{encounter_id}"'
-        f' hx-swap="outerHTML" hx-target="closest th">'
-        f'<input name="superscript" value="{sup_val}" size="5"'
-        f' style="width:45px;font-size:0.8em;" autofocus />'
-        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
-        f"</form>"
-        f'<span hx-get="/ui/soa/{soa_id}/encounter_superscript_view/{encounter_id}"'
-        f' hx-swap="outerHTML" hx-target="closest th"'
-        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
-        f"</th>"
+    return templates.TemplateResponse(
+        request,
+        "_superscript_editor.html",
+        {
+            "tag": "th",
+            "css_class": "cell-editing",
+            "show_x": False,
+            "colspan": None,
+            "post_url": f"/ui/soa/{soa_id}/encounter_superscript/{encounter_id}",
+            "view_url": f"/ui/soa/{soa_id}/encounter_superscript_view/{encounter_id}",
+            "value": row[0] or "",
+        },
     )
-    return HTMLResponse(html)
 
 
 @router.post(
@@ -560,24 +553,19 @@ def ui_epoch_superscript_edit(
     conn.close()
     if not row:
         raise HTTPException(404, "Epoch not found")
-    sup_val = _html.escape(row[0] or "", quote=True)
-    colspan_safe = _html.escape(str(colspan), quote=True)
-    html = (
-        f'<th class="cell-editing" style="background:#fffde7;" colspan="{colspan_safe}">'
-        f'<form style="display:inline;"'
-        f' hx-post="/ui/soa/{soa_id}/epoch_superscript/{epoch_id}"'
-        f' hx-swap="outerHTML" hx-target="closest th">'
-        f'<input type="hidden" name="colspan" value="{colspan_safe}" />'
-        f'<input name="superscript" value="{sup_val}" size="5"'
-        f' style="width:45px;font-size:0.8em;" autofocus />'
-        f'<button type="submit" onclick="event.stopPropagation()">&#10003;</button>'
-        f"</form>"
-        f'<span hx-get="/ui/soa/{soa_id}/epoch_superscript_view/{epoch_id}?colspan={colspan_safe}"'
-        f' hx-swap="outerHTML" hx-target="closest th"'
-        f' onclick="event.stopPropagation()" style="cursor:pointer;">&#10005;</span>'
-        f"</th>"
+    return templates.TemplateResponse(
+        request,
+        "_superscript_editor.html",
+        {
+            "tag": "th",
+            "css_class": "cell-editing",
+            "show_x": False,
+            "colspan": colspan,
+            "post_url": f"/ui/soa/{soa_id}/epoch_superscript/{epoch_id}",
+            "view_url": f"/ui/soa/{soa_id}/epoch_superscript_view/{epoch_id}?colspan={colspan}",
+            "value": row[0] or "",
+        },
     )
-    return HTMLResponse(html)
 
 
 @router.post(
