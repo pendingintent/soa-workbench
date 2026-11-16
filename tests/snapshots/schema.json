@@ -1866,6 +1866,67 @@
    }
   }
  },
+ "condition_assignment_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "condition_assignment_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_condition_assignment_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
+ },
  "country_codes": {
   "columns": [
    {
@@ -1891,6 +1952,67 @@
    }
   ],
   "indexes": {}
+ },
+ "decision_instance_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "decision_instance_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_decision_instance_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "decision_instances": {
   "columns": [
@@ -4514,7 +4636,7 @@
    },
    {
     "default": null,
-    "name": "instance_id",
+    "name": "schedule_timeline_id",
     "notnull": 0,
     "pk": 0,
     "type": "INTEGER"
