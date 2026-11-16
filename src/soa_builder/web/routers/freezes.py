@@ -2,10 +2,12 @@ import html
 import json
 import logging
 import os
+from typing import Optional
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 from ..db import _connect
 from ..utils import soa_exists
@@ -33,6 +35,67 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 router = APIRouter()
 logger = logging.getLogger("soa_builder.web.routers.freezes")
+
+
+class FreezeCreate(BaseModel):
+    version_label: Optional[str] = None
+
+
+def perform_rollback(soa_id: int, freeze_id: int) -> dict:
+    """Roll back to a freeze and record it in rollback_audit.
+
+    Shared by the UI and JSON routes so both always audit the same way.
+    """
+    result = _rollback_freeze(soa_id, freeze_id)
+    _record_rollback_audit(
+        soa_id,
+        freeze_id,
+        {
+            "visits_restored": result["visits_restored"],
+            "activities_restored": result["activities_restored"],
+            "cells_restored": result["cells_restored"],
+            "concept_mappings_restored": result["concept_mappings_restored"],
+            "elements_restored": result.get("elements_restored"),
+            "cells_skipped": result.get("cells_skipped"),
+            "encounters_restored": result.get("encounters_restored"),
+            "instances_restored": result.get("instances_restored"),
+            "timelines_restored": result.get("timelines_restored"),
+            "decision_instances_restored": result.get("decision_instances_restored"),
+            "study_cells_restored": result.get("study_cells_restored"),
+            "safety_freeze_id": result.get("safety_freeze_id"),
+        },
+    )
+    return result
+
+
+@router.get("/soa/{soa_id}/freezes")
+def list_freezes(soa_id: int):
+    """List freezes (snapshots) for a SoA, newest first."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    return _list_freezes(soa_id)
+
+
+@router.post("/soa/{soa_id}/freezes", status_code=201)
+def create_freeze(soa_id: int, payload: FreezeCreate):
+    """Freeze the current SoA. Omit version_label to get the next vN."""
+    freeze_id, version_label = _create_freeze(soa_id, payload.version_label)
+    return {"id": freeze_id, "soa_id": soa_id, "version_label": version_label}
+
+
+@router.get("/soa/{soa_id}/freeze/{freeze_id}/rollback_preview")
+def get_rollback_preview(soa_id: int, freeze_id: int):
+    """Counts of what a rollback to this freeze would restore."""
+    return _rollback_preview(soa_id, freeze_id)
+
+
+@router.post("/soa/{soa_id}/freeze/{freeze_id}/rollback")
+def rollback_to_freeze(soa_id: int, freeze_id: int):
+    """Roll back to a freeze. A safety freeze of the current state is
+    taken first; its id is returned as safety_freeze_id."""
+    if not soa_exists(soa_id):
+        raise HTTPException(404, "SOA not found")
+    return perform_rollback(soa_id, freeze_id)
 
 
 @router.get(
@@ -209,6 +272,15 @@ def ui_freeze_soa(
     )
 
 
+# Must be registered before /freeze/{freeze_id}, which would otherwise
+# capture 'diff.json' as a freeze id.
+@router.get("/soa/{soa_id}/freeze/diff.json")
+def get_freeze_diff_json(soa_id: int, left: int, right: int, full: int = 0):
+    limit = None if full == 1 else 1000
+    diff = _diff_freezes_limited(soa_id, left, right, limit=limit)
+    return JSONResponse(diff)
+
+
 @router.get("/soa/{soa_id}/freeze/{freeze_id}")
 def get_freeze(soa_id: int, freeze_id: int):
     if not soa_exists(soa_id):
@@ -263,25 +335,7 @@ def ui_freeze_diff(request: Request, soa_id: int, left: int, right: int, full: i
     "/ui/soa/{soa_id}/freeze/{freeze_id}/rollback", response_class=HTMLResponse
 )
 def ui_freeze_rollback(request: Request, soa_id: int, freeze_id: int):
-    result = _rollback_freeze(soa_id, freeze_id)
-    _record_rollback_audit(
-        soa_id,
-        freeze_id,
-        {
-            "visits_restored": result["visits_restored"],
-            "activities_restored": result["activities_restored"],
-            "cells_restored": result["cells_restored"],
-            "concept_mappings_restored": result["concept_mappings_restored"],
-            "elements_restored": result.get("elements_restored"),
-            "cells_skipped": result.get("cells_skipped"),
-            "encounters_restored": result.get("encounters_restored"),
-            "instances_restored": result.get("instances_restored"),
-            "timelines_restored": result.get("timelines_restored"),
-            "decision_instances_restored": result.get("decision_instances_restored"),
-            "study_cells_restored": result.get("study_cells_restored"),
-            "safety_freeze_id": result.get("safety_freeze_id"),
-        },
-    )
+    perform_rollback(soa_id, freeze_id)
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/freezes"})
     safe_soa_id = html.escape(str(soa_id))
@@ -321,10 +375,3 @@ def ui_freeze_delete(request: Request, soa_id: int, freeze_id: int):
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{safe_soa_id}/freezes';</script>"
     )
-
-
-@router.get("/soa/{soa_id}/freeze/diff.json")
-def get_freeze_diff_json(soa_id: int, left: int, right: int, full: int = 0):
-    limit = None if full == 1 else 1000
-    diff = _diff_freezes_limited(soa_id, left, right, limit=limit)
-    return JSONResponse(diff)
