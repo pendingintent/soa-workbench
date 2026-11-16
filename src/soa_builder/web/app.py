@@ -3139,6 +3139,16 @@ def set_cell_instance(soa_id: int, payload: dict):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
+        "SELECT 1 FROM instances WHERE id=? AND soa_id=?", (instance_id, soa_id)
+    )
+    if cur.fetchone() is None:
+        conn.close()
+        raise HTTPException(404, f"Instance {instance_id} not found in SOA")
+    cur.execute("SELECT 1 FROM activity WHERE id=? AND soa_id=?", (activity_id, soa_id))
+    if cur.fetchone() is None:
+        conn.close()
+        raise HTTPException(404, f"Activity {activity_id} not found in SOA")
+    cur.execute(
         "SELECT id FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
         (soa_id, instance_id, activity_id),
     )
