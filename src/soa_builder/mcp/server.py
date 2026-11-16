@@ -4,6 +4,9 @@ Run via ``soa-mcp`` (console script) or ``python -m soa_builder.mcp.server``.
 The server communicates over stdio and is registered in ``.mcp.json`` for
 automatic pickup by Claude Code.
 
+Write tools call the FastAPI app in-process (see ``_call_api``) so they
+share the routers' validation, UID allocation and audit trail.
+
 Tools (11 total):
   list_soas                 List all Schedules of Activities
   create_soa                Create a new SoA
@@ -21,7 +24,6 @@ Tools (11 total):
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 import mcp.types as types
@@ -29,7 +31,6 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
 from soa_builder.web.db import _connect
-from soa_builder.web.utils import get_next_encounter_uid
 
 logger = logging.getLogger("soa_builder.mcp")
 
@@ -62,7 +63,18 @@ _TOOLS = [
         ),
         inputSchema={
             "type": "object",
-            "properties": {},
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum rows to return (optional; default all)",
+                    "minimum": 0,
+                },
+                "offset": {
+                    "type": "integer",
+                    "description": "Rows to skip before returning (optional)",
+                    "minimum": 0,
+                },
+            },
             "required": [],
         },
     ),
@@ -113,13 +125,26 @@ _TOOLS = [
             "type": "object",
             "properties": {
                 "soa_id": {"type": "integer", "description": "SoA identifier"},
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum rows to return (optional; default all)",
+                    "minimum": 0,
+                },
+                "offset": {
+                    "type": "integer",
+                    "description": "Rows to skip before returning (optional)",
+                    "minimum": 0,
+                },
             },
             "required": ["soa_id"],
         },
     ),
     types.Tool(
         name="create_visit",
-        description="Add a new visit (encounter) definition to a SoA.",
+        description=(
+            "Add a new visit (encounter) definition to a SoA. The encounter "
+            "type code is assigned by the workbench."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
@@ -132,11 +157,9 @@ _TOOLS = [
                     "type": "string",
                     "description": "Short display label (optional)",
                 },
-                "type": {
+                "description": {
                     "type": "string",
-                    "description": (
-                        "Visit type (optional), e.g. 'SCHEDULED', 'UNSCHEDULED'"
-                    ),
+                    "description": "Visit description (optional)",
                 },
             },
             "required": ["soa_id", "name"],
@@ -152,6 +175,16 @@ _TOOLS = [
             "type": "object",
             "properties": {
                 "soa_id": {"type": "integer", "description": "SoA identifier"},
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum rows to return (optional; default all)",
+                    "minimum": 0,
+                },
+                "offset": {
+                    "type": "integer",
+                    "description": "Rows to skip before returning (optional)",
+                    "minimum": 0,
+                },
             },
             "required": ["soa_id"],
         },
@@ -314,13 +347,64 @@ def _dispatch(name: str, args: dict) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _list_soas(_args: dict) -> list:
+def _page(args: dict) -> tuple:
+    """Return (limit, offset) from tool args; limit -1 means no limit."""
+    limit = args.get("limit")
+    offset = args.get("offset") or 0
+    limit = -1 if limit is None else int(limit)
+    offset = int(offset)
+    if limit < 0 and args.get("limit") is not None:
+        raise ValueError("limit must be zero or greater")
+    if offset < 0:
+        raise ValueError("offset must be zero or greater")
+    return limit, offset
+
+
+# Write tools call the web API in-process so they share its validation,
+# UID allocation (uid_counter / audit-aware allocators) and audit trail
+# instead of re-implementing them in SQL here.
+_api_client = None
+
+
+def _api():
+    global _api_client
+    if _api_client is None:
+        from fastapi.testclient import TestClient
+
+        from soa_builder.web.app import app
+
+        _api_client = TestClient(app)
+    return _api_client
+
+
+def _call_api(method: str, path: str, **kwargs) -> Any:
+    """Call the web API; raise ValueError carrying the API's detail."""
+    response = _api().request(method, path, **kwargs)
+    if response.status_code >= 400:
+        try:
+            detail = response.json().get("detail", response.text)
+        except ValueError:
+            detail = response.text
+        raise ValueError(f"{detail} (HTTP {response.status_code})")
+    return response.json()
+
+
+def _require_name(args: dict) -> str:
+    name = (args.get("name") or "").strip()
+    if not name:
+        raise ValueError("name is required")
+    return name
+
+
+def _list_soas(args: dict) -> list:
+    limit, offset = _page(args)
     conn = _connect()
     cur = conn.cursor()
     try:
         cur.execute(
             "SELECT id,name,created_at,study_id,study_label,study_description"
-            " FROM soa ORDER BY id DESC"
+            " FROM soa ORDER BY id DESC LIMIT ? OFFSET ?",
+            (limit, offset),
         )
         rows = cur.fetchall()
     finally:
@@ -339,45 +423,12 @@ def _list_soas(_args: dict) -> list:
 
 
 def _create_soa(args: dict) -> dict:
-    name = args.get("name", "").strip()
-    if not name:
-        raise ValueError("name is required")
-    study_id = (args.get("study_id") or "").strip() or None
-    study_label = (args.get("study_label") or "").strip() or None
-    study_description = (args.get("study_description") or "").strip() or None
-    conn = _connect()
-    cur = conn.cursor()
-    try:
-        if study_id:
-            cur.execute("SELECT 1 FROM soa WHERE study_id=?", (study_id,))
-            if cur.fetchone():
-                raise ValueError(f"study_id {study_id!r} already exists")
-        cur.execute(
-            "INSERT INTO soa"
-            " (name, created_at, study_id, study_label, study_description)"
-            " VALUES (?,?,?,?,?)",
-            (
-                name,
-                datetime.now(timezone.utc).isoformat(),
-                study_id,
-                study_label,
-                study_description,
-            ),
-        )
-        soa_id = cur.lastrowid
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-    return {
-        "id": soa_id,
-        "name": name,
-        "study_id": study_id,
-        "study_label": study_label,
-        "study_description": study_description,
-    }
+    payload = {"name": _require_name(args)}
+    for key in ("study_id", "study_label", "study_description"):
+        value = (args.get(key) or "").strip()
+        if value:
+            payload[key] = value
+    return _call_api("POST", "/soa", json=payload)
 
 
 def _get_soa(args: dict) -> dict:
@@ -407,13 +458,15 @@ def _get_soa(args: dict) -> dict:
 
 def _list_visits(args: dict) -> list:
     soa_id = int(args["soa_id"])
+    limit, offset = _page(args)
     conn = _connect()
     cur = conn.cursor()
     try:
         cur.execute(
             "SELECT id,encounter_uid,name,label,description,type,order_index"
-            " FROM visit WHERE soa_id=? ORDER BY order_index,id",
-            (soa_id,),
+            " FROM visit WHERE soa_id=? ORDER BY order_index,id"
+            " LIMIT ? OFFSET ?",
+            (soa_id, limit, offset),
         )
         rows = cur.fetchall()
     finally:
@@ -434,41 +487,28 @@ def _list_visits(args: dict) -> list:
 
 def _create_visit(args: dict) -> dict:
     soa_id = int(args["soa_id"])
-    name = args.get("name", "").strip()
-    if not name:
-        raise ValueError("name is required")
-    label = (args.get("label") or "").strip() or None
-    visit_type = (args.get("type") or "").strip() or None
-
+    payload = {"name": _require_name(args)}
+    for key in ("label", "description"):
+        value = (args.get(key) or "").strip()
+        if value:
+            payload[key] = value
+    created = _call_api("POST", f"/soa/{soa_id}/visits", json=payload)
     conn = _connect()
     cur = conn.cursor()
     try:
         cur.execute(
-            "SELECT COALESCE(MAX(order_index),0) FROM visit WHERE soa_id=?",
-            (soa_id,),
+            "SELECT encounter_uid, order_index, type FROM visit WHERE id=?",
+            (created["id"],),
         )
-        order_index = cur.fetchone()[0] + 1
-
-        encounter_uid = get_next_encounter_uid(cur, soa_id)
-
-        cur.execute(
-            "INSERT INTO visit"
-            " (soa_id, name, label, order_index, encounter_uid, type)"
-            " VALUES (?,?,?,?,?,?)",
-            (soa_id, name, label, order_index, encounter_uid, visit_type),
-        )
-        visit_id = cur.lastrowid
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+        encounter_uid, order_index, visit_type = cur.fetchone()
     finally:
         conn.close()
     return {
-        "id": visit_id,
+        "id": created["id"],
         "soa_id": soa_id,
-        "name": name,
-        "label": label,
+        "name": created["name"],
+        "label": created.get("label"),
+        "description": created.get("description"),
         "type": visit_type,
         "encounter_uid": encounter_uid,
         "order_index": order_index,
@@ -477,13 +517,15 @@ def _create_visit(args: dict) -> dict:
 
 def _list_activities(args: dict) -> list:
     soa_id = int(args["soa_id"])
+    limit, offset = _page(args)
     conn = _connect()
     cur = conn.cursor()
     try:
         cur.execute(
             "SELECT id,name,order_index,activity_uid,label,description"
-            " FROM activity WHERE soa_id=? ORDER BY order_index",
-            (soa_id,),
+            " FROM activity WHERE soa_id=? ORDER BY order_index,id"
+            " LIMIT ? OFFSET ?",
+            (soa_id, limit, offset),
         )
         rows = cur.fetchall()
     finally:
@@ -503,68 +545,22 @@ def _list_activities(args: dict) -> list:
 
 def _create_activity(args: dict) -> dict:
     soa_id = int(args["soa_id"])
-    name = args.get("name", "").strip()
-    if not name:
-        raise ValueError("name is required")
+    name = _require_name(args)
     label = (args.get("label") or "").strip() or None
     description = (args.get("description") or "").strip() or None
-
-    conn = _connect()
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            "SELECT COALESCE(MAX(order_index),0) FROM activity WHERE soa_id=?",
-            (soa_id,),
-        )
-        order_index = cur.fetchone()[0] + 1
-
-        cur.execute(
-            "SELECT activity_uid FROM activity"
-            " WHERE soa_id=? AND activity_uid LIKE 'Activity_%'",
-            (soa_id,),
-        )
-        existing_uids = [r[0] for r in cur.fetchall()]
-        next_n = 1
-        if existing_uids:
-            nums = []
-            for uid in existing_uids:
-                try:
-                    nums.append(int(uid.split("_")[1]))
-                except (IndexError, ValueError):
-                    pass
-            if nums:
-                next_n = max(nums) + 1
-        activity_uid = f"Activity_{next_n}"
-
-        try:
-            cur.execute(
-                "INSERT INTO activity"
-                " (soa_id, name, order_index, activity_uid, label, description)"
-                " VALUES (?,?,?,?,?,?)",
-                (soa_id, name, order_index, activity_uid, label, description),
-            )
-        except Exception:
-            cur.execute(
-                "INSERT INTO activity"
-                " (soa_id, name, order_index, activity_uid)"
-                " VALUES (?,?,?,?)",
-                (soa_id, name, order_index, activity_uid),
-            )
-        activity_id = cur.lastrowid
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    created = _call_api(
+        "POST",
+        f"/soa/{soa_id}/activities",
+        json={"name": name, "label": label, "description": description},
+    )
     return {
-        "id": activity_id,
+        "id": created["activity_id"],
         "soa_id": soa_id,
         "name": name,
         "label": label,
         "description": description,
-        "activity_uid": activity_uid,
-        "order_index": order_index,
+        "activity_uid": created["activity_uid"],
+        "order_index": created["order_index"],
     }
 
 
@@ -574,51 +570,23 @@ def _assign_instance_activity(args: dict) -> dict:
     activity_id = int(args["activity_id"])
     raw_status = args.get("status")
     status = "X" if raw_status is None else str(raw_status).strip()
-
-    conn = _connect()
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            "SELECT id FROM matrix_cells"
-            " WHERE soa_id=? AND instance_id=? AND activity_id=?",
-            (soa_id, instance_id, activity_id),
-        )
-        existing = cur.fetchone()
-        if status == "":
-            if existing:
-                cur.execute("DELETE FROM matrix_cells WHERE id=?", (existing[0],))
-                conn.commit()
-                return {
-                    "deleted": True,
-                    "instance_id": instance_id,
-                    "activity_id": activity_id,
-                }
-            return {
-                "deleted": False,
-                "instance_id": instance_id,
-                "activity_id": activity_id,
-            }
-        if existing:
-            cur.execute(
-                "UPDATE matrix_cells SET status=? WHERE id=?", (status, existing[0])
-            )
-            cell_id = existing[0]
-        else:
-            cur.execute(
-                "INSERT INTO matrix_cells"
-                " (soa_id, instance_id, activity_id, status)"
-                " VALUES (?,?,?,?)",
-                (soa_id, instance_id, activity_id, status),
-            )
-            cell_id = cur.lastrowid
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    result = _call_api(
+        "POST",
+        f"/soa/{soa_id}/cells_instance",
+        json={
+            "instance_id": instance_id,
+            "activity_id": activity_id,
+            "status": status,
+        },
+    )
+    if status == "":
+        return {
+            "deleted": result.get("deleted", False),
+            "instance_id": instance_id,
+            "activity_id": activity_id,
+        }
     return {
-        "cell_id": cell_id,
+        "cell_id": result["cell_id"],
         "soa_id": soa_id,
         "instance_id": instance_id,
         "activity_id": activity_id,
