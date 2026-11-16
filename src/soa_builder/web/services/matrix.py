@@ -344,6 +344,51 @@ def _add_header_rows_to_worksheet(worksheet, enriched_instances):
         worksheet.cell(6, i + 3, window_val)
 
 
+def instance_cell_exists(soa_id: int, instance_id: int, activity_id: int) -> bool:
+    """Return True if the activity is scheduled at the instance."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM matrix_cells WHERE soa_id=? AND instance_id=?"
+            " AND activity_id=?",
+            (soa_id, instance_id, activity_id),
+        ).fetchone()
+    finally:
+        conn.close()
+    return row is not None
+
+
+def set_instance_cell(
+    soa_id: int, instance_id: int, activity_id: int, on: bool
+) -> None:
+    """Schedule (``on``) or unschedule an activity at an instance.
+
+    Idempotent: setting a cell to its current state changes nothing.
+    """
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id FROM matrix_cells WHERE soa_id=? AND instance_id=?"
+            " AND activity_id=?",
+            (soa_id, instance_id, activity_id),
+        )
+        rows = cur.fetchall()
+        if on and not rows:
+            cur.execute(
+                "INSERT INTO matrix_cells (soa_id, instance_id, activity_id,"
+                " status) VALUES (?,?,?,?)",
+                (soa_id, instance_id, activity_id, "X"),
+            )
+        elif not on and rows:
+            cur.executemany(
+                "DELETE FROM matrix_cells WHERE id=?", [(r[0],) for r in rows]
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _render_cell_td(
     soa_id: int,
     instance_id: int,

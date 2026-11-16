@@ -1,5 +1,7 @@
 """soa_ui: cells (split from soa_ui.py)."""
 
+from ...services.matrix import instance_cell_exists
+from ...services.matrix import set_instance_cell
 from ._shared import (
     CellCreate,
     Form,
@@ -35,28 +37,11 @@ def ui_toggle_cell_instance(
     """Toggle assignment by instance_id."""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT status,id FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
-        (soa_id, instance_id, activity_id),
+    on = not instance_cell_exists(soa_id, instance_id, activity_id)
+    set_instance_cell(soa_id, instance_id, activity_id, on)
+    return HTMLResponse(
+        _render_cell_td(soa_id, instance_id, activity_id, "X" if on else "", None)
     )
-    row = cur.fetchone()
-    if row:
-        cur.execute("DELETE FROM matrix_cells WHERE id=?", (row[1],))
-        conn.commit()
-        conn.close()
-        return HTMLResponse(_render_cell_td(soa_id, instance_id, activity_id, "", None))
-    else:
-        cur.execute(
-            "INSERT INTO matrix_cells (soa_id, instance_id, activity_id, status) VALUES (?,?,?,?)",
-            (soa_id, instance_id, activity_id, "X"),
-        )
-        conn.commit()
-        conn.close()
-        return HTMLResponse(
-            _render_cell_td(soa_id, instance_id, activity_id, "X", None)
-        )
 
 
 # UI endpoint for displaying BC(s) assigned to an Activity

@@ -172,6 +172,9 @@
  "GET /ui/soa/{soa_id}/usdm_json",
  "GET /ui/soa/{soa_id}/visits",
  "GET /ui/usdm-model-explorer",
+ "GET /ui/wizard/new",
+ "GET /ui/wizard/{soa_id}",
+ "GET /ui/wizard/{soa_id}/{step_key}",
  "PATCH /concept-groups/{group_id}",
  "PATCH /soa/{soa_id}/activities/{activity_id}",
  "PATCH /soa/{soa_id}/amendment/{amendment_id}",
@@ -402,5 +405,8 @@
  "POST /ui/soa/{soa_id}/update_meta",
  "POST /ui/soa/{soa_id}/visits/create",
  "POST /ui/soa/{soa_id}/visits/{visit_id}/delete",
- "POST /ui/soa/{soa_id}/visits/{visit_id}/update"
+ "POST /ui/soa/{soa_id}/visits/{visit_id}/update",
+ "POST /ui/wizard/new",
+ "POST /ui/wizard/{soa_id}/finish",
+ "POST /ui/wizard/{soa_id}/{step_key}"
 ]

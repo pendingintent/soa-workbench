@@ -18,4 +18,11 @@
     </li>
     {% endfor %}
   </ol>
+  {% if not (wizard_state and wizard_state.status == 'complete') and done_count < total %}
+  <p class="am-checklist-wizard">
+    <a href="/ui/wizard/{{ soa_id }}" class="am-btn am-btn-primary am-btn-sm">
+      {% if wizard_state %}Continue guided setup{% else %}Use guided setup{% endif %} &rarr;
+    </a>
+  </p>
+  {% endif %}
 </details>
