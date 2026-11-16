@@ -1,5 +1,6 @@
 """activities: helpers (split from activities.py)."""
 
+from ...errors import MALFORMED_JSON_ERRORS
 from ._shared import (
     HTMLResponse,
     _ACT_CONCEPT_CACHE,
@@ -51,7 +52,7 @@ def fetch_biomedical_concepts(force: bool = False):
                 if code:
                     concepts.append({"code": code, "title": title})
             return concepts
-        except Exception as e:
+        except MALFORMED_JSON_ERRORS as e:
             logger.debug("fetch_biomedical_concepts override JSON parse failed: %s", e)
             return []
     now = time.time()
@@ -97,7 +98,7 @@ def _next_activity_uid(cur, soa_id: int) -> str:
                     n = int(uid.split("_")[-1])
                     if n > max_n:
                         max_n = n
-            except Exception:
+            except MALFORMED_JSON_ERRORS:
                 pass
     return f"Activity_{max_n + 1}"
 

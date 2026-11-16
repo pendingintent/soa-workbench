@@ -1,3 +1,4 @@
+from ..errors import MALFORMED_JSON_ERRORS
 import json
 import logging
 
@@ -49,7 +50,7 @@ def _next_endpoint_uid(cur, soa_id: int) -> str:
                     n = int(uid.split("_")[-1])
                     if n > max_n:
                         max_n = n
-            except Exception:
+            except MALFORMED_JSON_ERRORS:
                 pass
     return f"Endpoint_{max_n + 1}"
 

@@ -29,9 +29,9 @@ def test_element_id_prefix_and_uniqueness():
         r = client.post(f"/ui/soa/{soa_id}/add_element", data={"name": f"Elem {i}"})
         assert r.status_code == 200
     rows = fetch_elements(soa_id)
-    # If column absent, skip assertions
-    if not rows:
-        return
+    # Regression: the handler used to call a function that no longer
+    # existed and swallowed the error, so this test passed with no rows.
+    assert len(rows) == 5
     # Detect if element_id column exists by checking first row value retrieval logic
     has_element_id = rows[0][1] is not None or any(r[1] is not None for r in rows)
     if not has_element_id:

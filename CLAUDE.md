@@ -223,5 +223,11 @@ the main CDISC Library API. Set `CDISC_CRF_API_KEY` /
 ### Error Handling
 - Be specific with exception types
 - Don't use bare `except:` clauses
+- No blind `except Exception` in `src/soa_builder/web/` (ruff
+  `BLE001`, enforced). Catch what the `try` body can raise
+  (`sqlite3.Error`, pydantic `ValidationError`, ...) or the named
+  groups in `web/errors.py` (`MALFORMED_JSON_ERRORS`,
+  `REMOTE_PAYLOAD_ERRORS`). A handler that must stay broad needs
+  `# noqa: BLE001 - <reason>` or `logger.exception(...)`
 - Use `finally` or context managers for cleanup
 - `import logging` and create a `logger` to collect and output messages

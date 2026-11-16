@@ -357,7 +357,7 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
                         "TitleChanges",
                     ]
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - best-effort sheet: the export must not fail
             # Provide an error sheet to highlight issue rather than failing entire export
             concept_diff_df = pd.DataFrame([[str(e)]], columns=["ConceptDiffError"])
     # Fetch enriched instances for header rows
@@ -475,7 +475,7 @@ def export_xlsx(soa_id: int, left: Optional[int] = None, right: Optional[int] = 
                     ],
                 )
                 entity_diff_df.to_excel(writer, index=False, sheet_name="EntityDiff")
-            except Exception as _e:
+            except Exception as _e:  # noqa: BLE001 - best-effort sheet: the export must not fail
                 pd.DataFrame([[str(_e)]], columns=["EntityDiffError"]).to_excel(
                     writer, index=False, sheet_name="EntityDiff"
                 )

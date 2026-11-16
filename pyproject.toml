@@ -49,3 +49,25 @@ where = ["src"]
 addopts = "-q"
 pythonpath = ["src"]
 testpaths = ["tests"]
+[tool.ruff.lint]
+# BLE001: no blind `except Exception` in the web app (plan Phase 6).
+# Catch the specific errors, or use the named groups in web/errors.py.
+extend-select = ["BLE001"]
+
+[tool.ruff.lint.per-file-ignores]
+# Broad catches kept on purpose: audit recording must never break a
+# request, startup preloads must never block boot, and the frozen legacy
+# migrations swallow their own errors by design.
+"src/soa_builder/web/audit.py" = ["BLE001"]
+"src/soa_builder/web/lifespan.py" = ["BLE001"]
+"src/soa_builder/web/db.py" = ["BLE001"]
+"src/soa_builder/web/migrate_database.py" = ["BLE001"]
+"src/soa_builder/web/migrations/legacy_*.py" = ["BLE001"]
+# Not narrowed yet (outside the web app). List files explicitly: ruff
+# globs let * match across directories.
+"src/usdm/**" = ["BLE001"]
+"src/soa_builder/__init__.py" = ["BLE001"]
+"src/soa_builder/cli.py" = ["BLE001"]
+"src/soa_builder/normalization.py" = ["BLE001"]
+"src/soa_builder/schedule.py" = ["BLE001"]
+"src/soa_builder/validation.py" = ["BLE001"]

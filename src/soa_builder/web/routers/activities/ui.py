@@ -1,5 +1,6 @@
 """activities: ui (split from activities.py)."""
 
+from ...errors import REMOTE_PAYLOAD_ERRORS
 from ._shared import (
     ActivityCreate,
     Form,
@@ -565,11 +566,11 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
                 if data is not None:
                     try:
                         pretty_json = json.dumps(data, indent=2, sort_keys=True)
-                    except Exception:
+                    except TypeError:
                         pretty_json = json.dumps(data, indent=2)
             else:
                 error = f"HTTP {resp.status_code} retrieving specialization"
-        except Exception as e:
+        except REMOTE_PAYLOAD_ERRORS as e:
             error = f"Fetch error: {e}"[:300]
     else:
         error = "No href provided."
@@ -886,7 +887,7 @@ def ui_crf_detail_from_activity(
                         error = "200 OK but response was not valid JSON"
                 else:
                     error = f"HTTP {resp.status_code} retrieving CRF specialization"
-            except Exception as e:
+            except REMOTE_PAYLOAD_ERRORS as e:
                 error = f"Fetch error: {e}"[:300]
     else:
         error = "No href provided."

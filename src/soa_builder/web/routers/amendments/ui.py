@@ -1,5 +1,6 @@
 """amendments: ui (split from amendments.py)."""
 
+from pydantic import ValidationError
 from ._shared import (
     AMENDMENT_IMPACT_TYPE_CODELIST,
     AMENDMENT_REASON_CODELIST,
@@ -124,7 +125,7 @@ def ui_create_amendment(
             primary_reason_code=primary_reason_code,
             primary_reason_other=primary_reason_other or None,
         )
-    except Exception as exc:
+    except ValidationError as exc:
         logger.exception("Amendment creation validation error: %s", exc)
         if request.headers.get("HX-Request") == "true":
             return HTMLResponse(
@@ -239,7 +240,7 @@ def ui_add_secondary_reason(
         raise HTTPException(404, "SOA not found")
     try:
         body = StudyAmendmentReasonCreate(code=code, other_reason=other_reason or None)
-    except Exception as exc:
+    except ValidationError as exc:
         logger.exception("Amendment reason validation error: %s", exc)
         return HTMLResponse(
             "<div style='color:#c62828;font-size:0.8em;'>"
@@ -377,7 +378,7 @@ def ui_add_impact(
             text=text,
             is_substantial=bool(is_substantial),
         )
-    except Exception as exc:
+    except ValidationError as exc:
         logger.exception("Amendment impact validation error: %s", exc)
         return HTMLResponse(
             "<div style='color:#c62828;font-size:0.8em;'>"
@@ -520,7 +521,7 @@ def ui_add_change(
             label=label or None,
             description=description or None,
         )
-    except Exception as exc:
+    except ValidationError as exc:
         logger.exception("Amendment change validation error: %s", exc)
         return HTMLResponse(
             "<div style='color:#c62828;font-size:0.8em;'>"
@@ -662,7 +663,7 @@ def ui_add_section(
             section_title=section_title,
             applies_to_id=applies_to_id,
         )
-    except Exception as exc:
+    except ValidationError as exc:
         logger.exception("Document content reference validation error: %s", exc)
         return HTMLResponse(
             "<div style='color:#c62828;font-size:0.8em;'>"
@@ -923,7 +924,7 @@ def ui_add_enrollment(
             for_study_cohort_id=for_study_cohort_id or None,
             for_study_site_id=for_study_site_id or None,
         )
-    except Exception:
+    except ValidationError:
         logger.exception("Geographic scope validation error")
         return HTMLResponse(
             "<div style='color:#c62828;font-size:0.8em;'>"
@@ -1095,7 +1096,7 @@ def ui_add_governance_date(
             description=description or None,
             scope_uids=scope_uids,
         )
-    except Exception:
+    except ValidationError:
         logger.exception("Governance date validation error")
         return HTMLResponse(
             "<div style='color:#c62828;font-size:0.8em;'>"

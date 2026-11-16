@@ -4,6 +4,8 @@
 # intentionally unused locally.
 # ruff: noqa: F401
 
+import logging
+
 from ...services import concepts as concepts_service
 from ...audit import _record_element_audit
 from fastapi import APIRouter
@@ -131,3 +133,5 @@ _SOA_CASCADE_TABLES = [
     "visit_audit",
     "visit",
 ]
+
+logger = logging.getLogger("soa_builder.concepts")
