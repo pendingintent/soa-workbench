@@ -403,6 +403,29 @@ def test_unknown_concept_is_rejected(soa_id, fake_concepts):
     assert _concept_rows(soa_id) == []
 
 
+HX_SYNC = 'hx-sync="closest tr:queue all"'
+
+
+def test_concept_row_requests_are_serialised(soa_id, fake_concepts):
+    """Every add/remove form in a row queues behind the row's in-flight
+    request, so a quick remove-then-add can't send two full concept
+    lists at once and have the second undo the first."""
+    _, (vitals, _) = _build_schedule(soa_id)
+    _concept_action(soa_id, "add_concept", vitals, "C49676")
+    _concept_action(soa_id, "add_concept", vitals, "C25298")
+
+    page = client.get(f"/ui/wizard/{soa_id}/concepts").text
+    row = page.split(f'<tr id="wz-concept-row-{vitals}"')[1].split("</tr>")[0]
+    # 2 remove chips + 1 add form, every one serialised on the row
+    assert row.count("hx-post=") == 3
+    assert row.count(HX_SYNC) == 3
+
+    # The row HTMX swaps back in keeps the attribute on every form
+    swapped = _concept_action(soa_id, "remove_concept", vitals, "C25298", htmx=True)
+    assert swapped.text.count("hx-post=") == 2
+    assert swapped.text.count(HX_SYNC) == 2
+
+
 def test_activity_from_another_study_is_rejected(soa_id, fake_concepts):
     other, _ = _new_study()
     _, (vitals, _) = _build_schedule(other)

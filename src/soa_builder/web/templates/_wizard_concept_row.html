@@ -6,6 +6,11 @@
     Each form posts to the step with action=add_concept|remove_concept;
     with HTMX the response is this row alone, swapped in place.
 
+    Every change sends the activity's full concept list, so the forms
+    share hx-sync="closest tr:queue all": a second click in the same
+    row waits for the first response instead of racing it (otherwise a
+    remove and an add sent together could undo one another).
+
     Context: soa_id, a ({id, name, uid, concepts: [{code, title}]}),
     concept_options ([{code, title}]), row_error (optional). -#}
 {%- set assigned = a.concepts | map(attribute='code') | list -%}
@@ -16,7 +21,8 @@
       {% for c in a.concepts %}
       <form method="post" action="/ui/wizard/{{ soa_id }}/concepts" class="am-wizard-chip"
             hx-post="/ui/wizard/{{ soa_id }}/concepts"
-            hx-target="#wz-concept-row-{{ a.id }}" hx-swap="outerHTML">
+            hx-target="#wz-concept-row-{{ a.id }}" hx-swap="outerHTML"
+            hx-sync="closest tr:queue all">
         <input type="hidden" name="action" value="remove_concept" />
         <input type="hidden" name="activity_id" value="{{ a.id }}" />
         <input type="hidden" name="concept_code" value="{{ c.code }}" />
@@ -31,7 +37,8 @@
 
     <form method="post" action="/ui/wizard/{{ soa_id }}/concepts" class="am-wizard-concept-add"
           hx-post="/ui/wizard/{{ soa_id }}/concepts"
-          hx-target="#wz-concept-row-{{ a.id }}" hx-swap="outerHTML">
+          hx-target="#wz-concept-row-{{ a.id }}" hx-swap="outerHTML"
+          hx-sync="closest tr:queue all">
       <input type="hidden" name="action" value="add_concept" />
       <input type="hidden" name="activity_id" value="{{ a.id }}" />
       <input type="search" class="fz-version-input am-wizard-filter"
