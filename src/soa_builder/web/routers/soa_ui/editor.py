@@ -1,6 +1,7 @@
 """soa_ui: editor (split from soa_ui.py)."""
 
 from ...errors import REMOTE_PAYLOAD_ERRORS
+from ...services.setup_progress import get_setup_progress
 from ._shared import (
     Form,
     HTMLResponse,
@@ -635,12 +636,14 @@ def ui_edit(request: Request, soa_id: int):
     epoch_options = get_epoch_uid(soa_id)
     schedule_timelines_options = get_schedule_timeline(soa_id)
     instance_options = get_scheduled_activity_instance(soa_id)
+    setup_progress = get_setup_progress(soa_id)
 
     return templates.TemplateResponse(
         request,
         "edit.html",
         {
             "soa_id": soa_id,
+            "setup_progress": setup_progress,
             "epochs": epochs,
             "instances": instances,
             "instances_crud": instances_crud,

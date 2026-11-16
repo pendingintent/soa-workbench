@@ -1,0 +1,21 @@
+{#- Getting-started checklist for the edit page (issue #382).
+
+    Expects `setup_progress`: the list returned by
+    services.setup_progress.get_setup_progress(soa_id). Open while any
+    step is incomplete; collapsed once everything is done. -#}
+{%- set done_count = setup_progress | selectattr("done") | list | length -%}
+{%- set total = setup_progress | length -%}
+<details id="setup-checklist" class="collapsible am-checklist"{% if done_count < total %} open{% endif %}>
+  <summary>Getting started &middot; {{ done_count }} of {{ total }} complete</summary>
+  <ol class="am-checklist-list">
+    {% for item in setup_progress %}
+    <li class="am-checklist-item {% if item.done %}am-checklist-done{% endif %}"
+        data-step="{{ item.key }}" data-done="{{ 1 if item.done else 0 }}">
+      <span class="am-checklist-mark" aria-hidden="true">{% if item.done %}&#10003;{% else %}&#9675;{% endif %}</span>
+      <a href="{{ item.href }}">{{ item.label }}</a>
+      {% if item.key != "study" %}<span class="am-checklist-count">({{ item.count }})</span>{% endif %}
+      <span class="am-visually-hidden">{% if item.done %}done{% else %}not done{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</details>

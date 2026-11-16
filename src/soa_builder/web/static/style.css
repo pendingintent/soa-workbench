@@ -860,6 +860,33 @@ details.am-help-panel > .am-help-panel-body {
   font-size: 0.8em;
   color: var(--am-text-mid);
 }
+/* ---- Edit page: getting-started checklist ---------------------- */
+.am-checklist-list {
+  margin: 10px 0 0;
+  padding-left: 22px;
+  font-size: 0.875rem;
+}
+.am-checklist-item { margin: 4px 0; }
+.am-checklist-mark {
+  display: inline-block;
+  width: 1.2em;
+  color: var(--am-text-mid);
+}
+.am-checklist-done .am-checklist-mark { color: var(--am-success); }
+.am-checklist-done a { color: var(--am-text-mid); }
+.am-checklist-count {
+  margin-left: 4px;
+  color: var(--am-text-mid);
+}
+.am-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .am-help-panel-usdm code {
   background: var(--am-surface);
   padding: 1px 5px;
