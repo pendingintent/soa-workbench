@@ -81,6 +81,7 @@ NOT_VERSIONED = {
     "study_intervention_code": "study design metadata",
     "study_title": "study-level reference data",
     "transition_rule": "study design metadata",
+    "wizard_state": "UI onboarding state; rollback must not rewind it",
 }
 
 # Bookkeeping that must never be rolled back.

@@ -1,0 +1,37 @@
+{% extends 'wizard_base.html' %}
+{% block step %}
+<div class="fz-create-card fz-create-card-full">
+  <h3>Add a title</h3>
+  <form method="post" action="/ui/wizard/{{ soa_id }}/titles" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label" for="wz-title-text">Title <span class="am-required">*</span></label>
+      <input id="wz-title-text" name="text" required class="fz-version-input"
+             value="{{ form.text }}" placeholder="e.g. A Randomised Study of Drug A" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label" for="wz-title-type">Title Type</label>
+      <select id="wz-title-type" name="type_code" class="fz-version-input">
+        <option value="">-- choose --</option>
+        {% for opt in title_type_options %}
+        <option value="{{ opt.code }}"{% if opt.code == form.type_code %} selected{% endif %}>{{ opt.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" name="action" value="add" class="am-btn am-btn-info">Add title</button>
+  </form>
+</div>
+
+<h3 class="fz-section-heading">Titles added ({{ titles|length }})</h3>
+<table class="fz-table">
+  <tr class="fz-thead-row"><th>UID</th><th>Title</th><th>Type</th></tr>
+  {% for t in titles %}
+  <tr><td><span class="obj-uid">{{ t.study_title_uid }}</span></td><td>{{ t.text }}</td><td>{{ t.type_decode }}</td></tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="3">No titles yet. Titles are optional; you can skip this step.</td></tr>
+  {% endfor %}
+</table>
+
+<form method="post" action="/ui/wizard/{{ soa_id }}/titles">
+  {% include '_wizard_nav.html' %}
+</form>
+{% endblock %}

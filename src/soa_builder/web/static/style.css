@@ -866,6 +866,9 @@ details.am-help-panel > .am-help-panel-body {
   padding-left: 22px;
   font-size: 0.875rem;
 }
+/* Beat details.collapsible > *:not(summary) so numbers stay inside */
+details.am-checklist > .am-checklist-list { padding: 0 14px 4px 38px; }
+details.am-checklist > .am-checklist-wizard { padding: 0 14px 12px; }
 .am-checklist-item { margin: 4px 0; }
 .am-checklist-mark {
   display: inline-block;
@@ -878,6 +881,54 @@ details.am-help-panel > .am-help-panel-body {
   margin-left: 4px;
   color: var(--am-text-mid);
 }
+.am-checklist-wizard { margin: 10px 0 0; }
+
+/* ---- Guided setup wizard (wizard_*.html) ----------------------- */
+.am-wizard-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 0.8rem;
+}
+.am-wizard-step > a,
+.am-wizard-step > span {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid var(--am-border);
+  border-radius: 999px;
+  background: var(--am-white);
+  color: var(--am-text-mid);
+  text-decoration: none;
+}
+.am-wizard-step-done > a {
+  border-color: var(--am-success);
+  color: var(--am-success);
+}
+.am-wizard-step-done > a::before { content: "\2713  "; }
+.am-wizard-step-current > span {
+  background: var(--am-info);
+  border-color: var(--am-info);
+  color: var(--am-white);
+  font-weight: 700;
+}
+.am-wizard-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0;
+}
+.am-wizard-nav-spacer { flex: 1; }
+.am-wizard-matrix-wrap { overflow-x: auto; }
+.am-wizard-grid th[scope="row"],
+.am-wizard-matrix th[scope="row"] { text-align: left; }
+.am-wizard-cell { text-align: center; }
+.am-wizard-matrix .am-wizard-cell { font-weight: 700; }
+.am-wizard-filter { margin-bottom: 4px; }
+.am-wizard-bc-select { min-width: 280px; }
+
 .am-visually-hidden {
   position: absolute;
   width: 1px;

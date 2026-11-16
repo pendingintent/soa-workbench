@@ -6509,5 +6509,59 @@
     "unique": 0
    }
   }
+ },
+ "wizard_state": {
+  "columns": [
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "current_step",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "'[]'",
+    "name": "completed_steps",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "'draft'",
+    "name": "status",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "created_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "updated_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_wizard_state_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  }
 }

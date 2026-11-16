@@ -65,6 +65,7 @@ from .routers import concepts_admin as concepts_admin_router
 from .routers import exports as exports_router
 from .routers import soa_core as soa_core_router
 from .routers import soa_ui as soa_ui_router
+from .routers import wizard as wizard_router
 from .templating import STATIC_DIR
 
 
@@ -161,6 +162,7 @@ app.include_router(soa_bundle_router.router)
 app.include_router(soa_bundle_router.ui_router)
 app.include_router(study_identifiers_router.router)
 app.include_router(study_identifiers_router.ui_router)
+app.include_router(wizard_router.router)
 # Routes that used to be defined in app.py, registered after the
 # routers above exactly as before.
 app.include_router(soa_core_router.router)

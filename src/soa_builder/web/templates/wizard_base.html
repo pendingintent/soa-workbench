@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{#- Layout shared by every setup-wizard step (routers/wizard.py).
+
+    Context: step (WizardStep), steps, completed (set of keys),
+    soa_id (None before the study exists), error, form.
+    Child templates fill {% block step %}. -#}
+{% from "_usdm_help.html" import help_panel %}
+{% block content %}
+<h2>Guided Setup{% if soa_id %}: {{ study_label or study_name }}{% endif %}</h2>
+
+<div class="am-mb-12">
+  {% if soa_id %}
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">Leave guided setup &rarr; Edit Page</a>
+  {% else %}
+  <a href="/" class="am-back-link">&larr; Back to Studies</a>
+  {% endif %}
+</div>
+
+<ol class="am-wizard-progress" aria-label="Setup steps">
+  {% for s in steps %}
+  {% set state = 'current' if s.key == step.key else ('done' if s.key in completed else 'todo') %}
+  <li class="am-wizard-step am-wizard-step-{{ state }}"{% if state == 'current' %} aria-current="step"{% endif %}>
+    {% if soa_id and state != 'current' %}
+    <a href="/ui/wizard/{{ soa_id }}/{{ s.key }}">{{ loop.index }}. {{ s.title }}</a>
+    {% else %}
+    <span>{{ loop.index }}. {{ s.title }}</span>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ol>
+
+<hr class="fz-section-divider" />
+
+<h3 class="fz-section-heading">Step {{ steps.index(step) + 1 }} of {{ steps|length }}: {{ step.title }}</h3>
+
+{{ help_panel(step.help_key, open=true) }}
+
+{% if error %}
+<div class="am-api-notice am-api-notice-error" role="alert">
+  <span class="am-api-notice-icon" aria-hidden="true">!</span>
+  <div><strong>{{ error }}</strong></div>
+</div>
+{% endif %}
+
+{% block step %}{% endblock %}
+{% endblock %}

@@ -132,6 +132,7 @@ _SOA_CASCADE_TABLES = [
     "transition_rule",
     "visit_audit",
     "visit",
+    "wizard_state",
 ]
 
 logger = logging.getLogger("soa_builder.concepts")

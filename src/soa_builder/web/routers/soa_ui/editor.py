@@ -2,6 +2,11 @@
 
 from ...errors import REMOTE_PAYLOAD_ERRORS
 from ...services.setup_progress import get_setup_progress
+from ...services.studies import DuplicateStudyIdError
+from ...services.studies import MissingStudyIdError
+from ...services.studies import create_soa_record
+from ...services.studies import update_soa_record
+from ...services.wizard_state import get_wizard_state
 from ._shared import (
     Form,
     HTMLResponse,
@@ -103,31 +108,14 @@ def ui_create_soa(
     study_description: Optional[str] = Form(None),
 ):
     """Create a new SoA."""
-    conn = _connect()
-    cur = conn.cursor()
-    # Uniqueness check
-    if study_id and study_id.strip():
-        cur.execute("SELECT 1 FROM soa WHERE study_id=?", (study_id.strip(),))
-        if cur.fetchone():
-            conn.close()
-            return templates.TemplateResponse(
-                request,
-                "_alert_redirect.html",
-                {"message": "study_id already exists", "url": "/"},
-            )
-    cur.execute(
-        "INSERT INTO soa (name, created_at, study_id, study_label, study_description) VALUES (?,?,?,?,?)",
-        (
-            name,
-            datetime.now(timezone.utc).isoformat(),
-            (study_id or "").strip() or None,
-            (study_label or "").strip() or None,
-            (study_description or "").strip() or None,
-        ),
-    )
-    sid = cur.lastrowid
-    conn.commit()
-    conn.close()
+    try:
+        sid = create_soa_record(name, study_id, study_label, study_description)
+    except DuplicateStudyIdError as exc:
+        return templates.TemplateResponse(
+            request,
+            "_alert_redirect.html",
+            {"message": str(exc), "url": "/"},
+        )
     return HTMLResponse(f"<script>window.location='/ui/soa/{sid}/edit';</script>")
 
 
@@ -144,47 +132,14 @@ def ui_update_meta(
     """Update the metadata for an SoA."""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    conn = _connect()
-    cur = conn.cursor()
-    cur.execute("SELECT study_id FROM soa WHERE id=?", (soa_id,))
-    row = cur.fetchone()
-    current_study_id = row[0] if row else None
-    proposed = (study_id or "").strip()
-    if proposed == "" and current_study_id:
-        new_study_id = current_study_id  # preserve existing
-    else:
-        new_study_id = proposed or None
-    if new_study_id:
-        cur.execute(
-            "SELECT id FROM soa WHERE study_id=? AND id<>?", (new_study_id, soa_id)
-        )
-        if cur.fetchone():
-            conn.close()
-            return templates.TemplateResponse(
-                request,
-                "_alert_redirect.html",
-                {"message": "study_id already exists", "url": f"/ui/soa/{soa_id}/edit"},
-            )
-    if not current_study_id and not new_study_id:
-        conn.close()
+    try:
+        update_soa_record(soa_id, name, study_id, study_label, study_description)
+    except (DuplicateStudyIdError, MissingStudyIdError) as exc:
         return templates.TemplateResponse(
             request,
             "_alert_redirect.html",
-            {"message": "study_id is required", "url": f"/ui/soa/{soa_id}/edit"},
+            {"message": str(exc), "url": f"/ui/soa/{soa_id}/edit"},
         )
-    cur.execute(
-        "UPDATE soa SET name=?, study_id=?, study_label=?,"
-        " study_description=? WHERE id=?",
-        (
-            (name or "").strip() or None,
-            new_study_id,
-            (study_label or "").strip() or None,
-            (study_description or "").strip() or None,
-            soa_id,
-        ),
-    )
-    conn.commit()
-    conn.close()
     if request.headers.get("HX-Request") == "true":
         return HTMLResponse("", headers={"HX-Redirect": f"/ui/soa/{soa_id}/edit"})
     return HTMLResponse(
@@ -637,6 +592,7 @@ def ui_edit(request: Request, soa_id: int):
     schedule_timelines_options = get_schedule_timeline(soa_id)
     instance_options = get_scheduled_activity_instance(soa_id)
     setup_progress = get_setup_progress(soa_id)
+    wizard_state = get_wizard_state(soa_id)
 
     return templates.TemplateResponse(
         request,
@@ -644,6 +600,7 @@ def ui_edit(request: Request, soa_id: int):
         {
             "soa_id": soa_id,
             "setup_progress": setup_progress,
+            "wizard_state": wizard_state,
             "epochs": epochs,
             "instances": instances,
             "instances_crud": instances_crud,

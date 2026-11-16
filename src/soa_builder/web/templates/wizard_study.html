@@ -1,0 +1,36 @@
+{% extends 'wizard_base.html' %}
+{% block step %}
+{% set s = study if study is defined else {} %}
+<div class="fz-create-card fz-create-card-full">
+  <form method="post" action="{% if soa_id %}/ui/wizard/{{ soa_id }}/study{% else %}/ui/wizard/new{% endif %}" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label" for="wz-name">Study Name <span class="am-required">*</span></label>
+      <input id="wz-name" name="name" required class="fz-version-input"
+             value="{{ form.name or s.name or '' }}" placeholder="e.g. Phase II study of Drug A" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label" for="wz-study-id">Study ID <span class="am-required">*</span></label>
+      <input id="wz-study-id" name="study_id" required class="fz-version-input"
+             value="{{ form.study_id or s.study_id or '' }}" placeholder="e.g. ABC-123" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label" for="wz-label">Short Label</label>
+      <input id="wz-label" name="study_label" class="fz-version-input"
+             value="{{ form.label or s.study_label or '' }}" placeholder="e.g. Phase II Breast" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label" for="wz-description">Description</label>
+      <input id="wz-description" name="study_description" class="fz-version-input"
+             value="{{ form.description or s.study_description or '' }}" placeholder="Optional" />
+    </div>
+    {% if soa_id %}
+    {% include '_wizard_nav.html' %}
+    {% else %}
+    <div class="am-wizard-nav">
+      <span class="am-wizard-nav-spacer"></span>
+      <button type="submit" class="am-btn am-btn-primary">Create study &amp; continue &rarr;</button>
+    </div>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}
