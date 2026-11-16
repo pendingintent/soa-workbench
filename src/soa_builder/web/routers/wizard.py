@@ -107,8 +107,6 @@ class StepForm:
     data_origin_type: str = ""
     grid: str = ""
     cell: tuple = ()
-    concepts_form: str = ""
-    concept: tuple = ()
 
 
 class StepError(ValueError):
@@ -176,26 +174,34 @@ def _cells(soa_id: int) -> set:
     }
 
 
-def _concept_codes(soa_id: int) -> dict:
-    codes: dict = {}
-    for activity_id, code in _rows(
-        "SELECT activity_id, concept_code FROM activity_concept WHERE soa_id=?",
+def _assigned_concepts(soa_id: int, titles: dict) -> dict:
+    """Map activity id -> [{code, title}] in the order they were added.
+
+    One query for the whole study; the title comes from the CDISC
+    concept list when known, else the stored title, else the code.
+    """
+    assigned: dict = {}
+    for activity_id, code, stored_title in _rows(
+        "SELECT activity_id, concept_code, concept_title FROM activity_concept"
+        " WHERE soa_id=? ORDER BY id",
         (soa_id,),
     ):
-        codes.setdefault(activity_id, set()).add(code)
-    return codes
+        assigned.setdefault(activity_id, []).append(
+            {"code": code, "title": titles.get(code) or stored_title or code}
+        )
+    return assigned
 
 
 def _pairs(values, valid_left: set, valid_right: set) -> set:
-    """Parse "left:right" id pairs, keeping only ids of this study."""
+    """Parse "left:right" integer id pairs, keeping only this study's."""
     pairs = set()
     for value in values:
         left, _, right = str(value).partition(":")
         try:
-            pair = (int(left), right if valid_right is None else int(right))
+            pair = (int(left), int(right))
         except ValueError:
             continue
-        if pair[0] in valid_left and (valid_right is None or pair[1] in valid_right):
+        if pair[0] in valid_left and pair[1] in valid_right:
             pairs.add(pair)
     return pairs
 
@@ -254,14 +260,12 @@ def _load_activities(soa_id: int) -> dict:
 
 
 def _load_concepts(soa_id: int) -> dict:
-    current = _concept_codes(soa_id)
+    options = concepts_service.fetch_biomedical_concepts()
+    assigned = _assigned_concepts(soa_id, {c["code"]: c["title"] for c in options})
     activities = _activities(soa_id)
     for activity in activities:
-        activity["codes"] = current.get(activity["id"], set())
-    return {
-        "activities": activities,
-        "concept_options": concepts_service.fetch_biomedical_concepts(),
-    }
+        activity["concepts"] = assigned.get(activity["id"], [])
+    return {"activities": activities, "concept_options": options}
 
 
 def _load_review(soa_id: int) -> dict:
@@ -401,20 +405,50 @@ def _save_schedule(soa_id: int, form: StepForm, _bg: BackgroundTasks) -> None:
         set_instance_cell(soa_id, instance_id, activity_id, False)
 
 
-def _save_concepts(soa_id: int, form: StepForm, bg: BackgroundTasks) -> None:
-    if not form.concepts_form:
-        return
-    activity_ids = {a["id"] for a in _activities(soa_id)}
-    wanted: dict = {aid: set() for aid in activity_ids}
-    for activity_id, code in _pairs(form.concept, activity_ids, None):
-        if code.strip():
-            wanted[activity_id].add(code.strip())
-    current = _concept_codes(soa_id)
-    for activity_id, codes in wanted.items():
-        if codes != current.get(activity_id, set()):
-            activities_router.set_activity_concepts(
-                soa_id, activity_id, sorted(codes), bg
-            )
+CONCEPT_ACTIONS = ("add_concept", "remove_concept")
+
+
+def _study_activity(soa_id: int, raw_activity_id: str) -> dict:
+    """Return the study's activity with this id, or raise 404."""
+    try:
+        activity_id = int(raw_activity_id)
+    except ValueError:
+        activity_id = None
+    for activity in _activities(soa_id):
+        if activity["id"] == activity_id:
+            return activity
+    raise HTTPException(404, "Activity not found")
+
+
+def _change_concept(
+    soa_id: int,
+    activity_id: int,
+    action: str,
+    code: str,
+    options: list,
+    bg: BackgroundTasks,
+) -> None:
+    """Add or remove one concept on one activity.
+
+    Goes through set_activity_concepts, as the bulk editor on the
+    Activities page does, so UIDs, the BiomedicalConcept rows, audit
+    and background enrichment match the rest of the workbench.
+    Adding a concept that is already there, or removing one that is
+    not, changes nothing.
+    """
+    code = code.strip()
+    current = [c["code"] for c in _assigned_concepts(soa_id, {}).get(activity_id, [])]
+    if action == "add_concept":
+        if code not in {c["code"] for c in options}:
+            raise StepError("Choose a concept from the list")
+        if code in current:
+            return
+        wanted = current + [code]
+    else:
+        if code not in current:
+            return
+        wanted = [c for c in current if c != code]
+    activities_router.set_activity_concepts(soa_id, activity_id, wanted, bg)
 
 
 WIZARD_STEPS = [
@@ -483,7 +517,6 @@ WIZARD_STEPS = [
         "wizard_concepts.html",
         "biomedical_concept",
         load=_load_concepts,
-        save=_save_concepts,
     ),
     WizardStep(
         "review",
@@ -568,6 +601,53 @@ def _render(
 
 def _redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
+
+
+def _concept_action_response(
+    request: Request,
+    soa_id: int,
+    step: WizardStep,
+    action: str,
+    raw_activity_id: str,
+    code: str,
+    bg: BackgroundTasks,
+) -> HTMLResponse:
+    """Add or remove one concept, then show the result.
+
+    An HTMX request gets back only that activity's table row, so the
+    page keeps its scroll position. A plain form post redirects back
+    to the step, or re-renders it with the error.
+    """
+    activity = _study_activity(soa_id, raw_activity_id)
+    options = concepts_service.fetch_biomedical_concepts()
+    error = None
+    try:
+        _change_concept(soa_id, activity["id"], action, code, options, bg)
+    except StepError as exc:
+        error = str(exc)
+    except HTTPException as exc:
+        if exc.status_code == 404:
+            raise
+        error = str(exc.detail)
+
+    if request.headers.get("HX-Request") == "true":
+        titles = {c["code"]: c["title"] for c in options}
+        activity["concepts"] = _assigned_concepts(soa_id, titles).get(
+            activity["id"], []
+        )
+        return templates.TemplateResponse(
+            request,
+            "_wizard_concept_row.html",
+            {
+                "soa_id": soa_id,
+                "a": activity,
+                "concept_options": options,
+                "row_error": error,
+            },
+        )
+    if error:
+        return _render(request, soa_id, step, error, 400)
+    return _redirect(f"/ui/wizard/{soa_id}/{step.key}#wz-concept-row-{activity['id']}")
 
 
 # --- routes -----------------------------------------------------------
@@ -673,12 +753,16 @@ def ui_wizard_step_post(
     data_origin_type: str = Form(""),
     grid: str = Form(""),
     cell: List[str] = Form([]),
-    concepts_form: str = Form(""),
-    concept: List[str] = Form([]),
+    activity_id: str = Form(""),
+    concept_code: str = Form(""),
 ):
     """Apply one step's form, then stay, go back, skip or continue."""
     step = _get_step(soa_id, step_key)
     state = _state_or_new(soa_id, step.key)
+    if step.key == "concepts" and action in CONCEPT_ACTIONS:
+        return _concept_action_response(
+            request, soa_id, step, action, activity_id, concept_code, background_tasks
+        )
     form = StepForm(
         name=name,
         label=label or study_label,
@@ -689,8 +773,6 @@ def ui_wizard_step_post(
         data_origin_type=data_origin_type,
         grid=grid,
         cell=tuple(cell),
-        concepts_form=concepts_form,
-        concept=tuple(concept),
     )
     completed = list(state["completed_steps"])
     status = state["status"] or STATUS_DRAFT
