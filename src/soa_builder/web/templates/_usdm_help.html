@@ -1,0 +1,79 @@
+{#- Contextual "What is this?" help for USDM concepts (issue #382).
+
+    Usage (import the macro, then call it with a concept key):
+      from "_usdm_help.html" import help_panel
+      help_panel('epoch')             -> collapsed panel
+      help_panel('epoch', open=true)  -> expanded panel (wizard)
+
+    All wording lives in HELP below so the pages, the edit-page
+    checklist and the setup wizard explain each concept the same way.
+    An unknown key renders nothing. -#}
+{%- set HELP = {
+  "study": {
+    "title": "Study",
+    "usdm": "Study / StudyVersion",
+    "text": "The study is the top-level container for everything in the workbench. Each protocol version is a StudyVersion, which holds the titles, identifiers and one or more study designs (epochs, arms, encounters, activities and the schedule).",
+  },
+  "title": {
+    "title": "Study Title",
+    "usdm": "StudyTitle",
+    "text": "The names the study is known by, such as the official title, brief title or acronym. Each title has a type taken from CDISC Controlled Terminology, so every study can carry several titles without ambiguity.",
+  },
+  "epoch": {
+    "title": "Epoch",
+    "usdm": "StudyEpoch",
+    "text": "A named period of the study that participants pass through in order, such as Screening, Treatment or Follow-up. Every arm passes through the same set of epochs, and epochs group the visits and timepoints in the Schedule of Activities. Each epoch has a type from CDISC Controlled Terminology.",
+  },
+  "arm": {
+    "title": "Arm",
+    "usdm": "StudyArm",
+    "text": "A planned path through the study that a participant is assigned to, such as Drug A or Placebo. Arms and epochs form a grid; each cell of that grid (a StudyCell) says which elements happen in that arm during that epoch.",
+  },
+  "element": {
+    "title": "Element",
+    "usdm": "StudyElement",
+    "text": "A basic building block of the design with a defined start and end, such as Screening, Run-in or a 10 mg treatment period. Elements are placed in StudyCells (one arm in one epoch) to describe what each arm experiences during each epoch.",
+  },
+  "encounter": {
+    "title": "Encounter",
+    "usdm": "Encounter",
+    "text": "A contact between a participant and the study, such as Visit 1, a telephone call or a home visit, where activities are performed. Scheduled activity instances point to an encounter to say where in the schedule it occurs, and to an epoch to say which period it belongs to.",
+  },
+  "activity": {
+    "title": "Activity",
+    "usdm": "Activity",
+    "text": "Something done to or by a participant, such as Informed Consent, Vital Signs or a laboratory panel. Activities are the rows of the Schedule of Activities, and each can be linked to biomedical concepts that define the data it collects.",
+  },
+  "biomedical_concept": {
+    "title": "Biomedical Concept",
+    "usdm": "BiomedicalConcept",
+    "text": "A standard, reusable definition of a clinical observation or measurement, such as Systolic Blood Pressure, taken from the CDISC Library. Linking an activity to biomedical concepts makes the data it collects unambiguous and traceable to SDTM.",
+  },
+  "instance": {
+    "title": "Scheduled Instance",
+    "usdm": "ScheduledActivityInstance",
+    "text": "One occurrence of a set of activities on a schedule timeline. An instance usually points to an encounter and an epoch. In this workbench each matrix column is a scheduled instance, typically one visit or timepoint.",
+  },
+  "matrix": {
+    "title": "Schedule of Activities matrix",
+    "usdm": "ScheduleTimeline",
+    "text": "The Schedule of Activities grid: rows are activities, columns are scheduled instances, and an X means the activity is performed at that instance. The grid is built from a ScheduleTimeline; the main timeline is the primary schedule. Click a cell to add or remove an X.",
+  },
+} -%}
+
+{%- macro help_panel(key, open=false) -%}
+{%- set entry = HELP.get(key) -%}
+{%- if entry -%}
+<details class="collapsible am-help-panel" data-help-key="{{ key }}"{% if open %} open{% endif %}>
+  <summary>What is this? &middot; {{ entry.title }}</summary>
+  <div class="am-api-notice am-api-notice-info am-help-panel-body">
+    <span class="am-api-notice-icon" aria-hidden="true">&#9432;</span>
+    <div>
+      <strong>{{ entry.title }}</strong>
+      <span class="am-help-panel-usdm">USDM class: <code>{{ entry.usdm }}</code></span>
+      <span class="am-api-notice-detail">{{ entry.text }}</span>
+    </div>
+  </div>
+</details>
+{%- endif -%}
+{%- endmacro -%}

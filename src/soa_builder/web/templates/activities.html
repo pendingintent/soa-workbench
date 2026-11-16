@@ -1,10 +1,13 @@
 {% extends 'base.html' %}
+{% from "_usdm_help.html" import help_panel %}
 {% block content %}
 <h2>Activities for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
 <div class="am-mb-12">
   <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
 </div>
+
+{{ help_panel('activity') }}
 
 <div class="am-flex-center-row am-flex-wrap am-mb-10" style="gap:10px;">
   <form hx-post="/ui/soa/{{ soa_id }}/activities/concepts_refresh" class="am-inline-form">

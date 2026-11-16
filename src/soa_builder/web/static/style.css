@@ -842,6 +842,30 @@ details.collapsible > *:not(summary) { padding: 0 14px 12px; }
   color: var(--am-text-mid);
 }
 
+/* ---- Contextual "What is this?" help (_usdm_help.html) -------- */
+details.am-help-panel {
+  border-left: 4px solid var(--am-info);
+}
+details.am-help-panel summary { color: var(--am-info); }
+/* Beat details.collapsible > *:not(summary) padding override */
+details.am-help-panel > .am-help-panel-body {
+  margin: 0;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  background: var(--am-white);
+}
+.am-help-panel-usdm {
+  margin-left: 8px;
+  font-size: 0.8em;
+  color: var(--am-text-mid);
+}
+.am-help-panel-usdm code {
+  background: var(--am-surface);
+  padding: 1px 5px;
+  border-radius: var(--am-radius);
+}
+
 /* ---- Edit page: timeline selector ---------------------------- */
 .timeline-selector {
   padding: 8px 10px;

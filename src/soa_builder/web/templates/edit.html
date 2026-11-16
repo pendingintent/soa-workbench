@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from "_usdm_help.html" import help_panel %}
 {% block content %}
 <h2>Editing SoA for {% if study_label %}{{ study_label }}{% else %}{{ study_id }}{% endif %}</h2>
 <div class="study-meta-card">
@@ -58,6 +59,7 @@
     {% with instances=instances_crud, study_name=study_name, hide_return_link=true %}
     <details id="edit-instances-section" open class="collapsible">
       <summary>Scheduled Instances ({{ instances_crud|length }})</summary>
+      {{ help_panel('instance') }}
       {% include '_instances_section.html' %}
     </details>
     {% endwith %}
@@ -97,6 +99,7 @@
 </div>
 
 <hr />
+{{ help_panel('matrix') }}
 <!-- Timeline Selector-->
 {% if timelines and timelines|length > 0 %}
 <div class="timeline-selector">
