@@ -54,7 +54,6 @@ from ..services.wizard_state import get_wizard_state
 from ..services.wizard_state import save_wizard_state
 from ..templating import templates
 from ..utils import get_ddf_ct_rows
-from ..utils import get_epoch_uid
 from ..utils import load_arm_data_origin_type_map
 from ..utils import load_arm_type_map
 from ..utils import load_epoch_type_map
@@ -106,7 +105,6 @@ class StepForm:
     text: str = ""
     type_code: str = ""
     data_origin_type: str = ""
-    epoch_uid: str = ""
     grid: str = ""
     cell: tuple = ()
     concepts_form: str = ""
@@ -239,17 +237,10 @@ def _load_arms(soa_id: int) -> dict:
 
 def _load_encounters(soa_id: int) -> dict:
     rows = _rows(
-        "SELECT v.name, v.encounter_uid, e.name FROM visit v"
-        " LEFT JOIN instances i ON i.encounter_uid=v.encounter_uid"
-        " AND i.soa_id=v.soa_id"
-        " LEFT JOIN epoch e ON e.epoch_uid=i.epoch_uid AND e.soa_id=v.soa_id"
-        " WHERE v.soa_id=? ORDER BY v.order_index, v.id",
+        "SELECT name, encounter_uid FROM visit WHERE soa_id=? ORDER BY order_index, id",
         (soa_id,),
     )
-    return {
-        "items": [{"name": n, "uid": u, "epoch": ep or ""} for n, u, ep in rows],
-        "epoch_options": get_epoch_uid(soa_id),
-    }
+    return {"items": [{"name": n, "uid": u} for n, u in rows]}
 
 
 def _load_activities(soa_id: int) -> dict:
@@ -351,11 +342,6 @@ def _main_timeline_uid(soa_id: int) -> str:
 
 
 def _add_encounter(soa_id: int, form: StepForm) -> None:
-    epochs = get_epoch_uid(soa_id)
-    if form.epoch_uid and form.epoch_uid not in epochs.values():
-        raise StepError("Choose one of this study's epochs")
-    if epochs and not form.epoch_uid:
-        raise StepError("Choose the epoch this encounter belongs to")
     visit = visits_router.add_visit(
         soa_id,
         VisitCreate(
@@ -368,14 +354,16 @@ def _add_encounter(soa_id: int, form: StepForm) -> None:
         0
     ][0]
     # Each encounter becomes one column of the matrix: a
-    # ScheduledActivityInstance on the main timeline.
+    # ScheduledActivityInstance on the main timeline. In USDM an
+    # Encounter has no epoch and the instance's epochId is optional,
+    # so the wizard does not ask for one; it can be set later in the
+    # Scheduled Instances section of the edit page.
     instances_router.create_instance(
         soa_id,
         InstanceCreate(
             name=form.name.strip(),
             label=form.label or None,
             encounter_uid=encounter_uid,
-            epoch_uid=form.epoch_uid or None,
             member_of_timeline=_main_timeline_uid(soa_id),
         ),
     )
@@ -681,7 +669,6 @@ def ui_wizard_step_post(
     text: str = Form(""),
     type_code: str = Form(""),
     data_origin_type: str = Form(""),
-    epoch_uid: str = Form(""),
     grid: str = Form(""),
     cell: List[str] = Form([]),
     concepts_form: str = Form(""),
@@ -698,7 +685,6 @@ def ui_wizard_step_post(
         text=text,
         type_code=type_code,
         data_origin_type=data_origin_type,
-        epoch_uid=epoch_uid,
         grid=grid,
         cell=tuple(cell),
         concepts_form=concepts_form,
