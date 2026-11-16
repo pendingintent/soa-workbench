@@ -124,10 +124,15 @@ pre-commit run --all-files  # runs ruff-check --fix, ruff-format, pytest
 
 ### Freeze and Rollback
 `routers/freezes.py`, `rollback.py` and `_freeze_helpers.py` snapshot
-and restore entity tables. A new entity table that hangs off `soa_id`
-must be added to both snapshot and rollback, or rollback will silently
-drop it (see recent fixes #371, #378). Rollback tests live in
-`tests/test_freeze_rollback_*.py`.
+and restore entity tables. `web/snapshot_policy.py` declares what
+rollback does with every table that has a `soa_id` column (restored,
+rebuilt, re-pointed to restored activities, not versioned, or
+excluded). `tests/test_snapshot_coverage.py` fails when a new table is
+unclassified or is keyed on `activity.id` without being restored or
+re-pointed, so decide the policy when adding a table. Restoring a
+table also needs capture and restore code in `_freeze_helpers.py`.
+Rollback tests live in `tests/test_freeze_rollback_*.py` and
+`tests/test_rollback_*.py`.
 
 ### USDM Model Entities (Key Domain Knowledge)
 - **StudyElement**: Structural design components (periods, cohorts). UID pattern: `StudyElement_N`
