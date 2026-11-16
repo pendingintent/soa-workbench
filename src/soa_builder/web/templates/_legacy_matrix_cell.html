@@ -1,0 +1,2 @@
+{#- Matrix cell for the legacy visit-based toggle (no superscripts). -#}
+<td hx-post="/ui/soa/{{ soa_id }}/toggle_cell" hx-vals='{{ {"visit_id": visit_id, "activity_id": activity_id}|tojson }}' hx-swap="outerHTML" class="cell">{{ current }}</td>

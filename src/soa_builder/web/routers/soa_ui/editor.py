@@ -109,8 +109,10 @@ def ui_create_soa(
         cur.execute("SELECT 1 FROM soa WHERE study_id=?", (study_id.strip(),))
         if cur.fetchone():
             conn.close()
-            return HTMLResponse(
-                "<script>alert('study_id already exists');window.location='/'</script>"
+            return templates.TemplateResponse(
+                request,
+                "_alert_redirect.html",
+                {"message": "study_id already exists", "url": "/"},
             )
     cur.execute(
         "INSERT INTO soa (name, created_at, study_id, study_label, study_description) VALUES (?,?,?,?,?)",
@@ -157,15 +159,17 @@ def ui_update_meta(
         )
         if cur.fetchone():
             conn.close()
-            return HTMLResponse(
-                "<script>alert('study_id already exists');window.location='/ui/soa/%d/edit';</script>"
-                % soa_id
+            return templates.TemplateResponse(
+                request,
+                "_alert_redirect.html",
+                {"message": "study_id already exists", "url": f"/ui/soa/{soa_id}/edit"},
             )
     if not current_study_id and not new_study_id:
         conn.close()
-        return HTMLResponse(
-            "<script>alert('study_id is required');window.location='/ui/soa/%d/edit';</script>"
-            % soa_id
+        return templates.TemplateResponse(
+            request,
+            "_alert_redirect.html",
+            {"message": "study_id is required", "url": f"/ui/soa/{soa_id}/edit"},
         )
     cur.execute(
         "UPDATE soa SET name=?, study_id=?, study_label=?,"

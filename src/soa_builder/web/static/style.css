@@ -1892,3 +1892,8 @@ details.collapsible > *:not(summary) { padding: 0 14px 12px; }
   width: 90%;
   box-shadow: 0 4px 24px rgba(0, 0, 0, .25);
 }
+/* Inline superscript editor (templates/_superscript_editor.html) */
+.sup-edit-form { display: inline; }
+.sup-edit-input { width: 45px; font-size: 0.8em; }
+.sup-edit-cancel { cursor: pointer; }
+.cell.cell-editing { min-width: 70px; }

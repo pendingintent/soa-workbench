@@ -1,0 +1,12 @@
+{#- Inline superscript editor swapped into a matrix header/cell by HTMX.
+    tag: "td" or "th"; css_class: classes for the wrapper;
+    show_x: prefix the cell's "X" marker; colspan: optional (epochs). -#}
+<{{ tag }} class="{{ css_class }}"{% if colspan is not none %} colspan="{{ colspan }}"{% endif %}>
+{%- if show_x %}X{% endif -%}
+<form class="sup-edit-form" hx-post="{{ post_url }}" hx-swap="outerHTML" hx-target="closest {{ tag }}">
+{%- if colspan is not none %}<input type="hidden" name="colspan" value="{{ colspan }}" />{% endif -%}
+<input name="superscript" value="{{ value }}" size="5" class="sup-edit-input" autofocus />
+{#- -#}<button type="submit" onclick="event.stopPropagation()">&#10003;</button>
+{#- -#}</form>
+{#- -#}<span class="sup-edit-cancel" hx-get="{{ view_url }}" hx-swap="outerHTML" hx-target="closest {{ tag }}" onclick="event.stopPropagation()">&#10005;</span>
+{#- -#}</{{ tag }}>

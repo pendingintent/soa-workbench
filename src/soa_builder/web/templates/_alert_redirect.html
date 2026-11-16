@@ -1,0 +1,2 @@
+{#- Show a message, then send the browser to url (non-HTMX form posts). -#}
+<script>alert({{ message|tojson }});window.location={{ url|tojson }};</script>
