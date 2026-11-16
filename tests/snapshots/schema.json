@@ -133,7 +133,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_activity_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "activity_concept": {
   "columns": [
@@ -290,7 +297,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_activity_concept_crf_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "activity_concept_dss": {
   "columns": [
@@ -358,7 +372,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_activity_concept_dss_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "activity_grouping_extension": {
   "columns": [
@@ -511,6 +532,12 @@
    }
   ],
   "indexes": {
+   "idx_alias_code_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
    "sqlite_autoindex_alias_code_1": {
     "columns": [
      "alias_code_uid",
@@ -627,7 +654,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_amendment_geographic_scope_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "amendment_governance_date": {
   "columns": [
@@ -757,7 +791,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_amendment_governance_date_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "amendment_subject_enrollment": {
   "columns": [
@@ -908,7 +949,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_amendment_subject_enrollment_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "arm": {
   "columns": [
@@ -1038,7 +1086,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_arm_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "bcp_response_code": {
   "columns": [
@@ -1100,6 +1155,12 @@
    }
   ],
   "indexes": {
+   "idx_bcp_response_code_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
    "sqlite_autoindex_bcp_response_code_1": {
     "columns": [
      "response_code_uid",
@@ -1162,6 +1223,12 @@
    }
   ],
   "indexes": {
+   "idx_biomedical_concept_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
    "sqlite_autoindex_biomedical_concept_1": {
     "columns": [
      "biomedical_concept_uid",
@@ -1223,7 +1290,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_biomedical_concept_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "biomedical_concept_property": {
   "columns": [
@@ -1306,6 +1380,12 @@
    }
   ],
   "indexes": {
+   "idx_biomedical_concept_property_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
    "sqlite_autoindex_biomedical_concept_property_1": {
     "columns": [
      "biomedical_concept_property_uid",
@@ -1375,6 +1455,12 @@
    }
   ],
   "indexes": {
+   "idx_biomedical_concept_surrogate_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
    "sqlite_autoindex_biomedical_concept_surrogate_1": {
     "columns": [
      "surrogate_uid",
@@ -1436,7 +1522,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_biomedical_concept_surrogate_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "code": {
   "columns": [
@@ -1491,6 +1584,12 @@
    }
   ],
   "indexes": {
+   "idx_code_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
    "sqlite_autoindex_code_1": {
     "columns": [
      "code_uid",
@@ -1553,6 +1652,12 @@
    }
   ],
   "indexes": {
+   "idx_code_association_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
    "sqlite_autoindex_code_association_1": {
     "columns": [
      "code_uid",
@@ -1984,7 +2089,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_document_content_reference_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "element": {
   "columns": [
@@ -2128,7 +2240,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_element_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "element_intervention": {
   "columns": [
@@ -2321,7 +2440,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_endpoint_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "epoch": {
   "columns": [
@@ -2472,7 +2598,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_epoch_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "estimand": {
   "columns": [
@@ -2602,7 +2735,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_estimand_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "estimand_intervention": {
   "columns": [
@@ -2642,7 +2782,14 @@
     "type": "INTEGER"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_estimand_intervention_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "estimand_variable": {
   "columns": [
@@ -2682,7 +2829,14 @@
     "type": "INTEGER"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_estimand_variable_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "footnote": {
   "columns": [
@@ -2805,7 +2959,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_footnote_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "geographic_regions": {
   "columns": [
@@ -2871,7 +3032,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_governance_date_geographic_scope_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "indication": {
   "columns": [
@@ -2994,7 +3162,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_indication_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "indication_code": {
   "columns": [
@@ -3034,7 +3209,14 @@
     "type": "INTEGER"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_indication_code_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "instance_audit": {
   "columns": [
@@ -3088,7 +3270,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_instance_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "instances": {
   "columns": [
@@ -3479,7 +3668,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_objective_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "organization": {
   "columns": [
@@ -3658,7 +3854,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_organization_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "person": {
   "columns": [
@@ -3830,7 +4033,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_person_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "reorder_audit": {
   "columns": [
@@ -3877,7 +4087,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_reorder_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "role": {
   "columns": [
@@ -4014,7 +4231,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_role_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "role_person": {
   "columns": [
@@ -4173,7 +4397,14 @@
     "type": "INTEGER"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_rollback_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "schedule_timelines": {
   "columns": [
@@ -4317,7 +4548,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_schedule_timelines_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "soa": {
   "columns": [
@@ -4610,7 +4848,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_study_amendment_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "study_amendment_impact": {
   "columns": [
@@ -4726,7 +4971,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_study_amendment_impact_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "study_amendment_reason": {
   "columns": [
@@ -4842,7 +5094,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_study_amendment_reason_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "study_cell": {
   "columns": [
@@ -4958,7 +5217,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_study_cell_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "study_change": {
   "columns": [
@@ -5088,7 +5354,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_study_change_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "study_identifier": {
   "columns": [
@@ -5197,7 +5470,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_study_identifier_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "study_intervention": {
   "columns": [
@@ -5348,7 +5628,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_study_intervention_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "study_intervention_code": {
   "columns": [
@@ -5388,7 +5675,14 @@
     "type": "INTEGER"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_study_intervention_code_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "study_title": {
   "columns": [
@@ -5497,7 +5791,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_study_title_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "timing": {
   "columns": [
@@ -5689,7 +5990,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_timing_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "transition_rule": {
   "columns": [
@@ -5819,7 +6127,14 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_transition_rule_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  },
  "uid_counter": {
   "columns": [
@@ -6038,6 +6353,13 @@
     "type": "TEXT"
    }
   ],
-  "indexes": {}
+  "indexes": {
+   "idx_visit_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
  }
 }
