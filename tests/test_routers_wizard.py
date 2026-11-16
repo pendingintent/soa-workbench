@@ -175,10 +175,14 @@ def test_arms_step_creates_arm(soa_id):
 
 
 def test_encounters_step_creates_timeline_and_instances(soa_id):
+    # Epochs exist, but an encounter is created without choosing one:
+    # in USDM an Encounter has no epoch, and the instance's epochId is
+    # optional (set later on the edit page if wanted).
     _post(soa_id, "epochs", action="add", name="Screening")
     _post(soa_id, "epochs", action="add", name="Treatment")
-    _post(soa_id, "encounters", action="add", name="Visit 1", epoch_uid="StudyEpoch_1")
-    _post(soa_id, "encounters", action="add", name="Visit 2", epoch_uid="StudyEpoch_2")
+    resp = _post(soa_id, "encounters", action="add", name="Visit 1")
+    assert resp.status_code == 303
+    _post(soa_id, "encounters", action="add", name="Visit 2")
 
     timelines = _query(
         "SELECT schedule_timeline_uid, main_timeline FROM schedule_timelines"
@@ -200,15 +204,30 @@ def test_encounters_step_creates_timeline_and_instances(soa_id):
         (soa_id,),
     )
     assert instances == [
-        ("Encounter_1", "StudyEpoch_1", timeline_uid),
-        ("Encounter_2", "StudyEpoch_2", timeline_uid),
+        ("Encounter_1", None, timeline_uid),
+        ("Encounter_2", None, timeline_uid),
     ]
+
+
+def test_encounters_step_has_no_epoch_select(soa_id):
+    _post(soa_id, "epochs", action="add", name="Screening")
+    page = client.get(f"/ui/wizard/{soa_id}/encounters")
+    assert page.status_code == 200
+    assert 'name="epoch_uid"' not in page.text
+    assert 'id="wz-epoch"' not in page.text
+
+
+def test_encounters_step_ignores_a_posted_epoch(soa_id):
+    _post(soa_id, "epochs", action="add", name="Screening")
+    _post(soa_id, "encounters", action="add", name="V1", epoch_uid="StudyEpoch_1")
+    rows = _query("SELECT epoch_uid FROM instances WHERE soa_id=?", (soa_id,))
+    assert rows == [(None,)]
 
 
 def _build_schedule(soa_id):
     _post(soa_id, "epochs", action="add", name="Treatment")
-    _post(soa_id, "encounters", action="add", name="Day 1", epoch_uid="StudyEpoch_1")
-    _post(soa_id, "encounters", action="add", name="Day 8", epoch_uid="StudyEpoch_1")
+    _post(soa_id, "encounters", action="add", name="Day 1")
+    _post(soa_id, "encounters", action="add", name="Day 8")
     _post(soa_id, "activities", action="add", name="Vital Signs")
     _post(soa_id, "activities", action="add", name="ECG")
     instances = [

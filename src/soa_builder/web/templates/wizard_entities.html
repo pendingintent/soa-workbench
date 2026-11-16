@@ -1,6 +1,6 @@
 {% extends 'wizard_base.html' %}
 {#- Epochs, arms and encounters: an add form, the list so far, and the
-    step navigation. `items` is [{name, uid, epoch?}]. -#}
+    step navigation. `items` is [{name, uid}]. -#}
 {% block step %}
 {% set noun = {'epochs': 'epoch', 'arms': 'arm', 'encounters': 'encounter'}[step.key] %}
 {% set examples = {
@@ -50,32 +50,22 @@
         {% endfor %}
       </select>
     </div>
-    {% elif step.key == 'encounters' %}
-    <div class="am-field">
-      <label class="am-field-label" for="wz-epoch">Epoch{% if epoch_options %} <span class="am-required">*</span>{% endif %}</label>
-      <select id="wz-epoch" name="epoch_uid" class="fz-version-input"{% if epoch_options %} required{% endif %}>
-        <option value="">{% if epoch_options %}-- choose --{% else %}(no epochs yet){% endif %}</option>
-        {% for ep_name, ep_uid in epoch_options.items() %}
-        <option value="{{ ep_uid }}"{% if ep_uid == form.epoch_uid %} selected{% endif %}>{{ ep_name }}</option>
-        {% endfor %}
-      </select>
-    </div>
     {% endif %}
 
     <button type="submit" name="action" value="add" class="am-btn am-btn-info">Add {{ noun }}</button>
   </form>
   {% if step.key == 'encounters' %}
-  <p class="am-hint">Each encounter you add also becomes a column of the Schedule of Activities: the wizard places it on the main schedule timeline as a scheduled instance in the epoch you choose.</p>
+  <p class="am-hint">Each encounter you add also becomes a column of the Schedule of Activities: the wizard places it on the main schedule timeline as a scheduled instance. You can link an instance to an epoch later, in the Scheduled Instances section of the edit page.</p>
   {% endif %}
 </div>
 
 <h3 class="fz-section-heading">{{ step.title }} added ({{ items|length }})</h3>
 <table class="fz-table">
-  <tr class="fz-thead-row"><th>UID</th><th>Name</th>{% if step.key == 'encounters' %}<th>Epoch</th>{% endif %}</tr>
+  <tr class="fz-thead-row"><th>UID</th><th>Name</th></tr>
   {% for item in items %}
-  <tr><td><span class="obj-uid">{{ item.uid }}</span></td><td>{{ item.name }}</td>{% if step.key == 'encounters' %}<td>{{ item.epoch }}</td>{% endif %}</tr>
+  <tr><td><span class="obj-uid">{{ item.uid }}</span></td><td>{{ item.name }}</td></tr>
   {% else %}
-  <tr class="fz-empty-row"><td colspan="3">None yet. Add at least one {{ noun }} to continue.</td></tr>
+  <tr class="fz-empty-row"><td colspan="2">None yet. Add at least one {{ noun }} to continue.</td></tr>
   {% endfor %}
 </table>
 <p class="am-hint">To edit or delete, use the full <a href="/ui/soa/{{ soa_id }}/{{ 'visits' if step.key == 'encounters' else step.key }}">{{ step.title }} page</a>.</p>
