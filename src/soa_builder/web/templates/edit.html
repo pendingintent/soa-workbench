@@ -2,7 +2,7 @@
 {% from "_usdm_help.html" import help_panel %}
 {% block content %}
 <h2>Editing SoA for {% if study_label %}{{ study_label }}{% else %}{{ study_id }}{% endif %}</h2>
-<div class="study-meta-card">
+<div id="study-meta" class="study-meta-card">
   <h3>Study Metadata</h3>
   <form method="post" action="/ui/soa/{{ soa_id }}/update_meta" class="am-grid-2">
     <div class="am-field">
@@ -37,6 +37,8 @@
   </div>
   {% include "study_titles_partial.html" %}
 </div>
+
+{% include "_setup_checklist.html" %}
 
 <div id="modal-host"></div>
 <div class="concepts-global-refresh am-concepts-refresh-row" style="gap:10px;">
@@ -98,7 +100,7 @@
   
 </div>
 
-<hr />
+<hr id="matrix" />
 {{ help_panel('matrix') }}
 <!-- Timeline Selector-->
 {% if timelines and timelines|length > 0 %}
