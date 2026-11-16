@@ -24,9 +24,11 @@ _CAT_A_CONCEPTS = [
     {"code": "C001", "title": "Alpha Concept", "href": "/mdr/bc/C001"},
 ]
 
-_PATCH_ALL = "soa_builder.web.app.fetch_biomedical_concepts"
-_PATCH_CATS = "soa_builder.web.app.fetch_biomedical_concept_categories"
-_PATCH_BY_CAT = "soa_builder.web.app.fetch_biomedical_concepts_by_category"
+_PATCH_ALL = "soa_builder.web.services.concepts.fetch_biomedical_concepts"
+_PATCH_CATS = "soa_builder.web.services.concepts.fetch_biomedical_concept_categories"
+_PATCH_BY_CAT = (
+    "soa_builder.web.services.concepts.fetch_biomedical_concepts_by_category"
+)
 
 
 def test_page_load_ok():

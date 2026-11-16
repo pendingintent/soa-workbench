@@ -523,7 +523,7 @@ def set_activity_concepts(
     cur.execute("SELECT activity_uid FROM activity WHERE id=?", (activity_id,))
     row = cur.fetchone()
     activity_uid = row[0] if row else None
-    from ..app import (
+    from ..services.concepts import (
         _upsert_biomedical_concept,
         _enrich_biomedical_concept_bg,
         _enrich_code_bg,
@@ -738,18 +738,18 @@ def ui_list_activities(request: Request, soa_id: int):
 
     # Fetch concept groups globally (for the dropdown in concepts_cell),
     # organized into CDISC-scheme + Custom Concept Groups sections.
-    from ..app import _get_concept_group_sections
+    from ..services.concepts import _get_concept_group_sections
 
     concept_groups = _get_concept_group_sections()
     conn.close()
 
     # Fetch CDISC BC categories list (for the category dropdown in concepts_cell)
-    from ..app import fetch_biomedical_concept_categories as _fetch_cats
+    from ..services.concepts import fetch_biomedical_concept_categories as _fetch_cats
 
     bc_categories_list = _fetch_cats()
 
     # Fetch biomedical concepts list (lazy import to avoid circular dependency)
-    from ..app import fetch_biomedical_concepts as _app_fetch_concepts
+    from ..services.concepts import fetch_biomedical_concepts as _app_fetch_concepts
 
     concepts = _app_fetch_concepts()
 
@@ -827,7 +827,7 @@ def ui_refresh_concepts_activities(request: Request, soa_id: int):
     """Refresh biomedical concepts cache, then redirect back to activities page."""
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    from ..app import fetch_biomedical_concepts as _app_fetch_concepts
+    from ..services.concepts import fetch_biomedical_concepts as _app_fetch_concepts
 
     _app_fetch_concepts(force=True)
     redirect_url = f"/ui/soa/{int(soa_id)}/activities"
@@ -889,7 +889,7 @@ def ui_delete_activity_page(request: Request, soa_id: int, activity_id: int):
         "DELETE FROM activity_concept WHERE activity_id=? AND soa_id=?",
         (activity_id, soa_id),
     )
-    from ..app import _cleanup_orphaned_concept_rows
+    from ..services.concepts import _cleanup_orphaned_concept_rows
 
     _cleanup_orphaned_concept_rows(cur, soa_id, old_pairs)
     cur.execute("DELETE FROM activity WHERE id=?", (activity_id,))
@@ -974,7 +974,7 @@ def ui_dss_options(
     concept_code: str,
 ):
     """Return <option> elements for unassigned DSS for a concept (lazy load)."""
-    from ..app import fetch_sdtm_specializations as _app_fetch_dss
+    from ..services.concepts import fetch_sdtm_specializations as _app_fetch_dss
 
     available = _app_fetch_dss(code=concept_code)
 
@@ -1360,7 +1360,7 @@ def ui_crf_options(
     concept_code: str,
 ):
     """Return <option> elements for unassigned CRF specializations (lazy load)."""
-    from ..app import fetch_crf_specializations as _app_fetch_crf
+    from ..services.concepts import fetch_crf_specializations as _app_fetch_crf
 
     available = _app_fetch_crf(code=concept_code)
 

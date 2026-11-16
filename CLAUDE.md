@@ -113,13 +113,20 @@ pre-commit run --all-files  # runs ruff-check --fix, ruff-format, pytest
 - `tests/` - Pytest tests with FastAPI TestClient
 
 ### Web Layer Patterns
-- **`app.py` is large (~7,000 lines)** and still holds many routes and
-  UI handlers (e.g. `/ui/soa/create`, `update_meta`) besides wiring and
-  lifespan migrations. Put new domain endpoints in a router under
-  `routers/`, not in `app.py`.
+- **`app.py` is a compatibility shim** (re-exports only; the
+  `soa-builder-web` entry point and many tests import from it). The app
+  is assembled in `application.py` (routers, static mount, DB init and
+  migrations at import); shared logic lives in `services/concepts.py`
+  and `services/matrix.py`; Jinja templates in `templating.py`. Put new
+  endpoints in a router under `routers/` and register it in
+  `application.py`; never add code to `app.py`.
+- **Patching in tests**: patch where a name is looked up. The CDISC
+  fetchers are patched as `soa_builder.web.services.concepts.fetch_*`;
+  routers call them through the module (`concepts_service.fetch_x()`)
+  or via deferred imports so that patch takes effect.
 - **Router pattern**: `@router.post("/soa/{soa_id}/visits")` for API, `@router.post("/ui/soa/{soa_id}/visits/create")` for UI forms
 - **Database**: Always use `from .db import _connect` (handles pytest detection, WAL mode, busy timeouts)
-- **Schema migrations**: Lifespan event in `app.py` runs migrations—add new ones to `migrate_database.py`
+- **Schema migrations**: `application.py` runs `run_pending_migrations()` at import; add new ones under `migrations/` (see `migrations/README.md`), not to the frozen `migrate_database.py`
 - **HTMX UI**: Templates use `base.html` inheritance; form submissions return HTML partials for swaps
 
 ### Freeze and Rollback

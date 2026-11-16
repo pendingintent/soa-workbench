@@ -66,7 +66,7 @@ def test_add_bc_category_inserts_concepts():
     activity_id = _new_activity(soa_id)
 
     with patch(
-        "soa_builder.web.app.fetch_biomedical_concepts_by_category",
+        "soa_builder.web.services.concepts.fetch_biomedical_concepts_by_category",
         return_value=_FAKE_CONCEPTS,
     ):
         resp = _add_category(soa_id, activity_id)
@@ -81,7 +81,7 @@ def test_add_bc_category_skips_duplicates():
     activity_id = _new_activity(soa_id)
 
     with patch(
-        "soa_builder.web.app.fetch_biomedical_concepts_by_category",
+        "soa_builder.web.services.concepts.fetch_biomedical_concepts_by_category",
         return_value=_FAKE_CONCEPTS,
     ):
         _add_category(soa_id, activity_id)
@@ -96,7 +96,7 @@ def test_remove_bc_category_deletes_all_rows():
     activity_id = _new_activity(soa_id)
 
     with patch(
-        "soa_builder.web.app.fetch_biomedical_concepts_by_category",
+        "soa_builder.web.services.concepts.fetch_biomedical_concepts_by_category",
         return_value=_FAKE_CONCEPTS,
     ):
         _add_category(soa_id, activity_id)
@@ -114,7 +114,7 @@ def test_remove_individual_concept_after_category_add():
     activity_id = _new_activity(soa_id)
 
     with patch(
-        "soa_builder.web.app.fetch_biomedical_concepts_by_category",
+        "soa_builder.web.services.concepts.fetch_biomedical_concepts_by_category",
         return_value=_FAKE_CONCEPTS,
     ):
         _add_category(soa_id, activity_id)
@@ -172,7 +172,7 @@ def test_cell_html_contains_category_dropdown():
 
     fake_categories = [{"name": "Vital Signs", "title": "Vital Signs", "href": ""}]
     with patch(
-        "soa_builder.web.app.fetch_biomedical_concept_categories",
+        "soa_builder.web.services.concepts.fetch_biomedical_concept_categories",
         return_value=fake_categories,
     ):
         resp = client.get(f"/ui/soa/{soa_id}/activity/{activity_id}/concepts_cell")
@@ -190,13 +190,13 @@ def test_assigned_category_excluded_from_dropdown():
     fake_categories = [{"name": "Vital Signs", "title": "Vital Signs", "href": ""}]
 
     with patch(
-        "soa_builder.web.app.fetch_biomedical_concepts_by_category",
+        "soa_builder.web.services.concepts.fetch_biomedical_concepts_by_category",
         return_value=_FAKE_CONCEPTS,
     ):
         _add_category(soa_id, activity_id)
 
     with patch(
-        "soa_builder.web.app.fetch_biomedical_concept_categories",
+        "soa_builder.web.services.concepts.fetch_biomedical_concept_categories",
         return_value=fake_categories,
     ):
         resp = client.get(f"/ui/soa/{soa_id}/activity/{activity_id}/concepts_cell")
