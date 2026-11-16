@@ -296,6 +296,37 @@ def test_activities_page_shows_grid(soa_id):
     assert "Day 8" in page.text
 
 
+def _encounter_with_epoch_on_instance(soa_id):
+    """An encounter with a label whose instance also has an epoch.
+
+    Instances made by the wizard before the epoch prompt was removed,
+    or edited on the edit page, can carry an epoch; the wizard's
+    column headings must still show the encounter label, not that
+    epoch.
+    """
+    _post(soa_id, "epochs", action="add", name="EpochShouldNotShow")
+    _post(soa_id, "encounters", action="add", name="Day 1", label="D1-LABEL")
+    _post(soa_id, "activities", action="add", name="Vital Signs")
+    conn = _connect()
+    try:
+        conn.execute(
+            "UPDATE instances SET epoch_uid='StudyEpoch_1' WHERE soa_id=?",
+            (soa_id,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+@pytest.mark.parametrize("step", ["activities", "review"])
+def test_matrix_columns_show_encounter_label_not_epoch(soa_id, step):
+    _encounter_with_epoch_on_instance(soa_id)
+    page = client.get(f"/ui/wizard/{soa_id}/{step}")
+    assert page.status_code == 200
+    assert "D1-LABEL" in page.text
+    assert "EpochShouldNotShow" not in page.text
+
+
 def test_concepts_step_assigns_concepts(soa_id, fake_concepts):
     _, (vitals, ecg) = _build_schedule(soa_id)
     page = client.get(f"/ui/wizard/{soa_id}/concepts")

@@ -152,11 +152,13 @@ def _activities(soa_id: int) -> List[dict]:
 
 
 def _instances(soa_id: int) -> List[dict]:
+    """Matrix columns: each instance with its encounter's label."""
     return [
-        {"id": r[0], "name": r[1], "epoch": r[2] or ""}
+        {"id": r[0], "name": r[1], "encounter_label": r[2] or ""}
         for r in _rows(
-            "SELECT i.id, i.name, e.name FROM instances i"
-            " LEFT JOIN epoch e ON e.epoch_uid=i.epoch_uid AND e.soa_id=i.soa_id"
+            "SELECT i.id, i.name, v.label FROM instances i"
+            " LEFT JOIN visit v ON v.encounter_uid=i.encounter_uid"
+            " AND v.soa_id=i.soa_id"
             " WHERE i.soa_id=? ORDER BY i.order_index, i.id",
             (soa_id,),
         )
