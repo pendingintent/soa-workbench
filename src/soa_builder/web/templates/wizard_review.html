@@ -19,7 +19,7 @@
   <tr class="fz-thead-row">
     <th scope="col">Activity</th>
     {% for inst in instances %}
-    <th scope="col">{{ inst.name }}{% if inst.epoch %}<br /><small>{{ inst.epoch }}</small>{% endif %}</th>
+    <th scope="col">{{ inst.name }}{% if inst.encounter_label %}<br /><small>{{ inst.encounter_label }}</small>{% endif %}</th>
     {% endfor %}
   </tr>
   {% for a in activities %}
