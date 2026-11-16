@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from "_usdm_help.html" import help_panel %}
 {% block content %}
 <h2>Arms for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
 
@@ -7,6 +8,8 @@
 </div>
 
 <hr class="fz-section-divider" />
+
+{{ help_panel('arm') }}
 
 <div class="fz-create-card fz-create-card-full">
   <h3>Create Arm</h3>
