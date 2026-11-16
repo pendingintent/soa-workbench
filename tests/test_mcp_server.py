@@ -293,3 +293,120 @@ def test_get_usdm_json_unknown_component():
 def test_unknown_tool_raises():
     with pytest.raises(ValueError, match="Unknown tool"):
         _dispatch("no_such_tool", {})
+
+
+# ---------------------------------------------------------------------------
+# Write tools go through the web API: UIDs, validation and audit
+# ---------------------------------------------------------------------------
+
+
+def _audit_actions(table: str, entity_col: str, entity_id: int) -> list:
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT action FROM {table} WHERE soa_id=? AND {entity_col}=? ORDER BY id",
+            (SOA_ID, entity_id),
+        )
+        return [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def test_create_activity_never_reuses_deleted_uid():
+    _seed_soa()
+    first = _dispatch("create_activity", {"soa_id": SOA_ID, "name": "A"})
+    second = _dispatch("create_activity", {"soa_id": SOA_ID, "name": "B"})
+    from fastapi.testclient import TestClient
+
+    r = TestClient(app).delete(f"/soa/{SOA_ID}/activities/{second['id']}")
+    assert r.status_code == 200, r.text
+    third = _dispatch("create_activity", {"soa_id": SOA_ID, "name": "C"})
+    assert third["activity_uid"] not in {
+        first["activity_uid"],
+        second["activity_uid"],
+    }
+
+
+def test_create_activity_is_audited():
+    _seed_soa()
+    result = _dispatch("create_activity", {"soa_id": SOA_ID, "name": "Audited"})
+    assert _audit_actions("activity_audit", "activity_id", result["id"]) == ["create"]
+
+
+def test_create_activity_keeps_label_and_description():
+    _seed_soa()
+    result = _dispatch(
+        "create_activity",
+        {"soa_id": SOA_ID, "name": "ECG", "label": "L", "description": "D"},
+    )
+    acts = _dispatch("list_activities", {"soa_id": SOA_ID})
+    row = next(a for a in acts if a["id"] == result["id"])
+    assert (row["label"], row["description"]) == ("L", "D")
+
+
+def test_create_visit_is_audited():
+    _seed_soa()
+    result = _dispatch("create_visit", {"soa_id": SOA_ID, "name": "Audited"})
+    assert _audit_actions("visit_audit", "visit_id", result["id"]) == ["create"]
+
+
+def test_create_visit_unknown_soa_raises():
+    with pytest.raises(ValueError, match="not found"):
+        _dispatch("create_visit", {"soa_id": 999999, "name": "Nowhere"})
+
+
+def test_assign_rejects_instance_from_another_soa():
+    _seed_soa()
+    aid = _seed_activity()
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO soa (name) VALUES ('Other MCP soa')")
+    other_soa = cur.lastrowid
+    cur.execute(
+        "INSERT INTO instances (soa_id, name, instance_uid) VALUES (?,?,?)",
+        (other_soa, "Foreign", "ScheduledActivityInstance_1"),
+    )
+    foreign_iid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    with pytest.raises(ValueError, match="not found"):
+        _dispatch(
+            "assign_instance_activity",
+            {"soa_id": SOA_ID, "instance_id": foreign_iid, "activity_id": aid},
+        )
+
+
+def test_assign_rejects_unknown_activity():
+    _seed_soa()
+    iid = _seed_instance()
+    with pytest.raises(ValueError, match="not found"):
+        _dispatch(
+            "assign_instance_activity",
+            {"soa_id": SOA_ID, "instance_id": iid, "activity_id": 987654},
+        )
+
+
+@pytest.mark.parametrize(
+    "tool,create",
+    [("list_visits", "create_visit"), ("list_activities", "create_activity")],
+)
+def test_list_tools_paginate(tool, create):
+    _seed_soa()
+    for n in range(3):
+        _dispatch(create, {"soa_id": SOA_ID, "name": f"Item {n}"})
+    full = _dispatch(tool, {"soa_id": SOA_ID})
+    page = _dispatch(tool, {"soa_id": SOA_ID, "limit": 2, "offset": 1})
+    assert [r["id"] for r in page] == [r["id"] for r in full[1:3]]
+
+
+def test_list_soas_paginates():
+    _seed_soa()
+    full = _dispatch("list_soas", {})
+    page = _dispatch("list_soas", {"limit": 1, "offset": 0})
+    assert page == full[:1]
+
+
+def test_negative_limit_rejected():
+    with pytest.raises(ValueError, match="limit"):
+        _dispatch("list_soas", {"limit": -1})
