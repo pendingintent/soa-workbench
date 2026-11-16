@@ -1,55 +1,67 @@
 {% extends 'wizard_base.html' %}
-{#- Biomedical concepts: one multi-select per activity. Option values
-    are "activity_id:concept_code"; the router reconciles each
-    activity's list through set_activity_concepts. -#}
+{#- Biomedical concepts: one row per activity (_wizard_concept_row.html)
+    where concepts are added and removed one at a time, as on the
+    Activities page. Each add/remove is its own request, so there is
+    nothing to save here; Continue just moves on. -#}
 {% block step %}
+{% if not concept_options %}
+<div class="am-api-notice am-api-notice-info">
+  <span class="am-api-notice-icon" aria-hidden="true">&#8212;</span>
+  <div>
+    <strong>No biomedical concepts are available.</strong>
+    <span class="am-api-notice-detail">The CDISC Library could not be reached or no API key is configured. You can skip this step and assign concepts later on the Activities page.</span>
+  </div>
+</div>
+{% elif not activities %}
+<p class="am-empty-note">Add activities in the previous step first.</p>
+{% else %}
+<p class="am-hint">Add the concepts that describe the data each activity collects, one at a time. Type part of a name or code in the box to find a concept, pick it, then choose Add (or press Enter). Choose &times; on a concept to remove it.</p>
+<table id="wz-concepts-table" class="fz-table">
+  <tr class="fz-thead-row"><th>Activity</th><th>Biomedical concepts</th></tr>
+  {% for a in activities %}
+  {% include '_wizard_concept_row.html' %}
+  {% endfor %}
+</table>
+{% endif %}
+
 <form method="post" action="/ui/wizard/{{ soa_id }}/concepts">
-  <input type="hidden" name="concepts_form" value="1" />
-  {% if not concept_options %}
-  <div class="am-api-notice am-api-notice-info">
-    <span class="am-api-notice-icon" aria-hidden="true">&#8212;</span>
-    <div>
-      <strong>No biomedical concepts are available.</strong>
-      <span class="am-api-notice-detail">The CDISC Library could not be reached or no API key is configured. You can skip this step and assign concepts later on the Activities page.</span>
-    </div>
-  </div>
-  {% elif not activities %}
-  <p class="am-empty-note">Add activities in the previous step first.</p>
-  {% else %}
-  <p class="am-hint">Choose the concepts that describe the data each activity collects. Hold Ctrl (Cmd on a Mac) to select several. Type in the filter box to narrow the list.</p>
-  <table class="fz-table">
-    <tr class="fz-thead-row"><th>Activity</th><th>Biomedical concepts</th></tr>
-    {% for a in activities %}
-    <tr>
-      <td><strong>{{ a.name }}</strong><br /><span class="obj-uid">{{ a.uid }}</span></td>
-      <td>
-        <input type="search" class="fz-version-input am-wizard-filter" placeholder="Filter concepts"
-               aria-label="Filter concepts for {{ a.name }}" data-filter-for="wz-bc-{{ a.id }}" />
-        <select id="wz-bc-{{ a.id }}" name="concept" multiple size="6" class="fz-version-input am-wizard-bc-select"
-                aria-label="Biomedical concepts for {{ a.name }}">
-          {% for c in concept_options %}
-          <option value="{{ a.id }}:{{ c.code }}"{% if c.code in a.codes %} selected{% endif %}>{{ c.title }} ({{ c.code }})</option>
-          {% endfor %}
-        </select>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-  <div class="am-wizard-nav">
-    <button type="submit" name="action" value="save" class="am-btn am-btn-info am-btn-sm">Save concepts</button>
-  </div>
-  {% endif %}
   {% include '_wizard_nav.html' %}
 </form>
+
 <script>
-  document.querySelectorAll('.am-wizard-filter').forEach(function (box) {
-    box.addEventListener('input', function () {
-      var needle = box.value.toLowerCase();
-      var select = document.getElementById(box.dataset.filterFor);
-      Array.prototype.forEach.call(select.options, function (opt) {
-        opt.hidden = needle && !opt.selected && opt.text.toLowerCase().indexOf(needle) === -1;
-      });
+  // Narrow an activity's "Add concept" list as the user types. Uses
+  // event delegation so rows swapped in by HTMX keep working.
+  document.addEventListener('input', function (event) {
+    var box = event.target.closest('.am-wizard-filter');
+    if (!box) return;
+    var select = document.getElementById(box.dataset.filterFor);
+    if (!select) return;
+    var needle = box.value.trim().toLowerCase();
+    var first = null;
+    var shown = 0;
+    Array.prototype.forEach.call(select.options, function (opt) {
+      if (!opt.value) {
+        // The "Add concept..." placeholder: hide it from the open list
+        opt.hidden = !!needle;
+        return;
+      }
+      var match = !needle || opt.text.toLowerCase().indexOf(needle) !== -1;
+      opt.hidden = !match;
+      if (match) {
+        shown += 1;
+        if (!first) first = opt;
+      }
     });
+    if (needle) {
+      // Show the matches as an open list and pre-select the first, so
+      // Enter adds it straight away.
+      select.size = Math.max(2, Math.min(8, shown + 1));
+      if (first) first.selected = true;
+      else select.selectedIndex = 0;
+    } else {
+      select.size = 1;
+      select.selectedIndex = 0;
+    }
   });
 </script>
 {% endblock %}

@@ -327,26 +327,111 @@ def test_matrix_columns_show_encounter_label_not_epoch(soa_id, step):
     assert "EpochShouldNotShow" not in page.text
 
 
-def test_concepts_step_assigns_concepts(soa_id, fake_concepts):
-    _, (vitals, ecg) = _build_schedule(soa_id)
-    page = client.get(f"/ui/wizard/{soa_id}/concepts")
-    assert "Pulse Rate" in page.text
-    resp = client.post(
-        f"/ui/wizard/{soa_id}/concepts",
-        data={
-            "action": "save",
-            "concepts_form": "1",
-            "concept": [f"{vitals}:C49676", f"{vitals}:C25298"],
-        },
-        follow_redirects=False,
-    )
-    assert resp.status_code == 303
-    rows = _query(
+def _concept_rows(soa_id):
+    return _query(
         "SELECT activity_id, concept_code FROM activity_concept"
-        " WHERE soa_id=? ORDER BY concept_code",
+        " WHERE soa_id=? ORDER BY activity_id, concept_code",
         (soa_id,),
     )
-    assert rows == [(vitals, "C25298"), (vitals, "C49676")]
+
+
+def _concept_action(soa_id, action, activity_id, code, htmx=False):
+    headers = {"HX-Request": "true"} if htmx else {}
+    return client.post(
+        f"/ui/wizard/{soa_id}/concepts",
+        data={"action": action, "activity_id": activity_id, "concept_code": code},
+        headers=headers,
+        follow_redirects=False,
+    )
+
+
+def test_concepts_page_offers_one_by_one_add(soa_id, fake_concepts):
+    _, (vitals, _) = _build_schedule(soa_id)
+    page = client.get(f"/ui/wizard/{soa_id}/concepts")
+    assert page.status_code == 200
+    assert f'id="wz-concept-row-{vitals}"' in page.text
+    assert 'name="concept_code"' in page.text
+    assert 'value="add_concept"' in page.text
+    assert "Pulse Rate" in page.text
+    # A filter box to find concepts, and no bulk multi-select
+    assert "am-wizard-filter" in page.text
+    assert "multiple" not in page.text.split('id="wz-concepts-table"')[1]
+
+
+def test_concepts_added_one_by_one(soa_id, fake_concepts):
+    _, (vitals, ecg) = _build_schedule(soa_id)
+    assert _concept_action(soa_id, "add_concept", vitals, "C49676").status_code == 303
+    _concept_action(soa_id, "add_concept", vitals, "C25298")
+    _concept_action(soa_id, "add_concept", ecg, "C49676")
+    assert _concept_rows(soa_id) == [
+        (vitals, "C25298"),
+        (vitals, "C49676"),
+        (ecg, "C49676"),
+    ]
+    # Adding the same concept again is a no-op
+    _concept_action(soa_id, "add_concept", vitals, "C49676")
+    assert len(_concept_rows(soa_id)) == 3
+
+
+def test_concept_removed(soa_id, fake_concepts):
+    _, (vitals, _) = _build_schedule(soa_id)
+    _concept_action(soa_id, "add_concept", vitals, "C49676")
+    _concept_action(soa_id, "add_concept", vitals, "C25298")
+    _concept_action(soa_id, "remove_concept", vitals, "C49676")
+    assert _concept_rows(soa_id) == [(vitals, "C25298")]
+
+
+def test_htmx_add_returns_only_the_activity_row(soa_id, fake_concepts):
+    _, (vitals, _) = _build_schedule(soa_id)
+    resp = _concept_action(soa_id, "add_concept", vitals, "C49676", htmx=True)
+    assert resp.status_code == 200
+    assert resp.text.lstrip().startswith(f'<tr id="wz-concept-row-{vitals}"')
+    assert "<html" not in resp.text
+    # The assigned concept shows as a removable chip ...
+    assert "Pulse Rate" in resp.text
+    assert 'value="remove_concept"' in resp.text
+    # ... and is no longer offered in the add list
+    assert '<option value="C49676"' not in resp.text
+    assert '<option value="C25298"' in resp.text
+
+
+def test_unknown_concept_is_rejected(soa_id, fake_concepts):
+    _, (vitals, _) = _build_schedule(soa_id)
+    resp = _concept_action(soa_id, "add_concept", vitals, "C00000", htmx=True)
+    assert resp.status_code == 200
+    assert "Choose a concept from the list" in resp.text
+    assert _concept_rows(soa_id) == []
+
+
+HX_SYNC = 'hx-sync="closest tr:queue all"'
+
+
+def test_concept_row_requests_are_serialised(soa_id, fake_concepts):
+    """Every add/remove form in a row queues behind the row's in-flight
+    request, so a quick remove-then-add can't send two full concept
+    lists at once and have the second undo the first."""
+    _, (vitals, _) = _build_schedule(soa_id)
+    _concept_action(soa_id, "add_concept", vitals, "C49676")
+    _concept_action(soa_id, "add_concept", vitals, "C25298")
+
+    page = client.get(f"/ui/wizard/{soa_id}/concepts").text
+    row = page.split(f'<tr id="wz-concept-row-{vitals}"')[1].split("</tr>")[0]
+    # 2 remove chips + 1 add form, every one serialised on the row
+    assert row.count("hx-post=") == 3
+    assert row.count(HX_SYNC) == 3
+
+    # The row HTMX swaps back in keeps the attribute on every form
+    swapped = _concept_action(soa_id, "remove_concept", vitals, "C25298", htmx=True)
+    assert swapped.text.count("hx-post=") == 2
+    assert swapped.text.count(HX_SYNC) == 2
+
+
+def test_activity_from_another_study_is_rejected(soa_id, fake_concepts):
+    other, _ = _new_study()
+    _, (vitals, _) = _build_schedule(other)
+    resp = _concept_action(soa_id, "add_concept", vitals, "C49676")
+    assert resp.status_code == 404
+    assert _concept_rows(other) == []
 
 
 def test_concepts_step_offline_shows_notice(soa_id, no_concepts):
