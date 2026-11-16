@@ -517,6 +517,9 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
     pretty_json = None
     raw_text_snippet = None
     data = None
+    # Only CDISC Library URLs are fetched (SSRF guard); anything else is
+    # reported on the page without a request.
+    href_is_valid = False
     if href:
         _parsed_href = _urlparse(href)
         if _parsed_href.netloc != _p.netloc or _parsed_href.scheme not in (
@@ -524,20 +527,9 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
             "https",
         ):
             error = "Invalid href: only CDISC Library API URLs are permitted."
-            return templates.TemplateResponse(
-                "dss_detail.html",
-                {
-                    "request": request,
-                    "soa_id": soa_id,
-                    "href": href,
-                    "title": title,
-                    "status": status,
-                    "error": error,
-                    "pretty_json": pretty_json,
-                    "variables": [],
-                    "summary": {},
-                },
-            )
+        else:
+            href_is_valid = True
+    if href_is_valid:
         _safe_url = _urlunparse(
             (
                 _p.scheme,
@@ -572,7 +564,7 @@ def ui_dss_detail(request: Request, soa_id: int, href: str = "", title: str = ""
                 error = f"HTTP {resp.status_code} retrieving specialization"
         except REMOTE_PAYLOAD_ERRORS as e:
             error = f"Fetch error: {e}"[:300]
-    else:
+    elif not href:
         error = "No href provided."
 
     # Extract variables list and summary fields for structured display
