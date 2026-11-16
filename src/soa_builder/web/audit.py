@@ -1,3 +1,12 @@
+"""Audit trail recorders: one row per entity create/update/delete.
+
+Every ``_record_<entity>_audit`` keeps its historical name and signature
+and delegates to ``_record_audit``. Recording an audit row must never
+break the request that triggered it, so failures are swallowed, but
+they are logged at ERROR and counted: ``tests/conftest.py`` fails any
+test that leaves the counter raised.
+"""
+
 import json
 import logging
 from datetime import datetime, timezone
@@ -7,59 +16,68 @@ from .db import _connect
 
 logger = logging.getLogger("soa_builder.audit")
 
+_failures = 0
 
-def _record_arm_audit(
+
+def audit_failure_count() -> int:
+    """Number of audit rows that failed to record in this process."""
+    return _failures
+
+
+def reset_audit_failures() -> None:
+    global _failures
+    _failures = 0
+
+
+def _note_failure(label: str, exc: Exception) -> None:
+    global _failures
+    _failures += 1
+    logger.error("Failed recording %s audit: %s", label, exc)
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _dump(value: Optional[Dict[str, Any]]) -> Optional[str]:
+    """JSON for before/after; empty or missing values are stored as NULL."""
+    return json.dumps(value) if value else None
+
+
+def _record_audit(
+    table: str,
+    entity_col: str,
+    label: str,
     soa_id: int,
     action: str,
-    arm_id: int | None,
+    entity_id: Optional[int],
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
-):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO arm_audit (soa_id, arm_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                arm_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording arm audit: %s", e)
+    cur=None,
+) -> None:
+    """Insert one audit row into ``table``.
 
-
-def _record_element_audit(
-    soa_id: int,
-    action: str,
-    element_id: int | None,
-    before: Optional[Dict[str, Any]] = None,
-    after: Optional[Dict[str, Any]] = None,
-):
+    With ``cur`` the row joins the caller's transaction (the caller
+    commits or rolls back); otherwise it is written and committed on its
+    own connection.
+    """
+    sql = (
+        f"INSERT INTO {table} (soa_id, {entity_col}, action, before_json,"
+        " after_json, performed_at) VALUES (?,?,?,?,?,?)"
+    )
+    values = (soa_id, entity_id, action, _dump(before), _dump(after), _now())
     try:
+        if cur is not None:
+            cur.execute(sql, values)
+            return
         conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO element_audit (soa_id, element_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                element_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording element audit: %s", e)
+        try:
+            conn.execute(sql, values)
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as exc:  # audit must never break the request
+        _note_failure(label, exc)
 
 
 def _record_reorder_audit(
@@ -70,21 +88,52 @@ def _record_reorder_audit(
 ):
     try:
         conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO reorder_audit (soa_id, entity_type, old_order_json, new_order_json, performed_at) VALUES (?,?,?,?,?)",
-            (
-                soa_id,
-                entity_type,
-                json.dumps(old_order),
-                json.dumps(new_order),
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording reorder audit: %s", e)
+        try:
+            conn.execute(
+                "INSERT INTO reorder_audit (soa_id, entity_type, old_order_json,"
+                " new_order_json, performed_at) VALUES (?,?,?,?,?)",
+                (
+                    soa_id,
+                    entity_type,
+                    json.dumps(old_order),
+                    json.dumps(new_order),
+                    _now(),
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as exc:  # audit must never break the request
+        _note_failure("reorder", exc)
+
+
+def _record_arm_audit(
+    soa_id: int,
+    action: str,
+    arm_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    _record_audit("arm_audit", "arm_id", "arm", soa_id, action, arm_id, before, after)
+
+
+def _record_element_audit(
+    soa_id: int,
+    action: str,
+    element_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    _record_audit(
+        "element_audit",
+        "element_id",
+        "element",
+        soa_id,
+        action,
+        element_id,
+        before,
+        after,
+    )
 
 
 def _record_visit_audit(
@@ -94,24 +143,9 @@ def _record_visit_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO visit_audit (soa_id, visit_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                visit_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording visit audit: %s", e)
+    _record_audit(
+        "visit_audit", "visit_id", "visit", soa_id, action, visit_id, before, after
+    )
 
 
 def _record_activity_audit(
@@ -121,215 +155,142 @@ def _record_activity_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO activity_audit (soa_id, activity_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                activity_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording activity audit: %s", e)
+    _record_audit(
+        "activity_audit",
+        "activity_id",
+        "activity",
+        soa_id,
+        action,
+        activity_id,
+        before,
+        after,
+    )
 
 
 def _record_study_cell_audit(
     soa_id: int,
     action: str,
-    study_cell_id: int | None,
+    study_cell_id: Optional[int],
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO study_cell_audit (soa_id, study_cell_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                study_cell_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording study_cell audit: %s", e)
+    _record_audit(
+        "study_cell_audit",
+        "study_cell_id",
+        "study_cell",
+        soa_id,
+        action,
+        study_cell_id,
+        before,
+        after,
+    )
 
 
 def _record_timing_audit(
     soa_id: int,
     action: str,
-    timing_id: int | None,
+    timing_id: Optional[int],
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO timing_audit (soa_id, timing_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                timing_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording timing audit: %s", e)
+    _record_audit(
+        "timing_audit", "timing_id", "timing", soa_id, action, timing_id, before, after
+    )
 
 
 def _record_schedule_timeline_audit(
     soa_id: int,
     action: str,
-    schedule_timeline_id: int | None,
+    schedule_timeline_id: Optional[int],
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT into schedule_timelines_audit (soa_id,schedule_timeline_id,action,before_json,after_json,performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                schedule_timeline_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording schedule timeline audit: %s", e)
+    _record_audit(
+        "schedule_timelines_audit",
+        "schedule_timeline_id",
+        "schedule timeline",
+        soa_id,
+        action,
+        schedule_timeline_id,
+        before,
+        after,
+    )
 
 
 def _record_instance_audit(
     soa_id: int,
     action: str,
-    instance_id: int | None,
+    instance_id: Optional[int],
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO instance_audit (soa_id, instance_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                instance_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording instance audit: %s", e)
+    _record_audit(
+        "instance_audit",
+        "instance_id",
+        "instance",
+        soa_id,
+        action,
+        instance_id,
+        before,
+        after,
+    )
 
 
 def _record_decision_instance_audit(
     soa_id: int,
     action: str,
-    decision_instance_id: int | None,
+    decision_instance_id: Optional[int],
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO decision_instance_audit (soa_id, decision_instance_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                decision_instance_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording decision_instance audit: %s", e)
+    _record_audit(
+        "decision_instance_audit",
+        "decision_instance_id",
+        "decision_instance",
+        soa_id,
+        action,
+        decision_instance_id,
+        before,
+        after,
+    )
 
 
 def _record_condition_assignment_audit(
     soa_id: int,
     action: str,
-    condition_assignment_id: int | None,
+    condition_assignment_id: Optional[int],
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO condition_assignment_audit (soa_id, condition_assignment_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                condition_assignment_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording condition_assignment audit: %s", e)
+    _record_audit(
+        "condition_assignment_audit",
+        "condition_assignment_id",
+        "condition_assignment",
+        soa_id,
+        action,
+        condition_assignment_id,
+        before,
+        after,
+    )
 
 
-# Transition Rule Audit
 def _record_transition_rule_audit(
     soa_id: int,
     action: str,
     transition_rule_id: Optional[int],
-    before: Optional[dict] = None,
-    after: Optional[dict] = None,
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO transition_rule_audit (soa_id, transition_rule_id, action, before_json, after_json, performed_at) "
-            "VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                transition_rule_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording transition rule audit: %s", e)
+    _record_audit(
+        "transition_rule_audit",
+        "transition_rule_id",
+        "transition rule",
+        soa_id,
+        action,
+        transition_rule_id,
+        before,
+        after,
+    )
 
 
 def _record_biomedical_concept_audit(
@@ -340,29 +301,17 @@ def _record_biomedical_concept_audit(
     after: Optional[Dict[str, Any]] = None,
     cur=None,
 ):
-    try:
-        own_conn = cur is None
-        if own_conn:
-            conn = _connect()
-            cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO biomedical_concept_audit"
-            " (soa_id, biomedical_concept_id, action, before_json, after_json, performed_at)"
-            " VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                biomedical_concept_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        if own_conn:
-            conn.commit()
-            conn.close()
-    except Exception as e:
-        logger.warning("Failed recording biomedical_concept audit: %s", e)
+    _record_audit(
+        "biomedical_concept_audit",
+        "biomedical_concept_id",
+        "biomedical_concept",
+        soa_id,
+        action,
+        biomedical_concept_id,
+        before,
+        after,
+        cur=cur,
+    )
 
 
 def _record_bc_surrogate_audit(
@@ -372,26 +321,16 @@ def _record_bc_surrogate_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO biomedical_concept_surrogate_audit"
-            " (soa_id, surrogate_id, action, before_json, after_json, performed_at)"
-            " VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                surrogate_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording bc_surrogate audit: %s", e)
+    _record_audit(
+        "biomedical_concept_surrogate_audit",
+        "surrogate_id",
+        "bc_surrogate",
+        soa_id,
+        action,
+        surrogate_id,
+        before,
+        after,
+    )
 
 
 def _record_footnote_audit(
@@ -401,24 +340,16 @@ def _record_footnote_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO footnote_audit (soa_id, footnote_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                footnote_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording footnote audit: %s", e)
+    _record_audit(
+        "footnote_audit",
+        "footnote_id",
+        "footnote",
+        soa_id,
+        action,
+        footnote_id,
+        before,
+        after,
+    )
 
 
 def _record_objective_audit(
@@ -428,24 +359,16 @@ def _record_objective_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO objective_audit (soa_id, objective_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                objective_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording objective audit: %s", e)
+    _record_audit(
+        "objective_audit",
+        "objective_id",
+        "objective",
+        soa_id,
+        action,
+        objective_id,
+        before,
+        after,
+    )
 
 
 def _record_endpoint_audit(
@@ -455,24 +378,16 @@ def _record_endpoint_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO endpoint_audit (soa_id, endpoint_id, action, before_json, after_json, performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                endpoint_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording endpoint audit: %s", e)
+    _record_audit(
+        "endpoint_audit",
+        "endpoint_id",
+        "endpoint",
+        soa_id,
+        action,
+        endpoint_id,
+        before,
+        after,
+    )
 
 
 def _record_amendment_audit(
@@ -482,26 +397,16 @@ def _record_amendment_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO study_amendment_audit"
-            " (soa_id, amendment_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                amendment_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording amendment audit: %s", e)
+    _record_audit(
+        "study_amendment_audit",
+        "amendment_id",
+        "amendment",
+        soa_id,
+        action,
+        amendment_id,
+        before,
+        after,
+    )
 
 
 def _record_reason_audit(
@@ -511,26 +416,16 @@ def _record_reason_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO study_amendment_reason_audit"
-            " (soa_id, reason_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                reason_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording reason audit: %s", e)
+    _record_audit(
+        "study_amendment_reason_audit",
+        "reason_id",
+        "reason",
+        soa_id,
+        action,
+        reason_id,
+        before,
+        after,
+    )
 
 
 def _record_impact_audit(
@@ -540,26 +435,16 @@ def _record_impact_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO study_amendment_impact_audit"
-            " (soa_id, impact_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                impact_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording impact audit: %s", e)
+    _record_audit(
+        "study_amendment_impact_audit",
+        "impact_id",
+        "impact",
+        soa_id,
+        action,
+        impact_id,
+        before,
+        after,
+    )
 
 
 def _record_change_audit(
@@ -569,26 +454,16 @@ def _record_change_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO study_change_audit"
-            " (soa_id, change_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                change_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording change audit: %s", e)
+    _record_audit(
+        "study_change_audit",
+        "change_id",
+        "change",
+        soa_id,
+        action,
+        change_id,
+        before,
+        after,
+    )
 
 
 def _record_ref_audit(
@@ -598,26 +473,16 @@ def _record_ref_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO document_content_reference_audit"
-            " (soa_id, ref_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                ref_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording ref audit: %s", e)
+    _record_audit(
+        "document_content_reference_audit",
+        "ref_id",
+        "ref",
+        soa_id,
+        action,
+        ref_id,
+        before,
+        after,
+    )
 
 
 def _record_geo_scope_audit(
@@ -627,26 +492,16 @@ def _record_geo_scope_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO amendment_geographic_scope_audit"
-            " (soa_id, scope_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                scope_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording geo_scope audit: %s", e)
+    _record_audit(
+        "amendment_geographic_scope_audit",
+        "scope_id",
+        "geo_scope",
+        soa_id,
+        action,
+        scope_id,
+        before,
+        after,
+    )
 
 
 def _record_enrollment_audit(
@@ -656,26 +511,16 @@ def _record_enrollment_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO amendment_subject_enrollment_audit"
-            " (soa_id, enrollment_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                enrollment_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording enrollment audit: %s", e)
+    _record_audit(
+        "amendment_subject_enrollment_audit",
+        "enrollment_id",
+        "enrollment",
+        soa_id,
+        action,
+        enrollment_id,
+        before,
+        after,
+    )
 
 
 def _record_organization_audit(
@@ -685,26 +530,16 @@ def _record_organization_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO organization_audit"
-            " (soa_id, org_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                org_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording organization audit: %s", e)
+    _record_audit(
+        "organization_audit",
+        "org_id",
+        "organization",
+        soa_id,
+        action,
+        org_id,
+        before,
+        after,
+    )
 
 
 def _record_role_audit(
@@ -714,26 +549,9 @@ def _record_role_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO role_audit"
-            " (soa_id, role_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                role_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording role audit: %s", e)
+    _record_audit(
+        "role_audit", "role_id", "role", soa_id, action, role_id, before, after
+    )
 
 
 def _record_gov_date_audit(
@@ -743,26 +561,16 @@ def _record_gov_date_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO amendment_governance_date_audit"
-            " (soa_id, date_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                date_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording gov_date audit: %s", e)
+    _record_audit(
+        "amendment_governance_date_audit",
+        "date_id",
+        "gov_date",
+        soa_id,
+        action,
+        date_id,
+        before,
+        after,
+    )
 
 
 def _record_study_title_audit(
@@ -772,26 +580,16 @@ def _record_study_title_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO study_title_audit "
-            "(soa_id, title_id, action, before_json, after_json, performed_at) "
-            "VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                title_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording study_title audit: %s", e)
+    _record_audit(
+        "study_title_audit",
+        "title_id",
+        "study_title",
+        soa_id,
+        action,
+        title_id,
+        before,
+        after,
+    )
 
 
 def _record_study_intervention_audit(
@@ -801,26 +599,16 @@ def _record_study_intervention_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO study_intervention_audit"
-            " (soa_id, intervention_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                intervention_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording study_intervention audit: %s", e)
+    _record_audit(
+        "study_intervention_audit",
+        "intervention_id",
+        "study_intervention",
+        soa_id,
+        action,
+        intervention_id,
+        before,
+        after,
+    )
 
 
 def _record_estimand_audit(
@@ -830,26 +618,16 @@ def _record_estimand_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO estimand_audit"
-            " (soa_id, estimand_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                estimand_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording estimand audit: %s", e)
+    _record_audit(
+        "estimand_audit",
+        "estimand_id",
+        "estimand",
+        soa_id,
+        action,
+        estimand_id,
+        before,
+        after,
+    )
 
 
 def _record_indication_audit(
@@ -859,26 +637,16 @@ def _record_indication_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO indication_audit"
-            " (soa_id, indication_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                indication_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording indication audit: %s", e)
+    _record_audit(
+        "indication_audit",
+        "indication_id",
+        "indication",
+        soa_id,
+        action,
+        indication_id,
+        before,
+        after,
+    )
 
 
 def _record_person_audit(
@@ -888,26 +656,9 @@ def _record_person_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO person_audit"
-            " (soa_id, person_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                person_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording person audit: %s", e)
+    _record_audit(
+        "person_audit", "person_id", "person", soa_id, action, person_id, before, after
+    )
 
 
 def _record_study_identifier_audit(
@@ -917,23 +668,13 @@ def _record_study_identifier_audit(
     before: Optional[Dict[str, Any]] = None,
     after: Optional[Dict[str, Any]] = None,
 ):
-    try:
-        conn = _connect()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO study_identifier_audit"
-            " (soa_id, si_id, action, before_json, after_json,"
-            " performed_at) VALUES (?,?,?,?,?,?)",
-            (
-                soa_id,
-                si_id,
-                action,
-                json.dumps(before) if before else None,
-                json.dumps(after) if after else None,
-                datetime.now(timezone.utc).isoformat(),
-            ),
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.warning("Failed recording study_identifier audit: %s", e)
+    _record_audit(
+        "study_identifier_audit",
+        "si_id",
+        "study_identifier",
+        soa_id,
+        action,
+        si_id,
+        before,
+        after,
+    )

@@ -101,3 +101,18 @@ def clean_test_db_session():
     # Optionally clean after session; comment out to inspect DB after tests
     yield
     # _remove_db_files(TEST_DB_PATH)
+
+
+@pytest.fixture(autouse=True)
+def fail_on_audit_failures():
+    """Audit recorders swallow errors so requests never break; in tests
+    a swallowed failure means a lost audit row, so surface it."""
+    from soa_builder.web import audit
+
+    audit.reset_audit_failures()
+    yield
+    failures = audit.audit_failure_count()
+    audit.reset_audit_failures()
+    assert failures == 0, (
+        f"{failures} audit row(s) failed to record; see the ERROR log above"
+    )

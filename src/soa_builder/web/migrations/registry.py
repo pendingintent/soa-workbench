@@ -16,6 +16,7 @@ from usdm.generate_biomedical_concept_properties import (
     populate_biomedical_concept_properties_for_all_soas,
 )
 
+from .m0114_repair_audit_tables import m0114_repair_audit_tables
 from ..migrate_database import (
     _drop_unused_override_table,
     _migrate_activity_add_superscript,
@@ -358,6 +359,7 @@ MIGRATIONS = (
     ),
     ("migrate_add_uid_counter_table", _migrate_add_uid_counter_table),
     ("migrate_index_all_soa_id_tables", _migrate_index_all_soa_id_tables),
+    ("m0114_repair_audit_tables", m0114_repair_audit_tables),
 )
 
 # name -> why it must keep running on every boot
