@@ -1010,6 +1010,117 @@ def _safety_freeze_label(soa_id: int, target_label: Optional[str]) -> str:
     return label
 
 
+# Tables whose rows rollback deletes and rebuilds; references from them
+# do not keep a code row alive.
+_BC_CODE_CHAIN_TABLES = (
+    "biomedical_concept",
+    "biomedical_concept_property",
+    "bcp_response_code",
+)
+
+
+def _code_uids_referenced_elsewhere(cur, soa_id: int) -> set:
+    """Return code_uids referenced by tables outside the BC chain.
+
+    Scans every ``*code_uid`` column so code rows owned by entities
+    rollback never restores (titles, interventions, roles, ...) stay
+    put, including ones added by future tables.
+    """
+    skip = {"code", "alias_code", "code_association", *_BC_CODE_CHAIN_TABLES}
+    cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+        " AND name NOT LIKE '%\\_audit' ESCAPE '\\'"
+    )
+    tables = [r[0] for r in cur.fetchall() if r[0] not in skip]
+    referenced: set = set()
+    for table in tables:
+        cols = _table_columns(cur, table)
+        if "soa_id" not in cols:
+            continue
+        for col in cols:
+            if col.endswith("code_uid"):
+                cur.execute(
+                    f"SELECT {col} FROM {table} WHERE soa_id=? AND {col} IS NOT NULL",
+                    (soa_id,),
+                )
+                referenced.update(r[0] for r in cur.fetchall())
+    return referenced
+
+
+def _delete_bc_code_chain(cur, soa_id: int) -> None:
+    """Delete the alias_code/code rows behind the BC tables only.
+
+    Rollback rebuilds biomedical concepts (and their alias and
+    standard codes) from the snapshot's activity concepts. Codes that
+    other entities point at are kept.
+    """
+    alias_uids: set = set()
+    for table in _BC_CODE_CHAIN_TABLES:
+        if not _table_has_columns(cur, table, ("code",)):
+            continue
+        cur.execute(
+            f"SELECT code FROM {table} WHERE soa_id=? AND code IS NOT NULL",
+            (soa_id,),
+        )
+        alias_uids.update(r[0] for r in cur.fetchall())
+    if not alias_uids:
+        return
+    alias_list = sorted(alias_uids)
+    ph = ",".join("?" * len(alias_list))
+    cur.execute(
+        f"SELECT standard_code FROM alias_code"
+        f" WHERE soa_id=? AND alias_code_uid IN ({ph})"
+        f" AND standard_code IS NOT NULL",
+        [soa_id] + alias_list,
+    )
+    code_uids = {r[0] for r in cur.fetchall()}
+    code_uids -= _code_uids_referenced_elsewhere(cur, soa_id)
+    cur.execute(
+        f"DELETE FROM alias_code WHERE soa_id=? AND alias_code_uid IN ({ph})",
+        [soa_id] + alias_list,
+    )
+    if code_uids:
+        code_list = sorted(code_uids)
+        cph = ",".join("?" * len(code_list))
+        cur.execute(
+            f"DELETE FROM code WHERE soa_id=? AND code_uid IN ({cph})",
+            [soa_id] + code_list,
+        )
+
+
+# Tables keyed on the integer activity.id that freeze does not capture.
+# Rollback re-inserts activities under new ids, so these rows are
+# re-pointed (or dropped when their activity is not restored).
+ACTIVITY_ID_CHILD_TABLES = ("activity_concept_dss", "activity_concept_crf")
+
+
+def _remap_activity_children(cur, soa_id: int, activity_id_map: dict) -> int:
+    """Re-point rows keyed on old activity ids; drop unmapped ones.
+
+    Returns the number of rows dropped. Updates go row by row through
+    the child's own id, so an old id can never collide with a new one.
+    """
+    dropped = 0
+    for table in ACTIVITY_ID_CHILD_TABLES:
+        if not _table_has_columns(cur, table, ("id", "activity_id", "soa_id")):
+            continue
+        cur.execute(
+            f"SELECT id, activity_id FROM {table} WHERE soa_id=?",
+            (soa_id,),
+        )
+        for row_id, old_activity_id in cur.fetchall():
+            new_activity_id = activity_id_map.get(old_activity_id)
+            if new_activity_id is None:
+                cur.execute(f"DELETE FROM {table} WHERE id=?", (row_id,))
+                dropped += 1
+            else:
+                cur.execute(
+                    f"UPDATE {table} SET activity_id=? WHERE id=?",
+                    (new_activity_id, row_id),
+                )
+    return dropped
+
+
 def _restore_rows(cur, soa_id: int, table: str, rows, enabled: bool) -> int:
     """Insert snapshot ``rows`` for ``soa_id`` into ``table`` using the
     columns they share with the live table (id/soa_id excluded)."""
@@ -1121,13 +1232,15 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         " (SELECT id FROM activity WHERE soa_id=? )",
         (soa_id,),
     )
+    # Only the BC chain's alias/standard codes are reset; codes owned by
+    # entities rollback does not restore (titles, roles, ...) must stay.
+    # Must run before the BC tables are emptied (it reads their codes).
+    _delete_bc_code_chain(cur, soa_id)
     cur.execute("DELETE FROM biomedical_concept WHERE soa_id=?", (soa_id,))
     # Cascade: BCPs/RCs are rebuilt on the next populate; wipe them here so
     # they do not orphan when biomedical_concept/alias_code/code are reset.
     cur.execute("DELETE FROM bcp_response_code WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM biomedical_concept_property WHERE soa_id=?", (soa_id,))
-    cur.execute("DELETE FROM alias_code WHERE soa_id=?", (soa_id,))
-    cur.execute("DELETE FROM code WHERE soa_id=?", (soa_id,))
     if _table_has_columns(cur, "objective", ("id",)):
         cur.execute("DELETE FROM objective WHERE soa_id=?", (soa_id,))
     if _table_has_columns(cur, "endpoint", ("id",)):
@@ -1139,6 +1252,10 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     if _table_has_columns(cur, "epoch", ("id",)):
         cur.execute("DELETE FROM epoch WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM code_association WHERE soa_id=?", (soa_id,))
+    # Live ids can differ from the snapshot's (e.g. after an earlier
+    # rollback), so child rows are re-pointed through activity_uid.
+    cur.execute("SELECT id, activity_uid FROM activity WHERE soa_id=?", (soa_id,))
+    live_activity_uid = {r[0]: r[1] for r in cur.fetchall()}
     cur.execute("DELETE FROM activity WHERE soa_id=?", (soa_id,))
     # Encounters live in the visit table. Instance-axis snapshots keep
     # instance rows under "visits", so only delete encounters when
@@ -1325,6 +1442,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         if c in activity_cols
     ]
     activity_id_map = {}
+    new_id_by_activity_uid = {}
     for a in sorted(activities, key=lambda x: x.get("order_index", 0)):
         cols = ["soa_id", "name", "order_index"]
         vals = [soa_id, a.get("name"), a.get("order_index")]
@@ -1339,6 +1457,17 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         )
         new_id = cur.lastrowid
         activity_id_map[a.get("id")] = new_id
+        if a.get("activity_uid"):
+            new_id_by_activity_uid[a["activity_uid"]] = new_id
+    live_to_new_activity_id = {}
+    for live_id, uid in live_activity_uid.items():
+        if uid:
+            new_id = new_id_by_activity_uid.get(uid)
+        else:  # legacy row without a UID: fall back to the snapshot id
+            new_id = activity_id_map.get(live_id)
+        if new_id is not None:
+            live_to_new_activity_id[live_id] = new_id
+    _remap_activity_children(cur, soa_id, live_to_new_activity_id)
     # Snapshots store the matrix axis under "visits" (instance rows
     # carrying instance_uid) and cells keyed on instance_id. Instances
     # are not rebuilt by rollback, so map each snapshot instance id to

@@ -151,6 +151,7 @@ from .migrate_database import (
     _migrate_backfill_crf_href_latest_version,
     _migrate_add_activity_grouping_extension_table,
     _migrate_add_uid_counter_table,
+    _migrate_index_all_soa_id_tables,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -437,6 +438,8 @@ _migrate_add_element_intervention_table()
 _migrate_backfill_crf_href_latest_version()
 _migrate_add_activity_grouping_extension_table()
 _migrate_add_uid_counter_table()
+# Must stay last: indexes every soa-scoped table created above.
+_migrate_index_all_soa_id_tables()
 
 
 # Include routers
@@ -3138,6 +3141,16 @@ def set_cell_instance(soa_id: int, payload: dict):
         raise HTTPException(400, "instance_id and activity_id required")
     conn = _connect()
     cur = conn.cursor()
+    cur.execute(
+        "SELECT 1 FROM instances WHERE id=? AND soa_id=?", (instance_id, soa_id)
+    )
+    if cur.fetchone() is None:
+        conn.close()
+        raise HTTPException(404, f"Instance {instance_id} not found in SOA")
+    cur.execute("SELECT 1 FROM activity WHERE id=? AND soa_id=?", (activity_id, soa_id))
+    if cur.fetchone() is None:
+        conn.close()
+        raise HTTPException(404, f"Activity {activity_id} not found in SOA")
     cur.execute(
         "SELECT id FROM matrix_cells WHERE soa_id=? AND instance_id=? AND activity_id=?",
         (soa_id, instance_id, activity_id),
