@@ -27,7 +27,7 @@ def _expand_category_to_activity(
     Skips concepts already present (any source). Returns list of newly
     inserted concept codes for background enrichment.
     """
-    from ..app import (
+    from ..services.concepts import (
         fetch_biomedical_concepts_by_category,
         _upsert_biomedical_concept,
     )
@@ -98,7 +98,7 @@ def ui_add_category_to_activity(
     conn.commit()
     conn.close()
 
-    from ..app import (
+    from ..services.concepts import (
         _enrich_biomedical_concept_bg,
         _enrich_code_bg,
         _populate_biomedical_concept_properties_bg,

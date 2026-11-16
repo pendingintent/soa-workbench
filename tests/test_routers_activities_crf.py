@@ -126,7 +126,7 @@ def test_crf_options_returns_option_elements():
     with patch(
         "soa_builder.web.routers.activities.fetch_crf_specializations"
         if False
-        else "soa_builder.web.app.fetch_crf_specializations",
+        else "soa_builder.web.services.concepts.fetch_crf_specializations",
         return_value=_MOCK_CRF_LIST,
     ):
         resp = client.get(
@@ -145,7 +145,7 @@ def test_crf_options_excludes_already_assigned():
     _seed_ac()
     _seed_crf(href=CRF_HREF, title=CRF_TITLE)
     with patch(
-        "soa_builder.web.app.fetch_crf_specializations",
+        "soa_builder.web.services.concepts.fetch_crf_specializations",
         return_value=_MOCK_CRF_LIST,
     ):
         resp = client.get(
@@ -167,7 +167,7 @@ def test_save_crf_assignment_creates_row():
     _seed_ac()
     selection = f"{CRF_TITLE}||{CRF_HREF}"
     with patch(
-        "soa_builder.web.app.fetch_crf_specializations",
+        "soa_builder.web.services.concepts.fetch_crf_specializations",
         return_value=_MOCK_CRF_LIST,
     ):
         resp = client.post(
@@ -195,7 +195,7 @@ def test_save_crf_duplicate_is_ignored():
     _seed_ac()
     selection = f"{CRF_TITLE}||{CRF_HREF}"
     with patch(
-        "soa_builder.web.app.fetch_crf_specializations",
+        "soa_builder.web.services.concepts.fetch_crf_specializations",
         return_value=_MOCK_CRF_LIST,
     ):
         client.post(
@@ -296,7 +296,7 @@ def test_get_crf_cell_returns_html():
 
 def test_crf_specializations_list_page():
     with patch(
-        "soa_builder.web.app.fetch_crf_specializations",
+        "soa_builder.web.services.concepts.fetch_crf_specializations",
         return_value=_MOCK_CRF_LIST,
     ):
         resp = client.get("/ui/crf/specializations")
@@ -307,7 +307,7 @@ def test_crf_specializations_list_page():
 
 def test_crf_specializations_list_empty():
     with patch(
-        "soa_builder.web.app.fetch_crf_specializations",
+        "soa_builder.web.services.concepts.fetch_crf_specializations",
         return_value=[],
     ):
         resp = client.get("/ui/crf/specializations")

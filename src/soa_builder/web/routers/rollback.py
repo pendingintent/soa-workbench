@@ -23,7 +23,7 @@ logger = logging.getLogger("soa_builder.web.routers.rollback")
 def get_rollback_audit_json(soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    from ..app import _list_rollback_audit  # type: ignore
+    from ._freeze_helpers import _list_rollback_audit  # type: ignore
 
     return {"audit": _list_rollback_audit(soa_id)}
 
@@ -32,7 +32,7 @@ def get_rollback_audit_json(soa_id: int):
 def get_reorder_audit_json(soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    from ..app import _list_reorder_audit  # type: ignore
+    from ..services.matrix import _list_reorder_audit  # type: ignore
 
     return {"audit": _list_reorder_audit(soa_id)}
 
@@ -41,7 +41,7 @@ def get_reorder_audit_json(soa_id: int):
 def ui_rollback_audit(request: Request, soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    from ..app import _list_rollback_audit  # type: ignore
+    from ._freeze_helpers import _list_rollback_audit  # type: ignore
 
     return templates.TemplateResponse(
         request,
@@ -54,7 +54,7 @@ def ui_rollback_audit(request: Request, soa_id: int):
 def ui_reorder_audit(request: Request, soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    from ..app import _list_reorder_audit  # type: ignore
+    from ..services.matrix import _list_reorder_audit  # type: ignore
 
     return templates.TemplateResponse(
         request,
@@ -67,7 +67,7 @@ def ui_reorder_audit(request: Request, soa_id: int):
 def export_rollback_audit_xlsx(soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    from ..app import _list_rollback_audit  # type: ignore
+    from ._freeze_helpers import _list_rollback_audit  # type: ignore
     from ._freeze_helpers import ROLLBACK_AUDIT_COLUMNS
 
     rows = _list_rollback_audit(soa_id)
@@ -90,7 +90,7 @@ def export_rollback_audit_xlsx(soa_id: int):
 def export_reorder_audit_xlsx(soa_id: int):
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
-    from ..app import _list_reorder_audit  # type: ignore
+    from ..services.matrix import _list_reorder_audit  # type: ignore
 
     rows = _list_reorder_audit(soa_id)
     flat = []

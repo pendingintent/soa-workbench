@@ -611,7 +611,7 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
     ]
 
     # Fetch CDISC BC categories list (for the dropdown)
-    from ..app import (
+    from ..services.concepts import (
         fetch_biomedical_concept_categories as _fetch_categories,
     )
 
@@ -622,7 +622,7 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
 
     # Fetch all concept groups (for the dropdown), organized into
     # CDISC-scheme + Custom Concept Groups sections.
-    from ..app import _get_concept_group_sections
+    from ..services.concepts import _get_concept_group_sections
 
     concept_groups = _get_concept_group_sections()
     activity_group_uids = list(
@@ -636,7 +636,7 @@ def _render_concepts_cell(request: Request, soa_id: int, activity_id: int):
     conn.close()
 
     # Fetch BC concepts list (for the dropdown)
-    from ..app import fetch_biomedical_concepts as _app_fetch_concepts
+    from ..services.concepts import fetch_biomedical_concepts as _app_fetch_concepts
 
     concepts = _app_fetch_concepts()
 
