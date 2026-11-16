@@ -266,7 +266,7 @@ def test_rollback_restores_optional_activity_and_cell_fields():
 def test_cells_skipped_migration_adds_column_once(tmp_path, monkeypatch):
     import sqlite3
 
-    from soa_builder.web import migrate_database
+    from soa_builder.web.migrations import legacy_core as migrate_database
 
     path = str(tmp_path / "old_schema.db")
     conn = sqlite3.connect(path)
