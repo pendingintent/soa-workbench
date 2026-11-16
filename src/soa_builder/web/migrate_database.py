@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 from .db import _connect
 
 load_dotenv()
-DB_PATH = os.environ.get("SOA_BUILDER_DB", "soa_builder_web.db")
 logger = logging.getLogger("soa_builder.concepts")
 if not logger.handlers:
     _h = logging.StreamHandler()
@@ -1497,6 +1496,49 @@ def _migrate_add_soa_id_indexes():
         logger.info("_migrate_add_soa_id_indexes: ensured indexes %s", created)
     except Exception as e:
         logger.warning("_migrate_add_soa_id_indexes: %s", e)
+
+
+def _has_leading_soa_id_index(cur, table: str) -> bool:
+    """True when some index on ``table`` has soa_id as its first column."""
+    cur.execute(f"PRAGMA index_list({table})")
+    for idx in cur.fetchall():
+        cur.execute(f"PRAGMA index_info({idx[1]})")
+        cols = [r[2] for r in cur.fetchall()]
+        if cols and cols[0] == "soa_id":
+            return True
+    return False
+
+
+def _migrate_index_all_soa_id_tables():
+    """Index soa_id on every soa-scoped table that lacks a leading one.
+
+    Covers the tables _migrate_add_soa_id_indexes missed (code/BC child
+    tables and all *_audit tables) and any table added later. Tables
+    already led by a UNIQUE(soa_id, ...) index are skipped.
+    """
+    try:
+        conn = _connect()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+            " AND name NOT LIKE 'sqlite_%'"
+        )
+        created = []
+        for (table,) in cur.fetchall():
+            cur.execute(f"PRAGMA table_info({table})")
+            if "soa_id" not in {r[1] for r in cur.fetchall()}:
+                continue
+            if _has_leading_soa_id_index(cur, table):
+                continue
+            idx_name = f"idx_{table}_soa"
+            cur.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table}(soa_id)")
+            created.append(idx_name)
+        conn.commit()
+        conn.close()
+        if created:
+            logger.info("_migrate_index_all_soa_id_tables: created %s", created)
+    except Exception as e:
+        logger.warning("_migrate_index_all_soa_id_tables: %s", e)
 
 
 def _migrate_add_footnote_table():
