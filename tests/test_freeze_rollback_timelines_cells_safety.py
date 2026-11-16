@@ -211,7 +211,7 @@ def test_safety_freeze_labels_are_unique_across_rollbacks():
 
 
 def test_safety_freeze_failure_aborts_rollback(monkeypatch):
-    import soa_builder.web.routers._freeze_helpers as fh
+    import soa_builder.web.routers._freeze_helpers.rollback as fh
 
     soa_id = _new_soa()
     _seed(soa_id)

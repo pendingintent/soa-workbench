@@ -130,14 +130,15 @@ pre-commit run --all-files  # runs ruff-check --fix, ruff-format, pytest
 - **HTMX UI**: Templates use `base.html` inheritance; form submissions return HTML partials for swaps
 
 ### Freeze and Rollback
-`routers/freezes.py`, `rollback.py` and `_freeze_helpers.py` snapshot
+`routers/freezes.py`, `rollback.py` and the `_freeze_helpers/` package snapshot
 and restore entity tables. `web/snapshot_policy.py` declares what
 rollback does with every table that has a `soa_id` column (restored,
 rebuilt, re-pointed to restored activities, not versioned, or
 excluded). `tests/test_snapshot_coverage.py` fails when a new table is
 unclassified or is keyed on `activity.id` without being restored or
 re-pointed, so decide the policy when adding a table. Restoring a
-table also needs capture and restore code in `_freeze_helpers.py`.
+table also needs capture and restore code in
+`routers/_freeze_helpers/` (`capture.py`, `rollback.py`).
 Rollback tests live in `tests/test_freeze_rollback_*.py` and
 `tests/test_rollback_*.py`.
 
