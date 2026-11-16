@@ -88,7 +88,7 @@ def _expand_group_to_activity(
 
     Skips concepts already present (any source). Returns count added.
     """
-    from ..app import _upsert_biomedical_concept
+    from ..services.concepts import _upsert_biomedical_concept
 
     cur.execute(
         "SELECT concept_code, concept_title "
@@ -326,7 +326,7 @@ def add_concepts_to_group(group_id: int, payload: ConceptsAdd):
     cur = conn.cursor()
     row = _fetch_group_row(cur, group_id, require_custom=True)
     uid = row[1]
-    from ..app import fetch_biomedical_concepts as _fetch_concepts
+    from ..services.concepts import fetch_biomedical_concepts as _fetch_concepts
 
     lookup = {c["code"]: c["title"] for c in _fetch_concepts()}
     added = 0
@@ -382,7 +382,7 @@ def add_category_to_group(group_id: int, payload: CategoryAdd):
     cur = conn.cursor()
     row = _fetch_group_row(cur, group_id, require_custom=True)
     uid = row[1]
-    from ..app import (
+    from ..services.concepts import (
         fetch_biomedical_concepts_by_category as _fetch_by_cat,
     )
 
@@ -532,7 +532,7 @@ def ui_list_concept_groups(request: Request):
         for r in cur.fetchall()
     ]
     conn.close()
-    from ..app import (
+    from ..services.concepts import (
         fetch_biomedical_concept_categories as _fetch_cats,
         fetch_biomedical_concepts as _fetch_concepts,
     )
@@ -650,7 +650,7 @@ def ui_add_concept_to_group(
     conn = _connect()
     cur = conn.cursor()
     uid = _fetch_custom_group_uid(cur, group_id)
-    from ..app import fetch_biomedical_concepts as _fetch_concepts
+    from ..services.concepts import fetch_biomedical_concepts as _fetch_concepts
 
     lookup = {c["code"]: c["title"] for c in _fetch_concepts()}
     title = lookup.get(code, code)
@@ -698,7 +698,7 @@ def ui_add_category_to_group(
     conn = _connect()
     cur = conn.cursor()
     uid = _fetch_custom_group_uid(cur, group_id)
-    from ..app import (
+    from ..services.concepts import (
         fetch_biomedical_concepts_by_category as _fetch_by_cat,
     )
 
@@ -808,7 +808,7 @@ def ui_add_group_to_activity(
     conn.commit()
     conn.close()
 
-    from ..app import (
+    from ..services.concepts import (
         _enrich_biomedical_concept_bg,
         _enrich_code_bg,
         _populate_biomedical_concept_properties_bg,

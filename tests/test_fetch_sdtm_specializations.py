@@ -54,7 +54,9 @@ def test_fetch_sdtm_specializations_remote_no_code(monkeypatch):
     mock_resp.text = json.dumps(fake_json)
     mock_resp.json.return_value = fake_json
 
-    with patch("soa_builder.web.app.requests.get", return_value=mock_resp) as mock_get:
+    with patch(
+        "soa_builder.web.services.concepts.requests.get", return_value=mock_resp
+    ) as mock_get:
         result = fetch_sdtm_specializations(force=True)
 
     mock_get.assert_called_once()
@@ -91,7 +93,9 @@ def test_fetch_sdtm_specializations_with_code_uses_generic_endpoint(monkeypatch)
     mock_resp.text = json.dumps(hal_json)
     mock_resp.json.return_value = hal_json
 
-    with patch("soa_builder.web.app.requests.get", return_value=mock_resp) as mock_get:
+    with patch(
+        "soa_builder.web.services.concepts.requests.get", return_value=mock_resp
+    ) as mock_get:
         result = fetch_sdtm_specializations(force=True, code="C105585")
 
     # Ensure it called the generic endpoint with biomedicalconcept

@@ -57,7 +57,9 @@ def test_fetch_crf_specializations_remote_no_code_uses_latest_endpoint(monkeypat
     mock_resp.text = json.dumps(fake_json)
     mock_resp.json.return_value = fake_json
 
-    with patch("soa_builder.web.app.requests.get", return_value=mock_resp) as mock_get:
+    with patch(
+        "soa_builder.web.services.concepts.requests.get", return_value=mock_resp
+    ) as mock_get:
         result = fetch_crf_specializations(force=True)
 
     # Only one request — no separate packages lookup.
@@ -106,7 +108,9 @@ def test_fetch_crf_specializations_with_code_uses_generic_endpoint(monkeypatch):
     mock_resp.text = json.dumps(hal_json)
     mock_resp.json.return_value = hal_json
 
-    with patch("soa_builder.web.app.requests.get", return_value=mock_resp) as mock_get:
+    with patch(
+        "soa_builder.web.services.concepts.requests.get", return_value=mock_resp
+    ) as mock_get:
         result = fetch_crf_specializations(force=True, code="C179175")
 
     called_url = mock_get.call_args[0][0]

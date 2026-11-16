@@ -33,7 +33,9 @@ def test_cdisc_status_ok(monkeypatch):
     monkeypatch.setenv("CDISC_API_KEY", "test-key")
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    with patch("soa_builder.web.app.requests.get", return_value=mock_resp):
+    with patch(
+        "soa_builder.web.services.concepts.requests.get", return_value=mock_resp
+    ):
         resp = client.get("/ui/cdisc-api-status")
     assert resp.status_code == 200
     assert "am-api-notice-ok" in resp.text
@@ -43,7 +45,7 @@ def test_cdisc_status_connection_error(monkeypatch):
     monkeypatch.delenv("CDISC_SKIP_REMOTE", raising=False)
     monkeypatch.setenv("CDISC_API_KEY", "test-key")
     with patch(
-        "soa_builder.web.app.requests.get",
+        "soa_builder.web.services.concepts.requests.get",
         side_effect=_requests.exceptions.ConnectionError("unreachable"),
     ):
         resp = client.get("/ui/cdisc-api-status")
@@ -55,7 +57,7 @@ def test_cdisc_status_timeout(monkeypatch):
     monkeypatch.delenv("CDISC_SKIP_REMOTE", raising=False)
     monkeypatch.setenv("CDISC_API_KEY", "test-key")
     with patch(
-        "soa_builder.web.app.requests.get",
+        "soa_builder.web.services.concepts.requests.get",
         side_effect=_requests.exceptions.Timeout("timed out"),
     ):
         resp = client.get("/ui/cdisc-api-status")
@@ -68,7 +70,9 @@ def test_cdisc_status_server_error(monkeypatch):
     monkeypatch.setenv("CDISC_API_KEY", "test-key")
     mock_resp = MagicMock()
     mock_resp.status_code = 503
-    with patch("soa_builder.web.app.requests.get", return_value=mock_resp):
+    with patch(
+        "soa_builder.web.services.concepts.requests.get", return_value=mock_resp
+    ):
         resp = client.get("/ui/cdisc-api-status")
     assert resp.status_code == 200
     assert "am-api-notice-error" in resp.text

@@ -489,7 +489,7 @@ def _get_freeze(soa_id: int, freeze_id: int):
 
 def _create_freeze(soa_id: int, version_label: Optional[str]):
     # Lazy imports to avoid circular dependency with app.py
-    from ..app import _fetch_matrix
+    from ..services.matrix import _fetch_matrix
 
     if not soa_exists(soa_id):
         raise HTTPException(404, "SOA not found")
@@ -1141,7 +1141,7 @@ def _restore_rows(cur, soa_id: int, table: str, rows, enabled: bool) -> int:
 
 def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     # Lazy import to avoid circular dependency with app.py
-    from ..app import _upsert_biomedical_concept
+    from ..services.concepts import _upsert_biomedical_concept
 
     freeze = _get_freeze(soa_id, freeze_id)
     if not freeze:
