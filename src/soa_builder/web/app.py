@@ -151,6 +151,7 @@ from .migrate_database import (
     _migrate_backfill_crf_href_latest_version,
     _migrate_add_activity_grouping_extension_table,
     _migrate_add_uid_counter_table,
+    _migrate_index_all_soa_id_tables,
 )
 from .routers import activities as activities_router
 from .routers import arms as arms_router
@@ -437,6 +438,8 @@ _migrate_add_element_intervention_table()
 _migrate_backfill_crf_href_latest_version()
 _migrate_add_activity_grouping_extension_table()
 _migrate_add_uid_counter_table()
+# Must stay last: indexes every soa-scoped table created above.
+_migrate_index_all_soa_id_tables()
 
 
 # Include routers
