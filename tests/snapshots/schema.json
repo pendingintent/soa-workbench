@@ -1,0 +1,6043 @@
+{
+ "activity": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "activity_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "superscript",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_activity_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
+   "idx_activity_soa_uid": {
+    "columns": [
+     "soa_id",
+     "activity_uid"
+    ],
+    "unique": 1
+   },
+   "sqlite_autoindex_activity_1": {
+    "columns": [
+     "soa_id",
+     "activity_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "activity_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "activity_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "activity_concept": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "activity_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "concept_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "concept_title",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "concept_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "activity_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "href",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "dss_title",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "dss_href",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "dss_domain",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "concept_group_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "bc_category_name",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_activity_concept_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
+ },
+ "activity_concept_crf": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "activity_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "concept_code",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "crf_title",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "crf_href",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "extension_attribute_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "activity_concept_dss": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "activity_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "concept_code",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "dss_title",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "dss_href",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "dss_domain",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "dss_display",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "extension_attribute_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "activity_grouping_extension": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "activity_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "concept_group_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "ea_outer_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "ec_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "ea_scheme_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "ea_value_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_activity_grouping_extension_1": {
+    "columns": [
+     "soa_id",
+     "activity_uid",
+     "concept_group_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "activity_surrogate": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "activity_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "surrogate_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "concept_group_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_activity_surrogate_1": {
+    "columns": [
+     "soa_id",
+     "activity_uid",
+     "surrogate_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "alias_code": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "alias_code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "standard_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_alias_code_1": {
+    "columns": [
+     "alias_code_uid",
+     "soa_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "amendment_geographic_scope": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "amendment_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "scope_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type_code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "location_code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_amendment_geographic_scope_1": {
+    "columns": [
+     "soa_id",
+     "scope_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "amendment_geographic_scope_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "scope_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "amendment_governance_date": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "amendment_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "date_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type_code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "date_value",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_amendment_governance_date_1": {
+    "columns": [
+     "soa_id",
+     "date_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "amendment_governance_date_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "date_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "amendment_subject_enrollment": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "amendment_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "enrollment_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "quantity_value",
+    "notnull": 1,
+    "pk": 0,
+    "type": "REAL"
+   },
+   {
+    "default": null,
+    "name": "quantity_unit_code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "for_scope_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "for_study_cohort_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "for_study_site_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_amendment_subject_enrollment_1": {
+    "columns": [
+     "soa_id",
+     "enrollment_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "amendment_subject_enrollment_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "enrollment_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "arm": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "data_origin_type",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "arm_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_arm_soaid_uid": {
+    "columns": [
+     "soa_id",
+     "arm_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "arm_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "arm_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "bcp_response_code": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "biomedical_concept_property_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "response_code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "1",
+    "name": "is_enabled",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_bcp_response_code_1": {
+    "columns": [
+     "response_code_uid",
+     "soa_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "biomedical_concept": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "biomedical_concept_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_biomedical_concept_1": {
+    "columns": [
+     "biomedical_concept_uid",
+     "soa_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "biomedical_concept_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "biomedical_concept_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "biomedical_concept_property": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "biomedical_concept_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "biomedical_concept_property_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "isRequired",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "isEnabled",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "datatype",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "code",
+    "notnull": 0,
+    "pk": 0,
+    "type": ""
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_biomedical_concept_property_1": {
+    "columns": [
+     "biomedical_concept_property_uid",
+     "soa_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "biomedical_concept_surrogate": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "surrogate_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "reference",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "concept_group_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_biomedical_concept_surrogate_1": {
+    "columns": [
+     "surrogate_uid",
+     "soa_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "biomedical_concept_surrogate_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "surrogate_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "code": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "code_system",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "code_system_version",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_code_1": {
+    "columns": [
+     "code_uid",
+     "soa_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "code_association": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "codelist_table",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "codelist_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "code",
+    "notnull": 0,
+    "pk": 0,
+    "type": ""
+   },
+   {
+    "default": null,
+    "name": "decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_code_association_1": {
+    "columns": [
+     "code_uid",
+     "soa_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "concept_group": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "concept_group_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "'custom'",
+    "name": "source",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "cdisc_scheme_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "cdisc_scheme_name",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "cdisc_value_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_concept_group_1": {
+    "columns": [
+     "concept_group_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "concept_group_concept": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "concept_group_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "concept_code",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "concept_title",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_concept_group_concept_1": {
+    "columns": [
+     "concept_group_uid",
+     "concept_code"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "condition_assignment": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "condition_assignment_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "condition",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "decision_instance_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "condition_target_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_condition_assignment_1": {
+    "columns": [
+     "soa_id",
+     "condition_assignment_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "country_codes": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "country_name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "country_numeric_code",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "decision_instances": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "instance_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "default_condition_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "epoch_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "member_of_timeline",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_decision_instances_1": {
+    "columns": [
+     "soa_id",
+     "instance_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "document_content_reference": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "change_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "ref_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "section_number",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "section_title",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "applies_to_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_document_content_reference_1": {
+    "columns": [
+     "soa_id",
+     "ref_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "document_content_reference_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "ref_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "element": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "element_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "testrl",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "teenrl",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "created_at",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_element_soaid_elementid": {
+    "columns": [
+     "soa_id",
+     "element_id"
+    ],
+    "unique": 1
+   },
+   "sqlite_autoindex_element_1": {
+    "columns": [
+     "soa_id",
+     "element_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "element_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "element_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "element_intervention": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "element_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "intervention_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_element_intervention_1": {
+    "columns": [
+     "soa_id",
+     "element_id",
+     "intervention_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "endpoint": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "endpoint_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "objective_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "purpose",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "level_code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_endpoint_1": {
+    "columns": [
+     "soa_id",
+     "endpoint_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "endpoint_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "endpoint_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "epoch": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "epoch_seq",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "epoch_label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "epoch_description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "epoch_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "superscript",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_epoch_soaid_seq": {
+    "columns": [
+     "soa_id",
+     "epoch_seq"
+    ],
+    "unique": 1
+   },
+   "idx_epoch_soaid_uid": {
+    "columns": [
+     "soa_id",
+     "epoch_uid"
+    ],
+    "unique": 1
+   },
+   "sqlite_autoindex_epoch_1": {
+    "columns": [
+     "soa_id",
+     "epoch_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "epoch_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "epoch_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "estimand": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "estimand_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "population_summary",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "variable_of_interest_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_estimand_1": {
+    "columns": [
+     "soa_id",
+     "estimand_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "estimand_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "estimand_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "estimand_intervention": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "estimand_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "intervention_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {}
+ },
+ "estimand_variable": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "estimand_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "endpoint_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {}
+ },
+ "footnote": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "footnote_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "dictionary_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_footnote_1": {
+    "columns": [
+     "soa_id",
+     "footnote_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "footnote_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "footnote_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "geographic_regions": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "region",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "subregion",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "region_numeric_code",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "governance_date_geographic_scope": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "date_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "scope_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "indication": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "indication_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "0",
+    "name": "is_rare_disease",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_indication_1": {
+    "columns": [
+     "soa_id",
+     "indication_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "indication_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "indication_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "indication_code": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "indication_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {}
+ },
+ "instance_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "instance_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "instances": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "instance_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "default_condition_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "epoch_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "timeline_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "timeline_exit_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "encounter_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "member_of_timeline",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_instances_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
+   "idx_instances_soa_encounter": {
+    "columns": [
+     "soa_id",
+     "encounter_uid"
+    ],
+    "unique": 0
+   },
+   "sqlite_autoindex_instances_1": {
+    "columns": [
+     "soa_id",
+     "instance_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "intercurrent_event": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "estimand_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "event_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "strategy",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_intercurrent_event_1": {
+    "columns": [
+     "soa_id",
+     "event_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "matrix_cells": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "visit_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "activity_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "status",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "instance_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "superscript",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_matrix_cells_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
+ },
+ "objective": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "objective_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "level_code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_objective_1": {
+    "columns": [
+     "soa_id",
+     "objective_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "objective_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "objective_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "organization": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "organization_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "identifier",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "identifier_scheme",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type_code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "addr_text",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "addr_lines",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "addr_city",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "addr_district",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "addr_state",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "addr_postal_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "addr_country_code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_organization_1": {
+    "columns": [
+     "soa_id",
+     "organization_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "organization_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "org_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "person": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "person_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "person_name_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "job_title",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "organization_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "family_name",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "given_names",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "prefixes",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "suffixes",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_person_1": {
+    "columns": [
+     "soa_id",
+     "person_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "person_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "person_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "reorder_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "entity_type",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "old_order_json",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "new_order_json",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "role": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "role_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "organization_ids",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "0",
+    "name": "masking",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_role_1": {
+    "columns": [
+     "soa_id",
+     "role_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "role_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "role_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "role_person": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "role_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "person_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_role_person_1": {
+    "columns": [
+     "soa_id",
+     "role_id",
+     "person_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "rollback_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "freeze_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "visits_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "activities_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "cells_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "concepts_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "elements_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "cells_skipped",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "encounters_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "instances_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "timelines_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "decision_instances_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "study_cells_restored",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "safety_freeze_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {}
+ },
+ "schedule_timelines": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "schedule_timeline_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "main_timeline",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "entry_condition",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "entry_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": ""
+   },
+   {
+    "default": null,
+    "name": "exit_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_schedule_timelines_1": {
+    "columns": [
+     "soa_id",
+     "schedule_timeline_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "schedule_timelines_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "instance_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "soa": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "created_at",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "study_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "study_label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "study_description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_soa_study_id": {
+    "columns": [
+     "study_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "soa_freeze": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "version_label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "created_at",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "snapshot_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_soafreeze_unique": {
+    "columns": [
+     "soa_id",
+     "version_label"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "soa_tool_extension": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "ea_outer_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "ec_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "ea_name_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "ea_version_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "ea_date_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_soa_tool_extension_1": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "study_amendment": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "freeze_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "amendment_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "number",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "summary",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_study_amendment_1": {
+    "columns": [
+     "soa_id",
+     "amendment_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "study_amendment_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "amendment_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "study_amendment_impact": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "amendment_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "impact_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type_code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "0",
+    "name": "is_substantial",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_study_amendment_impact_1": {
+    "columns": [
+     "soa_id",
+     "impact_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "study_amendment_impact_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "impact_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "study_amendment_reason": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "amendment_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "reason_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "role",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "other_reason",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_study_amendment_reason_1": {
+    "columns": [
+     "soa_id",
+     "reason_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "study_amendment_reason_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "reason_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "study_cell": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "study_cell_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "arm_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "epoch_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "element_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_study_cell_1": {
+    "columns": [
+     "soa_id",
+     "study_cell_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "study_cell_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "study_cell_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "study_change": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "amendment_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "change_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "summary",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "rationale",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_study_change_1": {
+    "columns": [
+     "soa_id",
+     "change_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "study_change_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "change_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "study_identifier": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "study_identifier_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "''",
+    "name": "scope_org_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_study_identifier_1": {
+    "columns": [
+     "soa_id",
+     "study_identifier_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "study_identifier_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "si_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "study_intervention": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "intervention_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "role_code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type_code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "mrd_quantity_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "mrd_value",
+    "notnull": 0,
+    "pk": 0,
+    "type": "REAL"
+   },
+   {
+    "default": null,
+    "name": "mrd_unit_alias_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_study_intervention_1": {
+    "columns": [
+     "soa_id",
+     "intervention_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "study_intervention_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "intervention_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "study_intervention_code": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "intervention_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "code_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {}
+ },
+ "study_title": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "study_title_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type_code_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_study_title_1": {
+    "columns": [
+     "soa_id",
+     "study_title_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "study_title_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "title_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "timing": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "timing_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "value",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "value_label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "relative_to_from",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "relative_from_schedule_instance",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "relative_to_schedule_instance",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "window_label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "window_upper",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "window_lower",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "member_of_timeline",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_timing_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
+   "sqlite_autoindex_timing_1": {
+    "columns": [
+     "soa_id",
+     "timing_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "timing_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "timing_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "transition_rule": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "transition_rule_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "created_at",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_transition_rule_1": {
+    "columns": [
+     "soa_id",
+     "transition_rule_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "transition_rule_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "transition_rule_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ },
+ "uid_counter": {
+  "columns": [
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "prefix",
+    "notnull": 1,
+    "pk": 2,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "next_n",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   }
+  ],
+  "indexes": {
+   "sqlite_autoindex_uid_counter_1": {
+    "columns": [
+     "soa_id",
+     "prefix"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "visit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "order_index",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "epoch_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "encounter_uid",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "type",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "environmentalSettings",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "contactModes",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "transitionStartRule",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "transitionEndRule",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "scheduledAtId",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "superscript",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_visit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
+   "idx_visit_soa_encounter": {
+    "columns": [
+     "soa_id",
+     "encounter_uid"
+    ],
+    "unique": 0
+   },
+   "sqlite_autoindex_visit_1": {
+    "columns": [
+     "soa_id",
+     "encounter_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "visit_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "visit_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {}
+ }
+}
