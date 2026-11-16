@@ -9,7 +9,7 @@ from soa_builder.web.db import _connect
 
 client = TestClient(app)
 
-_SLUG_PATCH = "soa_builder.web.routers.amendments.get_latest_ddf_ct_href"
+_SLUG_PATCH = "soa_builder.web.routers.amendments.helpers.get_latest_ddf_ct_href"
 _CT_MAP_PATCH = "soa_builder.web.routers.freezes.get_ddf_ct_codelist_map"
 
 

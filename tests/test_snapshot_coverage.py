@@ -16,7 +16,9 @@ from soa_builder.web.app import _connect  # noqa: F401  (runs migrations)
 from soa_builder.web.db import _connect as db_connect
 from soa_builder.web.routers import _freeze_helpers
 
-FREEZE_HELPERS_SRC = Path(_freeze_helpers.__file__).read_text()
+FREEZE_HELPERS_SRC = "\n".join(
+    path.read_text() for path in Path(_freeze_helpers.__file__).parent.glob("*.py")
+)
 
 
 def _soa_tables() -> dict:
