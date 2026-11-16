@@ -1,3 +1,5 @@
+from .errors import MALFORMED_JSON_ERRORS, REMOTE_PAYLOAD_ERRORS
+import sqlite3
 from typing import Any, Callable, Dict, List, Optional
 import json
 import logging
@@ -229,7 +231,7 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
                     pph = data.get("_links", {}).get("parentPackage", {}).get("href")
                     if pph:
                         _epoch_type_cache["parent_package_href"] = str(pph)
-            except Exception:
+            except (AttributeError, TypeError):
                 pass
             # Collect embedded submissionValue
             for t in top_terms:
@@ -258,13 +260,13 @@ def load_epoch_type_options(force: bool = False) -> list[str]:
                             )
                             if sv and str(sv).strip():
                                 values.append(str(sv).strip())
-                    except Exception:
+                    except REMOTE_PAYLOAD_ERRORS:
                         continue
         # Single endpoint only; no loop/break
         result = sorted(list(dict.fromkeys(values)))
         _epoch_type_cache.update(data=result, fetched_at=now, last_status=last_status)
         return result
-    except Exception as e:
+    except REMOTE_PAYLOAD_ERRORS as e:
         _epoch_type_cache.update(data=[], fetched_at=now, last_error=str(e))
         return []
 
@@ -338,7 +340,7 @@ def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
                     pph = data.get("_links", {}).get("parentPackage", {}).get("href")
                     if pph:
                         _epoch_type_cache["parent_package_href"] = str(pph)
-            except Exception:
+            except (AttributeError, TypeError):
                 pass
             for t in terms:
                 if not isinstance(t, dict):
@@ -368,10 +370,10 @@ def load_epoch_type_map(force: bool = False) -> Dict[str, str]:
                             code2 = tj.get("code") or code
                             if code2 and sub2:
                                 code_to_submission[str(code2)] = str(sub2).strip()
-                    except Exception:
+                    except REMOTE_PAYLOAD_ERRORS:
                         pass
         # Single endpoint only; no loop/break
-    except Exception as e:
+    except REMOTE_PAYLOAD_ERRORS as e:
         _epoch_type_cache.update(last_error=str(e))
     _epoch_type_cache.update(last_status=last_status)
     _epoch_type_cache.update(_map=code_to_submission, _map_fetched_at=now)
@@ -601,7 +603,7 @@ def _max_suffix(rows) -> int:
         return 0
     try:
         return max(int(x.split("_")[1]) for x in existing)
-    except Exception:
+    except (IndexError, TypeError, ValueError):
         return len(existing)
 
 
@@ -624,7 +626,7 @@ def get_next_quantity_uid(cur: Any, soa_id: int) -> str:
                         max_n = n
                 except (ValueError, IndexError):
                     pass
-        except Exception:
+        except sqlite3.Error:
             pass
         try:
             cur.execute(
@@ -642,9 +644,9 @@ def get_next_quantity_uid(cur: Any, soa_id: int) -> str:
                             n = int(uid.split("_")[-1])
                             if n > max_n:
                                 max_n = n
-                    except Exception:
+                    except MALFORMED_JSON_ERRORS:
                         pass
-        except Exception:
+        except sqlite3.Error:
             pass
         return max_n
 
@@ -669,7 +671,7 @@ def get_next_intercurrent_event_uid(cur: Any, soa_id: int) -> str:
                         max_n = n
                 except (ValueError, IndexError):
                     pass
-        except Exception:
+        except sqlite3.Error:
             pass
         try:
             cur.execute(
@@ -691,9 +693,9 @@ def get_next_intercurrent_event_uid(cur: Any, soa_id: int) -> str:
                                 n = int(uid.split("_")[-1])
                                 if n > max_n:
                                     max_n = n
-                    except Exception:
+                    except MALFORMED_JSON_ERRORS:
                         pass
-        except Exception:
+        except sqlite3.Error:
             pass
         return max_n
 
@@ -718,7 +720,7 @@ def get_next_indication_uid(cur: Any, soa_id: int) -> str:
                         max_n = n
                 except (ValueError, IndexError):
                     pass
-        except Exception:
+        except sqlite3.Error:
             pass
         try:
             cur.execute(
@@ -735,9 +737,9 @@ def get_next_indication_uid(cur: Any, soa_id: int) -> str:
                             n = int(uid.split("_")[-1])
                             if n > max_n:
                                 max_n = n
-                    except Exception:
+                    except MALFORMED_JSON_ERRORS:
                         pass
-        except Exception:
+        except sqlite3.Error:
             pass
         return max_n
 
@@ -763,7 +765,7 @@ def get_next_study_identifier_uid(cur: Any, soa_id: int) -> str:
                         max_n = n
                 except (ValueError, IndexError):
                     pass
-        except Exception:
+        except sqlite3.Error:
             pass
         try:
             cur.execute(
@@ -781,9 +783,9 @@ def get_next_study_identifier_uid(cur: Any, soa_id: int) -> str:
                             n = int(uid.split("_")[-1])
                             if n > max_n:
                                 max_n = n
-                    except Exception:
+                    except MALFORMED_JSON_ERRORS:
                         pass
-        except Exception:
+        except sqlite3.Error:
             pass
         return max_n
 
@@ -933,7 +935,7 @@ def get_next_concept_uid(cur: Any, soa_id: int) -> str:
                 (soa_id,),
             )
             max_n = _max_suffix(cur.fetchall())
-        except Exception:
+        except sqlite3.Error:
             pass
         try:
             cur.execute(
@@ -953,9 +955,9 @@ def get_next_concept_uid(cur: Any, soa_id: int) -> str:
                             n = int(uid.split("_")[-1])
                             if n > max_n:
                                 max_n = n
-                    except Exception:
+                    except MALFORMED_JSON_ERRORS:
                         pass
-        except Exception:
+        except sqlite3.Error:
             pass
         return max_n
 
@@ -1018,7 +1020,7 @@ def soa_exists(soa_id: int) -> bool:
         ok = cur.fetchone() is not None
         conn.close()
         return ok
-    except Exception:
+    except sqlite3.Error:
         return False
 
 
@@ -1034,7 +1036,7 @@ def table_has_columns(cur: Any, table: str, required: List[str] | tuple) -> bool
         cur.execute(f"PRAGMA table_info({table})")
         cols = {r[1] for r in cur.fetchall()}
         return all(c in cols for c in required)
-    except Exception:
+    except sqlite3.Error:
         return False
 
 
@@ -1210,11 +1212,11 @@ def get_sdtm_submission_values(url: str, codelist_code: str) -> Dict[str, str]:
                         )
                         if code2 and sv2:
                             mapping[str(code2)] = str(sv2).strip()
-                except Exception:
+                except REMOTE_PAYLOAD_ERRORS:
                     pass
 
         return mapping
-    except Exception:
+    except REMOTE_PAYLOAD_ERRORS:
         return {}
 
 
@@ -1322,7 +1324,7 @@ def get_latest_sdtm_ct_href(timeout: int = 10) -> str | None:
         if resp.status_code != 200:
             return None
         payload = resp.json() or {}
-    except Exception:
+    except REMOTE_PAYLOAD_ERRORS:
         return None
 
     packages = []
@@ -1453,7 +1455,7 @@ def _get_latest_ct_package_slug(prefix: str, timeout: int = 10) -> str | None:
         if resp.status_code != 200:
             return None
         payload = resp.json() or {}
-    except Exception:
+    except REMOTE_PAYLOAD_ERRORS:
         return None
 
     packages: list = []
@@ -1782,7 +1784,7 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
         if resp.status_code != 200:
             return None
         payload = resp.json() or {}
-    except Exception:
+    except REMOTE_PAYLOAD_ERRORS:
         return None
 
     for term in _extract_terms(payload):
@@ -1805,7 +1807,7 @@ def get_encounter_environment_sv(soa_id: int, code_uid: str):
             if term_resp.status_code != 200:
                 continue
             term_data = term_resp.json() or {}
-        except Exception:
+        except REMOTE_PAYLOAD_ERRORS:
             continue
         submission = _match_term(term_data if isinstance(term_data, dict) else {})
         if submission:
@@ -1889,7 +1891,7 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
         if resp.status_code != 200:
             return None
         payload = resp.json() or {}
-    except Exception:
+    except REMOTE_PAYLOAD_ERRORS:
         return None
 
     for term in _extract_terms(payload):
@@ -1912,7 +1914,7 @@ def get_submission_value_for_code(soa_id: int, codelist_code: str, code_uid: str
             if term_resp.status_code != 200:
                 continue
             term_data = term_resp.json() or {}
-        except Exception:
+        except REMOTE_PAYLOAD_ERRORS:
             continue
         submission = _match_term(term_data if isinstance(term_data, dict) else {})
         if submission:

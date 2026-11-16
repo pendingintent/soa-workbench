@@ -1,5 +1,6 @@
 """Biomedical concept, category and specialization browser pages."""
 
+from ..errors import REMOTE_PAYLOAD_ERRORS
 import logging
 from ..services import concepts as concepts_service
 from fastapi import APIRouter
@@ -159,7 +160,7 @@ def ui_cdisc_api_status(request: Request):
                 "error",
                 ("CDISC Library API is not reachable. Check your network connection."),
             )
-        except Exception as exc:
+        except requests.RequestException as exc:
             logger.warning("CDISC API connectivity check failed: %s", exc)
             status, detail = (
                 "error",
@@ -386,11 +387,11 @@ def ui_sdtm_specialization_detail(
                 if data is not None:
                     try:
                         pretty_json = json.dumps(data, indent=2, sort_keys=True)
-                    except Exception:
+                    except TypeError:
                         pretty_json = json.dumps(data, indent=2)
             else:
                 error = f"HTTP {resp.status_code} retrieving specialization"
-        except Exception as e:
+        except REMOTE_PAYLOAD_ERRORS as e:
             error = f"Fetch error: {e}"[:300]
     else:
         error = "No href available for this specialization entry."
@@ -492,7 +493,7 @@ def ui_crf_specialization_detail(idx: int, request: Request):
                     error = "200 OK but response was not valid JSON"
             else:
                 error = f"HTTP {resp.status_code} retrieving CRF specialization"
-        except Exception as e:
+        except REMOTE_PAYLOAD_ERRORS as e:
             error = f"Fetch error: {e}"[:300]
     else:
         error = "No href available for this CRF specialization entry."
@@ -569,7 +570,7 @@ def ui_concept_detail(code: str, request: Request):
                 parent_pkg_href = parent_pkg_obj
         else:
             concept_json = {"error": f"Upstream returned {resp.status_code}"}
-    except Exception as e:  # pragma: no cover
+    except REMOTE_PAYLOAD_ERRORS as e:  # pragma: no cover
         concept_json = {"error": f"Request failed: {e}"}
     title = None
     if concept_json:
@@ -613,7 +614,7 @@ def ui_concept_detail(code: str, request: Request):
                     summary["coding"] = "; ".join(parts)
                 else:
                     summary["coding"] = f"{len(coding)} entries"
-            except Exception:
+            except (AttributeError, TypeError):
                 summary["coding"] = f"{len(coding)} entries"
         # Extract data element concepts array
         raw_decs = concept_json.get("dataElementConcepts") or []

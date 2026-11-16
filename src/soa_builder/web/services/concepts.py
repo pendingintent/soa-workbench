@@ -3,6 +3,8 @@
 Moved from app.py; app.py re-exports the public names.
 """
 
+from ..errors import MALFORMED_JSON_ERRORS, REMOTE_PAYLOAD_ERRORS
+import sqlite3
 import logging
 from ..initialize_database import _connect
 from ..utils import get_cdisc_api_key as _get_cdisc_api_key
@@ -158,7 +160,7 @@ def fetch_biomedical_concept_categories(force: bool = False) -> list[dict]:
         _bc_categories_cache["data"] = categories
         _bc_categories_cache["fetched_at"] = now
         return categories
-    except Exception as e:  # pragma: no cover
+    except REMOTE_PAYLOAD_ERRORS as e:  # pragma: no cover
         logger.error("BC categories fetch error: %s", e)
         return []
 
@@ -339,7 +341,7 @@ def fetch_biomedical_concepts(force: bool = False):
             _concept_cache.update(data=concepts, fetched_at=now)
             logger.info("Loaded %d concepts from env override", len(concepts))
             return concepts
-        except Exception:
+        except MALFORMED_JSON_ERRORS:
             pass
     # Remote
     if os.environ.get("CDISC_SKIP_REMOTE") == "1":
@@ -374,7 +376,7 @@ def fetch_biomedical_concepts(force: bool = False):
             if isinstance(data, str):
                 try:
                     data = json.loads(data)
-                except Exception:
+                except MALFORMED_JSON_ERRORS:
                     _concept_cache["last_error"] = (
                         "JSON value was a raw string; secondary parse failed"
                     )
@@ -443,7 +445,7 @@ def fetch_biomedical_concepts(force: bool = False):
             return concepts
         else:
             _concept_cache["last_error"] = f"HTTP {resp.status_code}"
-    except Exception as e:
+    except REMOTE_PAYLOAD_ERRORS as e:
         logger.error("Concept fetch error: %s", e)
         _concept_cache["last_error"] = str(e)
     _concept_cache.update(data=[], fetched_at=now)
@@ -562,7 +564,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
             )
             _sdtm_specializations_by_code_cache[code] = (now, packages)
             return packages
-        except Exception as e:
+        except REMOTE_PAYLOAD_ERRORS as e:
             logger.error(
                 "SDTM specializations by BC code fetch error for %s: %s", code, e
             )
@@ -627,7 +629,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
                 "Loaded %d SDTM dataset specializations from override", len(packages)
             )
             return packages
-        except Exception as e:
+        except MALFORMED_JSON_ERRORS as e:
             logger.warning("SDTM override parse failed: %s", e)
 
     # Remote full-list branch
@@ -661,7 +663,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
             if isinstance(data, str):
                 try:
                     data = json.loads(data)
-                except Exception:
+                except MALFORMED_JSON_ERRORS:
                     _sdtm_specializations_cache["last_error"] = (
                         "Raw string JSON secondary parse failed"
                     )
@@ -726,7 +728,7 @@ def fetch_sdtm_specializations(force: bool = False, code: Optional[str] = None):
                     packages.append({"title": title, "href": href})
         else:
             _sdtm_specializations_cache["last_error"] = f"HTTP {resp.status_code}"
-    except Exception as e:
+    except REMOTE_PAYLOAD_ERRORS as e:
         logger.error("SDTM dataset specializations fetch error: %s", e)
         _sdtm_specializations_cache["last_error"] = "Fetch failed; see server logs"
 
@@ -835,7 +837,7 @@ def fetch_crf_specializations(force: bool = False, code: Optional[str] = None):
             )
             _crf_specializations_by_code_cache[code] = (now, packages)
             return packages
-        except Exception as e:
+        except REMOTE_PAYLOAD_ERRORS as e:
             logger.error(
                 "CRF specializations by BC code fetch error for %s: %s", code, e
             )
@@ -870,7 +872,7 @@ def fetch_crf_specializations(force: bool = False, code: Optional[str] = None):
             _crf_specializations_cache.update(data=packages, fetched_at=now)
             logger.info("Loaded %d CRF specializations from override", len(packages))
             return packages
-        except Exception as e:
+        except MALFORMED_JSON_ERRORS as e:
             logger.warning("CRF specializations override parse failed: %s", e)
 
     if os.environ.get("CDISC_SKIP_REMOTE") == "1":
@@ -931,7 +933,7 @@ def fetch_crf_specializations(force: bool = False, code: Optional[str] = None):
             _crf_specializations_cache["last_error"] = (
                 f"HTTP {resp.status_code}: {resp.text[:180]}"
             )
-    except Exception as e:
+    except REMOTE_PAYLOAD_ERRORS as e:
         logger.error("CRF specializations fetch error: %s", e)
         _crf_specializations_cache["last_error"] = str(e)
 
@@ -1159,7 +1161,7 @@ def _upsert_code(cur, soa_id: int, concept_code: str):
     if existing:
         try:
             n = max(int(x.split("_")[1]) for x in existing) + 1
-        except Exception:
+        except (IndexError, TypeError, ValueError):
             n = len(existing) + 1
     uid = f"Code_{n}"
     cur.execute(
@@ -1195,7 +1197,7 @@ def _upsert_alias_code(cur, soa_id: int, code_uid):
     if existing:
         try:
             n = max(int(x.split("_")[1]) for x in existing) + 1
-        except Exception:
+        except (IndexError, TypeError, ValueError):
             n = len(existing) + 1
     alias_uid = f"AliasCode_{n}"
     cur.execute(
@@ -1241,7 +1243,7 @@ def _enrich_code_bg(concept_code: str, soa_id: int) -> None:
         href = href.get("href", "") if isinstance(href, dict) else ""
         try:
             code_system_version = href.split("/")[4]
-        except Exception:
+        except (AttributeError, IndexError):
             code_system_version = ""
         decode = data.get("shortName")
         conn = _connect()
@@ -1253,7 +1255,7 @@ def _enrich_code_bg(concept_code: str, soa_id: int) -> None:
         )
         conn.commit()
         conn.close()
-    except Exception:
+    except (*REMOTE_PAYLOAD_ERRORS, sqlite3.Error):
         pass
 
 
@@ -1408,7 +1410,7 @@ def _enrich_biomedical_concept_bg(concept_code: str, soa_id: int) -> None:
                 (label, soa_id, concept_code),
             )
         conn.commit()
-    except Exception:
+    except (*REMOTE_PAYLOAD_ERRORS, sqlite3.Error):
         pass
     finally:
         if conn:

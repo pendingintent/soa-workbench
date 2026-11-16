@@ -1,3 +1,4 @@
+from ..errors import MALFORMED_JSON_ERRORS
 import json
 import logging
 import os
@@ -63,7 +64,7 @@ def _next_surrogate_uid(cur, soa_id: int) -> str:
                     n = int(uid[len(prefix) :])
                     if n > max_n:
                         max_n = n
-            except Exception:
+            except MALFORMED_JSON_ERRORS:
                 pass
 
     return f"{prefix}{max_n + 1}"

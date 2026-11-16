@@ -1,3 +1,4 @@
+import sqlite3
 import io
 import json
 import logging
@@ -214,7 +215,7 @@ def _import_soa_bundle(
                     soa_meta.get("study_description"),
                 ),
             )
-        except Exception:
+        except sqlite3.Error:
             # study_id conflict — import without it; user can set it later
             cur.execute(
                 "INSERT INTO soa "

@@ -1,5 +1,7 @@
 """soa_ui: elements (split from soa_ui.py)."""
 
+import sqlite3
+
 from ._shared import (
     ElementCreate,
     ElementUpdate,
@@ -11,6 +13,7 @@ from ._shared import (
     _connect,
     _record_element_audit,
     elements_router,
+    logger,
     router,
     soa_exists,
 )
@@ -48,9 +51,9 @@ def ui_add_element(
 
     # Create the element via the API helper to ensure audits and ordering
     try:
-        elements_router.create_element(soa_id, payload)
-    except Exception:
-        pass
+        elements_router.add_element(soa_id, payload)
+    except (HTTPException, sqlite3.Error) as exc:
+        logger.warning("Element save from UI failed: %s", exc)
 
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"
@@ -313,9 +316,9 @@ def ui_update_element(
     )
     try:
         elements_router.update_element(soa_id, element_id, payload)
-    except Exception:
+    except (HTTPException, sqlite3.Error) as exc:
         # Let redirect proceed; detailed errors will appear in API logs
-        pass
+        logger.warning("Element save from UI failed: %s", exc)
 
     return HTMLResponse(
         f"<script>window.location='/ui/soa/{int(soa_id)}/edit';</script>"

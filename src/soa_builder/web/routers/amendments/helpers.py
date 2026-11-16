@@ -1,5 +1,6 @@
 """amendments: helpers (split from amendments.py)."""
 
+from ...errors import MALFORMED_JSON_ERRORS
 from ._shared import (
     AMENDMENT_IMPACT_TYPE_CODELIST,
     AMENDMENT_REASON_CODELIST,
@@ -50,7 +51,7 @@ def _next_uid(cur, soa_id: int, table: str, col: str, prefix: str) -> str:
                     n = int(uid.split("_")[-1])
                     if n > max_n:
                         max_n = n
-            except Exception:
+            except MALFORMED_JSON_ERRORS:
                 pass
     return f"{prefix}{max_n + 1}"
 

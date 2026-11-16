@@ -1,3 +1,4 @@
+from ..errors import MALFORMED_JSON_ERRORS
 import json
 import logging
 import os
@@ -479,14 +480,14 @@ def list_element_audit(soa_id: int):
     for r in cur.fetchall():
         try:
             before = json.loads(r[3]) if r[3] else None
-        except Exception as e:
+        except MALFORMED_JSON_ERRORS as e:
             logger.debug(
                 "list_element_audit before JSON parse failed soa_id=%s: %s", soa_id, e
             )
             before = None
         try:
             after = json.loads(r[4]) if r[4] else None
-        except Exception as e:
+        except MALFORMED_JSON_ERRORS as e:
             logger.debug(
                 "list_element_audit after JSON parse failed soa_id=%s: %s", soa_id, e
             )

@@ -1,3 +1,5 @@
+from ..errors import MALFORMED_JSON_ERRORS, REMOTE_PAYLOAD_ERRORS
+import sqlite3
 import logging
 import json
 import os
@@ -86,12 +88,12 @@ def ui_list_timings(request: Request, soa_id: int):
     # Build mapping: submissionValue -> code and reverse
     try:
         sv_to_code = get_study_timing_type(TIMING_TYPE_CODELIST)
-    except Exception:
+    except REMOTE_PAYLOAD_ERRORS:
         sv_to_code = {}
     # Mapping for Relative To/From (C201265)
     try:
         sv_to_code_rtf = get_study_timing_type(TIMING_RELATIVE_TO_FROM_CODELIST)
-    except Exception:
+    except REMOTE_PAYLOAD_ERRORS:
         sv_to_code_rtf = {}
     code_to_sv = {v: k for k, v in (sv_to_code or {}).items()}
     code_to_sv_rtf = {v: k for k, v in (sv_to_code_rtf or {}).items()}
@@ -290,7 +292,7 @@ def ui_create_timing(
                 )
                 conn_c.commit()
                 conn_c.close()
-        except Exception:
+        except (*REMOTE_PAYLOAD_ERRORS, sqlite3.Error):
             code_uid = None
     # Map Relative To/From submission value to code_uid
     rtf_code_uid: Optional[str] = None
@@ -315,7 +317,7 @@ def ui_create_timing(
                 )
                 conn_c2.commit()
                 conn_c2.close()
-        except Exception:
+        except (*REMOTE_PAYLOAD_ERRORS, sqlite3.Error):
             rtf_code_uid = None
     try:
         payload = TimingCreate(
@@ -353,7 +355,7 @@ def list_timing_audit(soa_id: int):
             "SELECT id, timing_id, action, before_json, after_json, performed_at FROM timing_audit WHERE soa_id=? ORDER BY id DESC",
             (soa_id,),
         )
-    except Exception:
+    except sqlite3.Error:
         # If table does not exist yet, return empty list for backward compatibility
         conn.close()
         return JSONResponse([])
@@ -361,11 +363,11 @@ def list_timing_audit(soa_id: int):
     for r in cur.fetchall():
         try:
             before = json.loads(r[3]) if r[3] else None
-        except Exception:
+        except MALFORMED_JSON_ERRORS:
             before = None
         try:
             after = json.loads(r[4]) if r[4] else None
-        except Exception:
+        except MALFORMED_JSON_ERRORS:
             after = None
         rows.append(
             {
@@ -651,7 +653,7 @@ def ui_update_timing(
                     )
         conn_chk.commit()
         conn_chk.close()
-    except Exception:
+    except (*REMOTE_PAYLOAD_ERRORS, sqlite3.Error):
         # On any error, fall back to previous behavior (leave fields unchanged)
         mapped_type = None if type_submission_value not in ("",) else ""
         mapped_rtf = None if relative_to_from_submission_value not in ("",) else ""

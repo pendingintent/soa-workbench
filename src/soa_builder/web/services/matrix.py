@@ -3,6 +3,8 @@
 Moved from app.py; app.py re-exports the public names.
 """
 
+from ..errors import MALFORMED_JSON_ERRORS
+import sqlite3
 from ..initialize_database import _connect
 import csv
 import html as _html
@@ -59,7 +61,7 @@ def _fetch_arms_for_edit(soa_id: int) -> list[dict]:
         ]
         conn.close()
         return rows
-    except Exception:
+    except sqlite3.Error:
         return []
 
 
@@ -480,7 +482,7 @@ def _next_transition_rule_uid(soa_id: int) -> str:
                 tail = uid.split("TransitionRule_")[-1]
                 if tail.isdigit():
                     max_n = max(max_n, int(tail))
-    except Exception:
+    except sqlite3.Error:
         pass
     try:
         cur.execute(
@@ -493,7 +495,7 @@ def _next_transition_rule_uid(soa_id: int) -> str:
                     continue
                 try:
                     obj = json.loads(js)
-                except Exception:
+                except MALFORMED_JSON_ERRORS:
                     obj = None
                 if isinstance(obj, dict):
                     uid = obj.get("transition_rule_uid") or obj.get(
@@ -503,7 +505,7 @@ def _next_transition_rule_uid(soa_id: int) -> str:
                         tail = uid.split("TransitionRule_")[-1]
                         if tail.isdigit():
                             max_n = max(max_n, int(tail))
-    except Exception:
+    except sqlite3.Error:
         pass
     conn.close()
     return f"TransitionRule_{max_n + 1}"

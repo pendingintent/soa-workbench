@@ -1,5 +1,6 @@
 """_freeze_helpers: store (split from _freeze_helpers.py)."""
 
+from ...errors import MALFORMED_JSON_ERRORS
 from ._shared import (
     CAPTURE_VERSION,
     HTTPException,
@@ -68,7 +69,7 @@ def _get_freeze(soa_id: int, freeze_id: int):
         return None
     try:
         snap = json.loads(row[3])
-    except Exception:
+    except MALFORMED_JSON_ERRORS:
         snap = {"error": "Corrupt snapshot"}
     return {
         "id": row[0],

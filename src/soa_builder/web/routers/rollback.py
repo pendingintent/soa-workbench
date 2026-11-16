@@ -113,7 +113,7 @@ def export_reorder_audit_xlsx(soa_id: int):
                     "moves": "; ".join(moves) if moves else "",
                 }
             )
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
             logger.debug(
                 "export_reorder_audit_xlsx flatten failure soa_id=%s row_id=%s: %s",
                 soa_id,

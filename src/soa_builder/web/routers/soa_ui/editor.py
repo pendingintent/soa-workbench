@@ -1,5 +1,6 @@
 """soa_ui: editor (split from soa_ui.py)."""
 
+from ...errors import REMOTE_PAYLOAD_ERRORS
 from ._shared import (
     Form,
     HTMLResponse,
@@ -439,7 +440,7 @@ def ui_edit(request: Request, soa_id: int):
     conn_em.close()
     try:
         code_to_submission = load_epoch_type_map(force=False) or {}
-    except Exception:
+    except REMOTE_PAYLOAD_ERRORS:
         code_to_submission = {}
     epochs = [
         {

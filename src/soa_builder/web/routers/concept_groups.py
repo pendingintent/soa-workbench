@@ -1,3 +1,5 @@
+from ..errors import REMOTE_PAYLOAD_ERRORS
+import sqlite3
 import logging
 import os
 import re
@@ -946,7 +948,7 @@ def fetch_bc_grouping_data(force: bool = False) -> dict:
             ),
             "data": None,
         }
-    except Exception as exc:
+    except REMOTE_PAYLOAD_ERRORS as exc:
         logger.warning("BC Grouping service fetch failed: %s", exc)
         result = {
             "available": False,
@@ -1080,7 +1082,7 @@ def sync_cdisc_concept_groups(force: bool = False) -> dict:
         }
         logger.info("sync_cdisc_concept_groups: %s", summary)
         return summary
-    except Exception as exc:
+    except (KeyError, TypeError, ValueError, sqlite3.Error) as exc:
         conn.rollback()
         logger.warning("sync_cdisc_concept_groups failed: %s", exc)
         return {"synced": False, "detail": str(exc)}
@@ -1111,7 +1113,7 @@ def ui_bc_grouping_status(request: Request):
             "error",
             (f"BC Grouping service is not reachable at {_BC_GROUPING_SERVICE_URL}."),
         )
-    except Exception as exc:
+    except requests.RequestException as exc:
         logger.warning("BC Grouping service health check failed: %s", exc)
         status, detail = (
             "error",

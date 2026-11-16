@@ -1,3 +1,4 @@
+import sqlite3
 import json
 import logging
 import os
@@ -579,7 +580,7 @@ def update_epoch_metadata(soa_id: int, epoch_id: int, payload: EpochUpdate):
         tr = cur.fetchone()
         if before is not None:
             before["type"] = tr[0] if tr else None
-    except Exception as e:
+    except sqlite3.Error as e:
         logger.debug(
             "update_epoch_metadata type fetch failed soa_id=%s epoch_id=%s: %s",
             soa_id,
