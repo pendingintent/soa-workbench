@@ -117,6 +117,10 @@ class TimingUpdate(BaseModel):
     @field_validator("value", "window_lower", "window_upper", mode="before")
     @classmethod
     def check_iso8601_duration(cls, v: Optional[str]) -> Optional[str]:
+        # On update, None means "keep" and a blank string means "clear",
+        # as for the other text fields; only validate a real duration.
+        if isinstance(v, str) and not v.strip():
+            return ""
         return _validate_iso8601_duration(v)
 
     @model_validator(mode="after")

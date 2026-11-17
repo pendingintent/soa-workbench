@@ -18,7 +18,7 @@ from ..codelist_config import (
     TIMING_TYPE_CODELIST,
 )
 from ..db import _connect
-from ..schemas import TimingCreate, TimingUpdate
+from ..schemas import TimingCreate, TimingUpdate, _validate_window_all_or_none
 from ..utils import (
     soa_exists,
     get_scheduled_activity_instance,
@@ -478,6 +478,15 @@ def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
         if payload.member_of_timeline is not None
         else before["member_of_timeline"]
     )
+    # The payload is checked on its own; also check the merged result,
+    # so clearing one window field cannot leave half a window stored.
+    try:
+        _validate_window_all_or_none(
+            new_window_lower, new_window_upper, new_window_label
+        )
+    except ValueError as exc:
+        conn.close()
+        raise HTTPException(400, str(exc))
 
     cur.execute(
         "UPDATE timing SET name=?, label=?, description=?, type=?, value=?, value_label=?, "
