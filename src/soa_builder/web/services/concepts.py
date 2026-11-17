@@ -11,6 +11,7 @@ from ..utils import get_cdisc_api_key as _get_cdisc_api_key
 from ..utils import get_cdisc_crf_api_key as _get_cdisc_crf_api_key
 from ..utils import get_cdisc_crf_subscription_key as _get_cdisc_crf_subscription_key
 from ..utils import get_concepts_override as _get_concepts_override
+from ..utils import get_next_alias_code_uid, get_next_code_uid
 from ..utils import table_has_columns as _table_has_columns
 from typing import Optional
 import json
@@ -1150,20 +1151,7 @@ def _upsert_code(cur, soa_id: int, concept_code: str):
     row = cur.fetchone()
     if row:
         return row[0]  # pre-existing — return uid, do not re-insert
-    cur.execute(
-        "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'"
-        " UNION"
-        " SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-        (soa_id, soa_id),
-    )
-    existing = [x[0] for x in cur.fetchall() if x[0]]
-    n = 1
-    if existing:
-        try:
-            n = max(int(x.split("_")[1]) for x in existing) + 1
-        except (IndexError, TypeError, ValueError):
-            n = len(existing) + 1
-    uid = f"Code_{n}"
+    uid = get_next_code_uid(cur, soa_id)
     cur.execute(
         "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
         (soa_id, uid, concept_code),
@@ -1187,19 +1175,7 @@ def _upsert_alias_code(cur, soa_id: int, code_uid):
     row = cur.fetchone()
     if row:
         return row[0]
-    cur.execute(
-        "SELECT alias_code_uid FROM alias_code"
-        " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
-        (soa_id,),
-    )
-    existing = [x[0] for x in cur.fetchall() if x[0]]
-    n = 1
-    if existing:
-        try:
-            n = max(int(x.split("_")[1]) for x in existing) + 1
-        except (IndexError, TypeError, ValueError):
-            n = len(existing) + 1
-    alias_uid = f"AliasCode_{n}"
+    alias_uid = get_next_alias_code_uid(cur, soa_id)
     cur.execute(
         "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
         (soa_id, alias_uid, code_uid),
@@ -1301,28 +1277,13 @@ def _upsert_biomedical_concept(
     # always create a new code row for this BC (never reuse)
     alias_uid = None
     if concept_code:
-        cur.execute(
-            "SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'"
-            " UNION"
-            " SELECT code_uid FROM code_association WHERE soa_id=? AND code_uid LIKE 'Code_%'",
-            (soa_id, soa_id),
-        )
-        existing_codes = [x[0] for x in cur.fetchall() if x[0]]
-        code_n = max((int(x.split("_")[1]) for x in existing_codes), default=0) + 1
-        code_uid = f"Code_{code_n}"
+        code_uid = get_next_code_uid(cur, soa_id)
         cur.execute(
             "INSERT INTO code (soa_id, code_uid, code) VALUES (?,?,?)",
             (soa_id, code_uid, concept_code),
         )
         # always create a new alias_code row for this BC (never reuse)
-        cur.execute(
-            "SELECT alias_code_uid FROM alias_code"
-            " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
-            (soa_id,),
-        )
-        existing_aliases = [x[0] for x in cur.fetchall() if x[0]]
-        alias_n = max((int(x.split("_")[1]) for x in existing_aliases), default=0) + 1
-        alias_uid = f"AliasCode_{alias_n}"
+        alias_uid = get_next_alias_code_uid(cur, soa_id)
         cur.execute(
             "INSERT INTO alias_code (soa_id, alias_code_uid, standard_code) VALUES (?,?,?)",
             (soa_id, alias_uid, code_uid),
