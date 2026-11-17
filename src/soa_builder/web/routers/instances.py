@@ -5,6 +5,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Request, Form, Body
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from ..audit import _record_instance_audit
 from ..db import _connect
@@ -345,32 +346,19 @@ def update_instance(soa_id: int, instance_id: int, payload: InstanceUpdate):
 
 # UI code to update an instance in an SOA
 @router.post("/ui/soa/{soa_id}/instances/{instance_id}/update")
-def ui_update_instance(
-    request: Request,
-    soa_id: int,
-    instance_id: int,
-    name: Optional[str] = Form(None),
-    label: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    default_condition_uid: Optional[str] = Form(None),
-    epoch_uid: Optional[str] = Form(None),
-    timeline_id: Optional[str] = Form(None),
-    timeline_exit_id: Optional[str] = Form(None),
-    encounter_uid: Optional[str] = Form(None),
-    member_of_timeline: Optional[str] = Form(None),
-):
-    payload = InstanceUpdate(
-        name=name,
-        label=label,
-        description=description,
-        default_condition_uid=default_condition_uid,
-        epoch_uid=epoch_uid,
-        timeline_id=timeline_id,
-        timeline_exit_id=timeline_exit_id,
-        encounter_uid=encounter_uid,
-        member_of_timeline=member_of_timeline,
-    )
-    update_instance(soa_id, instance_id, payload)
+async def ui_update_instance(request: Request, soa_id: int, instance_id: int):
+    # Read the raw form rather than Form(None) parameters: FastAPI turns
+    # an empty value into None, which update_instance reads as "keep the
+    # old value", so choosing "-- Select Epoch --" (or blanking a field)
+    # could never clear it. A field sent empty now clears it; a field
+    # not sent at all is left unchanged. The name is required, so a
+    # blank name is ignored rather than stored as NULL.
+    form = await request.form()
+    fields = {key: str(form[key]) for key in InstanceUpdate.model_fields if key in form}
+    if not (fields.get("name") or "").strip():
+        fields.pop("name", None)
+    payload = InstanceUpdate(**fields)
+    await run_in_threadpool(update_instance, soa_id, instance_id, payload)
     return RedirectResponse(
         url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/instances"), status_code=303
     )
