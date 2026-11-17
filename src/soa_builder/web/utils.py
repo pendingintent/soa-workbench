@@ -119,6 +119,13 @@ def iso_duration_to_days(iso_duration: str) -> float:
     if not iso_duration:
         return None
 
+    # A leading "-" (e.g. -P14D, before the anchor visit) negates the
+    # whole duration; the regex itself only matches the unsigned part.
+    sign = 1
+    if iso_duration.startswith("-"):
+        sign = -1
+        iso_duration = iso_duration[1:]
+
     m = _ISO_DURATION_RE.match(iso_duration)
     if not m:
         return None
@@ -134,7 +141,7 @@ def iso_duration_to_days(iso_duration: str) -> float:
     days += parts["minutes"] / (24.0 * 60.0)
     days += parts["seconds"] / (24.0 * 3600.0)
 
-    return days
+    return sign * days
 
 
 def _nz(s: Optional[str]) -> Optional[str]:
