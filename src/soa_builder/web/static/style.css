@@ -867,8 +867,7 @@ details.am-help-panel > .am-help-panel-body {
   font-size: 0.875rem;
 }
 /* Beat details.collapsible > *:not(summary) so numbers stay inside */
-details.am-checklist > .am-checklist-list { padding: 0 14px 4px 38px; }
-details.am-checklist > .am-checklist-wizard { padding: 0 14px 12px; }
+details.am-checklist > .am-checklist-list { padding: 0 14px 12px 38px; }
 .am-checklist-item { margin: 4px 0; }
 .am-checklist-mark {
   display: inline-block;
@@ -881,7 +880,8 @@ details.am-checklist > .am-checklist-wizard { padding: 0 14px 12px; }
   margin-left: 4px;
   color: var(--am-text-mid);
 }
-.am-checklist-wizard { margin: 10px 0 0; }
+/* Guided-setup button below the checklist, visible even when collapsed */
+.am-checklist-wizard { margin: -4px 0 14px; }
 
 /* ---- Guided setup wizard (wizard_*.html) ----------------------- */
 .am-wizard-progress {

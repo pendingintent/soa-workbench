@@ -1,10 +1,24 @@
 {#- Getting-started checklist for the edit page (issue #382).
 
     Expects `setup_progress`: the list returned by
-    services.setup_progress.get_setup_progress(soa_id). Open while any
-    step is incomplete; collapsed once everything is done. -#}
+    services.setup_progress.get_setup_progress(soa_id), and
+    `wizard_state` (services.wizard_state.get_wizard_state or None).
+    The checklist is open while any step is incomplete and collapsed
+    once everything is done.
+
+    The guided-setup button sits outside the collapsible checklist and
+    is always shown, so a study can go back into the wizard from here
+    at any time, including after every step is done or the wizard has
+    been finished. /ui/wizard/{id} resumes at the saved step. -#}
 {%- set done_count = setup_progress | selectattr("done") | list | length -%}
 {%- set total = setup_progress | length -%}
+{%- if not wizard_state -%}
+  {%- set wizard_label = "Use guided setup" -%}
+{%- elif wizard_state.status == "complete" or done_count == total -%}
+  {%- set wizard_label = "Open guided setup" -%}
+{%- else -%}
+  {%- set wizard_label = "Continue guided setup" -%}
+{%- endif -%}
 <details id="setup-checklist" class="collapsible am-checklist"{% if done_count < total %} open{% endif %}>
   <summary>Getting started &middot; {{ done_count }} of {{ total }} complete</summary>
   <ol class="am-checklist-list">
@@ -18,11 +32,7 @@
     </li>
     {% endfor %}
   </ol>
-  {% if not (wizard_state and wizard_state.status == 'complete') and done_count < total %}
-  <p class="am-checklist-wizard">
-    <a href="/ui/wizard/{{ soa_id }}" class="am-btn am-btn-primary am-btn-sm">
-      {% if wizard_state %}Continue guided setup{% else %}Use guided setup{% endif %} &rarr;
-    </a>
-  </p>
-  {% endif %}
 </details>
+<p class="am-checklist-wizard">
+  <a href="/ui/wizard/{{ soa_id }}" class="am-btn am-btn-primary am-btn-sm">{{ wizard_label }} &rarr;</a>
+</p>

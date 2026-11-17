@@ -556,9 +556,52 @@ def test_index_links_to_wizard():
     assert 'href="/ui/wizard/new"' in client.get("/").text
 
 
-def test_edit_checklist_offers_resume_for_drafts(soa_id):
+def _wizard_button(page_html, soa_id):
+    """Return the edit page's guided-setup button text, asserting it is
+    outside the collapsible checklist so it shows even when collapsed."""
+    href = f'href="/ui/wizard/{soa_id}"'
+    assert href in page_html
+    checklist = page_html.split('<details id="setup-checklist"')[1].split("</details>")[
+        0
+    ]
+    assert href not in checklist
+    return page_html.split(href)[1].split("</a>")[0]
+
+
+def test_edit_page_offers_continue_for_drafts(soa_id):
     edit = client.get(f"/ui/soa/{soa_id}/edit")
-    assert f'href="/ui/wizard/{soa_id}"' in edit.text
+    assert "Continue guided setup" in _wizard_button(edit.text, soa_id)
+
+
+def test_edit_page_offers_wizard_for_studies_built_elsewhere():
+    plain = client.post("/soa", json={"name": "Built by hand"}).json()["id"]
+    edit = client.get(f"/ui/soa/{plain}/edit")
+    assert "Use guided setup" in _wizard_button(edit.text, plain)
+
+
+def test_edit_page_keeps_wizard_link_when_everything_is_done(soa_id, fake_concepts):
+    """A finished study, with every checklist step done, must still be
+    able to go back into the wizard from the edit page."""
+    _post(soa_id, "titles", action="add", text="Official Title")
+    _post(soa_id, "arms", action="add", name="Placebo")
+    (day1, _), (vitals, _) = _build_schedule(soa_id)
+    client.post(
+        f"/ui/wizard/{soa_id}/activities",
+        data={"action": "save", "grid": "1", "cell": [f"{day1}:{vitals}"]},
+        follow_redirects=False,
+    )
+    _concept_action(soa_id, "add_concept", vitals, "C49676")
+    finish = client.post(f"/ui/wizard/{soa_id}/finish", follow_redirects=False)
+    assert finish.status_code == 303
+    assert _state(soa_id)["status"] == "complete"
+
+    edit = client.get(f"/ui/soa/{soa_id}/edit")
+    assert "9 of 9 complete" in edit.text
+    assert "Open guided setup" in _wizard_button(edit.text, soa_id)
+    # ... and it leads back into the wizard
+    resume = client.get(f"/ui/wizard/{soa_id}", follow_redirects=False)
+    assert resume.status_code == 303
+    assert resume.headers["location"].startswith(f"/ui/wizard/{soa_id}/")
 
 
 def test_migration_is_idempotent():
