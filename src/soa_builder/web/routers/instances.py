@@ -17,6 +17,7 @@ from ..utils import (
     get_next_instance_uid,
     get_schedule_timeline,
     get_scheduled_activity_instance,
+    read_form_fields,
     redirect_url_from_referer as _redirect_url,
     _nz as _nz,
 )
@@ -347,14 +348,10 @@ def update_instance(soa_id: int, instance_id: int, payload: InstanceUpdate):
 # UI code to update an instance in an SOA
 @router.post("/ui/soa/{soa_id}/instances/{instance_id}/update")
 async def ui_update_instance(request: Request, soa_id: int, instance_id: int):
-    # Read the raw form rather than Form(None) parameters: FastAPI turns
-    # an empty value into None, which update_instance reads as "keep the
-    # old value", so choosing "-- Select Epoch --" (or blanking a field)
-    # could never clear it. A field sent empty now clears it; a field
-    # not sent at all is left unchanged. The name is required, so a
-    # blank name is ignored rather than stored as NULL.
-    form = await request.form()
-    fields = {key: str(form[key]) for key in InstanceUpdate.model_fields if key in form}
+    # A field sent empty clears it; one not sent is left unchanged (see
+    # read_form_fields). The name is required, so a blank name is
+    # ignored rather than stored as NULL.
+    fields = await read_form_fields(request, InstanceUpdate.model_fields)
     if not (fields.get("name") or "").strip():
         fields.pop("name", None)
     payload = InstanceUpdate(**fields)

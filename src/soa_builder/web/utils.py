@@ -1,6 +1,6 @@
 from .errors import MALFORMED_JSON_ERRORS, REMOTE_PAYLOAD_ERRORS
 import sqlite3
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 import json
 import logging
 import os
@@ -140,6 +140,21 @@ def iso_duration_to_days(iso_duration: str) -> float:
 def _nz(s: Optional[str]) -> Optional[str]:
     s = (s or "").strip()
     return s or None
+
+
+async def read_form_fields(request: Any, names: Iterable[str]) -> Dict[str, str]:
+    """Return the named fields the posted form actually sent.
+
+    Use this instead of ``Form(None)`` parameters on edit routes whose
+    update function reads ``None`` as "keep the current value".
+    FastAPI turns an empty form value into ``None``, so with
+    ``Form(None)`` choosing a "-- Select ... --" option or blanking a
+    field could never clear it. Here a field sent empty comes back as
+    ``""`` (the update then stores NULL) and a field not sent is
+    absent from the result (the update leaves it unchanged).
+    """
+    form = await request.form()
+    return {name: str(form[name]) for name in names if name in form}
 
 
 def get_cdisc_api_key():

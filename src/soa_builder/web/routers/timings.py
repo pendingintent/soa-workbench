@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from fastapi import APIRouter, HTTPException, Request, Form
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from ..audit import _record_timing_audit
 from ..codelist_config import (
@@ -24,6 +25,7 @@ from ..utils import (
     get_schedule_timeline,
     get_study_timing_type,
     get_next_code_uid as _get_next_code_uid,
+    read_form_fields,
     redirect_url_from_referer as _redirect_url,
 )
 
@@ -555,25 +557,55 @@ def update_timing(soa_id: int, timing_id: int, payload: TimingUpdate):
 
 
 # UI code to update a timing in an SOA
+# Fields the timing row on the study timing page posts.
+_TIMING_FORM_FIELDS = (
+    "name",
+    "label",
+    "description",
+    "type_submission_value",
+    "value",
+    "value_label",
+    "relative_to_from_submission_value",
+    "relative_from_schedule_instance",
+    "relative_to_schedule_instance",
+    "window_label",
+    "window_upper",
+    "window_lower",
+    "member_of_timeline",
+)
+
+
 @router.post("/ui/soa/{soa_id}/timings/{timing_id}/update")
-def ui_update_timing(
-    request: Request,
+async def ui_update_timing(request: Request, soa_id: int, timing_id: int):
+    # A field sent empty clears it; one not sent is left unchanged (see
+    # read_form_fields). A blank name fails TimingUpdate validation
+    # (400), as before.
+    fields = await read_form_fields(request, _TIMING_FORM_FIELDS)
+    fields["name"] = (fields.get("name") or "").strip() or None
+    await run_in_threadpool(_update_timing_from_form, soa_id, timing_id, **fields)
+    return RedirectResponse(
+        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/timings"), status_code=303
+    )
+
+
+def _update_timing_from_form(
     soa_id: int,
     timing_id: int,
-    name: Optional[str] = Form(None),
-    label: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    type_submission_value: Optional[str] = Form(None),
-    value: Optional[str] = Form(None),
-    value_label: Optional[str] = Form(None),
-    relative_to_from_submission_value: Optional[str] = Form(None),
-    relative_from_schedule_instance: Optional[str] = Form(None),
-    relative_to_schedule_instance: Optional[str] = Form(None),
-    window_label: Optional[str] = Form(None),
-    window_upper: Optional[str] = Form(None),
-    window_lower: Optional[str] = Form(None),
-    member_of_timeline: Optional[str] = Form(None),
-):
+    name: Optional[str] = None,
+    label: Optional[str] = None,
+    description: Optional[str] = None,
+    type_submission_value: Optional[str] = None,
+    value: Optional[str] = None,
+    value_label: Optional[str] = None,
+    relative_to_from_submission_value: Optional[str] = None,
+    relative_from_schedule_instance: Optional[str] = None,
+    relative_to_schedule_instance: Optional[str] = None,
+    window_label: Optional[str] = None,
+    window_upper: Optional[str] = None,
+    window_lower: Optional[str] = None,
+    member_of_timeline: Optional[str] = None,
+) -> None:
+    """Apply a timing row's form values; "" clears, None keeps."""
     # Determine existing code values for type and relative_to_from
     mapped_type: Optional[str] = None
     mapped_rtf: Optional[str] = None
@@ -677,9 +709,6 @@ def ui_update_timing(
         msgs = "; ".join(e["msg"] for e in exc.errors())
         raise HTTPException(400, f"Validation error: {msgs}")
     update_timing(soa_id, timing_id, payload)
-    return RedirectResponse(
-        url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/timings"), status_code=303
-    )
 
 
 # API endpoint to delete a timing
