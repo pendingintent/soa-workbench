@@ -390,7 +390,11 @@ def get_epoch_parent_package_href_cached() -> str | None:
 
 
 def _next_uid_from_counter(
-    cur: Any, soa_id: int, prefix: str, seed_fn: Callable[[], int]
+    cur: Any,
+    soa_id: int,
+    prefix: str,
+    seed_fn: Callable[[], int],
+    resync: bool = False,
 ) -> str:
     """Return the next `{prefix}{N}` UID for this SoA from the durable
     uid_counter table, never reusing a freed number. Lazily seeds the
@@ -398,6 +402,12 @@ def _next_uid_from_counter(
     scan), so a SoA that already has UIDs picks up where its current
     numbering left off. Assumes `cur` is a sqlite cursor within an
     open transaction.
+
+    With `resync`, every call also runs seed_fn() and skips past any
+    number already in use. Use it for prefixes whose rows other
+    writers can create without this counter (legacy migrations,
+    restored snapshots), so the counter can never fall behind and
+    hand out a UID that already exists.
     """
     cur.execute(
         "SELECT next_n FROM uid_counter WHERE soa_id=? AND prefix=?",
@@ -412,6 +422,8 @@ def _next_uid_from_counter(
         )
         return f"{prefix}{n}"
     n = row[0]
+    if resync:
+        n = max(n, seed_fn() + 1)
     cur.execute(
         "UPDATE uid_counter SET next_n=? WHERE soa_id=? AND prefix=?",
         (n + 1, soa_id, prefix),
@@ -804,7 +816,7 @@ def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
         )
         return _max_suffix(cur.fetchall())
 
-    return _next_uid_from_counter(cur, soa_id, "AliasCode_", _seed)
+    return _next_uid_from_counter(cur, soa_id, "AliasCode_", _seed, resync=True)
 
 
 # Helper function to generate new code_uid value
@@ -820,7 +832,7 @@ def get_next_code_uid(cur: Any, soa_id: int) -> str:
         )
         return _max_suffix(cur.fetchall())
 
-    return _next_uid_from_counter(cur, soa_id, "Code_", _seed)
+    return _next_uid_from_counter(cur, soa_id, "Code_", _seed, resync=True)
 
 
 def get_next_biomedical_concept_property_uid(cur: Any, soa_id: int) -> str:
