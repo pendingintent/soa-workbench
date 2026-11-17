@@ -5,6 +5,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Request, Form, Body
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from ..audit import _record_decision_instance_audit
 from ..db import _connect
@@ -14,6 +15,7 @@ from ..utils import (
     get_epoch_uid,
     get_next_decision_instance_uid,
     get_schedule_timeline,
+    read_form_fields,
     redirect_url_from_referer as _redirect_url,
     _nz as _nz,
 )
@@ -302,26 +304,18 @@ def update_decision_instance(
 
 
 @router.post("/ui/soa/{soa_id}/decision_instances/{decision_instance_id}/update")
-def ui_update_decision_instance(
-    request: Request,
-    soa_id: int,
-    decision_instance_id: int,
-    name: Optional[str] = Form(None),
-    label: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    default_condition_uid: Optional[str] = Form(None),
-    epoch_uid: Optional[str] = Form(None),
-    member_of_timeline: Optional[str] = Form(None),
+async def ui_update_decision_instance(
+    request: Request, soa_id: int, decision_instance_id: int
 ):
-    payload = DecisionInstanceUpdate(
-        name=name,
-        label=label,
-        description=description,
-        default_condition_uid=default_condition_uid,
-        epoch_uid=epoch_uid,
-        member_of_timeline=member_of_timeline,
+    # A field sent empty clears it; one not sent is left unchanged (see
+    # read_form_fields). A blank name is ignored rather than stored.
+    fields = await read_form_fields(request, DecisionInstanceUpdate.model_fields)
+    if not (fields.get("name") or "").strip():
+        fields.pop("name", None)
+    payload = DecisionInstanceUpdate(**fields)
+    await run_in_threadpool(
+        update_decision_instance, soa_id, decision_instance_id, payload
     )
-    update_decision_instance(soa_id, decision_instance_id, payload)
     return RedirectResponse(
         url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/decision_instances"),
         status_code=303,
