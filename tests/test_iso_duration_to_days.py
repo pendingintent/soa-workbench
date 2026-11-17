@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from soa_builder.web.app import app
-from soa_builder.web.utils import iso_duration_to_days
+from soa_builder.web.utils import format_study_day, iso_duration_to_days
 
 client = TestClient(app)
 
@@ -63,3 +63,19 @@ def test_matrix_study_day_row_shows_negative_day():
     html = client.get(f"/ui/soa/{soa_id}/edit").text
     row = html.split('class="matrix-study-day-row"', 1)[1].split("</tr>", 1)[0]
     assert "-14" in row
+    assert "-14.0" not in row  # whole days, no decimal
+
+
+@pytest.mark.parametrize(
+    "days, expected",
+    [
+        (14.0, "14"),
+        (-14.0, "-14"),
+        (0.0, "0"),
+        (1.5, "1.5"),
+        (1 / 3, "0.33"),
+        (None, ""),
+    ],
+)
+def test_format_study_day(days, expected):
+    assert format_study_day(days) == expected

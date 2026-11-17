@@ -7,6 +7,7 @@ from ...services.studies import MissingStudyIdError
 from ...services.studies import create_soa_record
 from ...services.studies import update_soa_record
 from ...services.wizard_state import get_wizard_state
+from ...utils import format_study_day
 from ._shared import (
     Form,
     HTMLResponse,
@@ -486,7 +487,7 @@ def ui_edit(request: Request, soa_id: int):
             "window_label": r[15],
             "timing_label": r[16],
             "timing_name": r[17],
-            "study_day": iso_duration_to_days(r[18]),
+            "study_day": format_study_day(iso_duration_to_days(r[18])),
         }
         for r in cur_inst.fetchall()
     ]

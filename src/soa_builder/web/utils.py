@@ -144,6 +144,20 @@ def iso_duration_to_days(iso_duration: str) -> float:
     return sign * days
 
 
+def format_study_day(days: Optional[float]) -> str:
+    """Format a day count for the matrix's Study Day row.
+
+    Whole days show without a decimal (-14.0 -> "-14", 0.0 -> "0").
+    A part day, from an hour or minute duration, keeps up to two
+    decimals (1.5 -> "1.5"). None (no timing) gives "".
+    """
+    if days is None:
+        return ""
+    if float(days).is_integer():
+        return str(int(days))
+    return f"{days:.2f}".rstrip("0").rstrip(".")
+
+
 def _nz(s: Optional[str]) -> Optional[str]:
     s = (s or "").strip()
     return s or None
