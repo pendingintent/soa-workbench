@@ -2,94 +2,59 @@
 
 import re
 
+from sdtm._common import first_text, sponsor_study_id
 from soa_builder.web.db import _connect
 
+# "Day -14", "day 1", "15", "-14". Unicode minus is accepted.
+_STUDY_DAY_RE = re.compile(r"^(?:day\s*)?([+\-−]?\d+)$", re.IGNORECASE)
 
-def _iso_duration_to_days(value: str) -> str:
-    """Convert an ISO 8601 duration string to an integer number of days.
 
-    Handles the patterns used in clinical trial timing values:
-      P{n}D        → n days
-      P{n}W        → n * 7 days
-      P{n}Y{n}M{n}D → years * 365 + months * 30 + days (approximate)
-      -P...        → negative day count
-      PT{n}H / time-only → "" (cannot express as integer days)
+def _study_day_from_label(label: str | None) -> str:
+    """Return the planned study day held in a Timing label, or ''.
 
-    Returns the day count as a string, or "" if the value is absent or
-    cannot be converted to an integer number of days.
+    The mapping file sources VISITDY from Encounter/@scheduledAt/
+    Timing/@label, so the label must hold the study day. A label that
+    is not a study day (e.g. "Week 4") gives '' rather than a guess.
     """
-    if not value:
+    match = _STUDY_DAY_RE.match(first_text(label))
+    if not match:
         return ""
-    s = value.strip()
-    negative = s.startswith("-")
-    if negative:
-        s = s[1:]
-    if not s.startswith("P"):
-        return ""
-    s = s[1:]  # strip leading 'P'
-
-    # Weeks-only shorthand: {n}W
-    m = re.fullmatch(r"(\d+(?:\.\d+)?)W", s)
-    if m:
-        days = round(float(m.group(1)) * 7)
-        return str(-days if negative else days)
-
-    # General form: split date/time at 'T'
-    date_part = s.partition("T")[0]
-
-    y = re.search(r"(\d+(?:\.\d+)?)Y", date_part)
-    mo = re.search(r"(\d+(?:\.\d+)?)M", date_part)
-    d = re.search(r"(\d+(?:\.\d+)?)D", date_part)
-
-    if not y and not mo and not d:
-        return ""  # time-only duration (e.g. PT8H) — not a day count
-
-    days = 0
-    if y:
-        days += round(float(y.group(1)) * 365)
-    if mo:
-        days += round(float(mo.group(1)) * 30)
-    if d:
-        days += round(float(d.group(1)))
-
-    return str(-days if negative else days)
+    return str(int(match.group(1).replace("−", "-")))
 
 
 def build_sdtm_tv(soa_id: int) -> list[dict]:
-    """One record per planned (visit, arm) combination (TV domain).
+    """One record per planned visit, or per visit and arm (TV domain).
 
-    Mapping follows SDTM IG v3.4 Section 7 / docs/Create TDD.docx:
-      VISITNUM = Encounter ordering (visit.order_index)
-      VISIT    = Encounter/@name  (visit.name)
-      VISITDY  = Encounter/@timing/Timing/@timingValue
-                 (timing.value via visit.scheduledAtId → timing.id)
-      ARMCD    = StudyArm/@name via ScheduledActivityInstance → StudyCell → arm
-                 (one row per arm when encounter is linked; blank otherwise)
-      ARM      = StudyArm/@description via same path
+    Mapping follows the CDISC USDM v4.0 to SDTMIG v3.4 mapping file:
+      STUDYID  = sponsor StudyIdentifier/@text (see sponsor_study_id)
+      VISITNUM = Encounter order (visit.order_index, the next chain)
+      VISIT    = Encounter/@label (falls back to @name)
+      VISITDY  = Encounter/@scheduledAt/Timing/@label (study day)
+      ARMCD    = StudyArm/@label (falls back to @name)
+      ARM      = StudyArm/@description (falls back to @label, @name)
       TVSTRL   = Encounter/@transitionStartRule/TransitionRule/@text
       TVENRL   = Encounter/@transitionEndRule/TransitionRule/@text
 
-    Row cardinality:
-      - If a visit's encounter_uid appears in instances that link to arm(s)
-        via epoch→study_cell, one TV row is emitted per (visit, arm).
-      - If there is no instance linkage, one TV row is emitted with ARMCD/ARM blank.
+    Row cardinality (SDTMIG v3.4; USDM IHB 1 section 4.3): ARMCD and
+    ARM are only populated when visits differ between arms. Arms per
+    visit come from instance -> epoch -> study_cell -> arm. When every
+    linked visit has the same arms, one row per visit is emitted with
+    ARMCD and ARM null; otherwise one row per (visit, arm).
     """
     conn = _connect()
     cur = conn.cursor()
+    study_id = sponsor_study_id(cur, soa_id)
 
-    cur.execute("SELECT study_id, name FROM soa WHERE id=?", (soa_id,))
-    row = cur.fetchone()
-    study_id = (row[0] or row[1]) if row else ""
-
-    # Query 1: all visits with timing and transition rule text
+    # Rule UIDs repeat across studies, so the joins match on soa_id.
     cur.execute(
         """
         SELECT v.encounter_uid,
                v.name,
+               v.label,
                v.order_index,
-               t.value        AS timing_value,
-               tr_s.text      AS tvstrl_text,
-               tr_e.text      AS tvenrl_text
+               t.label   AS timing_label,
+               tr_s.text AS tvstrl_text,
+               tr_e.text AS tvenrl_text
         FROM visit v
         LEFT JOIN timing t
                ON t.soa_id = v.soa_id
@@ -97,24 +62,26 @@ def build_sdtm_tv(soa_id: int) -> list[dict]:
               AND v.scheduledAtId != ''
               AND t.id = CAST(v.scheduledAtId AS INTEGER)
         LEFT JOIN transition_rule tr_s
-               ON tr_s.transition_rule_uid = v.transitionStartRule
+               ON tr_s.soa_id = v.soa_id
+              AND tr_s.transition_rule_uid = v.transitionStartRule
         LEFT JOIN transition_rule tr_e
-               ON tr_e.transition_rule_uid = v.transitionEndRule
+               ON tr_e.soa_id = v.soa_id
+              AND tr_e.transition_rule_uid = v.transitionEndRule
         WHERE v.soa_id = ?
-        ORDER BY v.order_index
+        ORDER BY v.order_index, v.id
         """,
         (soa_id,),
     )
     visits = cur.fetchall()
 
-    # Query 2: arm linkage per encounter via instances → epoch → study_cell → arm
     cur.execute(
         """
         SELECT DISTINCT inst.encounter_uid,
-               a.name        AS arm_name,
-               a.description AS arm_desc,
-               a.label       AS arm_label,
-               a.order_index AS arm_ord
+               a.arm_uid,
+               a.name,
+               a.label,
+               a.description,
+               a.order_index
         FROM instances inst
         JOIN study_cell sc ON sc.soa_id = inst.soa_id
                           AND sc.epoch_uid = inst.epoch_uid
@@ -127,43 +94,35 @@ def build_sdtm_tv(soa_id: int) -> list[dict]:
         """,
         (soa_id,),
     )
-    arm_map: dict[str, list[tuple[str, str, str]]] = {}
-    for enc_uid, arm_name, arm_desc, arm_label, _ in cur.fetchall():
-        arm_map.setdefault(enc_uid, []).append((arm_name, arm_desc, arm_label))
-
+    arm_map: dict[str, dict[str, tuple[str, str]]] = {}
+    for enc_uid, arm_uid, name, label, desc, _order in cur.fetchall():
+        arm_map.setdefault(enc_uid, {})[arm_uid] = (
+            first_text(label, name),
+            first_text(desc, label, name),
+        )
     conn.close()
 
+    arm_sets = {frozenset(arms) for arms in arm_map.values()}
+    by_arm = len(arm_sets) > 1
+
     records = []
-    for enc_uid, visit_name, order_index, timing_val, tvstrl, tvenrl in visits:
-        arms = arm_map.get(enc_uid or "", [])
-        if arms:
-            for arm_name, arm_desc, arm_label in arms:
-                records.append(
-                    {
-                        "STUDYID": study_id,
-                        "DOMAIN": "TV",
-                        "VISITNUM": order_index,
-                        "VISIT": visit_name or "",
-                        "VISITDY": _iso_duration_to_days(timing_val or ""),
-                        "ARMCD": (arm_name or "")[:20],
-                        "ARM": arm_desc or arm_label or arm_name or "",
-                        "TVSTRL": tvstrl or "",
-                        "TVENRL": tvenrl or "",
-                    }
-                )
+    for enc_uid, name, label, order_index, timing_label, strl, enrl in visits:
+        base = {
+            "STUDYID": study_id,
+            "DOMAIN": "TV",
+            "VISITNUM": order_index,
+            "VISIT": first_text(label, name),
+            "VISITDY": _study_day_from_label(timing_label),
+            "ARMCD": "",
+            "ARM": "",
+            "TVSTRL": strl or "",
+            "TVENRL": enrl or "",
+        }
+        arms = arm_map.get(enc_uid or "", {})
+        if by_arm and arms:
+            for armcd, arm in arms.values():
+                records.append({**base, "ARMCD": armcd, "ARM": arm})
         else:
-            records.append(
-                {
-                    "STUDYID": study_id,
-                    "DOMAIN": "TV",
-                    "VISITNUM": order_index,
-                    "VISIT": visit_name or "",
-                    "VISITDY": timing_val or "",
-                    "ARMCD": "",
-                    "ARM": "",
-                    "TVSTRL": tvstrl or "",
-                    "TVENRL": tvenrl or "",
-                }
-            )
+            records.append(base)
     records.sort(key=lambda r: (r["ARMCD"], r["VISITNUM"]))
     return records
