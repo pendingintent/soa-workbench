@@ -1,0 +1,54 @@
+{% set d = timeline.duration %}
+<div id="planned-duration-{{ timeline.id }}" class="study-meta-card">
+  <h3>{{ timeline.name }} <span class="obj-uid">{{ timeline.uid }}</span></h3>
+  <form hx-post="/ui/soa/{{ soa_id }}/schedule_timelines/{{ timeline.id }}/planned_duration"
+        hx-target="#planned-duration-{{ timeline.id }}"
+        hx-swap="outerHTML"
+        class="am-grid-2">
+    <div class="am-field">
+      <label class="am-field-label">Value</label>
+      <input name="value" type="number" step="any" min="0"
+             value="{{ d.planned_duration_value if d.planned_duration_value is not none else '' }}"
+             placeholder="e.g. 85" class="am-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Unit</label>
+      <select name="unit_code" class="am-select">
+        <option value="">-- Select unit --</option>
+        {% for u in units %}
+        <option value="{{ u.code }}" {% if d.planned_duration_unit_code == u.code %}selected{% endif %}>{{ u.decode }} ({{ u.code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Text</label>
+      <input name="text" value="{{ d.planned_duration_text or '' }}"
+             placeholder="e.g. Approximately 85 weeks" class="am-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Duration Will Vary</label>
+      <label class="fz-amendment-toggle">
+        <input type="checkbox" name="duration_will_vary" value="1" {% if d.planned_duration_will_vary %}checked{% endif %} />
+        Duration will vary?
+      </label>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Reason Duration Will Vary</label>
+      <input name="reason_duration_will_vary" value="{{ d.planned_duration_reason or '' }}"
+             placeholder="Reason (optional)" class="am-input" />
+    </div>
+    <div class="am-field-span am-flex-center-row" style="gap:8px;flex-wrap:wrap;">
+      <button type="submit" class="am-btn am-btn-info">Save Planned Duration</button>
+      {% if error %}<small class="am-required">{{ error }}</small>{% endif %}
+    </div>
+  </form>
+  {% if d.planned_duration_value is not none or d.planned_duration_text %}
+  <form hx-post="/ui/soa/{{ soa_id }}/schedule_timelines/{{ timeline.id }}/planned_duration/delete"
+        hx-target="#planned-duration-{{ timeline.id }}"
+        hx-swap="outerHTML"
+        hx-confirm="Clear the planned duration of {{ timeline.name }}?"
+        style="display:inline;">
+    <button type="submit" class="am-btn am-btn-danger am-btn-sm">Clear Planned Duration</button>
+  </form>
+  {% endif %}
+</div>

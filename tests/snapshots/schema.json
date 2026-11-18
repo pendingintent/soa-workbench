@@ -4606,6 +4606,55 @@
     "notnull": 0,
     "pk": 0,
     "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_text",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_value",
+    "notnull": 0,
+    "pk": 0,
+    "type": "REAL"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_unit_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_unit_decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_unit_version",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "0",
+    "name": "planned_duration_will_vary",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_reason",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
    }
   ],
   "indexes": {
@@ -4745,6 +4794,27 @@
    {
     "default": null,
     "name": "study_description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "intervention_model_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "intervention_model_decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "intervention_model_version",
     "notnull": 0,
     "pk": 0,
     "type": "TEXT"

@@ -190,29 +190,41 @@ def _capture_study_cells(cur, soa_id: int) -> list:
     ]
 
 
+_TIMELINE_CAPTURE_COLUMNS = (
+    "schedule_timeline_uid",
+    "name",
+    "label",
+    "description",
+    "main_timeline",
+    "entry_condition",
+    "entry_id",
+    "exit_id",
+    "order_index",
+)
+# Added by migration m0116; captured only when the columns exist.
+_TIMELINE_DURATION_COLUMNS = (
+    "planned_duration_text",
+    "planned_duration_value",
+    "planned_duration_unit_code",
+    "planned_duration_unit_decode",
+    "planned_duration_unit_version",
+    "planned_duration_will_vary",
+    "planned_duration_reason",
+)
+
+
 def _capture_schedule_timelines(cur, soa_id: int) -> list:
     if not _table_has_columns(cur, "schedule_timelines", ("schedule_timeline_uid",)):
         return []
+    columns = list(_TIMELINE_CAPTURE_COLUMNS)
+    if _table_has_columns(cur, "schedule_timelines", _TIMELINE_DURATION_COLUMNS):
+        columns += _TIMELINE_DURATION_COLUMNS
     cur.execute(
-        "SELECT schedule_timeline_uid,name,label,description,"
-        "main_timeline,entry_condition,entry_id,exit_id,order_index"
+        f"SELECT {','.join(columns)}"
         " FROM schedule_timelines WHERE soa_id=? ORDER BY id",
         (soa_id,),
     )
-    return [
-        {
-            "schedule_timeline_uid": r[0],
-            "name": r[1],
-            "label": r[2],
-            "description": r[3],
-            "main_timeline": r[4],
-            "entry_condition": r[5],
-            "entry_id": r[6],
-            "exit_id": r[7],
-            "order_index": r[8],
-        }
-        for r in cur.fetchall()
-    ]
+    return [dict(zip(columns, row)) for row in cur.fetchall()]
 
 
 def _capture_instances(cur, soa_id: int) -> list:

@@ -57,6 +57,82 @@ def _timeline_exits(
     ]
 
 
+_DURATION_COLUMNS = (
+    "planned_duration_text",
+    "planned_duration_value",
+    "planned_duration_unit_code",
+    "planned_duration_unit_decode",
+    "planned_duration_unit_version",
+    "planned_duration_will_vary",
+    "planned_duration_reason",
+)
+
+
+def _planned_durations(soa_id: int) -> Dict[str, Dict[str, Any]]:
+    """Return {timeline uid: planned duration columns} for the SoA."""
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT schedule_timeline_uid, "
+            + ", ".join(_DURATION_COLUMNS)
+            + " FROM schedule_timelines WHERE soa_id=?",
+            (soa_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+    return {row[0]: dict(zip(_DURATION_COLUMNS, row[1:])) for row in rows}
+
+
+def _planned_duration(timeline_uid: str, cols: Dict[str, Any]):
+    """Build ScheduleTimeline.plannedDuration (USDM v4.0 Duration-Output).
+
+    Duration requires id and durationWillVary; text, quantity and
+    reasonDurationWillVary are optional. The quantity unit is an
+    AliasCode wrapping the CDISC unit Code. Ids are derived from the
+    timeline UID, so they are unique and stable across exports.
+    """
+    value = cols.get("planned_duration_value")
+    text = cols.get("planned_duration_text")
+    if value is None and not text:
+        return None
+    quantity = None
+    if value is not None:
+        unit = None
+        if cols.get("planned_duration_unit_code"):
+            unit = {
+                "id": f"{timeline_uid}_PlannedDurationUnit",
+                "extensionAttributes": [],
+                "standardCode": {
+                    "id": f"{timeline_uid}_PlannedDurationUnitCode",
+                    "extensionAttributes": [],
+                    "code": cols["planned_duration_unit_code"],
+                    "codeSystem": "http://www.cdisc.org",
+                    "codeSystemVersion": cols.get("planned_duration_unit_version")
+                    or "",
+                    "decode": cols.get("planned_duration_unit_decode") or "",
+                    "instanceType": "Code",
+                },
+                "standardCodeAliases": [],
+                "instanceType": "AliasCode",
+            }
+        quantity = {
+            "id": f"{timeline_uid}_PlannedDurationQuantity",
+            "extensionAttributes": [],
+            "value": float(value),
+            "unit": unit,
+            "instanceType": "Quantity",
+        }
+    return {
+        "id": f"{timeline_uid}_PlannedDuration",
+        "extensionAttributes": [],
+        "text": text or None,
+        "quantity": quantity,
+        "durationWillVary": bool(cols.get("planned_duration_will_vary")),
+        "reasonDurationWillVary": cols.get("planned_duration_reason") or None,
+        "instanceType": "Duration",
+    }
+
+
 def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
     """
     Build USDM scheduleTimelines
@@ -149,6 +225,7 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
     )
     rows = cur.fetchall()
     conn.close()
+    durations = _planned_durations(soa_id)
     out: List[Dict[str, Any]] = []
 
     for i, r in enumerate(rows):
@@ -189,7 +266,9 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
             "exits": _timeline_exits(exitId, instances),
             "timings": generate_study_timings(soa_id, schedule_timeline_uid),
             "instances": instances,
-            "plannedDuration": None,
+            "plannedDuration": _planned_duration(
+                schedule_timeline_uid, durations.get(schedule_timeline_uid, {})
+            ),
             "instanceType": "ScheduleTimeline",
         }
         out.append(scheduleTimeline)
