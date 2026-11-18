@@ -1,6 +1,6 @@
-"""Intervention model and schedule timeline planned duration.
+"""Intervention model, planned duration and population age and sex.
 
-Two USDM v4.0 attributes with CDISC-coded values:
+USDM v4.0 attributes with CDISC-coded values:
 
 - InterventionalStudyDesign.model: a term from the SDTM Intervention
   Model Response codelist (INTERVENTION_MODEL_CODELIST, C99076),
@@ -8,15 +8,19 @@ Two USDM v4.0 attributes with CDISC-coded values:
 - ScheduleTimeline.plannedDuration: a Duration with optional text and
   a Quantity whose unit is a term from DURATION_UNIT_CODELIST
   (C66781), stored on ``schedule_timelines``.
+- StudyDesignPopulation.plannedSex (up to two terms from
+  PLANNED_SEX_CODELIST, C66732) and plannedAge (a Range whose bounds
+  use AGE_UNIT_CODELIST, C66781), stored on ``soa``.
 
 Codes are checked against the latest SDTM CT package, and that
 package's date is stored as the code system version.
 """
 
+import json
 import logging
 import os
 import sqlite3
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
@@ -25,7 +29,12 @@ from pydantic import BaseModel
 
 from .. import utils as web_utils
 from ..audit import _record_schedule_timeline_audit
-from ..codelist_config import DURATION_UNIT_CODELIST, INTERVENTION_MODEL_CODELIST
+from ..codelist_config import (
+    AGE_UNIT_CODELIST,
+    DURATION_UNIT_CODELIST,
+    INTERVENTION_MODEL_CODELIST,
+    PLANNED_SEX_CODELIST,
+)
 from ..db import _connect
 from ..utils import soa_exists
 
@@ -49,6 +58,17 @@ _DURATION_COLUMNS = (
 
 class InterventionModelIn(BaseModel):
     code: str
+
+
+class PlannedSexIn(BaseModel):
+    codes: List[str]
+
+
+class PlannedAgeIn(BaseModel):
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
+    unit_code: Optional[str] = None
+    is_approximate: bool = False
 
 
 class PlannedDurationIn(BaseModel):
@@ -220,14 +240,37 @@ def _get_timeline(soa_id: int, timeline_id: int) -> dict:
 
 
 def _validate_duration(payload: PlannedDurationIn) -> dict:
-    """Return the column values for a valid planned duration."""
+    """Return the column values for a valid planned duration.
+
+    CORE DDF00039: a duration that will vary has no quantity (describe
+    it with text and a reason), and a fixed duration must have one. A
+    reason is only meaningful for a duration that will vary.
+    """
     text = _clean(payload.text)
     unit_code = _clean(payload.unit_code)
+    reason = _clean(payload.reason_duration_will_vary)
+    will_vary = bool(payload.duration_will_vary)
     value = payload.value
     if value is None and not text:
         raise HTTPException(400, "Give a duration value and unit, or a text")
     if (value is None) != (unit_code is None):
         raise HTTPException(400, "A duration value needs a unit, and a unit a value")
+    if will_vary and value is not None:
+        raise HTTPException(
+            400,
+            "A duration that will vary cannot have a value: remove the value"
+            " and unit, or untick duration will vary",
+        )
+    if not will_vary and value is None:
+        raise HTTPException(
+            400,
+            "A fixed duration needs a value and unit; tick duration will vary"
+            " to describe it with text only",
+        )
+    if reason and not will_vary:
+        raise HTTPException(
+            400, "A reason can only be given when the duration will vary"
+        )
     unit_decode = unit_version = None
     if value is not None:
         if value <= 0:
@@ -246,8 +289,8 @@ def _validate_duration(payload: PlannedDurationIn) -> dict:
         "planned_duration_unit_code": unit_code,
         "planned_duration_unit_decode": unit_decode,
         "planned_duration_unit_version": unit_version,
-        "planned_duration_will_vary": bool(payload.duration_will_vary),
-        "planned_duration_reason": _clean(payload.reason_duration_will_vary),
+        "planned_duration_will_vary": will_vary,
+        "planned_duration_reason": reason,
     }
 
 
@@ -362,3 +405,230 @@ def ui_clear_planned_duration(request: Request, soa_id: int, timeline_id: int):
     timeline = _get_timeline(soa_id, timeline_id)
     _write_duration(soa_id, timeline, _empty_duration())
     return _duration_partial(request, soa_id, timeline_id)
+
+
+# --- Population: planned sex and planned age ---------------------------
+
+_AGE_COLUMNS = (
+    "planned_age_min",
+    "planned_age_max",
+    "planned_age_unit_code",
+    "planned_age_unit_decode",
+    "planned_age_unit_version",
+    "planned_age_is_approximate",
+)
+
+
+def get_population(soa_id: int) -> dict:
+    """Return the stored planned sex and planned age for an SoA."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT planned_sex, " + ", ".join(_AGE_COLUMNS) + " FROM soa WHERE id=?",
+            (soa_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    planned_sex = json.loads(row[0]) if row and row[0] else []
+    age = dict(zip(_AGE_COLUMNS, row[1:])) if row else {}
+    has_age = age.get("planned_age_min") is not None or (
+        age.get("planned_age_max") is not None
+    )
+    planned_age = None
+    if has_age:
+        planned_age = {
+            "min_value": age["planned_age_min"],
+            "max_value": age["planned_age_max"],
+            "unit_code": age["planned_age_unit_code"],
+            "unit_decode": age["planned_age_unit_decode"],
+            "code_system_version": age["planned_age_unit_version"],
+            "is_approximate": bool(age["planned_age_is_approximate"]),
+        }
+    return {"planned_sex": planned_sex, "planned_age": planned_age}
+
+
+def _update_soa(soa_id: int, values: dict) -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            "UPDATE soa SET " + ", ".join(f"{col}=?" for col in values) + " WHERE id=?",
+            (*values.values(), soa_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def set_planned_sex(soa_id: int, codes: List[str]) -> list:
+    codes = [c.strip() for c in codes if c and c.strip()]
+    if not codes or len(codes) > 2:
+        raise HTTPException(400, "Choose one or two planned sex terms")
+    if len(set(codes)) != len(codes):
+        raise HTTPException(400, "Each planned sex term can be chosen once")
+    terms, version = _sdtm_terms(PLANNED_SEX_CODELIST)
+    unknown = [c for c in codes if c not in terms]
+    if unknown:
+        raise HTTPException(
+            400,
+            f"{', '.join(unknown)} not in the planned sex codelist"
+            f" {PLANNED_SEX_CODELIST}",
+        )
+    planned_sex = [
+        {"code": c, "decode": terms[c], "code_system_version": version} for c in codes
+    ]
+    _update_soa(soa_id, {"planned_sex": json.dumps(planned_sex)})
+    return planned_sex
+
+
+def set_planned_age(soa_id: int, payload: PlannedAgeIn) -> dict:
+    """Store a planned age range; either bound may be n/a (None).
+
+    USDM v4.0 requires both Range bounds. A one-sided range is kept
+    because v4.1 is expected to allow a missing bound.
+    """
+    low, high = payload.min_value, payload.max_value
+    unit_code = _clean(payload.unit_code)
+    if low is None and high is None:
+        raise HTTPException(400, "Give at least one of the minimum and maximum age")
+    if any(v is not None and v < 0 for v in (low, high)):
+        raise HTTPException(400, "Ages cannot be negative")
+    if low is not None and high is not None and low > high:
+        raise HTTPException(400, "The minimum age is greater than the maximum")
+    terms, version = _sdtm_terms(AGE_UNIT_CODELIST)
+    if unit_code not in terms:
+        raise HTTPException(
+            400, f"Choose an age unit from codelist {AGE_UNIT_CODELIST}"
+        )
+    _update_soa(
+        soa_id,
+        {
+            "planned_age_min": low,
+            "planned_age_max": high,
+            "planned_age_unit_code": unit_code,
+            "planned_age_unit_decode": terms[unit_code],
+            "planned_age_unit_version": version,
+            "planned_age_is_approximate": int(bool(payload.is_approximate)),
+        },
+    )
+    return get_population(soa_id)["planned_age"]
+
+
+def _clear_planned_age(soa_id: int) -> None:
+    values = {col: None for col in _AGE_COLUMNS}
+    values["planned_age_is_approximate"] = 0
+    _update_soa(soa_id, values)
+
+
+@router.get("/soa/{soa_id}/population")
+def api_get_population(soa_id: int):
+    _require_soa(soa_id)
+    return get_population(soa_id)
+
+
+@router.put("/soa/{soa_id}/population/planned_sex")
+def api_set_planned_sex(soa_id: int, payload: PlannedSexIn):
+    _require_soa(soa_id)
+    return set_planned_sex(soa_id, payload.codes)
+
+
+@router.delete("/soa/{soa_id}/population/planned_sex", status_code=204)
+def api_clear_planned_sex(soa_id: int):
+    _require_soa(soa_id)
+    _update_soa(soa_id, {"planned_sex": None})
+    return Response(status_code=204)
+
+
+@router.put("/soa/{soa_id}/population/planned_age")
+def api_set_planned_age(soa_id: int, payload: PlannedAgeIn):
+    _require_soa(soa_id)
+    return set_planned_age(soa_id, payload)
+
+
+@router.delete("/soa/{soa_id}/population/planned_age", status_code=204)
+def api_clear_planned_age(soa_id: int):
+    _require_soa(soa_id)
+    _clear_planned_age(soa_id)
+    return Response(status_code=204)
+
+
+def _population_partial(request: Request, soa_id: int, error: str = ""):
+    sex_terms, _ = _sdtm_terms(PLANNED_SEX_CODELIST)
+    unit_terms, _ = _sdtm_terms(AGE_UNIT_CODELIST)
+    population = get_population(soa_id)
+    return templates.TemplateResponse(
+        request,
+        "_population_partial.html",
+        {
+            "soa_id": soa_id,
+            "planned_sex_codes": [s["code"] for s in population["planned_sex"]],
+            "planned_age": population["planned_age"] or {},
+            "sex_options": _term_options(sex_terms),
+            "unit_options": _term_options(unit_terms),
+            "error": error,
+        },
+    )
+
+
+def _form_number(value: Optional[str]) -> Optional[float]:
+    """Blank or 'n/a' means no value; anything else must be a number."""
+    value = _clean(value)
+    if value is None or value.lower() in ("n/a", "na"):
+        return None
+    return float(value)
+
+
+@router.get("/ui/soa/{soa_id}/population", response_class=HTMLResponse)
+def ui_population(request: Request, soa_id: int):
+    _require_soa(soa_id)
+    return _population_partial(request, soa_id)
+
+
+@router.post("/ui/soa/{soa_id}/population/planned_sex", response_class=HTMLResponse)
+def ui_save_planned_sex(
+    request: Request, soa_id: int, codes: List[str] = Form(default_factory=list)
+):
+    _require_soa(soa_id)
+    error = ""
+    if codes:
+        try:
+            set_planned_sex(soa_id, codes)
+        except HTTPException as exc:
+            error = str(exc.detail)
+    else:
+        _update_soa(soa_id, {"planned_sex": None})
+    return _population_partial(request, soa_id, error)
+
+
+@router.post("/ui/soa/{soa_id}/population/planned_age", response_class=HTMLResponse)
+def ui_save_planned_age(
+    request: Request,
+    soa_id: int,
+    min_value: Optional[str] = Form(None),
+    max_value: Optional[str] = Form(None),
+    unit_code: Optional[str] = Form(None),
+    is_approximate: Optional[str] = Form(None),
+):
+    _require_soa(soa_id)
+    error = ""
+    try:
+        payload = PlannedAgeIn(
+            min_value=_form_number(min_value),
+            max_value=_form_number(max_value),
+            unit_code=unit_code,
+            is_approximate=bool(is_approximate),
+        )
+        set_planned_age(soa_id, payload)
+    except ValueError:
+        error = "Ages must be numbers, or blank / n/a"
+    except HTTPException as exc:
+        error = str(exc.detail)
+    return _population_partial(request, soa_id, error)
+
+
+@router.post(
+    "/ui/soa/{soa_id}/population/planned_age/delete", response_class=HTMLResponse
+)
+def ui_clear_planned_age(request: Request, soa_id: int):
+    _require_soa(soa_id)
+    _clear_planned_age(soa_id)
+    return _population_partial(request, soa_id)
