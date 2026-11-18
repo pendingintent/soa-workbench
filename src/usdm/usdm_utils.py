@@ -15,6 +15,10 @@ from soa_builder.web.utils import (
 
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
+# The export has a single StudyVersion; other entities that point to it
+# (e.g. StudyRole.appliesToIds) use this id.
+STUDY_VERSION_ID = "StudyVersion_1"
+
 logger = logging.getLogger("usdm.usdm_utils")
 URL_PREFIX = (
     os.environ.get(
@@ -445,9 +449,28 @@ def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
 
 
 # Helper for Arms
+def _ct_version_from_slug(slug: str) -> str:
+    """Return the package date from a CT slug like 'ddfct-2026-09-25'."""
+    parts = (slug or "").split("-")
+    if len(parts) >= 4:
+        return f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+    return ""
+
+
 def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
-    """Fetch ARM type codes enriched from CDISC Library Protocol CT."""
-    from soa_builder.web.utils import get_protocol_ct_rows, get_protocol_ct_term
+    """Fetch ARM type codes enriched from CDISC Library CT.
+
+    Arm types (C174222) are in both DDF CT and Protocol CT. DDF CT is
+    tried first so the version matches the other DDF codes in the
+    export (one version per code system, DDF00073); Protocol CT,
+    which is published less often, is the fallback.
+    """
+    from soa_builder.web.utils import (
+        get_ddf_ct_rows,
+        get_ddf_ct_term,
+        get_protocol_ct_rows,
+        get_protocol_ct_term,
+    )
 
     conn = _connect()
     cur = conn.cursor()
@@ -459,20 +482,19 @@ def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str
     rows = cur.fetchall()
     conn.close()
 
-    payload = get_protocol_ct_rows()
-    slug = payload.get("slug") or ""
-    version = ""
-    if slug:
-        parts = slug.split("-")
-        if len(parts) >= 4:
-            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+    ddf_version = _ct_version_from_slug(get_ddf_ct_rows().get("slug") or "")
+    protocol_version = _ct_version_from_slug(get_protocol_ct_rows().get("slug") or "")
 
     code_system: list = []
     code_code: list = []
     code_decode: list = []
     code_system_version: list = []
     for codelist_table, code, codelist_code in rows:
-        term = get_protocol_ct_term(codelist_code, code)
+        term = get_ddf_ct_term(codelist_code, code)
+        version = ddf_version
+        if not term:
+            term = get_protocol_ct_term(codelist_code, code)
+            version = protocol_version
         if not term:
             continue
         code_system.append(codelist_table)

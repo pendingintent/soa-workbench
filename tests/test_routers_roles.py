@@ -140,7 +140,8 @@ def test_usdm_roles_in_output():
     assert role["code"]["codeSystemVersion"] == "2022-09-30"
     assert role["masking"] is None
     assert role["organizationIds"] == []
-    assert role["appliesToIds"] == []
+    # Roles apply to the study version (DDF00189, DDF00203).
+    assert role["appliesToIds"] == ["StudyVersion_1"]
     assert role["assignedPersons"] == []
 
 

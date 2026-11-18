@@ -5,6 +5,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from soa_builder.web.db import _connect
+from usdm.usdm_utils import STUDY_VERSION_ID
 
 
 def build_usdm_roles(soa_id: int) -> List[Dict[str, Any]]:
@@ -52,7 +53,10 @@ def _build_role(soa_id: int, row) -> Dict[str, Any]:
         "description": description or None,
         "code": _read_code(soa_id, code_uid) or _empty_code(f"Code_{role_uid}_type"),
         "organizationIds": org_ids,
-        "appliesToIds": [],
+        # No per-role scope is stored; a role applies to the study
+        # version, never to both version and design (DDF00189), and a
+        # sponsor role must apply to the version (DDF00203).
+        "appliesToIds": [STUDY_VERSION_ID],
         "assignedPersons": _read_assigned_persons(
             soa_id, role_uid, role_has_orgs=bool(org_ids)
         ),
