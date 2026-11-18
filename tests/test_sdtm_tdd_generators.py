@@ -334,6 +334,86 @@ def test_ta_tatrans_skipped_when_target_epoch_not_in_arm():
     assert by_key[("ARMB", "TREATMENT")] == ""
 
 
+def _add_sub_timeline_epoch(soa_id: int) -> None:
+    """Add an epoch reached only from the non-main timeline.
+
+    Mirrors a premature-discontinuation path: USDM needs a cell for
+    every arm and epoch (DDF00243), but the epoch is not on the
+    planned path through the arm.
+    """
+    conn = _connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO epoch (soa_id, epoch_uid, name, epoch_label,"
+            " order_index, epoch_seq) VALUES (?, ?, ?, ?, ?, ?)",
+            (soa_id, "StudyEpoch_5", "DISC", "DISCONTINUATION", 5, 5),
+        )
+        cur.execute(
+            "INSERT INTO element (soa_id, element_id, name, label,"
+            " description, order_index) VALUES (?, ?, ?, ?, ?, ?)",
+            (soa_id, "StudyElement_6", "DISC_ELEMENT", "DISC", "Disc.", 6),
+        )
+        cur.executemany(
+            "INSERT INTO study_cell (soa_id, study_cell_uid, arm_uid,"
+            " epoch_uid, element_uid, order_index)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    soa_id,
+                    "StudyCell_20",
+                    "StudyArm_1",
+                    "StudyEpoch_5",
+                    "StudyElement_6",
+                    20,
+                ),
+                (
+                    soa_id,
+                    "StudyCell_21",
+                    "StudyArm_2",
+                    "StudyEpoch_5",
+                    "StudyElement_6",
+                    21,
+                ),
+            ],
+        )
+        cur.execute(
+            "INSERT INTO instances (soa_id, instance_uid, name, epoch_uid,"
+            " member_of_timeline, order_index) VALUES (?, ?, ?, ?, ?, ?)",
+            (soa_id, "SAI_9", "V9A", "StudyEpoch_5", OTHER, 9),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_ta_skips_epoch_reached_only_from_sub_timeline():
+    soa_id = _seeded_soa("SDTM TA sub-timeline epoch")
+    _add_sub_timeline_epoch(soa_id)
+
+    rows = build_sdtm_ta(soa_id)
+
+    assert "DISCONTINUATION" not in {r["EPOCH"] for r in rows}
+    assert len(rows) == 8
+    # END OF TREATMENT has no instances at all, so it stays.
+    assert [r["EPOCH"] for r in rows if r["ARMCD"] == "ARMA"] == [
+        "SCREENING",
+        "TREATMENT",
+        "END OF TREATMENT",
+        "FOLLOW-UP",
+    ]
+
+
+def test_te_keeps_element_of_sub_timeline_epoch():
+    soa_id = _seeded_soa("SDTM TE sub-timeline element")
+    _add_sub_timeline_epoch(soa_id)
+
+    etcds = {r["ETCD"] for r in build_sdtm_te(soa_id)}
+
+    # SE records for discontinued subjects need the element in TE.
+    assert "DISC" in etcds
+
+
 # --- TV ----------------------------------------------------------------
 
 

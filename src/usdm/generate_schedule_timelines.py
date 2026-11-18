@@ -30,6 +30,33 @@ def _first_instance_uid(soa_id: int, timeline_uid: str):
     return row[0] if row else None
 
 
+def _timeline_exits(
+    exit_id: str | None, instances: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """Return the ScheduleTimelineExit objects for one timeline.
+
+    An exit is declared by the timeline's own exit_id or by the
+    timelineExitId of any of its instances. Each instance reference
+    must resolve to an exit owned by the timeline (DDF00037,
+    DDF00108), so both sources are collected, in that order, once
+    each.
+    """
+    exit_ids: List[str] = []
+    candidates = [exit_id] + [i.get("timelineExitId") for i in instances]
+    for candidate in candidates:
+        value = (candidate or "").strip()
+        if value and value not in exit_ids:
+            exit_ids.append(value)
+    return [
+        {
+            "id": value,
+            "extensionAttributes": [],
+            "instanceType": "ScheduleTimelineExit",
+        }
+        for value in exit_ids
+    ]
+
+
 def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
     """
     Build USDM scheduleTimelines
@@ -133,7 +160,7 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
             mainTimeline,
             entryCondition,
             entryId,
-            _,
+            exitId,
         ) = (
             r[0],
             r[1],
@@ -145,6 +172,9 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
             r[7],
         )
 
+        instances = generate_study_instances(
+            soa_id, schedule_timeline_uid
+        ) + generate_decision_instances(soa_id, schedule_timeline_uid)
         scheduleTimeline = {
             "id": schedule_timeline_uid,
             "extensionAttributes": [],
@@ -156,12 +186,9 @@ def build_usdm_schedule_timelines(soa_id: int) -> List[Dict[str, Any]]:
             "entryId": entryId
             or _first_instance_uid(soa_id, schedule_timeline_uid)
             or "",
-            "exits": [],
+            "exits": _timeline_exits(exitId, instances),
             "timings": generate_study_timings(soa_id, schedule_timeline_uid),
-            "instances": (
-                generate_study_instances(soa_id, schedule_timeline_uid)
-                + generate_decision_instances(soa_id, schedule_timeline_uid)
-            ),
+            "instances": instances,
             "plannedDuration": None,
             "instanceType": "ScheduleTimeline",
         }
