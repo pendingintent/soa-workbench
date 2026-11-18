@@ -33,6 +33,11 @@ from usdm.generate_amendments import build_usdm_amendments
 from usdm.generate_study_titles import build_usdm_titles
 from usdm.generate_organizations import build_usdm_organizations
 from usdm.generate_roles import build_usdm_roles
+from usdm.generate_population import (
+    POPULATION_ID,
+    build_usdm_planned_age,
+    build_usdm_planned_sex,
+)
 from usdm.generate_study_design_model import build_usdm_intervention_model
 from usdm.generate_study_interventions import build_usdm_study_interventions
 from usdm.generate_estimands import build_usdm_estimands
@@ -208,7 +213,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         "studyInterventionIds": [i["id"] for i in study_interventions],
         "objectives": _safe("objectives", build_usdm_objectives, soa_id),
         "population": {
-            "id": "StudyDesignPopulation_1",
+            "id": POPULATION_ID,
             "extensionAttributes": [],
             "name": "Population_1",
             "label": None,
@@ -216,9 +221,9 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
             "includesHealthySubjects": False,
             "plannedEnrollmentNumber": None,
             "plannedCompletionNumber": None,
-            "plannedSex": [],
+            "plannedSex": build_usdm_planned_sex(soa_id),
             "criterionIds": [],
-            "plannedAge": None,
+            "plannedAge": build_usdm_planned_age(soa_id),
             "notes": [],
             "cohorts": [],
             "instanceType": "StudyDesignPopulation",

@@ -140,7 +140,9 @@ def build_usdm_timings(
             "description": _nz(description),
             "type": type_code_obj,
             "value": value,
-            "valueLabel": value_label,
+            # Required string in USDM v4.0 (DDF00082): fall back to the
+            # ISO 8601 value, then the name, when no label was entered.
+            "valueLabel": _nz(value_label) or _nz(value) or name or "",
             "relativeToFrom": rtf_code_obj,
             "relativeFromScheduledInstanceId": relative_from_schedule_instance,
             "relativeToScheduledInstanceId": relative_to_schedule_instance,

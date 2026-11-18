@@ -139,8 +139,7 @@ def test_planned_duration_exports_duration_with_quantity():
             "text": "About 85 weeks",
             "value": 85,
             "unit_code": "C29844",
-            "duration_will_vary": True,
-            "reason_duration_will_vary": "Premature discontinuation",
+            "duration_will_vary": False,
         },
     )
 
@@ -173,8 +172,8 @@ def test_planned_duration_exports_duration_with_quantity():
             },
             "instanceType": "Quantity",
         },
-        "durationWillVary": True,
-        "reasonDurationWillVary": "Premature discontinuation",
+        "durationWillVary": False,
+        "reasonDurationWillVary": None,
         "instanceType": "Duration",
     }
 
@@ -183,14 +182,23 @@ def test_planned_duration_text_only_has_no_quantity():
     soa_id = _new_soa("Duration text")
     tl_id, tl_uid = _timeline(soa_id)
 
-    client.put(_duration_url(soa_id, tl_id), json={"text": "Until progression"})
+    resp = client.put(
+        _duration_url(soa_id, tl_id),
+        json={
+            "text": "Until progression",
+            "duration_will_vary": True,
+            "reason_duration_will_vary": "Event driven",
+        },
+    )
+    assert resp.status_code == 200, resp.text
 
     duration = next(
         t for t in build_usdm_schedule_timelines(soa_id) if t["id"] == tl_uid
     )["plannedDuration"]
     assert duration["text"] == "Until progression"
     assert duration["quantity"] is None
-    assert duration["durationWillVary"] is False
+    assert duration["durationWillVary"] is True
+    assert duration["reasonDurationWillVary"] == "Event driven"
 
 
 @pytest.mark.parametrize(
@@ -201,6 +209,12 @@ def test_planned_duration_text_only_has_no_quantity():
         {"value": 85, "unit_code": "C82639"},
         {"value": 0, "unit_code": "C29844"},
         {"unit_code": "C29844"},
+        # DDF00039: a varying duration has no quantity ...
+        {"value": 85, "unit_code": "C29844", "duration_will_vary": True},
+        # ... and a fixed one needs a quantity.
+        {"text": "About 85 weeks"},
+        # A reason only applies to a duration that will vary.
+        {"value": 85, "unit_code": "C29844", "reason_duration_will_vary": "x"},
     ],
 )
 def test_planned_duration_rejects_invalid_input(body):
@@ -281,11 +295,29 @@ def test_planned_duration_ui_partial_saves_form():
 
     saved = client.post(
         url,
-        data={"value": "85", "unit_code": "C29844", "duration_will_vary": "1"},
+        data={"value": "85", "unit_code": "C29844"},
     )
     assert saved.status_code == 200
     duration = next(
         t for t in build_usdm_schedule_timelines(soa_id) if t["id"] == tl_uid
     )["plannedDuration"]
     assert duration["quantity"]["value"] == 85.0
-    assert duration["durationWillVary"] is True
+    assert duration["durationWillVary"] is False
+
+
+def test_planned_duration_ui_shows_ddf00039_error():
+    soa_id = _new_soa("Duration UI error")
+    tl_id, tl_uid = _timeline(soa_id)
+    url = f"/ui/soa/{soa_id}/schedule_timelines/{tl_id}/planned_duration"
+
+    saved = client.post(
+        url,
+        data={"value": "85", "unit_code": "C29844", "duration_will_vary": "1"},
+    )
+
+    assert saved.status_code == 200
+    assert "will vary" in saved.text
+    timeline = next(
+        t for t in build_usdm_schedule_timelines(soa_id) if t["id"] == tl_uid
+    )
+    assert timeline["plannedDuration"] is None

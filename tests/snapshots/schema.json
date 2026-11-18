@@ -4818,6 +4818,55 @@
     "notnull": 0,
     "pk": 0,
     "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_sex",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_age_min",
+    "notnull": 0,
+    "pk": 0,
+    "type": "REAL"
+   },
+   {
+    "default": null,
+    "name": "planned_age_max",
+    "notnull": 0,
+    "pk": 0,
+    "type": "REAL"
+   },
+   {
+    "default": null,
+    "name": "planned_age_unit_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_age_unit_decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_age_unit_version",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "0",
+    "name": "planned_age_is_approximate",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
    }
   ],
   "indexes": {

@@ -41,6 +41,11 @@
     <label class="am-field-label">Study Design</label>
   </div>
   <div hx-get="/ui/soa/{{ soa_id }}/intervention_model" hx-trigger="load" hx-swap="outerHTML"></div>
+  <hr class="am-hr-divider" />
+  <div class="am-field">
+    <label class="am-field-label">Study Population</label>
+  </div>
+  <div hx-get="/ui/soa/{{ soa_id }}/population" hx-trigger="load" hx-swap="outerHTML"></div>
 </div>
 
 {% include "_setup_checklist.html" %}

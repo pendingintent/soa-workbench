@@ -68,6 +68,19 @@ _DATASET_KEY_SEQUENCES = {
 }
 
 
+def _planned_age_bound_present(population: dict, bound: str) -> bool:
+    """True if the population or a cohort has a value for ``bound``.
+
+    ``bound`` is "minValue" or "maxValue". A bound may be null: the
+    workbench exports a planned age bound recorded as n/a as null
+    (USDM v4.1 allows a one-sided Range).
+    """
+    ages = [population.get("plannedAge")] + [
+        cohort.get("plannedAge") for cohort in (population.get("cohorts") or [])
+    ]
+    return any(((age or {}).get(bound) or {}).get("value") is not None for age in ages)
+
+
 class USDMDefineJSONProcessor:
     """
     Processes USDM JSON files and generates Define-JSON structure.
@@ -897,13 +910,7 @@ class USDMDefineJSONProcessor:
         _pop = self.studyDesignData.get("population") or {}
 
         # AGEMIN
-        if (_pop.get("plannedAge") or {}).get("minValue", {}).get(
-            "value"
-        ) is not None or any(
-            (cohort.get("plannedAge") or {}).get("minValue", {}).get("value")
-            is not None
-            for cohort in (_pop.get("cohorts") or [])
-        ):
+        if _planned_age_bound_present(_pop, "minValue"):
             tsparmcd_entry = {
                 "dataType": "text",
                 "length": 200,
@@ -926,13 +933,7 @@ class USDMDefineJSONProcessor:
             self.vlm_lookup["TSPARMCD"].append(tsparmcd_entry)
 
         # AGEMAX
-        if (_pop.get("plannedAge") or {}).get("maxValue", {}).get(
-            "value"
-        ) is not None or any(
-            (cohort.get("plannedAge") or {}).get("maxValue", {}).get("value")
-            is not None
-            for cohort in (_pop.get("cohorts") or [])
-        ):
+        if _planned_age_bound_present(_pop, "maxValue"):
             tsparmcd_entry = {
                 "dataType": "text",
                 "length": 200,
