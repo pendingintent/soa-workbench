@@ -315,5 +315,6 @@ def test_usdm_decision_instance_condition_assignments():
     ca = di["conditionAssignments"][0]
     assert ca["condition"] == "not reached cycle 12"
     assert ca["conditionTargetId"] == "ScheduledActivityInstance_1"
-    assert ca["instanceType"] == "Condition"
+    # USDM v4 class; "Condition" fails DDF00081.
+    assert ca["instanceType"] == "ConditionAssignment"
     assert ca["id"] == "Condition_1"

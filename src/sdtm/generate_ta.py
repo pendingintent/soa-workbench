@@ -48,6 +48,38 @@ def _epoch_transitions(
     return transitions
 
 
+def _sub_timeline_epochs(cur: sqlite3.Cursor, soa_id: int) -> set[str]:
+    """Return epochs reached only from timelines other than the main one.
+
+    TA describes the planned path through each arm. An epoch whose
+    instances all sit on a sub-timeline (e.g. a premature
+    discontinuation schedule) is off that path, even though USDM
+    still needs a StudyCell for it in every arm (DDF00243). Epochs
+    with no instances at all are kept, since nothing says they are
+    off the path.
+    """
+    timeline_uid = main_timeline_uid(cur, soa_id)
+    if not timeline_uid:
+        return set()
+    cur.execute(
+        """
+        SELECT epoch_uid, member_of_timeline FROM instances
+        WHERE soa_id = ? AND epoch_uid IS NOT NULL AND epoch_uid != ''
+        UNION ALL
+        SELECT epoch_uid, member_of_timeline FROM decision_instances
+        WHERE soa_id = ? AND epoch_uid IS NOT NULL AND epoch_uid != ''
+        """,
+        (soa_id, soa_id),
+    )
+    with_instances: set[str] = set()
+    on_main: set[str] = set()
+    for epoch_uid, timeline in cur.fetchall():
+        with_instances.add(epoch_uid)
+        if timeline == timeline_uid:
+            on_main.add(epoch_uid)
+    return with_instances - on_main
+
+
 def _tatrans(
     epoch_uid: str,
     arm_epochs: list[str],
@@ -86,11 +118,15 @@ def build_sdtm_ta(soa_id: int) -> list[dict]:
       TATRANS  = ConditionAssignment/@condition of a main-timeline
                  ScheduledDecisionInstance in the epoch (see _tatrans)
       EPOCH    = StudyEpoch/@label (falls back to @name)
+
+    Cells in an epoch reached only from a sub-timeline are left out
+    (see _sub_timeline_epochs); their elements stay in TE.
     """
     conn = _connect()
     cur = conn.cursor()
     study_id = sponsor_study_id(cur, soa_id)
     transitions = _epoch_transitions(cur, soa_id)
+    off_path = _sub_timeline_epochs(cur, soa_id)
 
     cur.execute(
         "SELECT epoch_uid, epoch_label, name FROM epoch WHERE soa_id=?",
@@ -113,7 +149,7 @@ def build_sdtm_ta(soa_id: int) -> list[dict]:
         """,
         (soa_id,),
     )
-    rows = cur.fetchall()
+    rows = [row for row in cur.fetchall() if row[4] not in off_path]
     conn.close()
 
     arm_epochs: dict[str, list[str]] = {}

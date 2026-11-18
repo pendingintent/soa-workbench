@@ -829,7 +829,7 @@ def _get_condition_assignments(
             "extensionAttributes": [],
             "condition": r[1],
             "conditionTargetId": r[2],
-            "instanceType": "Condition",
+            "instanceType": "ConditionAssignment",
         }
         for r in rows
     ]
