@@ -60,6 +60,7 @@ from .routers import estimands as estimands_router
 from .routers import indications as indications_router
 from .routers import persons as persons_router
 from .routers import soa_bundle as soa_bundle_router
+from .routers import study_design as study_design_router
 from .routers import study_identifiers as study_identifiers_router
 from .routers import concepts_admin as concepts_admin_router
 from .routers import exports as exports_router
@@ -160,6 +161,7 @@ app.include_router(persons_router.router)
 app.include_router(persons_router.ui_router)
 app.include_router(soa_bundle_router.router)
 app.include_router(soa_bundle_router.ui_router)
+app.include_router(study_design_router.router)
 app.include_router(study_identifiers_router.router)
 app.include_router(study_identifiers_router.ui_router)
 app.include_router(wizard_router.router)

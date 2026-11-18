@@ -33,6 +33,7 @@ from usdm.generate_amendments import build_usdm_amendments
 from usdm.generate_study_titles import build_usdm_titles
 from usdm.generate_organizations import build_usdm_organizations
 from usdm.generate_roles import build_usdm_roles
+from usdm.generate_study_design_model import build_usdm_intervention_model
 from usdm.generate_study_interventions import build_usdm_study_interventions
 from usdm.generate_estimands import build_usdm_estimands
 from usdm.generate_indications import build_usdm_indications
@@ -231,15 +232,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         "analysisPopulations": [],
         "notes": [],
         "subTypes": [],
-        "model": {
-            "id": "Code_StudyDesignModel",
-            "extensionAttributes": [],
-            "code": "",
-            "codeSystem": "",
-            "codeSystemVersion": "",
-            "decode": "",
-            "instanceType": "Code",
-        },
+        "model": build_usdm_intervention_model(soa_id),
         "intentTypes": [],
         "blindingSchema": None,
         "instanceType": "InterventionalStudyDesign",

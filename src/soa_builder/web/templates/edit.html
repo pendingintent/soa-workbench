@@ -36,6 +36,11 @@
     <label class="am-field-label">Study Titles</label>
   </div>
   {% include "study_titles_partial.html" %}
+  <hr class="am-hr-divider" />
+  <div class="am-field">
+    <label class="am-field-label">Study Design</label>
+  </div>
+  <div hx-get="/ui/soa/{{ soa_id }}/intervention_model" hx-trigger="load" hx-swap="outerHTML"></div>
 </div>
 
 {% include "_setup_checklist.html" %}

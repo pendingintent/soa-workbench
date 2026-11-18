@@ -18,6 +18,7 @@ from usdm.generate_biomedical_concept_properties import (
 
 from .m0114_repair_audit_tables import m0114_repair_audit_tables
 from .m0115_wizard_state import m0115_wizard_state
+from .m0116_model_planned_duration import m0116_model_planned_duration
 from .legacy_amendments import (
     _migrate_add_amendment_geographic_scope_audit_table,
     _migrate_add_amendment_geographic_scope_table,
@@ -372,6 +373,7 @@ MIGRATIONS = (
     ("migrate_index_all_soa_id_tables", _migrate_index_all_soa_id_tables),
     ("m0114_repair_audit_tables", m0114_repair_audit_tables),
     ("m0115_wizard_state", m0115_wizard_state),
+    ("m0116_model_planned_duration", m0116_model_planned_duration),
 )
 
 # name -> why it must keep running on every boot

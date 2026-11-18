@@ -1,0 +1,24 @@
+<div id="intervention-model">
+  <form hx-post="/ui/soa/{{ soa_id }}/intervention_model"
+        hx-target="#intervention-model"
+        hx-swap="outerHTML"
+        class="am-grid-2">
+    <div class="am-field">
+      <label class="am-field-label" for="intervention_model_code">Intervention Model</label>
+      <select id="intervention_model_code" name="code" class="am-select">
+        <option value="">-- Not set --</option>
+        {% for opt in options %}
+        <option value="{{ opt.code }}" {% if model and model.code == opt.code %}selected{% endif %}>{{ opt.decode }} ({{ opt.code }})</option>
+        {% endfor %}
+      </select>
+      {% if not options %}
+      <small class="am-color-subtle">Codelist {{ codelist }} could not be loaded from the CDISC Library.</small>
+      {% endif %}
+    </div>
+    <div class="am-field-span am-flex-center-row" style="gap:8px;flex-wrap:wrap;">
+      <button type="submit" class="am-btn am-btn-info">Save Intervention Model</button>
+      {% if model %}<small class="am-color-subtle">CT version {{ model.code_system_version }}</small>{% endif %}
+      {% if error %}<small class="am-required">{{ error }}</small>{% endif %}
+    </div>
+  </form>
+</div>
