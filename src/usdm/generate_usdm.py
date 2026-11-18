@@ -10,7 +10,7 @@ import subprocess
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 import logging
-from .usdm_utils import _get_soa_metadata
+from .usdm_utils import STUDY_VERSION_ID, _get_soa_metadata
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import (
     _nz,
@@ -262,7 +262,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
     )
 
     study_version = {
-        "id": "StudyVersion_1",
+        "id": STUDY_VERSION_ID,
         "extensionAttributes": [_tool_extension_attribute(tool_uids, timestamp)],
         "versionIdentifier": "1",
         "rationale": "",
