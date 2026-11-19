@@ -548,3 +548,42 @@ def test_import_drops_rows_whose_parent_is_not_in_the_bundle():
 
     new_id = _import_bundle(bundle)["soa_id"]
     assert _count(new_id, "matrix_cells") == 4
+
+
+def test_rows_keep_their_order_through_export_and_import():
+    """Generators list rows by id, so a bundle must carry rows in id
+    order and import must give them ids in that order. A table with a
+    UNIQUE uid index otherwise comes back in uid text order
+    (StudyCell_10 before StudyCell_2)."""
+    soa_id = _new_soa("RowOrderTest")
+    uids = ["StudyCell_2", "StudyCell_10", "StudyCell_3"]
+    conn = _connect()
+    cur = conn.cursor()
+    for i, uid in enumerate(uids, start=1):
+        _insert(
+            cur,
+            "study_cell",
+            soa_id=soa_id,
+            study_cell_uid=uid,
+            arm_uid="StudyArm_1",
+            epoch_uid=f"StudyEpoch_{i}",
+            element_uid="StudyElement_1",
+            order_index=i,
+        )
+    conn.commit()
+    conn.close()
+
+    bundle = _export_bundle(soa_id)
+    assert [r["study_cell_uid"] for r in bundle["study_cell"]] == uids
+
+    # Bundles exported before the fix list rows in uid text order;
+    # import must still restore the original order.
+    bundle["study_cell"].sort(key=lambda r: r["study_cell_uid"])
+    new_id = _import_bundle(bundle)["soa_id"]
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT study_cell_uid FROM study_cell WHERE soa_id=? ORDER BY id",
+        (new_id,),
+    ).fetchall()
+    conn.close()
+    assert [r[0] for r in rows] == uids
