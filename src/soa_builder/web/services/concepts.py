@@ -1439,6 +1439,71 @@ def _populate_biomedical_concept_properties_bg(
         )
 
 
+def _delete_concept_code_chain(cur, soa_id: int, alias_uid) -> None:
+    """Delete the alias_code row a biomedical concept owned, and its
+    code row, unless anything else still points at them."""
+    if not alias_uid:
+        return
+    for table in (
+        "biomedical_concept",
+        "biomedical_concept_property",
+        "bcp_response_code",
+    ):
+        cur.execute(
+            f"SELECT 1 FROM {table} WHERE soa_id=? AND code=? LIMIT 1",
+            (soa_id, alias_uid),
+        )
+        if cur.fetchone():
+            return
+    cur.execute(
+        "SELECT standard_code FROM alias_code WHERE soa_id=? AND alias_code_uid=?",
+        (soa_id, alias_uid),
+    )
+    alias_row = cur.fetchone()
+    cur.execute(
+        "DELETE FROM alias_code WHERE soa_id=? AND alias_code_uid=?",
+        (soa_id, alias_uid),
+    )
+    code_uid = alias_row[0] if alias_row else None
+    if not code_uid:
+        return
+    cur.execute(
+        "SELECT 1 FROM alias_code WHERE soa_id=? AND standard_code=? LIMIT 1",
+        (soa_id, code_uid),
+    )
+    if not cur.fetchone():
+        cur.execute(
+            "DELETE FROM code WHERE soa_id=? AND code_uid=?", (soa_id, code_uid)
+        )
+
+
+def _delete_activity_concepts(cur, where_sql: str, params) -> int:
+    """Delete the activity_concept rows matching ``where_sql`` and clean
+    up the biomedical concepts this leaves unused, in every SoA hit.
+
+    Every path that unlinks concepts from activities must go through
+    here (or call _cleanup_orphaned_concept_rows itself); deleting
+    activity_concept rows alone leaves the concepts and their code
+    chains behind. ``where_sql`` is a constant SQL fragment from the
+    caller, with ``?`` placeholders for ``params``. Returns the number
+    of rows deleted.
+    """
+    cur.execute(
+        "SELECT soa_id, concept_code, concept_uid FROM activity_concept"
+        f" WHERE {where_sql}",
+        params,
+    )
+    rows = cur.fetchall()
+    cur.execute(f"DELETE FROM activity_concept WHERE {where_sql}", params)
+    removed_by_soa: dict = {}
+    for soa_id, concept_code, concept_uid in rows:
+        removed_by_soa.setdefault(soa_id, []).append((concept_code, concept_uid))
+    for soa_id, pairs in removed_by_soa.items():
+        if soa_id is not None:
+            _cleanup_orphaned_concept_rows(cur, soa_id, pairs)
+    return len(rows)
+
+
 def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
     """Delete biomedical_concept/code/alias_code rows no longer referenced in this SoA.
 
@@ -1492,6 +1557,16 @@ def _cleanup_orphaned_concept_rows(cur, soa_id: int, removed_pairs) -> None:
                 " WHERE biomedical_concept_uid=? AND soa_id=?",
                 (concept_uid, soa_id),
             )
+            if bc_row:
+                # Each BC owns its own alias_code + code rows (see
+                # _upsert_biomedical_concept), so delete exactly those.
+                # Looking the chain up by C-code value instead could hit
+                # another BC's chain, or a code row owned by another
+                # entity that happens to share the value.
+                _delete_concept_code_chain(cur, soa_id, bc_row[1])
+                continue
+        # Legacy rows without a concept uid (or whose BC row is already
+        # gone): fall back to finding the chain by its C-code value.
         if not concept_code:
             continue
         cur.execute(
