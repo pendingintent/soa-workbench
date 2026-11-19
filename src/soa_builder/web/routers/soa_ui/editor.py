@@ -14,10 +14,10 @@ from ._shared import (
     HTTPException,
     Optional,
     Request,
-    _SOA_CASCADE_TABLES,
     _concept_cache,
     _connect,
     _fetch_arms_for_edit,
+    _soa_scoped_tables,
     _fetch_matrix,
     _get_cdisc_api_key,
     _get_concepts_override,
@@ -679,11 +679,13 @@ def ui_delete_soa(
         )
 
     conn = _connect()
-    cur = conn.cursor()
-    for table in _SOA_CASCADE_TABLES:
-        cur.execute(f"DELETE FROM {table} WHERE soa_id=?", (soa_id,))
-    cur.execute("DELETE FROM soa WHERE id=?", (soa_id,))
-    conn.commit()
-    conn.close()
+    try:
+        cur = conn.cursor()
+        for table in _soa_scoped_tables(cur):
+            cur.execute(f"DELETE FROM {table} WHERE soa_id=?", (soa_id,))
+        cur.execute("DELETE FROM soa WHERE id=?", (soa_id,))
+        conn.commit()
+    finally:
+        conn.close()
 
     return HTMLResponse("<script>window.location='/';</script>")
