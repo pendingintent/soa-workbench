@@ -2,7 +2,13 @@
 from typing import List, Dict, Any
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import _nz
-from .usdm_utils import _get_transition_end_rule, _get_transition_start_rule
+from .usdm_utils import (
+    RULE_SLOTS,
+    _get_transition_end_rule,
+    _get_transition_start_rule,
+    embed_transition_rule,
+    transition_rule_first_owners,
+)
 
 
 def build_usdm_elements(soa_id: int) -> List[Dict[str, Any]]:
@@ -45,7 +51,7 @@ def build_usdm_elements(soa_id: int) -> List[Dict[str, Any]]:
         for eid, iuid in cur.fetchall():
             iv_map.setdefault(eid, []).append(iuid)
 
-    conn.close()
+    first_owners = transition_rule_first_owners(cur, soa_id)
     out: List[Dict[str, Any]] = []
 
     for r in rows:
@@ -60,8 +66,16 @@ def build_usdm_elements(soa_id: int) -> List[Dict[str, Any]]:
         )
         intervention_ids = iv_map.get(row_id, [])
 
-        transition_start_rule_obj = _get_transition_start_rule(soa_id, testrl)
-        transition_end_rule_obj = _get_transition_end_rule(soa_id, teenrl)
+        transition_start_rule_obj, transition_end_rule_obj = (
+            embed_transition_rule(cur, soa_id, rule, element_id, slot, first_owners)
+            for rule, slot in zip(
+                (
+                    _get_transition_start_rule(soa_id, testrl),
+                    _get_transition_end_rule(soa_id, teenrl),
+                ),
+                RULE_SLOTS,
+            )
+        )
 
         element = {
             "id": element_id,
@@ -76,6 +90,9 @@ def build_usdm_elements(soa_id: int) -> List[Dict[str, Any]]:
             "instanceType": "StudyElement",
         }
         out.append(element)
+    # Persist any embedded copy uids allocated above.
+    conn.commit()
+    conn.close()
     return out
 
 

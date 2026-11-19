@@ -1,6 +1,7 @@
 """amendments: helpers (split from amendments.py)."""
 
 from ...errors import MALFORMED_JSON_ERRORS
+from ...utils import get_next_geographic_scope_uid
 from ._shared import (
     AMENDMENT_IMPACT_TYPE_CODELIST,
     AMENDMENT_REASON_CODELIST,
@@ -95,13 +96,8 @@ def _next_ref_uid(cur, soa_id: int) -> str:
 
 
 def _next_scope_uid(cur, soa_id: int) -> str:
-    return _next_uid(
-        cur,
-        soa_id,
-        "amendment_geographic_scope",
-        "scope_uid",
-        "GeographicScope_",
-    )
+    # Counter-backed: also skips the uids of embedded scope copies.
+    return get_next_geographic_scope_uid(cur, soa_id)
 
 
 def _next_enrollment_uid(cur, soa_id: int) -> str:

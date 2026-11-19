@@ -87,6 +87,7 @@ _EXPORT_TABLES = [
     "governance_date_geographic_scope",
     "amendment_subject_enrollment",
     "soa_tool_extension",
+    "embedded_copy_uid",
     "uid_counter",
 ]
 

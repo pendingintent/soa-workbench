@@ -2,6 +2,11 @@
 from typing import List, Dict, Any, Tuple
 from soa_builder.web.utils import get_submission_value_for_code, _nz
 from soa_builder.web.db import _connect
+from .usdm_utils import (
+    RULE_SLOTS,
+    embed_transition_rule,
+    transition_rule_first_owners,
+)
 
 
 # Override the definition in usdm_utils.py
@@ -149,7 +154,8 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
     cur.execute("SELECT id, timing_uid FROM timing WHERE soa_id=?", (soa_id,))
     timing_id_map: dict = {row[0]: row[1] for row in cur.fetchall()}
 
-    conn.close()
+    # Kept open: embedded rule copies get their uids recorded below.
+    first_owners = transition_rule_first_owners(cur, soa_id)
 
     uids = [r[3] for r in rows]
     id_by_index = {i: uid for i, uid in enumerate(uids)}
@@ -209,8 +215,14 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
         )
         timing_uid = timing_id_map.get(_sched_id) if _sched_id is not None else None
 
-        transition_start_rule_obj = transition_rule_map.get(transition_start_rule_uid)
-        transition_end_rule_obj = transition_rule_map.get(transition_end_rule_uid)
+        transition_start_rule_obj, transition_end_rule_obj = (
+            embed_transition_rule(
+                cur, soa_id, transition_rule_map.get(uid), eid, slot, first_owners
+            )
+            for uid, slot in zip(
+                (transition_start_rule_uid, transition_end_rule_uid), RULE_SLOTS
+            )
+        )
 
         # Build optional environmentalSettings array
         env_settings: List[Dict[str, Any]] = []
@@ -286,6 +298,8 @@ def build_usdm_encounters(soa_id: int) -> List[Dict[str, Any]]:
         if timing_uid:
             encounter["scheduledAtId"] = timing_uid
         out.append(encounter)
+    conn.commit()
+    conn.close()
     return out
 
 

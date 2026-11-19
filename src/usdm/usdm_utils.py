@@ -9,6 +9,7 @@ from typing import List, Dict, Optional, Any, Tuple
 from soa_builder.web.codelist_config import EPOCH_TYPE_CODELIST
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import (
+    embed_with_owned_ids,
     get_latest_ddf_ct_href as _get_latest_ddf_ct_href,
     get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href,
 )
@@ -541,6 +542,49 @@ def _get_data_origin_type_tuple(
         code_decode.append(term.get("submission_value") or "")
         code_system_version.append(version)
     return code_code, code_decode, code_system, code_system_version
+
+
+RULE_SLOTS = ("transitionStartRule", "transitionEndRule")
+
+
+def transition_rule_first_owners(cur: Any, soa_id: int) -> Dict[str, Tuple[str, str]]:
+    """Map each TransitionRule uid to the (owner_uid, slot) that may
+    claim the stored uid: elements in order, then encounters in order,
+    start before end. Every other embedding gets its own copy uid.
+    """
+    first: Dict[str, Tuple[str, str]] = {}
+    cur.execute(
+        "SELECT element_id, testrl, teenrl FROM element"
+        " WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    owners = list(cur.fetchall())
+    cur.execute(
+        "SELECT encounter_uid, transitionStartRule, transitionEndRule FROM visit"
+        " WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    owners += cur.fetchall()
+    for owner_uid, start, end in owners:
+        for slot, rule_uid in zip(RULE_SLOTS, (start, end)):
+            if rule_uid and owner_uid:
+                first.setdefault(rule_uid, (owner_uid, slot))
+    return first
+
+
+def embed_transition_rule(
+    cur: Any,
+    soa_id: int,
+    rule: Optional[Dict[str, Any]],
+    owner_uid: str,
+    slot: str,
+    first_owners: Dict[str, Tuple[str, str]],
+) -> Optional[Dict[str, Any]]:
+    """Return rule as embedded under owner_uid.slot with a unique id."""
+    if not rule:
+        return None
+    claim = first_owners.get(rule["id"]) == (owner_uid, slot)
+    return embed_with_owned_ids(cur, soa_id, owner_uid, slot, rule, claim=claim)
 
 
 # Helpders for Elements
