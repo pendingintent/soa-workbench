@@ -26,6 +26,10 @@ def _clean():
     cur = conn.cursor()
     cur.execute("DELETE FROM activity_concept_dss WHERE soa_id=?", (SOA_ID,))
     cur.execute("DELETE FROM activity_concept WHERE soa_id=?", (SOA_ID,))
+    # EA uids come from the uid counter and are never reused, so
+    # reset it (and the other EA holders) with the rows.
+    for table in ("uid_counter", "soa_tool_extension", "activity_grouping_extension"):
+        cur.execute(f"DELETE FROM {table} WHERE soa_id=?", (SOA_ID,))
     conn.commit()
     conn.close()
 

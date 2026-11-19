@@ -587,3 +587,49 @@ def test_rows_keep_their_order_through_export_and_import():
     ).fetchall()
     conn.close()
     assert [r[0] for r in rows] == uids
+
+
+def test_import_repairs_duplicate_extension_attribute_uids():
+    """Bundles exported before the fix carry ExtensionAttribute uids
+    held twice (a DSS row and the tool extension). Import must leave
+    every uid with one holder, keeping the DSS row's."""
+    soa_id = _new_soa("DuplicateEaTest")
+    ids = _populate_soa(soa_id)
+    conn = _connect()
+    cur = conn.cursor()
+    _insert(
+        cur,
+        "activity_concept_dss",
+        soa_id=soa_id,
+        activity_id=ids["activity_ids"][0],
+        concept_code="C1",
+        dss_title="DSS",
+        dss_href="h",
+        extension_attribute_uid="ExtensionAttribute_1",
+    )
+    _insert(
+        cur,
+        "soa_tool_extension",
+        soa_id=soa_id,
+        ea_outer_uid="ExtensionAttribute_1",
+        ec_uid="ExtensionClass_1",
+        ea_name_uid="ExtensionAttribute_2",
+        ea_version_uid="ExtensionAttribute_3",
+        ea_date_uid="ExtensionAttribute_4",
+    )
+    conn.commit()
+    conn.close()
+
+    new_id = _import_bundle(_export_bundle(soa_id))["soa_id"]
+
+    dss = _one(
+        "SELECT extension_attribute_uid FROM activity_concept_dss WHERE soa_id=?",
+        (new_id,),
+    )
+    tool = _one(
+        "SELECT ea_outer_uid, ea_name_uid FROM soa_tool_extension WHERE soa_id=?",
+        (new_id,),
+    )
+    assert dss == ("ExtensionAttribute_1",)
+    assert tool[0] not in ("ExtensionAttribute_1", "ExtensionAttribute_2")
+    assert tool[1] == "ExtensionAttribute_2"

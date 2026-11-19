@@ -22,6 +22,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 
 from ..db import _connect
+from ..utils import dedupe_extension_attribute_uids
 
 router = APIRouter()
 ui_router = APIRouter()
@@ -377,6 +378,8 @@ def _import_soa_bundle(
         for table in _EXPORT_TABLES:
             rows = filtered.get(table, bundle.get(table) or [])
             id_maps[table] = _import_table(cur, table, rows, new_soa_id, id_maps)
+        # Bundles exported before the uid fix can hold duplicates.
+        dedupe_extension_attribute_uids(cur, new_soa_id)
         conn.commit()
     except (sqlite3.Error, HTTPException):
         conn.rollback()

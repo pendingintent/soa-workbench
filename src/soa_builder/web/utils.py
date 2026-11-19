@@ -906,8 +906,10 @@ def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique ExtensionAttribute_N for the given SOA.
 
     Scans activity_concept_dss, activity_concept_crf,
-    soa_tool_extension, and activity_grouping_extension to ensure the
-    seeded counter does not collide with any existing EA UID.
+    soa_tool_extension, and activity_grouping_extension. Resyncs on
+    every call: rollback and legacy data write these uids without the
+    counter, and USDM requires every id in a document to be unique.
+    Call once per uid; never derive further uids by adding to N.
     """
 
     def _seed() -> int:
@@ -940,7 +942,57 @@ def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
         )
         return _max_suffix(cur.fetchall())
 
-    return _next_uid_from_counter(cur, soa_id, "ExtensionAttribute_", _seed)
+    return _next_uid_from_counter(
+        cur, soa_id, "ExtensionAttribute_", _seed, resync=True
+    )
+
+
+# Every column holding an ExtensionAttribute_N uid, in keep-first
+# order for dedupe_extension_attribute_uids. DSS and CRF rows come
+# first because freeze diffs compare their uids; the tool and
+# BC-grouping extensions are regenerated metadata.
+EXTENSION_ATTRIBUTE_UID_HOLDERS = (
+    ("activity_concept_dss", "extension_attribute_uid"),
+    ("activity_concept_crf", "extension_attribute_uid"),
+    ("activity_grouping_extension", "ea_outer_uid"),
+    ("activity_grouping_extension", "ea_scheme_uid"),
+    ("activity_grouping_extension", "ea_value_uid"),
+    ("soa_tool_extension", "ea_outer_uid"),
+    ("soa_tool_extension", "ea_name_uid"),
+    ("soa_tool_extension", "ea_version_uid"),
+    ("soa_tool_extension", "ea_date_uid"),
+)
+
+
+def dedupe_extension_attribute_uids(cur: Any, soa_id: Optional[int] = None) -> int:
+    """Give every ExtensionAttribute_N uid a single holder.
+
+    When a uid is held more than once within a SoA, the first holder
+    in EXTENSION_ATTRIBUTE_UID_HOLDERS order (lowest row id within a
+    column) keeps it and every other holder gets a fresh uid from the
+    counter. Scoped to soa_id when given, else every SoA. Returns the
+    number of uids reassigned.
+    """
+    where = " AND soa_id=?" if soa_id is not None else ""
+    args = (soa_id,) if soa_id is not None else ()
+    holders: Dict[tuple, list] = {}
+    for table, col in EXTENSION_ATTRIBUTE_UID_HOLDERS:
+        cur.execute(
+            f"SELECT soa_id, {col}, id FROM {table}"
+            f" WHERE {col} IS NOT NULL AND {col} != ''{where} ORDER BY id",
+            args,
+        )
+        for row_soa, uid, row_id in cur.fetchall():
+            holders.setdefault((row_soa, uid), []).append((table, col, row_id))
+    reassigned = 0
+    for (row_soa, _uid), held_by in holders.items():
+        for table, col, row_id in held_by[1:]:
+            cur.execute(
+                f"UPDATE {table} SET {col}=? WHERE id=?",
+                (get_next_extension_attribute_uid(cur, row_soa), row_id),
+            )
+            reassigned += 1
+    return reassigned
 
 
 def get_next_extension_class_uid(cur: Any, soa_id: int) -> str:
@@ -963,7 +1015,7 @@ def get_next_extension_class_uid(cur: Any, soa_id: int) -> str:
         )
         return _max_suffix(cur.fetchall())
 
-    return _next_uid_from_counter(cur, soa_id, "ExtensionClass_", _seed)
+    return _next_uid_from_counter(cur, soa_id, "ExtensionClass_", _seed, resync=True)
 
 
 def get_next_concept_uid(cur: Any, soa_id: int) -> str:
