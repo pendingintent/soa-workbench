@@ -101,15 +101,12 @@ def _get_or_create_tool_uids(soa_id: int) -> Dict[str, str]:
                 "ea_version": row[3],
                 "ea_date": row[4],
             }
-        ea_start_uid = get_next_extension_attribute_uid(cur, soa_id)
-        ea_n = int(ea_start_uid.split("_")[1])
-        ec_uid = get_next_extension_class_uid(cur, soa_id)
         uids = {
-            "ea_outer": f"ExtensionAttribute_{ea_n}",
-            "ec": ec_uid,
-            "ea_name": f"ExtensionAttribute_{ea_n + 1}",
-            "ea_version": f"ExtensionAttribute_{ea_n + 2}",
-            "ea_date": f"ExtensionAttribute_{ea_n + 3}",
+            "ea_outer": get_next_extension_attribute_uid(cur, soa_id),
+            "ec": get_next_extension_class_uid(cur, soa_id),
+            "ea_name": get_next_extension_attribute_uid(cur, soa_id),
+            "ea_version": get_next_extension_attribute_uid(cur, soa_id),
+            "ea_date": get_next_extension_attribute_uid(cur, soa_id),
         }
         cur.execute(
             "INSERT INTO soa_tool_extension"

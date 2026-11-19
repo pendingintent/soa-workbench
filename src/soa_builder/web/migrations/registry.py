@@ -21,6 +21,9 @@ from .m0115_wizard_state import m0115_wizard_state
 from .m0116_model_planned_duration import m0116_model_planned_duration
 from .m0117_population_age_sex import m0117_population_age_sex
 from .m0118_eligibility_criteria import m0118_eligibility_criteria
+from .m0119_dedupe_extension_attribute_uids import (
+    m0119_dedupe_extension_attribute_uids,
+)
 from .legacy_amendments import (
     _migrate_add_amendment_geographic_scope_audit_table,
     _migrate_add_amendment_geographic_scope_table,
@@ -378,6 +381,10 @@ MIGRATIONS = (
     ("m0116_model_planned_duration", m0116_model_planned_duration),
     ("m0117_population_age_sex", m0117_population_age_sex),
     ("m0118_eligibility_criteria", m0118_eligibility_criteria),
+    (
+        "m0119_dedupe_extension_attribute_uids",
+        m0119_dedupe_extension_attribute_uids,
+    ),
 )
 
 # name -> why it must keep running on every boot
