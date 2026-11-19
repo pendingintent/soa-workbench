@@ -306,7 +306,9 @@ def delete_concept_group(group_id: int):
     cur.execute("DELETE FROM concept_group_concept WHERE concept_group_uid=?", (uid,))
     cur.execute("PRAGMA table_info(activity_concept)")
     if "concept_group_uid" in {r[1] for r in cur.fetchall()}:
-        cur.execute("DELETE FROM activity_concept WHERE concept_group_uid=?", (uid,))
+        from ..services.concepts import _delete_activity_concepts
+
+        _delete_activity_concepts(cur, "concept_group_uid=?", (uid,))
     cur.execute("DELETE FROM concept_group WHERE id=?", (group_id,))
     conn.commit()
     conn.close()
@@ -449,9 +451,11 @@ def unassign_group_from_activity(soa_id: int, activity_id: int, group_id: int):
     cur = conn.cursor()
     row = _fetch_group_row(cur, group_id)
     group_uid = row[1]
-    cur.execute(
-        "DELETE FROM activity_concept "
-        "WHERE activity_id=? AND soa_id=? AND concept_group_uid=?",
+    from ..services.concepts import _delete_activity_concepts
+
+    _delete_activity_concepts(
+        cur,
+        "activity_id=? AND soa_id=? AND concept_group_uid=?",
         (activity_id, soa_id, group_uid),
     )
     conn.commit()
@@ -626,7 +630,9 @@ def ui_delete_concept_group(request: Request, group_id: int):
     cur.execute("DELETE FROM concept_group_concept WHERE concept_group_uid=?", (uid,))
     cur.execute("PRAGMA table_info(activity_concept)")
     if "concept_group_uid" in {r[1] for r in cur.fetchall()}:
-        cur.execute("DELETE FROM activity_concept WHERE concept_group_uid=?", (uid,))
+        from ..services.concepts import _delete_activity_concepts
+
+        _delete_activity_concepts(cur, "concept_group_uid=?", (uid,))
     cur.execute("DELETE FROM concept_group WHERE id=?", (group_id,))
     conn.commit()
     conn.close()
@@ -854,9 +860,11 @@ def ui_remove_group_from_activity(
         conn.close()
         raise HTTPException(404, "Activity not found")
     activity_uid = act_row[0]
-    cur.execute(
-        "DELETE FROM activity_concept "
-        "WHERE activity_id=? AND soa_id=? AND concept_group_uid=?",
+    from ..services.concepts import _delete_activity_concepts
+
+    _delete_activity_concepts(
+        cur,
+        "activity_id=? AND soa_id=? AND concept_group_uid=?",
         (activity_id, soa_id, concept_group_uid),
     )
     cur.execute(
