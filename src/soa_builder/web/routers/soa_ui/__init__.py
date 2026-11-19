@@ -54,12 +54,12 @@ from .activities import (  # noqa: F401
     ui_set_activity_concepts,
 )
 from ._shared import (  # noqa: F401
-    _SOA_CASCADE_TABLES,
     _cleanup_orphaned_concept_rows,
     _concept_cache,
     _connect,
     _enrich_biomedical_concept_bg,
     _enrich_code_bg,
+    _soa_scoped_tables,
     _fetch_arms_for_edit,
     _fetch_matrix,
     _get_activity_concepts,

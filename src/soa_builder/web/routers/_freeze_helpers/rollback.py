@@ -2,6 +2,7 @@
 
 from ._shared import (
     ACTIVITY_ID_CHILD_TABLES,
+    ELEMENT_ID_CHILD_TABLES,
     HTTPException,
     Optional,
     _BC_CODE_CHAIN_TABLES,
@@ -103,31 +104,46 @@ def _delete_bc_code_chain(cur, soa_id: int) -> None:
         )
 
 
-def _remap_activity_children(cur, soa_id: int, activity_id_map: dict) -> int:
-    """Re-point rows keyed on old activity ids; drop unmapped ones.
+def _remap_row_id_children(cur, soa_id: int, tables, column: str, id_map: dict) -> int:
+    """Re-point rows whose ``column`` holds an old parent row id;
+    drop unmapped ones.
 
     Returns the number of rows dropped. Updates go row by row through
     the child's own id, so an old id can never collide with a new one.
     """
     dropped = 0
-    for table in ACTIVITY_ID_CHILD_TABLES:
-        if not _table_has_columns(cur, table, ("id", "activity_id", "soa_id")):
+    for table in tables:
+        if not _table_has_columns(cur, table, ("id", column, "soa_id")):
             continue
         cur.execute(
-            f"SELECT id, activity_id FROM {table} WHERE soa_id=?",
+            f"SELECT id, {column} FROM {table} WHERE soa_id=?",
             (soa_id,),
         )
-        for row_id, old_activity_id in cur.fetchall():
-            new_activity_id = activity_id_map.get(old_activity_id)
-            if new_activity_id is None:
+        for row_id, old_parent_id in cur.fetchall():
+            new_parent_id = id_map.get(old_parent_id)
+            if new_parent_id is None:
                 cur.execute(f"DELETE FROM {table} WHERE id=?", (row_id,))
                 dropped += 1
             else:
                 cur.execute(
-                    f"UPDATE {table} SET activity_id=? WHERE id=?",
-                    (new_activity_id, row_id),
+                    f"UPDATE {table} SET {column}=? WHERE id=?",
+                    (new_parent_id, row_id),
                 )
     return dropped
+
+
+def _remap_activity_children(cur, soa_id: int, activity_id_map: dict) -> int:
+    """Re-point rows keyed on old activity ids; drop unmapped ones."""
+    return _remap_row_id_children(
+        cur, soa_id, ACTIVITY_ID_CHILD_TABLES, "activity_id", activity_id_map
+    )
+
+
+def _remap_element_children(cur, soa_id: int, element_id_map: dict) -> int:
+    """Re-point rows keyed on old element row ids; drop unmapped ones."""
+    return _remap_row_id_children(
+        cur, soa_id, ELEMENT_ID_CHILD_TABLES, "element_id", element_id_map
+    )
 
 
 def _restore_rows(cur, soa_id: int, table: str, rows, enabled: bool) -> int:
@@ -288,6 +304,10 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         cur.execute("DELETE FROM eligibility_criterion WHERE soa_id=?", (soa_id,))
     if restore_study_cells:
         cur.execute("DELETE FROM study_cell WHERE soa_id=?", (soa_id,))
+    # Element children hold the live element.id, so remember each live
+    # row's immutable uid to re-point them after elements are restored.
+    cur.execute("SELECT id, element_id FROM element WHERE soa_id=?", (soa_id,))
+    live_element_uid = {r[0]: r[1] for r in cur.fetchall()}
     cur.execute("DELETE FROM element WHERE soa_id=?", (soa_id,))
     for ca in snap_code_assocs:
         stored_code = ca.get("code")
@@ -570,6 +590,7 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         else:
             skipped_cells += 1
     elements_restored = 0
+    new_id_by_element_uid = {}
     element_cols = _table_columns(cur, "element")
     for el in sorted(elements, key=lambda x: x.get("order_index", 0)):
         el_cols = ["soa_id", "name", "label", "description", "testrl"]
@@ -592,7 +613,15 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
             f"VALUES ({','.join('?' * len(el_cols))})",
             el_vals,
         )
+        if el.get("element_id"):
+            new_id_by_element_uid[el["element_id"]] = cur.lastrowid
         elements_restored += 1
+    live_to_new_element_id = {
+        live_id: new_id_by_element_uid[uid]
+        for live_id, uid in live_element_uid.items()
+        if uid in new_id_by_element_uid
+    }
+    _remap_element_children(cur, soa_id, live_to_new_element_id)
     inserted_concepts = 0
     for old_aid, concept_list in concepts_map.items():
         new_aid = activity_id_map.get(int(old_aid))

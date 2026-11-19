@@ -1,8 +1,11 @@
 """Tests for the delete SOA endpoint POST /ui/soa/{soa_id}/delete."""
 
+import uuid
+
 from fastapi.testclient import TestClient
 
 from soa_builder.web.app import app
+from soa_builder.web.db import _connect
 
 client = TestClient(app)
 
@@ -71,3 +74,73 @@ def test_delete_soa_cascades_activities():
     # Activities endpoint for a deleted study returns 404
     acts = client.get(f"/soa/{soa_id}/activities")
     assert acts.status_code == 404
+
+
+def _soa_scoped_tables(cur) -> list:
+    cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+    )
+    tables = []
+    for (name,) in cur.fetchall():
+        cur.execute(f"PRAGMA table_info({name})")
+        if any(r[1] == "soa_id" for r in cur.fetchall()):
+            tables.append(name)
+    return tables
+
+
+def _seed_every_soa_table(soa_id: int) -> list:
+    """Insert one row for soa_id into every table with a soa_id column,
+    filling NOT NULL columns that have no default with a dummy value."""
+    conn = _connect()
+    cur = conn.cursor()
+    tables = _soa_scoped_tables(cur)
+    for table in tables:
+        cur.execute(f"PRAGMA table_info({table})")
+        values = {"soa_id": soa_id}
+        for _cid, col, ctype, notnull, default, pk in cur.fetchall():
+            if col == "soa_id" or pk == 1 and ctype.upper() == "INTEGER":
+                continue
+            if notnull and default is None or pk:
+                is_int = "INT" in ctype.upper() or "REAL" in ctype.upper()
+                values[col] = 1 if is_int else f"seed-{soa_id}"
+        cols = ",".join(values)
+        cur.execute(
+            f"INSERT INTO {table} ({cols}) VALUES ({','.join('?' * len(values))})",
+            list(values.values()),
+        )
+    conn.commit()
+    conn.close()
+    return tables
+
+
+def _rows_for(soa_id: int) -> dict:
+    conn = _connect()
+    cur = conn.cursor()
+    counts = {}
+    for table in _soa_scoped_tables(cur):
+        cur.execute(f"SELECT COUNT(*) FROM {table} WHERE soa_id=?", (soa_id,))
+        n = cur.fetchone()[0]
+        if n:
+            counts[table] = n
+    conn.close()
+    return counts
+
+
+def test_delete_soa_removes_rows_from_every_soa_table():
+    """No table keyed on soa_id may keep rows of a deleted study, and
+    another study's rows must be left alone."""
+    study_id = f"DEL-ALL-{uuid.uuid4().hex[:8]}"
+    soa_id = _create_soa("Delete Everything", study_id)
+    other_id = _create_soa("Keep Everything", f"KEEP-{uuid.uuid4().hex[:8]}")
+    tables = _seed_every_soa_table(soa_id)
+    _seed_every_soa_table(other_id)
+    assert set(_rows_for(soa_id)) == set(tables)
+
+    resp = client.post(
+        f"/ui/soa/{soa_id}/delete",
+        data={"confirm_study_id": study_id},
+    )
+    assert resp.status_code == 200
+
+    assert _rows_for(soa_id) == {}
+    assert set(_rows_for(other_id)) == set(tables)
