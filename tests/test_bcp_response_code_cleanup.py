@@ -10,7 +10,7 @@ Covers:
 from soa_builder.web.app import app  # noqa: F401  (triggers DB init)
 from soa_builder.web.db import _connect
 from soa_builder.web.routers.soa_bundle import (
-    _import_bc_properties_and_response_codes,
+    _filter_bc_property_rows,
 )
 from usdm.generate_biomedical_concept_properties import (
     delete_bc_cascade,
@@ -227,17 +227,11 @@ def test_import_filters_orphans_and_dedups():
         ],
     }
 
-    conn = _connect()
-    cur = conn.cursor()
-    _import_bc_properties_and_response_codes(cur, bundle, IMPORT_SOA)
-    conn.commit()
-    conn.close()
+    bcp_rows, rc_rows = _filter_bc_property_rows(bundle)
 
-    # Only the BCP whose BC exists is imported.
-    assert _ids(
-        IMPORT_SOA, "biomedical_concept_property", "biomedical_concept_property_uid"
-    ) == ["BiomedicalConceptProperty_1"]
-    # Orphan RC dropped; duplicate collapsed to one.
-    assert _ids(IMPORT_SOA, "bcp_response_code", "response_code_uid") == [
-        "ResponseCode_1"
+    # Only the BCP whose BC exists is kept.
+    assert [r["biomedical_concept_property_uid"] for r in bcp_rows] == [
+        "BiomedicalConceptProperty_1"
     ]
+    # Orphan RC dropped; duplicate collapsed to one.
+    assert [r["response_code_uid"] for r in rc_rows] == ["ResponseCode_1"]

@@ -142,6 +142,16 @@ table also needs capture and restore code in
 Rollback tests live in `tests/test_freeze_rollback_*.py` and
 `tests/test_rollback_*.py`.
 
+### Study Bundle Export/Import
+`routers/soa_bundle.py` exports every study-content table for a SoA
+(`_EXPORT_TABLES`) and never exports audit (`*_audit`) or freeze
+data (`_NEVER_EXPORTED`, `freeze_id` stripped).
+`tests/test_soa_bundle_policy.py` fails when a new `soa_id` table has
+no export decision, or when an exported table has an INTEGER `*_id`
+column that is not remapped in `_ID_REMAPS` (row ids change on
+import). So a new table needs both a rollback policy and an export
+decision.
+
 ### USDM Model Entities (Key Domain Knowledge)
 - **StudyElement**: Structural design components (periods, cohorts). UID pattern: `StudyElement_N`
 - **ScheduledActivityInstance**: Temporal visit/timepoint occurrences. UID pattern: `ScheduledActivityInstance_N`
