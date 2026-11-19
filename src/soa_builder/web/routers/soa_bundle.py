@@ -170,7 +170,10 @@ def _export_table(cur, table: str, soa_id: int) -> List[Dict[str, Any]]:
         return []
     cols = _table_columns(cur, table)
     keep = [i for i, c in enumerate(cols) if c not in _STRIPPED_COLUMNS]
-    cur.execute(f"SELECT * FROM {table} WHERE soa_id=?", (soa_id,))
+    # Ordered by id: generators list rows by id, and import assigns
+    # new ids in bundle order.
+    order = "id" if "id" in cols else "rowid"
+    cur.execute(f"SELECT * FROM {table} WHERE soa_id=? ORDER BY {order}", (soa_id,))
     return [{cols[i]: row[i] for i in keep} for row in cur.fetchall()]
 
 
@@ -293,7 +296,11 @@ def _import_table(
         if col in target_cols
     }
     dropped = 0
-    for row in rows:
+    # Insert in original id order so new ids keep the row order.
+    # Bundles exported before rows were ordered may list them
+    # differently.
+    ordered = sorted(rows, key=lambda r: _as_row_id(r.get("id")) or 0)
+    for row in ordered:
         values = {c: v for c, v in row.items() if c in target_cols}
         if not _remap_row(table, values, id_maps):
             dropped += 1
