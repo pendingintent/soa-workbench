@@ -840,6 +840,75 @@ def get_next_study_identifier_uid(cur: Any, soa_id: int) -> str:
     return _next_uid_from_counter(cur, soa_id, "StudyIdentifier_", _seed)
 
 
+def _max_embedded_copy_suffix(cur: Any, soa_id: int, prefix: str) -> int:
+    """Max `{prefix}N` among the embedded copy uids of a SoA, so the
+    allocators that own a prefix never hand out a copy's uid."""
+    cur.execute(
+        "SELECT copy_uid FROM embedded_copy_uid WHERE soa_id=? AND copy_uid LIKE ?",
+        (soa_id, f"{prefix}%"),
+    )
+    return _max_numeric_suffix(cur.fetchall(), prefix)
+
+
+def _max_uid_in_audit(cur: Any, soa_id: int, table: str, col: str, prefix: str) -> int:
+    """Max `{prefix}N` recorded in an audit table's before/after JSON,
+    so a deleted row's uid is never reissued."""
+    best = 0
+    cur.execute(
+        f"SELECT before_json, after_json FROM {table} WHERE soa_id=?", (soa_id,)
+    )
+    for row in cur.fetchall():
+        for raw in row:
+            if not raw:
+                continue
+            try:
+                uid = json.loads(raw).get(col)
+            except MALFORMED_JSON_ERRORS:
+                continue
+            best = max(best, _max_numeric_suffix([(uid,)], prefix))
+    return best
+
+
+def get_next_transition_rule_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique TransitionRule_N for the given SOA."""
+    prefix = "TransitionRule_"
+
+    def _seed() -> int:
+        cur.execute(
+            "SELECT transition_rule_uid FROM transition_rule WHERE soa_id=?",
+            (soa_id,),
+        )
+        return max(
+            _max_numeric_suffix(cur.fetchall(), prefix),
+            _max_uid_in_audit(
+                cur, soa_id, "transition_rule_audit", "transition_rule_uid", prefix
+            ),
+            _max_embedded_copy_suffix(cur, soa_id, prefix),
+        )
+
+    return _next_uid_from_counter(cur, soa_id, prefix, _seed, resync=True)
+
+
+def get_next_geographic_scope_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique GeographicScope_N for the given SOA."""
+    prefix = "GeographicScope_"
+
+    def _seed() -> int:
+        cur.execute(
+            "SELECT scope_uid FROM amendment_geographic_scope WHERE soa_id=?",
+            (soa_id,),
+        )
+        return max(
+            _max_numeric_suffix(cur.fetchall(), prefix),
+            _max_uid_in_audit(
+                cur, soa_id, "amendment_geographic_scope_audit", "scope_uid", prefix
+            ),
+            _max_embedded_copy_suffix(cur, soa_id, prefix),
+        )
+
+    return _next_uid_from_counter(cur, soa_id, prefix, _seed, resync=True)
+
+
 # Helper function to generate new alias_code_uid value
 def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique AliasCode_N for the given SOA."""
@@ -850,7 +919,10 @@ def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
             " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
             (soa_id,),
         )
-        return _max_suffix(cur.fetchall())
+        return max(
+            _max_suffix(cur.fetchall()),
+            _max_embedded_copy_suffix(cur, soa_id, "AliasCode_"),
+        )
 
     return _next_uid_from_counter(cur, soa_id, "AliasCode_", _seed, resync=True)
 
@@ -866,7 +938,10 @@ def get_next_code_uid(cur: Any, soa_id: int) -> str:
             " SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
             (soa_id, soa_id),
         )
-        return _max_suffix(cur.fetchall())
+        return max(
+            _max_suffix(cur.fetchall()),
+            _max_embedded_copy_suffix(cur, soa_id, "Code_"),
+        )
 
     return _next_uid_from_counter(cur, soa_id, "Code_", _seed, resync=True)
 
@@ -2123,3 +2198,99 @@ def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
     return _load_codelist_options(
         _contact_mode_cache, ENCOUNTER_CONTACT_MODE_CODELIST, force
     )
+
+
+# Allocators for the entities that can be embedded under several
+# owners in the USDM output (see get_embedded_copy_uid).
+_EMBEDDED_COPY_ALLOCATORS: Dict[str, Callable[[Any, int], str]] = {
+    "TransitionRule_": get_next_transition_rule_uid,
+    "GeographicScope_": get_next_geographic_scope_uid,
+    "Code_": get_next_code_uid,
+    "AliasCode_": get_next_alias_code_uid,
+}
+
+
+def get_embedded_copy_uid(
+    cur: Any,
+    soa_id: int,
+    owner_uid: str,
+    slot: str,
+    source_uid: str,
+    claim: bool = False,
+) -> str:
+    """Return the uid of source_uid as embedded under owner_uid.slot.
+
+    The workbench stores one TransitionRule or GeographicScope row that
+    several owners use, but USDM embeds a copy under each owner and
+    needs every id in the document to be unique. One embedding uses
+    the stored uid; every other one gets its own {Entity}_N uid,
+    allocated once and persisted in embedded_copy_uid so it is the
+    same in every export.
+
+    With claim, the owner takes the stored uid itself unless another
+    owner has already claimed it. Claims are persisted too, so the
+    stored uid stays with the first owner that took it.
+    """
+    cur.execute(
+        "SELECT copy_uid FROM embedded_copy_uid"
+        " WHERE soa_id=? AND owner_uid=? AND slot=? AND source_uid=?",
+        (soa_id, owner_uid, slot, source_uid),
+    )
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    copy_uid = None
+    if claim:
+        cur.execute(
+            "SELECT 1 FROM embedded_copy_uid WHERE soa_id=? AND copy_uid=?",
+            (soa_id, source_uid),
+        )
+        if cur.fetchone() is None:
+            copy_uid = source_uid
+    if copy_uid is None:
+        prefix = source_uid.rsplit("_", 1)[0] + "_"
+        allocator = _EMBEDDED_COPY_ALLOCATORS.get(prefix)
+        if allocator is None:
+            raise ValueError(f"No uid allocator for embedded copy {source_uid!r}")
+        copy_uid = allocator(cur, soa_id)
+    cur.execute(
+        "INSERT INTO embedded_copy_uid"
+        " (soa_id, owner_uid, slot, source_uid, copy_uid) VALUES (?,?,?,?,?)",
+        (soa_id, owner_uid, slot, source_uid, copy_uid),
+    )
+    return copy_uid
+
+
+def embed_with_owned_ids(
+    cur: Any,
+    soa_id: int,
+    owner_uid: str,
+    slot: str,
+    obj: Optional[Dict[str, Any]],
+    claim: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Return obj as embedded under owner_uid.slot, with every nested
+    USDM id replaced by that owner's uid for it (get_embedded_copy_uid).
+    When the owner claims the stored uid of obj, obj is returned as is.
+    """
+    if not obj:
+        return obj
+    top = get_embedded_copy_uid(cur, soa_id, owner_uid, slot, obj["id"], claim)
+    if top == obj["id"]:
+        return obj
+
+    def _copy(node: Any) -> Any:
+        if isinstance(node, list):
+            return [_copy(v) for v in node]
+        if not isinstance(node, dict):
+            return node
+        out = {k: _copy(v) for k, v in node.items()}
+        if node.get("id") and node.get("instanceType"):
+            out["id"] = (
+                top
+                if node is obj
+                else get_embedded_copy_uid(cur, soa_id, owner_uid, slot, node["id"])
+            )
+        return out
+
+    return _copy(obj)

@@ -24,6 +24,7 @@ from .m0118_eligibility_criteria import m0118_eligibility_criteria
 from .m0119_dedupe_extension_attribute_uids import (
     m0119_dedupe_extension_attribute_uids,
 )
+from .m0120_embedded_copy_uid import m0120_embedded_copy_uid
 from .legacy_amendments import (
     _migrate_add_amendment_geographic_scope_audit_table,
     _migrate_add_amendment_geographic_scope_table,
@@ -385,6 +386,7 @@ MIGRATIONS = (
         "m0119_dedupe_extension_attribute_uids",
         m0119_dedupe_extension_attribute_uids,
     ),
+    ("m0120_embedded_copy_uid", m0120_embedded_copy_uid),
 )
 
 # name -> why it must keep running on every boot

@@ -92,6 +92,10 @@ NOT_VERSIONED = {
 # Bookkeeping that must never be rolled back.
 EXCLUDED = {
     "uid_counter": "UIDs are monotonic; a rollback must never reissue one",
+    "embedded_copy_uid": (
+        "export ids of embedded copies, keyed on immutable uids;"
+        " a rollback must not change them"
+    ),
     "soa_freeze": "the snapshots themselves",
 }
 # Every ``*_audit`` table is excluded too: audit history is append-only.

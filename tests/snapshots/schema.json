@@ -2605,6 +2605,76 @@
    }
   }
  },
+ "embedded_copy_uid": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "owner_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "slot",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "source_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "copy_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_embedded_copy_uid_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
+   "sqlite_autoindex_embedded_copy_uid_1": {
+    "columns": [
+     "soa_id",
+     "owner_uid",
+     "slot",
+     "source_uid"
+    ],
+    "unique": 1
+   },
+   "sqlite_autoindex_embedded_copy_uid_2": {
+    "columns": [
+     "soa_id",
+     "copy_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
  "endpoint": {
   "columns": [
    {
