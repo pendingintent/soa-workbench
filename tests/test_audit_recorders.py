@@ -24,6 +24,11 @@ STANDARD = [
     ),
     ("_record_instance_audit", "instance_audit", "instance_id"),
     (
+        "_record_eligibility_criterion_audit",
+        "eligibility_criterion_audit",
+        "eligibility_criterion_id",
+    ),
+    (
         "_record_decision_instance_audit",
         "decision_instance_audit",
         "decision_instance_id",
