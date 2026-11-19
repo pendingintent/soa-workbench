@@ -35,6 +35,10 @@ _BC_CODE_CHAIN_TABLES = (
 # Rollback re-inserts activities under new ids, so these rows are
 # re-pointed (or dropped when their activity is not restored).
 ACTIVITY_ID_CHILD_TABLES = ("activity_concept_dss", "activity_concept_crf")
+# Tables keyed on the integer element.id that freeze does not capture.
+# Rollback re-inserts elements under new ids, so these rows are
+# re-pointed through the element uid (or dropped with their element).
+ELEMENT_ID_CHILD_TABLES = ("element_intervention",)
 # Columns returned by _list_rollback_audit, in order; also the header
 # row for the audit exports when there are no rows.
 ROLLBACK_AUDIT_COLUMNS = (

@@ -42,6 +42,23 @@ def _soa_tables() -> dict:
 
 
 SOA_TABLES = _soa_tables()
+
+
+def _column_types() -> dict:
+    """Map each soa-scoped table to {column: declared type}."""
+    conn = db_connect()
+    try:
+        cur = conn.cursor()
+        types = {}
+        for table in SOA_TABLES:
+            cur.execute(f"PRAGMA table_info({table})")
+            types[table] = {r[1]: (r[2] or "").upper() for r in cur.fetchall()}
+        return types
+    finally:
+        conn.close()
+
+
+COLUMN_TYPES = _column_types()
 CLASSIFIED = policy.classified_tables()
 
 
@@ -78,17 +95,34 @@ def test_remapped_tables_are_remapped_by_rollback(table):
     assert table in _freeze_helpers.ACTIVITY_ID_CHILD_TABLES
 
 
-def test_activity_id_children_are_handled():
-    """A table keyed on activity.id goes stale when rollback reassigns
-    activity ids, unless rollback restores or re-points it."""
+# Integer columns holding the row id of a RESTORED table whose ids
+# rollback reassigns, and the policy group that must re-point them.
+ROW_ID_CHILD_GROUPS = {
+    "activity_id": policy.ACTIVITY_ID_REMAPPED,
+    "element_id": policy.ELEMENT_ID_REMAPPED,
+}
+
+
+@pytest.mark.parametrize("column", sorted(ROW_ID_CHILD_GROUPS))
+def test_row_id_children_are_handled(column):
+    """A table keyed on a restored table's row id goes stale when
+    rollback reassigns those ids, unless rollback restores or
+    re-points it. element.element_id is the TEXT StudyElement_N uid,
+    so only INTEGER columns count."""
     unhandled = sorted(
         t
         for t, cols in SOA_TABLES.items()
-        if "activity_id" in cols
+        if column in cols
+        and COLUMN_TYPES[t][column] == "INTEGER"
         and t not in policy.RESTORED
-        and t not in policy.ACTIVITY_ID_REMAPPED
+        and t not in ROW_ID_CHILD_GROUPS[column]
         and not t.endswith(policy.EXCLUDED_SUFFIX)
     )
     assert not unhandled, (
-        f"Tables keyed on activity.id that rollback leaves stale: {unhandled}"
+        f"Tables keyed on the integer {column} that rollback leaves stale: {unhandled}"
     )
+
+
+@pytest.mark.parametrize("table", sorted(policy.ELEMENT_ID_REMAPPED))
+def test_element_remapped_tables_are_remapped_by_rollback(table):
+    assert table in _freeze_helpers.ELEMENT_ID_CHILD_TABLES
