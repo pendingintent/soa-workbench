@@ -14,6 +14,7 @@ from .capture import (  # noqa: F401
     _capture_biomedical_concepts,
     _capture_code_associations,
     _capture_decision_instances,
+    _capture_eligibility_criteria,
     _capture_encounters_full,
     _capture_endpoints,
     _capture_extension_attributes,

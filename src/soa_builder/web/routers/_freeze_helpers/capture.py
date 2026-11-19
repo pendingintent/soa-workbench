@@ -393,3 +393,31 @@ def _capture_extension_attributes(cur, soa_id: int) -> list:
         }
         for r in cur.fetchall()
     ]
+
+
+_ELIGIBILITY_COLUMNS = (
+    "criterion_uid",
+    "item_uid",
+    "name",
+    "label",
+    "description",
+    "identifier",
+    "category_code",
+    "category_decode",
+    "category_version",
+    "text",
+    "order_index",
+    "created_at",
+)
+
+
+def _capture_eligibility_criteria(cur, soa_id: int) -> list:
+    """Eligibility criteria rows (migration m0118); [] before it ran."""
+    if not _table_has_columns(cur, "eligibility_criterion", ("criterion_uid",)):
+        return []
+    cur.execute(
+        f"SELECT {','.join(_ELIGIBILITY_COLUMNS)} FROM eligibility_criterion"
+        " WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    return [dict(zip(_ELIGIBILITY_COLUMNS, row)) for row in cur.fetchall()]

@@ -18,6 +18,7 @@ RESTORED = frozenset(
         "code_association",
         "decision_instances",
         "element",
+        "eligibility_criterion",
         "endpoint",
         "epoch",
         "instances",

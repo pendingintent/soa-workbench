@@ -33,6 +33,10 @@ from usdm.generate_amendments import build_usdm_amendments
 from usdm.generate_study_titles import build_usdm_titles
 from usdm.generate_organizations import build_usdm_organizations
 from usdm.generate_roles import build_usdm_roles
+from usdm.generate_eligibility_criteria import (
+    build_usdm_eligibility_criteria,
+    build_usdm_eligibility_criterion_items,
+)
 from usdm.generate_population import (
     POPULATION_ID,
     build_usdm_planned_age,
@@ -191,6 +195,9 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
     estimands = _safe("estimands", build_usdm_estimands, soa_id)
     indications = _safe("indications", build_usdm_indications, soa_id)
 
+    eligibility_criteria = _safe(
+        "eligibilityCriteria", build_usdm_eligibility_criteria, soa_id
+    )
     study_design = {
         "id": "InterventionalStudyDesign_1",
         "extensionAttributes": [],
@@ -222,7 +229,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
             "plannedEnrollmentNumber": None,
             "plannedCompletionNumber": None,
             "plannedSex": build_usdm_planned_sex(soa_id),
-            "criterionIds": [],
+            "criterionIds": [c["id"] for c in eligibility_criteria],
             "plannedAge": build_usdm_planned_age(soa_id),
             "notes": [],
             "cohorts": [],
@@ -233,7 +240,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         ),
         "biospecimenRetentions": [],
         "documentVersionIds": [],
-        "eligibilityCriteria": [],
+        "eligibilityCriteria": eligibility_criteria,
         "analysisPopulations": [],
         "notes": [],
         "subTypes": [],
@@ -280,7 +287,11 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         "biomedicalConcepts": build_usdm_biomedical_concepts(soa_id),
         "bcSurrogates": _safe("bcSurrogates", build_usdm_bc_surrogates, soa_id),
         "bcCategories": build_usdm_bc_categories(soa_id),
-        "eligibilityCriterionItems": [],
+        "eligibilityCriterionItems": _safe(
+            "eligibilityCriterionItems",
+            build_usdm_eligibility_criterion_items,
+            soa_id,
+        ),
         "narrativeContentItems": narrative_content_items,
         "abbreviations": [],
         "administrableProducts": [],

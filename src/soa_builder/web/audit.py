@@ -217,6 +217,25 @@ def _record_schedule_timeline_audit(
     )
 
 
+def _record_eligibility_criterion_audit(
+    soa_id: int,
+    action: str,
+    eligibility_criterion_id: Optional[int],
+    before: Optional[Dict[str, Any]] = None,
+    after: Optional[Dict[str, Any]] = None,
+):
+    _record_audit(
+        "eligibility_criterion_audit",
+        "eligibility_criterion_id",
+        "eligibility criterion",
+        soa_id,
+        action,
+        eligibility_criterion_id,
+        before,
+        after,
+    )
+
+
 def _record_instance_audit(
     soa_id: int,
     action: str,

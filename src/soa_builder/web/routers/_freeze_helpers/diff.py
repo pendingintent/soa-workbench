@@ -246,6 +246,11 @@ def _diff_freezes_limited(
             ["name", "epoch_uid", "member_of_timeline"],
         ),
         (
+            "eligibility_criteria",
+            "criterion_uid",
+            ["name", "identifier", "category_code", "text"],
+        ),
+        (
             "bc_surrogates",
             "surrogate_uid",
             ["name", "label", "reference"],

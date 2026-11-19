@@ -2420,6 +2420,191 @@
    }
   }
  },
+ "eligibility_criterion": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "criterion_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "item_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "identifier",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "category_code",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "category_decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "category_version",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "0",
+    "name": "order_index",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "created_at",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_eligibility_criterion_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
+   "sqlite_autoindex_eligibility_criterion_1": {
+    "columns": [
+     "soa_id",
+     "criterion_uid"
+    ],
+    "unique": 1
+   },
+   "sqlite_autoindex_eligibility_criterion_2": {
+    "columns": [
+     "soa_id",
+     "item_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "eligibility_criterion_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "eligibility_criterion_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_eligibility_criterion_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
+ },
  "endpoint": {
   "columns": [
    {

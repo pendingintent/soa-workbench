@@ -178,11 +178,15 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     snap_instances = snap.get("instances")
     snap_timelines = snap.get("schedule_timelines")
     snap_decisions = snap.get("decision_instances")
+    # Freezes taken before migration m0118 have no criteria key; their
+    # rollback leaves the live criteria alone.
+    snap_eligibility = snap.get("eligibility_criteria")
     snap_study_cells = snap.get("study_cells")
     restore_encounters = snap_encounters is not None
     restore_instances = snap_instances is not None
     restore_timelines = snap_timelines is not None
     restore_decisions = snap_decisions is not None
+    restore_eligibility = snap_eligibility is not None
     # Study cells need element_uid (NOT NULL) and elements that kept
     # their element_id; only newer captures provide both.
     restore_study_cells = (
@@ -196,6 +200,9 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     legacy_visits = not instance_axis and not restore_encounters
     conn = _connect()
     cur = conn.cursor()
+    restore_eligibility = restore_eligibility and _table_has_columns(
+        cur, "eligibility_criterion", ("criterion_uid",)
+    )
     # Rollback re-creates snapshot UIDs and drops post-freeze ones. Keep
     # the UID counters past both so a removed UID is never reissued.
     # Must run before the deletes below (the seed reads live rows).
@@ -277,6 +284,8 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
         cur.execute("DELETE FROM schedule_timelines WHERE soa_id=?", (soa_id,))
     if restore_decisions:
         cur.execute("DELETE FROM decision_instances WHERE soa_id=?", (soa_id,))
+    if restore_eligibility:
+        cur.execute("DELETE FROM eligibility_criterion WHERE soa_id=?", (soa_id,))
     if restore_study_cells:
         cur.execute("DELETE FROM study_cell WHERE soa_id=?", (soa_id,))
     cur.execute("DELETE FROM element WHERE soa_id=?", (soa_id,))
@@ -439,6 +448,9 @@ def _rollback_freeze(soa_id: int, freeze_id: int) -> dict:
     )
     decisions_written = _restore_rows(
         cur, soa_id, "decision_instances", snap_decisions, restore_decisions
+    )
+    _restore_rows(
+        cur, soa_id, "eligibility_criterion", snap_eligibility, restore_eligibility
     )
     study_cells_written = _restore_rows(
         cur, soa_id, "study_cell", snap_study_cells, restore_study_cells
