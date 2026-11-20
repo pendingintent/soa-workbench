@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ..audit import _record_person_audit
+from ..codelist_config import ORGANIZATION_TYPE_CODELIST
 from ..db import _connect
 from ..utils import soa_exists
 
@@ -17,6 +18,7 @@ logger = logging.getLogger("soa_builder.web.routers.persons")
 templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "..", "templates")
 )
+templates.env.globals["org_type_codelist"] = ORGANIZATION_TYPE_CODELIST
 
 
 # ---------------------------------------------------------------------------
