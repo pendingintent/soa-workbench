@@ -10,6 +10,8 @@ before (tests/test_route_shadowing.py guards this).
 import logging
 import os
 
+from pathlib import Path
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -80,6 +82,9 @@ def _configure_logging():
     )
     # Quiet noisy libraries if present
     logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+    # The --reload watcher logs every raw file change (DB/WAL writes
+    # included); uvicorn still logs actual reloads itself.
+    logging.getLogger("watchfiles").setLevel(logging.WARNING)
     return logging.getLogger("soa_builder")
 
 
@@ -177,6 +182,10 @@ app.include_router(soa_ui_router.router)
 app.router.lifespan_context = lifespan
 
 
+# src/ holds every package the app imports (soa_builder, usdm, sdtm)
+_SRC_DIR = Path(__file__).resolve().parents[2]
+
+
 def main():
     import uvicorn
 
@@ -185,4 +194,7 @@ def main():
         host=HTTP_LISTEN_IP,
         port=HTTP_LISTEN_PORT,
         reload=True,
+        # Watch only src/ so DB/WAL writes in the repo root are not
+        # scanned on every change.
+        reload_dirs=[str(_SRC_DIR)],
     )
