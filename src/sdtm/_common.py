@@ -7,7 +7,7 @@ Implementation Handbook 1, section 4.3.
 
 import sqlite3
 
-from usdm.generate_study_identifiers import _find_sponsor_org_uid
+from soa_builder.web.utils import sponsor_org_uid
 
 
 def first_text(*values) -> str:
@@ -22,11 +22,13 @@ def sponsor_study_id(cur: sqlite3.Cursor, soa_id: int) -> str:
     """Return STUDYID: the sponsor StudyIdentifier text.
 
     The mapping takes StudyIdentifier.text where the identifier's scope
-    is the Clinical Study Sponsor organization (C70793). The fallbacks
-    mirror ``build_usdm_study_identifiers``: the first identifier, then
-    ``soa.study_id``, then ``soa.name``.
+    is the organization of the sponsor StudyRole (USDM v4 DDF00172).
+    The fallbacks mirror ``build_usdm_study_identifiers``, which
+    derives the sponsor identifier from ``soa.study_id``: so
+    ``soa.study_id`` comes next, then the first identifier (which may
+    be a registry number such as an NCT), then ``soa.name``.
     """
-    sponsor_uid = _find_sponsor_org_uid(cur, soa_id)
+    sponsor_uid = sponsor_org_uid(cur, soa_id)
     cur.execute(
         "SELECT text, scope_org_uid FROM study_identifier"
         " WHERE soa_id=? ORDER BY order_index, id",
@@ -36,11 +38,11 @@ def sponsor_study_id(cur: sqlite3.Cursor, soa_id: int) -> str:
     for text, scope_org_uid in identifiers:
         if sponsor_uid and scope_org_uid == sponsor_uid and first_text(text):
             return first_text(text)
-    if identifiers and first_text(identifiers[0][0]):
-        return first_text(identifiers[0][0])
     cur.execute("SELECT study_id, name FROM soa WHERE id=?", (soa_id,))
     row = cur.fetchone()
-    return first_text(row[0], row[1]) if row else ""
+    study_id, name = row if row else (None, None)
+    first_identifier = identifiers[0][0] if identifiers else None
+    return first_text(study_id, first_identifier, name)
 
 
 def main_timeline_uid(cur: sqlite3.Cursor, soa_id: int) -> str:

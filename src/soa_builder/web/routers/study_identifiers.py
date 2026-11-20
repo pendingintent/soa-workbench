@@ -7,7 +7,8 @@ scoped to the organization that issued it. Entry enforces the USDM
 v4 CORE rules:
 
 - DDF00172 (ERROR): exactly one sponsor-scoped identifier, so a
-  second one is rejected.
+  second one is rejected. The sponsor organization is the one the
+  sponsor StudyRole points to (USDM v4), not an organization type.
 - DDF00173 (ERROR): identifier text is unique within an
   organization's scope.
 - DDF00174 (WARNING): an organization is not expected to issue more
@@ -26,7 +27,7 @@ from pydantic import BaseModel
 
 from ..audit import _record_study_identifier_audit
 from ..db import _connect
-from ..utils import get_next_study_identifier_uid, soa_exists
+from ..utils import get_next_study_identifier_uid, soa_exists, sponsor_org_uid
 
 router = APIRouter()
 ui_router = APIRouter()
@@ -34,10 +35,6 @@ logger = logging.getLogger("soa_builder.web.routers.study_identifiers")
 templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "..", "templates")
 )
-
-# NCIt "Clinical Study Sponsor" organization type
-_SPONSOR_CODE = "C70793"
-_SPONSOR_CODE_SYSTEM = "http://www.cdisc.org"
 
 _DDF00174_WARNING = (
     "DDF00174: {org} has more than one identifier for this study"
@@ -102,34 +99,37 @@ def _list_identifiers(soa_id: int) -> list:
 def _list_scope_orgs(soa_id: int) -> list:
     """Return every organization that can scope an identifier.
 
-    Sponsor organizations come first, then the rest in their own
-    order. Each dict carries the organization type decode and an
+    The sponsor organization (the one the sponsor StudyRole points
+    to, see ``sponsor_org_uid``) comes first, then the rest in their
+    own order. Each dict carries the organization type decode and an
     ``is_sponsor`` flag.
     """
     conn = _connect()
     try:
         cur = conn.cursor()
+        sponsor_uid = sponsor_org_uid(cur, soa_id)
         cur.execute(
-            "SELECT o.organization_uid, o.name, c.decode,"
-            " (c.code=? AND c.code_system=?) AS is_sponsor"
+            "SELECT o.organization_uid, o.name, c.decode"
             " FROM organization o"
             " LEFT JOIN code c"
             "   ON c.code_uid = o.type_code_uid AND c.soa_id = o.soa_id"
             " WHERE o.soa_id=?"
-            " ORDER BY is_sponsor DESC, o.order_index, o.id",
-            (_SPONSOR_CODE, _SPONSOR_CODE_SYSTEM, soa_id),
+            " ORDER BY o.order_index, o.id",
+            (soa_id,),
         )
-        return [
+        orgs = [
             {
                 "organization_uid": r[0],
                 "name": r[1],
                 "type": r[2] or "",
-                "is_sponsor": bool(r[3]),
+                "is_sponsor": bool(sponsor_uid) and r[0] == sponsor_uid,
             }
             for r in cur.fetchall()
         ]
     finally:
         conn.close()
+    # Stable sort: sponsor first, others keep their order.
+    return sorted(orgs, key=lambda org: not org["is_sponsor"])
 
 
 def _create_identifier(soa_id: int, text: str, scope_org_uid: str) -> dict:

@@ -41,10 +41,12 @@ def _new_soa(name: str) -> int:
 
 
 def _create_role(soa_id: int, **kwargs) -> dict:
+    # Investigator by default: a sponsor role is constrained (one per
+    # study, exactly one organization), see the DDF00201/2 tests.
     body = {
-        "name": "Study Sponsor",
-        "type_concept_id": "C70793",
-        "type_preferred_term": "Sponsor",
+        "name": "Study Investigator",
+        "type_concept_id": "C25936",
+        "type_preferred_term": "Investigator",
         "type_version": "2022-09-30",
     }
     body.update(kwargs)
@@ -58,7 +60,7 @@ def test_create_role_returns_uid():
     soa_id = _new_soa("Role Create UID Test")
     body = _create_role(soa_id)
     assert re.match(r"^StudyRole_\d+$", body["role_uid"]), body["role_uid"]
-    assert body["name"] == "Study Sponsor"
+    assert body["name"] == "Study Investigator"
 
 
 def test_role_uid_monotonic():
@@ -119,12 +121,14 @@ def test_unknown_soa_returns_404():
 
 def test_usdm_roles_in_output():
     soa_id = _new_soa("Role USDM Output Test")
+    org_uid = _create_org(soa_id, "Sponsor Inc")
     _create_role(
         soa_id,
         name="Sponsor Role",
         type_concept_id="C70793",
         type_preferred_term="Sponsor",
         type_version="2022-09-30",
+        organization_ids=[org_uid],
     )
     resp = client.get(f"/soa/{soa_id}/usdm_json/full")
     assert resp.status_code == 200
@@ -139,7 +143,7 @@ def test_usdm_roles_in_output():
     assert role["code"]["codeSystem"] == "http://www.cdisc.org"
     assert role["code"]["codeSystemVersion"] == "2022-09-30"
     assert role["masking"] is None
-    assert role["organizationIds"] == []
+    assert role["organizationIds"] == [org_uid]
     # Roles apply to the study version (DDF00189, DDF00203).
     assert role["appliesToIds"] == ["StudyVersion_1"]
     assert role["assignedPersons"] == []
@@ -258,3 +262,144 @@ def test_ui_roles_update_org_and_person_with_org_returns_422():
             },
         )
     assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Sponsor role rules (USDM v4)
+#   DDF00201: exactly one study role with a code of sponsor
+#   DDF00202: the sponsor study role points to exactly one organization
+# ---------------------------------------------------------------------------
+
+_SPONSOR = {
+    "type_concept_id": "C70793",
+    "type_preferred_term": "Sponsor",
+    "type_version": "2022-09-30",
+}
+
+
+def _post_role(soa_id: int, **kwargs):
+    body = {"name": "Role", **kwargs}
+    with _PATCH_SLUG, _PATCH_ROWS:
+        return client.post(f"/soa/{soa_id}/roles", json=body)
+
+
+def _ui_role(soa_id: int, path: str, **data):
+    form = {"name": "Role", **data}
+    with _PATCH_SLUG, _PATCH_ROWS:
+        return client.post(f"/ui/soa/{soa_id}/{path}", data=form)
+
+
+def test_sponsor_role_with_one_org_ok():
+    soa_id = _new_soa("Sponsor Role One Org")
+    org_uid = _create_org(soa_id, "Sponsor Inc")
+    r = _post_role(soa_id, organization_ids=[org_uid], **_SPONSOR)
+    assert r.status_code == 201, r.text
+
+
+def test_second_sponsor_role_rejected():
+    soa_id = _new_soa("Sponsor Role Twice")
+    org_a = _create_org(soa_id, "Sponsor A")
+    org_b = _create_org(soa_id, "Sponsor B")
+    assert _post_role(soa_id, organization_ids=[org_a], **_SPONSOR).status_code == 201
+    r = _post_role(soa_id, organization_ids=[org_b], **_SPONSOR)
+    assert r.status_code == 422
+    assert "DDF00201" in r.json()["detail"]
+
+
+def test_sponsor_role_without_org_rejected():
+    soa_id = _new_soa("Sponsor Role No Org")
+    r = _post_role(soa_id, **_SPONSOR)
+    assert r.status_code == 422
+    assert "DDF00202" in r.json()["detail"]
+
+
+def test_sponsor_role_with_two_orgs_rejected():
+    soa_id = _new_soa("Sponsor Role Two Orgs")
+    org_a = _create_org(soa_id, "Sponsor A")
+    org_b = _create_org(soa_id, "Sponsor B")
+    r = _post_role(soa_id, organization_ids=[org_a, org_b], **_SPONSOR)
+    assert r.status_code == 422
+    assert "DDF00202" in r.json()["detail"]
+
+
+def test_co_sponsor_roles_not_limited():
+    soa_id = _new_soa("Co-Sponsor Roles")
+    co = {"type_concept_id": "C215669", "type_preferred_term": "Co-Sponsor"}
+    assert _post_role(soa_id, **co).status_code == 201
+    assert _post_role(soa_id, **co).status_code == 201
+
+
+def test_ui_add_second_sponsor_role_rejected():
+    soa_id = _new_soa("UI Sponsor Role Twice")
+    org_a = _create_org(soa_id, "Sponsor A")
+    org_b = _create_org(soa_id, "Sponsor B")
+    sponsor_form = {"role_type_code": "C70793", "role_type_decode": "Sponsor"}
+    r1 = _ui_role(soa_id, "roles-add", organization_ids=[org_a], **sponsor_form)
+    assert r1.status_code == 200
+    r2 = _ui_role(soa_id, "roles-add", organization_ids=[org_b], **sponsor_form)
+    assert r2.status_code == 422
+    # The roles section is re-rendered with the error, and swapped in
+    # despite the 422 (HTMX 1.x skips 4xx swaps unless told to).
+    assert "roles-section" in r2.text
+    assert "am-api-notice-error" in r2.text
+    assert "DDF00201" in r2.text
+    assert "before-swap" in r2.text
+    roles = client.get(f"/soa/{soa_id}/roles").json()
+    assert len(roles) == 1
+
+
+def test_ui_add_sponsor_role_without_org_rejected():
+    soa_id = _new_soa("UI Sponsor Role No Org")
+    r = _ui_role(
+        soa_id, "roles-add", role_type_code="C70793", role_type_decode="Sponsor"
+    )
+    assert r.status_code == 422
+    assert client.get(f"/soa/{soa_id}/roles").json() == []
+
+
+def test_ui_update_sponsor_role_keeps_itself_valid():
+    # Re-saving the one sponsor role must not count it as a second one.
+    soa_id = _new_soa("UI Sponsor Role Resave")
+    org_uid = _create_org(soa_id, "Sponsor Inc")
+    role = _post_role(soa_id, organization_ids=[org_uid], **_SPONSOR).json()
+    r = _ui_role(
+        soa_id,
+        f"roles/{role['id']}/update",
+        name="Sponsor (renamed)",
+        role_type_code="C70793",
+        role_type_decode="Sponsor",
+        organization_ids=[org_uid],
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_ui_update_to_second_sponsor_role_rejected():
+    soa_id = _new_soa("UI Sponsor Role Update Twice")
+    org_a = _create_org(soa_id, "Sponsor A")
+    org_b = _create_org(soa_id, "Investigator Site")
+    _post_role(soa_id, organization_ids=[org_a], **_SPONSOR)
+    other = _create_role(soa_id, name="Investigator")
+    r = _ui_role(
+        soa_id,
+        f"roles/{other['id']}/update",
+        role_type_code="C70793",
+        role_type_decode="Sponsor",
+        organization_ids=[org_b],
+    )
+    assert r.status_code == 422
+    assert "DDF00201" in r.text
+
+
+def test_ui_role_person_org_conflict_shows_error():
+    soa_id = _new_soa("UI Role Org+Person Conflict Message")
+    org_uid = _create_org(soa_id)
+    person = _create_person(soa_id, organization_uid=org_uid)
+    r = _ui_role(
+        soa_id,
+        "roles-add",
+        organization_ids=[org_uid],
+        person_uids=[person["person_uid"]],
+    )
+    assert r.status_code == 422
+    assert "am-api-notice-error" in r.text
+    assert client.get(f"/soa/{soa_id}/roles").json() == []
