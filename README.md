@@ -1,3 +1,6 @@
+[![CI (Python)](https://github.com/pendingintent/soa-workbench/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/pendingintent/soa-workbench/actions/workflows/ci.yml?query=branch%3Amaster)
+[![Deploy to Azure App Service](https://github.com/pendingintent/soa-workbench/actions/workflows/azure-deploy.yml/badge.svg?branch=master)](https://github.com/pendingintent/soa-workbench/actions/workflows/azure-deploy.yml?query=branch%3Amaster)
+[![CodeQL](https://github.com/pendingintent/soa-workbench/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/pendingintent/soa-workbench/actions/workflows/github-code-scanning/codeql)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # SoA Workbench
