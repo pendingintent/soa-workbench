@@ -1,0 +1,62 @@
+{#- One activity's row on the wizard's Biomedical Concepts step.
+
+    Concepts are added and removed one at a time, like the Activities
+    page: assigned concepts show as chips with a remove button, and an
+    "Add concept" list (narrowed by the filter box) adds the next one.
+    Each form posts to the step with action=add_concept|remove_concept;
+    with HTMX the response is this row alone, swapped in place.
+
+    Every change sends the activity's full concept list, so the forms
+    share hx-sync="closest tr:queue all": a second click in the same
+    row waits for the first response instead of racing it (otherwise a
+    remove and an add sent together could undo one another).
+
+    Context: soa_id, a ({id, name, uid, concepts: [{code, title}]}),
+    concept_options ([{code, title}]), row_error (optional). -#}
+{%- set assigned = a.concepts | map(attribute='code') | list -%}
+<tr id="wz-concept-row-{{ a.id }}">
+  <td><strong>{{ a.name }}</strong><br /><span class="obj-uid">{{ a.uid }}</span></td>
+  <td>
+    <div class="am-wizard-chips">
+      {% for c in a.concepts %}
+      <form method="post" action="/ui/wizard/{{ soa_id }}/concepts" class="am-wizard-chip"
+            hx-post="/ui/wizard/{{ soa_id }}/concepts"
+            hx-target="#wz-concept-row-{{ a.id }}" hx-swap="outerHTML"
+            hx-sync="closest tr:queue all">
+        <input type="hidden" name="action" value="remove_concept" />
+        <input type="hidden" name="activity_id" value="{{ a.id }}" />
+        <input type="hidden" name="concept_code" value="{{ c.code }}" />
+        <span>{{ c.title }} <span class="am-wizard-chip-code">{{ c.code }}</span></span>
+        <button type="submit" class="am-remove-btn" title="Remove {{ c.title }}"
+                aria-label="Remove {{ c.title }} from {{ a.name }}">&times;</button>
+      </form>
+      {% else %}
+      <span class="am-wizard-chip-empty">No concepts yet</span>
+      {% endfor %}
+    </div>
+
+    <form method="post" action="/ui/wizard/{{ soa_id }}/concepts" class="am-wizard-concept-add"
+          hx-post="/ui/wizard/{{ soa_id }}/concepts"
+          hx-target="#wz-concept-row-{{ a.id }}" hx-swap="outerHTML"
+          hx-sync="closest tr:queue all">
+      <input type="hidden" name="action" value="add_concept" />
+      <input type="hidden" name="activity_id" value="{{ a.id }}" />
+      <input type="search" class="fz-version-input am-wizard-filter"
+             placeholder="Type to find a concept" autocomplete="off"
+             aria-label="Find a concept for {{ a.name }}"
+             data-filter-for="wz-bc-{{ a.id }}" />
+      <select id="wz-bc-{{ a.id }}" name="concept_code" required
+              class="fz-version-input am-wizard-bc-select"
+              aria-label="Concept to add to {{ a.name }}">
+        <option value="" disabled selected>Add concept...</option>
+        {% for c in concept_options if c.code not in assigned %}
+        <option value="{{ c.code }}">{{ c.title }} ({{ c.code }})</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="am-btn am-btn-info am-btn-sm">Add</button>
+    </form>
+    {% if row_error %}
+    <div class="am-hint" role="alert">{{ row_error }}</div>
+    {% endif %}
+  </td>
+</tr>

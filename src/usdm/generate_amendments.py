@@ -4,7 +4,7 @@
 from typing import Any, Dict, List
 
 from soa_builder.web.db import _connect
-from soa_builder.web.utils import _nz
+from soa_builder.web.utils import _nz, embed_with_owned_ids
 
 
 def _code_obj(code_uid: str, row: tuple) -> Dict[str, Any]:
@@ -209,7 +209,7 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
         for row in cur.fetchall():
             location_code_map[row[0]] = row
 
-    conn.close()
+    # Kept open: embedded scope copies get their uids recorded below.
 
     # Index by amendment_uid / change_uid
     reasons_by_amendment: Dict[str, list] = {}
@@ -357,8 +357,13 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
             for_scope = None
             if for_scope_uid and for_scope_uid in scope_by_uid:
                 sr = scope_by_uid[for_scope_uid]
-                for_scope = _geo_scope_obj(
-                    sr[2], sr[3], code_map, sr[4], location_code_map
+                # The amendment owns the scope; this is an embedded copy.
+                for_scope = embed_with_owned_ids(
+                    cur,
+                    soa_id,
+                    enrollment_uid,
+                    "forGeographicScope",
+                    _geo_scope_obj(sr[2], sr[3], code_map, sr[4], location_code_map),
                 )
             enrollments.append(
                 {
@@ -393,13 +398,20 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
                 d_type_code_uid,
                 d_date_value,
             ) = d
+            # The amendment owns each scope; these are embedded copies.
             linked_scopes = [
-                _geo_scope_obj(
-                    s_uid,
-                    scope_by_uid[s_uid][3],
-                    code_map,
-                    scope_by_uid[s_uid][4],
-                    location_code_map,
+                embed_with_owned_ids(
+                    cur,
+                    soa_id,
+                    date_uid,
+                    "geographicScopes",
+                    _geo_scope_obj(
+                        s_uid,
+                        scope_by_uid[s_uid][3],
+                        code_map,
+                        scope_by_uid[s_uid][4],
+                        location_code_map,
+                    ),
                 )
                 for s_uid in date_scopes_by_date.get(date_uid, [])
                 if s_uid in scope_by_uid
@@ -438,6 +450,8 @@ def build_usdm_amendments(soa_id: int) -> List[Dict[str, Any]]:
                 "instanceType": "StudyAmendment",
             }
         )
+    conn.commit()
+    conn.close()
     return out
 
 

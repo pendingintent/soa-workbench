@@ -1,3 +1,6 @@
+[![CI (Python)](https://github.com/pendingintent/soa-workbench/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/pendingintent/soa-workbench/actions/workflows/ci.yml?query=branch%3Amaster)
+[![Deploy to Azure App Service](https://github.com/pendingintent/soa-workbench/actions/workflows/azure-deploy.yml/badge.svg?branch=master)](https://github.com/pendingintent/soa-workbench/actions/workflows/azure-deploy.yml?query=branch%3Amaster)
+[![CodeQL](https://github.com/pendingintent/soa-workbench/actions/workflows/github-code-scanning/codeql/badge.svg?branch=master)](https://github.com/pendingintent/soa-workbench/actions/workflows/github-code-scanning/codeql)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # SoA Workbench
@@ -122,7 +125,7 @@ CODELIST_EPOCH_TYPE=C99079
 CODELIST_ARM_TYPE=C174222
 CODELIST_ARM_DATA_ORIGIN_TYPE=C188727
 CODELIST_ROLE_TYPE=C215480
-CODELIST_ORGANIZATION_TYPE=C215480
+CODELIST_ORGANIZATION_TYPE=C188724
 CODELIST_AMENDMENT_REASON=C207415
 CODELIST_AMENDMENT_IMPACT_TYPE=C215481
 CODELIST_GEOGRAPHIC_SCOPE_TYPE=C207412
@@ -145,7 +148,7 @@ CODELIST_TIMING_RELATIVE_TO_FROM=C201265
 | `CODELIST_ARM_TYPE` | `C174222` | Arm Type |
 | `CODELIST_ARM_DATA_ORIGIN_TYPE` | `C188727` | Arm Data Origin Type |
 | `CODELIST_ROLE_TYPE` | `C215480` | Study Role Type |
-| `CODELIST_ORGANIZATION_TYPE` | `C215480` | Organization Type |
+| `CODELIST_ORGANIZATION_TYPE` | `C188724` | Organization Type |
 | `CODELIST_AMENDMENT_REASON` | `C207415` | Amendment Reason |
 | `CODELIST_AMENDMENT_IMPACT_TYPE` | `C215481` | Amendment Impact Type |
 | `CODELIST_GEOGRAPHIC_SCOPE_TYPE` | `C207412` | Geographic Scope Type |

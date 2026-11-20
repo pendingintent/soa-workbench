@@ -11,14 +11,14 @@ from ..schemas import SOAMetadataUpdate
 from ..utils import find_visit_cell
 from ..utils import get_next_instance_uid
 from ..utils import soa_exists
-from datetime import datetime
-from datetime import timezone
 from fastapi import HTTPException
 from typing import Any
 from typing import List
 from ..audit import _record_activity_audit
 from ..services.matrix import _fetch_matrix
 from ..services.matrix import _reindex
+from ..services.studies import DuplicateStudyIdError
+from ..services.studies import create_soa_record
 
 logger = logging.getLogger("soa_builder.concepts")
 router = APIRouter()
@@ -28,27 +28,15 @@ router = APIRouter()
 @router.post("/soa")
 def create_soa(payload: SOACreate):
     """Create new Schedule of Activities"""
-    conn = _connect()
-    cur = conn.cursor()
-    # Enforce unique study_id if provided
-    if payload.study_id and payload.study_id.strip():
-        cur.execute("SELECT 1 FROM soa WHERE study_id=?", (payload.study_id.strip(),))
-        if cur.fetchone():
-            conn.close()
-            raise HTTPException(400, "study_id already exists")
-    cur.execute(
-        "INSERT INTO soa (name, created_at, study_id, study_label, study_description) VALUES (?,?,?,?,?)",
-        (
+    try:
+        soa_id = create_soa_record(
             payload.name,
-            datetime.now(timezone.utc).isoformat(),
-            (payload.study_id or "").strip() or None,
-            (payload.study_label or "").strip() or None,
-            (payload.study_description or "").strip() or None,
-        ),
-    )
-    soa_id = cur.lastrowid
-    conn.commit()
-    conn.close()
+            payload.study_id,
+            payload.study_label,
+            payload.study_description,
+        )
+    except DuplicateStudyIdError as exc:
+        raise HTTPException(400, str(exc)) from exc
     return {
         "id": soa_id,
         "name": payload.name,

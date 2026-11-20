@@ -1,0 +1,48 @@
+{% extends 'wizard_base.html' %}
+{#- Review: what was set up, a read-only matrix preview, and Finish. -#}
+{% block step %}
+<h3 class="fz-section-heading">What you have set up</h3>
+<ol class="am-checklist-list">
+  {% for item in progress %}
+  <li class="am-checklist-item {% if item.done %}am-checklist-done{% endif %}">
+    <span class="am-checklist-mark" aria-hidden="true">{% if item.done %}&#10003;{% else %}&#9675;{% endif %}</span>
+    {{ item.label }}{% if item.key != 'study' %} <span class="am-checklist-count">({{ item.count }})</span>{% endif %}
+    <span class="am-visually-hidden">{% if item.done %}done{% else %}not done{% endif %}</span>
+  </li>
+  {% endfor %}
+</ol>
+
+<h3 class="fz-section-heading">Your Schedule of Activities</h3>
+{% if activities and instances %}
+<div class="am-wizard-matrix-wrap">
+<table class="fz-table am-wizard-matrix">
+  <tr class="fz-thead-row">
+    <th scope="col">Activity</th>
+    {% for inst in instances %}
+    <th scope="col">{{ inst.name }}{% if inst.encounter_label %}<br /><small>{{ inst.encounter_label }}</small>{% endif %}</th>
+    {% endfor %}
+  </tr>
+  {% for a in activities %}
+  <tr>
+    <th scope="row">{{ a.name }}</th>
+    {% for inst in instances %}
+    <td class="am-wizard-cell">{% if (inst.id, a.id) in cells %}X{% endif %}</td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}
+<p class="am-empty-note">The matrix appears once you have at least one encounter and one activity.</p>
+{% endif %}
+
+<p class="am-hint">After finishing, the edit page holds the full matrix, where you can add timings, footnotes, elements and study cells.</p>
+
+<form method="post" action="/ui/wizard/{{ soa_id }}/review">
+  <div class="am-wizard-nav">
+    <button type="submit" name="action" value="back" class="am-btn am-btn-slate">&larr; Back</button>
+    <span class="am-wizard-nav-spacer"></span>
+    <button type="submit" formaction="/ui/wizard/{{ soa_id }}/finish" class="am-btn am-btn-success">Finish &amp; open study</button>
+  </div>
+</form>
+{% endblock %}

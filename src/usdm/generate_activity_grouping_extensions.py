@@ -77,8 +77,6 @@ def populate_activity_grouping_extensions(soa_id: int) -> None:
         new_pairs = [p for p in pairs if p not in existing_pairs]
         if not new_pairs:
             return
-        ea_n = int(get_next_extension_attribute_uid(cur, soa_id).split("_")[1])
-        ec_n = int(get_next_extension_class_uid(cur, soa_id).split("_")[1])
         for activity_uid, concept_group_uid in new_pairs:
             cur.execute(
                 "INSERT INTO activity_grouping_extension"
@@ -89,14 +87,12 @@ def populate_activity_grouping_extensions(soa_id: int) -> None:
                     soa_id,
                     activity_uid,
                     concept_group_uid,
-                    f"ExtensionAttribute_{ea_n}",
-                    f"ExtensionClass_{ec_n}",
-                    f"ExtensionAttribute_{ea_n + 1}",
-                    f"ExtensionAttribute_{ea_n + 2}",
+                    get_next_extension_attribute_uid(cur, soa_id),
+                    get_next_extension_class_uid(cur, soa_id),
+                    get_next_extension_attribute_uid(cur, soa_id),
+                    get_next_extension_attribute_uid(cur, soa_id),
                 ),
             )
-            ea_n += 3
-            ec_n += 1
         conn.commit()
     except Exception:
         conn.rollback()

@@ -94,3 +94,10 @@
   <tr class="fz-empty-row"><td colspan="10">No schedule timelines yet.</td></tr>
   {% endfor %}
 </table>
+
+<h3 class="fz-section-heading">Planned Duration</h3>
+{% for st in schedule_timelines %}
+<div hx-get="/ui/soa/{{ soa_id }}/schedule_timelines/{{ st.id }}/planned_duration" hx-trigger="load" hx-swap="outerHTML"></div>
+{% else %}
+<p class="am-color-subtle">Add a schedule timeline to set its planned duration.</p>
+{% endfor %}

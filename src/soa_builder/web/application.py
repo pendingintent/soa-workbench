@@ -10,6 +10,8 @@ before (tests/test_route_shadowing.py guards this).
 import logging
 import os
 
+from pathlib import Path
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -60,11 +62,14 @@ from .routers import estimands as estimands_router
 from .routers import indications as indications_router
 from .routers import persons as persons_router
 from .routers import soa_bundle as soa_bundle_router
+from .routers import eligibility_criteria as eligibility_criteria_router
+from .routers import study_design as study_design_router
 from .routers import study_identifiers as study_identifiers_router
 from .routers import concepts_admin as concepts_admin_router
 from .routers import exports as exports_router
 from .routers import soa_core as soa_core_router
 from .routers import soa_ui as soa_ui_router
+from .routers import wizard as wizard_router
 from .templating import STATIC_DIR
 
 
@@ -77,6 +82,9 @@ def _configure_logging():
     )
     # Quiet noisy libraries if present
     logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+    # The --reload watcher logs every raw file change (DB/WAL writes
+    # included); uvicorn still logs actual reloads itself.
+    logging.getLogger("watchfiles").setLevel(logging.WARNING)
     return logging.getLogger("soa_builder")
 
 
@@ -159,8 +167,11 @@ app.include_router(persons_router.router)
 app.include_router(persons_router.ui_router)
 app.include_router(soa_bundle_router.router)
 app.include_router(soa_bundle_router.ui_router)
+app.include_router(eligibility_criteria_router.router)
+app.include_router(study_design_router.router)
 app.include_router(study_identifiers_router.router)
 app.include_router(study_identifiers_router.ui_router)
+app.include_router(wizard_router.router)
 # Routes that used to be defined in app.py, registered after the
 # routers above exactly as before.
 app.include_router(soa_core_router.router)
@@ -171,6 +182,10 @@ app.include_router(soa_ui_router.router)
 app.router.lifespan_context = lifespan
 
 
+# src/ holds every package the app imports (soa_builder, usdm, sdtm)
+_SRC_DIR = Path(__file__).resolve().parents[2]
+
+
 def main():
     import uvicorn
 
@@ -179,4 +194,7 @@ def main():
         host=HTTP_LISTEN_IP,
         port=HTTP_LISTEN_PORT,
         reload=True,
+        # Watch only src/ so DB/WAL writes in the repo root are not
+        # scanned on every change.
+        reload_dirs=[str(_SRC_DIR)],
     )

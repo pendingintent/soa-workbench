@@ -1,4 +1,11 @@
-<div id="roles-section"{% if oob %} hx-swap-oob="true"{% endif %}>
+<div id="roles-section"{% if oob %} hx-swap-oob="true"{% endif %}
+     hx-on::before-swap="if (event.detail.xhr.status === 422) { event.detail.shouldSwap = true; event.detail.isError = false; }">
+  {% if roles_error %}
+  <div class="am-api-notice am-api-notice-error" role="alert">
+    <span class="am-api-notice-icon" aria-hidden="true">&#9888;</span>
+    <span>{{ roles_error }}</span>
+  </div>
+  {% endif %}
   <table class="fz-table">
     <tr class="fz-thead-row">
       <th>UID</th>

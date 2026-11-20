@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, Form
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from ..audit import _record_schedule_timeline_audit
 from ..codelist_config import (
@@ -22,6 +23,7 @@ from ..utils import (
     get_next_timeline_uid,
     get_epoch_uid,
     get_study_timing_type,
+    read_form_fields,
     redirect_url_from_referer as _redirect_url,
 )
 from .condition_assignments import list_condition_assignments
@@ -385,7 +387,10 @@ def update_schedule_timeline(
     else:
         new_entry_id = before["entry_id"]
 
-    new_exit_id = payload.exit_id if payload.exit_id is not None else before["exit_id"]
+    if payload.exit_id is not None:
+        new_exit_id = _nz(payload.exit_id)
+    else:
+        new_exit_id = before["exit_id"]
 
     cur.execute(
         """
@@ -450,28 +455,39 @@ def update_schedule_timeline(
 
 # UI code to update a Schedule Timeline for an SOA
 @router.post("/ui/soa/{soa_id}/schedule_timelines/{schedule_timeline_id}/update")
-def ui_update_schedule_timeline(
-    request: Request,
-    soa_id: int,
-    schedule_timeline_id: int,
-    name: Optional[str] = Form(None),
-    label: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    main_timeline: Optional[str] = Form(None),
-    entry_condition: Optional[str] = Form(None),
-    entry_id: Optional[str] = Form(None),
-    exit_id: Optional[str] = Form(None),
+async def ui_update_schedule_timeline(
+    request: Request, soa_id: int, schedule_timeline_id: int
 ):
+    # A field sent empty clears it; one not sent is left unchanged (see
+    # read_form_fields). An unticked main_timeline checkbox is not sent
+    # at all, so its absence means False.
+    fields = await read_form_fields(
+        request,
+        (
+            "name",
+            "label",
+            "description",
+            "main_timeline",
+            "entry_condition",
+            "entry_id",
+            "exit_id",
+        ),
+    )
+    name = (fields.get("name") or "").strip()
+    if not name:
+        raise HTTPException(400, "Name is required")
     payload = ScheduleTimelineUpdate(
         name=name,
-        label=label,
-        description=description,
-        main_timeline=_to_bool(main_timeline),
-        entry_condition=entry_condition,
-        entry_id=_nz(entry_id),
-        exit_id=_nz(exit_id),
+        label=fields.get("label"),
+        description=fields.get("description"),
+        main_timeline=_to_bool(fields.get("main_timeline")),
+        entry_condition=fields.get("entry_condition"),
+        entry_id=fields.get("entry_id"),
+        exit_id=fields.get("exit_id"),
     )
-    update_schedule_timeline(soa_id, schedule_timeline_id, payload)
+    await run_in_threadpool(
+        update_schedule_timeline, soa_id, schedule_timeline_id, payload
+    )
     return RedirectResponse(
         url=_redirect_url(request, f"/ui/soa/{int(soa_id)}/schedule_timelines"),
         status_code=303,

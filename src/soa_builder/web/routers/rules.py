@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from ..audit import _record_transition_rule_audit
 from ..db import _connect
 from ..utils import (
+    get_next_transition_rule_uid,
     soa_exists,
 )
 from ..schemas import RuleCreate, RuleUpdate
@@ -120,26 +121,8 @@ def add_rule(soa_id: int, payload: RuleCreate):
     )
     next_ord = (cur.fetchone() or [0])[0] + 1
 
-    # create transition_rule_uid and increment order_index
-    cur.execute(
-        "SELECT transition_rule_uid FROM transition_rule WHERE soa_id=? and transition_rule_uid LIKE 'TransitionRule_%'",
-        (soa_id,),
-    )
-    existing_uids = [r[0] for r in cur.fetchall() if r[0]]
-    used_nums = set()
-    for uid in existing_uids:
-        if uid.startswith("TransitionRule_"):
-            tail = uid[len("TransitionRule_") :]
-            if tail.isdigit():
-                used_nums.add(int(tail))
-            else:
-                logger.warning(
-                    "Invalid transition_rule_uid format encountered (ignored): %s", uid
-                )
-
-    # always pick max(existing) + 1, do not fill gaps
-    next_n = (max(used_nums) if used_nums else 0) + 1
-    new_uid = f"TransitionRule_{next_n}"
+    # Never reuses a deleted rule's uid or an embedded copy's uid.
+    new_uid = get_next_transition_rule_uid(cur, soa_id)
 
     cur.execute(
         """

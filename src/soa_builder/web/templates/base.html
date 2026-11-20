@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>SoA Workbench</title>
   <link rel="icon" type="image/png" href="/static/images/CDISC-360i-Logo.png" />
-  <link rel="stylesheet" href="/static/style.css?v=17" />
+  <link rel="stylesheet" href="/static/style.css?v=22" />
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
@@ -13,6 +13,7 @@
         <img src="/static/images/CDISC-360i-Logo.png" alt="CDISC" class="am-sidenav-logo" />
       </div>
       <a href="/">🏠 Home</a>
+      <a href="/ui/wizard/new">🧑‍🏫 Guided Setup</a>
       <!-- Study specific editing submenu -->
 
       {% if soa_id %}
@@ -30,6 +31,7 @@
             <li><a href="{{ url_for('ui_orgs_roles_persons', soa_id=soa_id) }}">Organizations, Roles &amp; Persons</a></li>
             <li><a href="{{ url_for('ui_list_study_interventions', soa_id=soa_id) }}">Study Interventions</a></li>
             <li><a href="{{ url_for('ui_list_objectives', soa_id=soa_id) }}">Objectives &amp; Endpoints</a></li>
+            <li><a href="{{ url_for('ui_list_eligibility_criteria', soa_id=soa_id) }}">Eligibility Criteria</a></li>
             <li><a href="{{ url_for('ui_list_estimands', soa_id=soa_id) }}">Estimands &amp; Indications</a></li>
             <li><a href="{{ url_for('ui_list_rules', soa_id=soa_id) }}">Transition Rules</a></li>
             <li><a href="{{ url_for('ui_list_freezes', soa_id=soa_id) }}">Snapshots and Amendments</a></li>

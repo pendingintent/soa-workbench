@@ -18,6 +18,7 @@ RESTORED = frozenset(
         "code_association",
         "decision_instances",
         "element",
+        "eligibility_criterion",
         "endpoint",
         "epoch",
         "instances",
@@ -46,6 +47,11 @@ REBUILT = {
 # rows are re-pointed to the restored activity or dropped with it.
 ACTIVITY_ID_REMAPPED = frozenset({"activity_concept_dss", "activity_concept_crf"})
 
+# Not captured, but keyed on the integer element.id, which rollback
+# reassigns: rows are re-pointed through the element's immutable
+# StudyElement_N uid, or dropped when the element is not restored.
+ELEMENT_ID_REMAPPED = frozenset({"element_intervention"})
+
 # Not part of the snapshot: rollback leaves these rows as they are.
 # Study-level metadata that a SoA version does not own today. Moving a
 # table into RESTORED needs capture + restore code and tests.
@@ -58,7 +64,6 @@ NOT_VERSIONED = {
     "biomedical_concept_surrogate": "captured for diffs only, not restored",
     "condition_assignment": "study design metadata",
     "document_content_reference": "protocol document metadata",
-    "element_intervention": "keyed on immutable element_id (StudyElement_N)",
     "estimand": "study design metadata",
     "estimand_intervention": "study design metadata",
     "estimand_variable": "study design metadata",
@@ -81,11 +86,16 @@ NOT_VERSIONED = {
     "study_intervention_code": "study design metadata",
     "study_title": "study-level reference data",
     "transition_rule": "study design metadata",
+    "wizard_state": "UI onboarding state; rollback must not rewind it",
 }
 
 # Bookkeeping that must never be rolled back.
 EXCLUDED = {
     "uid_counter": "UIDs are monotonic; a rollback must never reissue one",
+    "embedded_copy_uid": (
+        "export ids of embedded copies, keyed on immutable uids;"
+        " a rollback must not change them"
+    ),
     "soa_freeze": "the snapshots themselves",
 }
 # Every ``*_audit`` table is excluded too: audit history is append-only.
@@ -98,6 +108,7 @@ def classified_tables() -> dict:
         "RESTORED": RESTORED,
         "REBUILT": REBUILT,
         "ACTIVITY_ID_REMAPPED": ACTIVITY_ID_REMAPPED,
+        "ELEMENT_ID_REMAPPED": ELEMENT_ID_REMAPPED,
         "NOT_VERSIONED": NOT_VERSIONED,
         "EXCLUDED": EXCLUDED,
     }

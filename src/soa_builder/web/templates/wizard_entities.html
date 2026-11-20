@@ -1,0 +1,76 @@
+{% extends 'wizard_base.html' %}
+{#- Epochs, arms and encounters: an add form, the list so far, and the
+    step navigation. `items` is [{name, uid}]. -#}
+{% block step %}
+{% set noun = {'epochs': 'epoch', 'arms': 'arm', 'encounters': 'encounter'}[step.key] %}
+{% set examples = {
+  'epochs': 'e.g. Screening, Treatment, Follow-up',
+  'arms': 'e.g. Drug A 10 mg, Placebo',
+  'encounters': 'e.g. Screening Visit, Day 1, Week 4',
+} %}
+<div class="fz-create-card fz-create-card-full">
+  <h3>Add {{ 'an' if noun[0] in 'aeiou' else 'a' }} {{ noun }}</h3>
+  <form method="post" action="/ui/wizard/{{ soa_id }}/{{ step.key }}" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label" for="wz-name">Name <span class="am-required">*</span></label>
+      <input id="wz-name" name="name" required class="fz-version-input"
+             value="{{ form.name }}" placeholder="{{ examples[step.key] }}" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label" for="wz-label">Label</label>
+      <input id="wz-label" name="label" class="fz-version-input" value="{{ form.label }}" placeholder="Optional" />
+    </div>
+
+    {% if step.key == 'epochs' %}
+    <div class="am-field">
+      <label class="am-field-label" for="wz-type">Epoch Type</label>
+      <select id="wz-type" name="type_code" class="fz-version-input">
+        <option value="">-- choose --</option>
+        {% for code, sv in epoch_type_options.items() %}
+        <option value="{{ code }}"{% if code == form.type_code %} selected{% endif %}>{{ sv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% elif step.key == 'arms' %}
+    <div class="am-field">
+      <label class="am-field-label" for="wz-type">Arm Type</label>
+      <select id="wz-type" name="type_code" class="fz-version-input">
+        <option value="">-- choose --</option>
+        {% for code, sv in arm_type_options.items() %}
+        <option value="{{ code }}"{% if code == form.type_code %} selected{% endif %}>{{ sv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="am-field">
+      <label class="am-field-label" for="wz-origin">Data Origin Type</label>
+      <select id="wz-origin" name="data_origin_type" class="fz-version-input">
+        <option value="">-- choose --</option>
+        {% for code, sv in data_origin_type_options.items() %}
+        <option value="{{ code }}"{% if code == form.data_origin_type %} selected{% endif %}>{{ sv }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    <button type="submit" name="action" value="add" class="am-btn am-btn-info">Add {{ noun }}</button>
+  </form>
+  {% if step.key == 'encounters' %}
+  <p class="am-hint">Each encounter you add also becomes a column of the Schedule of Activities: the wizard places it on the main schedule timeline as a scheduled instance. You can link an instance to an epoch later, in the Scheduled Instances section of the edit page.</p>
+  {% endif %}
+</div>
+
+<h3 class="fz-section-heading">{{ step.title }} added ({{ items|length }})</h3>
+<table class="fz-table">
+  <tr class="fz-thead-row"><th>UID</th><th>Name</th></tr>
+  {% for item in items %}
+  <tr><td><span class="obj-uid">{{ item.uid }}</span></td><td>{{ item.name }}</td></tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="2">None yet. Add at least one {{ noun }} to continue.</td></tr>
+  {% endfor %}
+</table>
+<p class="am-hint">To edit or delete, use the full <a href="/ui/soa/{{ soa_id }}/{{ 'visits' if step.key == 'encounters' else step.key }}">{{ step.title }} page</a>.</p>
+
+<form method="post" action="/ui/wizard/{{ soa_id }}/{{ step.key }}">
+  {% include '_wizard_nav.html' %}
+</form>
+{% endblock %}

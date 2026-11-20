@@ -141,9 +141,11 @@ def ui_remove_category_from_activity(
         conn.close()
         raise HTTPException(404, "Activity not found")
 
-    cur.execute(
-        "DELETE FROM activity_concept "
-        "WHERE activity_id=? AND soa_id=? AND bc_category_name=?",
+    from ..services.concepts import _delete_activity_concepts
+
+    _delete_activity_concepts(
+        cur,
+        "activity_id=? AND soa_id=? AND bc_category_name=?",
         (activity_id, soa_id, category_name),
     )
     conn.commit()

@@ -10,7 +10,7 @@ import subprocess
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 import logging
-from .usdm_utils import _get_soa_metadata
+from .usdm_utils import STUDY_VERSION_ID, _get_soa_metadata
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import (
     _nz,
@@ -33,6 +33,16 @@ from usdm.generate_amendments import build_usdm_amendments
 from usdm.generate_study_titles import build_usdm_titles
 from usdm.generate_organizations import build_usdm_organizations
 from usdm.generate_roles import build_usdm_roles
+from usdm.generate_eligibility_criteria import (
+    build_usdm_eligibility_criteria,
+    build_usdm_eligibility_criterion_items,
+)
+from usdm.generate_population import (
+    POPULATION_ID,
+    build_usdm_planned_age,
+    build_usdm_planned_sex,
+)
+from usdm.generate_study_design_model import build_usdm_intervention_model
 from usdm.generate_study_interventions import build_usdm_study_interventions
 from usdm.generate_estimands import build_usdm_estimands
 from usdm.generate_indications import build_usdm_indications
@@ -91,15 +101,12 @@ def _get_or_create_tool_uids(soa_id: int) -> Dict[str, str]:
                 "ea_version": row[3],
                 "ea_date": row[4],
             }
-        ea_start_uid = get_next_extension_attribute_uid(cur, soa_id)
-        ea_n = int(ea_start_uid.split("_")[1])
-        ec_uid = get_next_extension_class_uid(cur, soa_id)
         uids = {
-            "ea_outer": f"ExtensionAttribute_{ea_n}",
-            "ec": ec_uid,
-            "ea_name": f"ExtensionAttribute_{ea_n + 1}",
-            "ea_version": f"ExtensionAttribute_{ea_n + 2}",
-            "ea_date": f"ExtensionAttribute_{ea_n + 3}",
+            "ea_outer": get_next_extension_attribute_uid(cur, soa_id),
+            "ec": get_next_extension_class_uid(cur, soa_id),
+            "ea_name": get_next_extension_attribute_uid(cur, soa_id),
+            "ea_version": get_next_extension_attribute_uid(cur, soa_id),
+            "ea_date": get_next_extension_attribute_uid(cur, soa_id),
         }
         cur.execute(
             "INSERT INTO soa_tool_extension"
@@ -185,6 +192,9 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
     estimands = _safe("estimands", build_usdm_estimands, soa_id)
     indications = _safe("indications", build_usdm_indications, soa_id)
 
+    eligibility_criteria = _safe(
+        "eligibilityCriteria", build_usdm_eligibility_criteria, soa_id
+    )
     study_design = {
         "id": "InterventionalStudyDesign_1",
         "extensionAttributes": [],
@@ -207,7 +217,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         "studyInterventionIds": [i["id"] for i in study_interventions],
         "objectives": _safe("objectives", build_usdm_objectives, soa_id),
         "population": {
-            "id": "StudyDesignPopulation_1",
+            "id": POPULATION_ID,
             "extensionAttributes": [],
             "name": "Population_1",
             "label": None,
@@ -215,9 +225,9 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
             "includesHealthySubjects": False,
             "plannedEnrollmentNumber": None,
             "plannedCompletionNumber": None,
-            "plannedSex": [],
-            "criterionIds": [],
-            "plannedAge": None,
+            "plannedSex": build_usdm_planned_sex(soa_id),
+            "criterionIds": [c["id"] for c in eligibility_criteria],
+            "plannedAge": build_usdm_planned_age(soa_id),
             "notes": [],
             "cohorts": [],
             "instanceType": "StudyDesignPopulation",
@@ -227,19 +237,11 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         ),
         "biospecimenRetentions": [],
         "documentVersionIds": [],
-        "eligibilityCriteria": [],
+        "eligibilityCriteria": eligibility_criteria,
         "analysisPopulations": [],
         "notes": [],
         "subTypes": [],
-        "model": {
-            "id": "Code_StudyDesignModel",
-            "extensionAttributes": [],
-            "code": "",
-            "codeSystem": "",
-            "codeSystemVersion": "",
-            "decode": "",
-            "instanceType": "Code",
-        },
+        "model": build_usdm_intervention_model(soa_id),
         "intentTypes": [],
         "blindingSchema": None,
         "instanceType": "InterventionalStudyDesign",
@@ -262,7 +264,7 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
     )
 
     study_version = {
-        "id": "StudyVersion_1",
+        "id": STUDY_VERSION_ID,
         "extensionAttributes": [_tool_extension_attribute(tool_uids, timestamp)],
         "versionIdentifier": "1",
         "rationale": "",
@@ -282,7 +284,11 @@ def build_usdm(soa_id: int, timestamp: Optional[str] = None) -> Dict[str, Any]:
         "biomedicalConcepts": build_usdm_biomedical_concepts(soa_id),
         "bcSurrogates": _safe("bcSurrogates", build_usdm_bc_surrogates, soa_id),
         "bcCategories": build_usdm_bc_categories(soa_id),
-        "eligibilityCriterionItems": [],
+        "eligibilityCriterionItems": _safe(
+            "eligibilityCriterionItems",
+            build_usdm_eligibility_criterion_items,
+            soa_id,
+        ),
         "narrativeContentItems": narrative_content_items,
         "abbreviations": [],
         "administrableProducts": [],

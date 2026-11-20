@@ -1,0 +1,17 @@
+{#- Back / Skip / Continue buttons for a wizard step's main form.
+
+    Must be included inside a <form> that posts to the step, so that
+    Continue also submits the step's fields (study details, schedule
+    grid, concept choices). Back and Skip never save. -#}
+<div class="am-wizard-nav">
+  {% if not is_first %}
+  <button type="submit" name="action" value="back" class="am-btn am-btn-slate" formnovalidate>&larr; Back</button>
+  {% endif %}
+  <span class="am-wizard-nav-spacer"></span>
+  {% if not step.required and not is_last %}
+  <button type="submit" name="action" value="skip" class="am-btn am-btn-slate" formnovalidate>Skip</button>
+  {% endif %}
+  {% if not is_last %}
+  <button type="submit" name="action" value="continue" class="am-btn am-btn-primary">Save &amp; continue &rarr;</button>
+  {% endif %}
+</div>

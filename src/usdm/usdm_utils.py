@@ -9,11 +9,16 @@ from typing import List, Dict, Optional, Any, Tuple
 from soa_builder.web.codelist_config import EPOCH_TYPE_CODELIST
 from soa_builder.web.db import _connect
 from soa_builder.web.utils import (
+    embed_with_owned_ids,
     get_latest_ddf_ct_href as _get_latest_ddf_ct_href,
     get_latest_sdtm_ct_href as _get_latest_sdtm_ct_href,
 )
 
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+# The export has a single StudyVersion; other entities that point to it
+# (e.g. StudyRole.appliesToIds) use this id.
+STUDY_VERSION_ID = "StudyVersion_1"
 
 logger = logging.getLogger("usdm.usdm_utils")
 URL_PREFIX = (
@@ -445,9 +450,28 @@ def _get_biomedical_concept_ids(soa_id: int, activity_uid: int) -> List[str]:
 
 
 # Helper for Arms
+def _ct_version_from_slug(slug: str) -> str:
+    """Return the package date from a CT slug like 'ddfct-2026-09-25'."""
+    parts = (slug or "").split("-")
+    if len(parts) >= 4:
+        return f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+    return ""
+
+
 def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str]:
-    """Fetch ARM type codes enriched from CDISC Library Protocol CT."""
-    from soa_builder.web.utils import get_protocol_ct_rows, get_protocol_ct_term
+    """Fetch ARM type codes enriched from CDISC Library CT.
+
+    Arm types (C174222) are in both DDF CT and Protocol CT. DDF CT is
+    tried first so the version matches the other DDF codes in the
+    export (one version per code system, DDF00073); Protocol CT,
+    which is published less often, is the fallback.
+    """
+    from soa_builder.web.utils import (
+        get_ddf_ct_rows,
+        get_ddf_ct_term,
+        get_protocol_ct_rows,
+        get_protocol_ct_term,
+    )
 
     conn = _connect()
     cur = conn.cursor()
@@ -459,20 +483,19 @@ def _get_type_code_tuple(soa_id: int, code_uid: str) -> Tuple[str, str, str, str
     rows = cur.fetchall()
     conn.close()
 
-    payload = get_protocol_ct_rows()
-    slug = payload.get("slug") or ""
-    version = ""
-    if slug:
-        parts = slug.split("-")
-        if len(parts) >= 4:
-            version = f"{parts[-3]}-{parts[-2]}-{parts[-1]}"
+    ddf_version = _ct_version_from_slug(get_ddf_ct_rows().get("slug") or "")
+    protocol_version = _ct_version_from_slug(get_protocol_ct_rows().get("slug") or "")
 
     code_system: list = []
     code_code: list = []
     code_decode: list = []
     code_system_version: list = []
     for codelist_table, code, codelist_code in rows:
-        term = get_protocol_ct_term(codelist_code, code)
+        term = get_ddf_ct_term(codelist_code, code)
+        version = ddf_version
+        if not term:
+            term = get_protocol_ct_term(codelist_code, code)
+            version = protocol_version
         if not term:
             continue
         code_system.append(codelist_table)
@@ -519,6 +542,49 @@ def _get_data_origin_type_tuple(
         code_decode.append(term.get("submission_value") or "")
         code_system_version.append(version)
     return code_code, code_decode, code_system, code_system_version
+
+
+RULE_SLOTS = ("transitionStartRule", "transitionEndRule")
+
+
+def transition_rule_first_owners(cur: Any, soa_id: int) -> Dict[str, Tuple[str, str]]:
+    """Map each TransitionRule uid to the (owner_uid, slot) that may
+    claim the stored uid: elements in order, then encounters in order,
+    start before end. Every other embedding gets its own copy uid.
+    """
+    first: Dict[str, Tuple[str, str]] = {}
+    cur.execute(
+        "SELECT element_id, testrl, teenrl FROM element"
+        " WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    owners = list(cur.fetchall())
+    cur.execute(
+        "SELECT encounter_uid, transitionStartRule, transitionEndRule FROM visit"
+        " WHERE soa_id=? ORDER BY order_index, id",
+        (soa_id,),
+    )
+    owners += cur.fetchall()
+    for owner_uid, start, end in owners:
+        for slot, rule_uid in zip(RULE_SLOTS, (start, end)):
+            if rule_uid and owner_uid:
+                first.setdefault(rule_uid, (owner_uid, slot))
+    return first
+
+
+def embed_transition_rule(
+    cur: Any,
+    soa_id: int,
+    rule: Optional[Dict[str, Any]],
+    owner_uid: str,
+    slot: str,
+    first_owners: Dict[str, Tuple[str, str]],
+) -> Optional[Dict[str, Any]]:
+    """Return rule as embedded under owner_uid.slot with a unique id."""
+    if not rule:
+        return None
+    claim = first_owners.get(rule["id"]) == (owner_uid, slot)
+    return embed_with_owned_ids(cur, soa_id, owner_uid, slot, rule, claim=claim)
 
 
 # Helpders for Elements
@@ -829,7 +895,7 @@ def _get_condition_assignments(
             "extensionAttributes": [],
             "condition": r[1],
             "conditionTargetId": r[2],
-            "instanceType": "Condition",
+            "instanceType": "ConditionAssignment",
         }
         for r in rows
     ]

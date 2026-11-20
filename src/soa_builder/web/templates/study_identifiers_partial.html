@@ -1,14 +1,56 @@
+{% set si_form = si_form or {} %}
 <div id="study-identifiers-section">
+  {% if si_error %}
+  <div class="am-api-notice am-api-notice-error" role="alert">
+    <span class="am-api-notice-icon" aria-hidden="true">&#9888;</span>
+    <span>{{ si_error }}</span>
+  </div>
+  {% endif %}
+  {% for w in si_warnings %}
+  <div class="am-api-notice am-api-notice-warn" role="status">
+    <span class="am-api-notice-icon" aria-hidden="true">&#9888;</span>
+    <span>{{ w }}</span>
+  </div>
+  {% endfor %}
+
   {% if study_identifiers %}
   <ul class="am-plain-list">
     {% for si in study_identifiers %}
     <li class="am-list-row">
+      <div class="am-flex-shrink-0">
+        <form hx-post="/ui/soa/{{ soa_id }}/study-identifiers/{{ si.id }}/move_up"
+              hx-target="#study-identifiers-section"
+              hx-swap="outerHTML"
+              class="fz-inline-form">
+          <button type="submit"
+                  class="am-btn am-btn-slate am-btn-xs"
+                  {% if loop.first %}disabled{% endif %}
+                  title="Move up">&uarr;</button>
+        </form>
+        <form hx-post="/ui/soa/{{ soa_id }}/study-identifiers/{{ si.id }}/move_down"
+              hx-target="#study-identifiers-section"
+              hx-swap="outerHTML"
+              class="fz-inline-form">
+          <button type="submit"
+                  class="am-btn am-btn-slate am-btn-xs"
+                  {% if loop.last %}disabled{% endif %}
+                  title="Move down">&darr;</button>
+        </form>
+      </div>
       <div class="am-flex-1 am-minw-0">
         <span class="obj-uid am-mr-6">{{ si.study_identifier_uid }}</span>
         <span class="am-text am-fz-90">{{ si.text }}</span>
         {% if si.org_name %}
         <span class="am-text-muted am-fz-78 am-ml-6">
-          ({{ si.org_name }})
+          ({{ si.org_name }}{% if si.org_type %} &middot; {{ si.org_type }}{% endif %})
+        </span>
+        {% else %}
+        <span class="am-text-muted am-fz-78 am-ml-6">(no organization)</span>
+        {% endif %}
+        {% if si.shares_org %}
+        <span class="am-text-muted am-fz-78 am-ml-6"
+              title="DDF00174 (warning): an organization is not expected to have more than one identifier for the study.">
+          &#9888; DDF00174
         </span>
         {% endif %}
       </div>
@@ -27,7 +69,6 @@
   </ul>
   {% endif %}
 
-  {% if not study_identifiers %}
   <form hx-post="/ui/soa/{{ soa_id }}/study-identifiers-add"
         hx-target="#study-identifiers-section"
         hx-swap="outerHTML"
@@ -38,19 +79,21 @@
       </label>
       <input name="text"
              class="am-input"
+             value="{{ si_form.text or '' }}"
              placeholder="Identifier text (e.g. NCT12345678)" />
     </div>
     <div class="am-field-grow">
       <label class="am-field-label am-field-label-inline">
-        Organization
+        Organization <span class="am-required">*</span>
       </label>
       {% if orgs %}
       <select name="scope_org_uid"
               class="am-input">
-        <option value="">— none —</option>
+        <option value="">— select —</option>
         {% for org in orgs %}
-        <option value="{{ org.organization_uid }}">
-          {{ org.name }}
+        <option value="{{ org.organization_uid }}"
+                {% if si_form.scope_org_uid == org.organization_uid %}selected{% endif %}>
+          {{ org.name }}{% if org.type %} ({{ org.type }}){% endif %}
         </option>
         {% endfor %}
       </select>
@@ -69,5 +112,4 @@
       </button>
     </div>
   </form>
-  {% endif %}
 </div>

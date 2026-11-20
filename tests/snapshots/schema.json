@@ -2420,6 +2420,261 @@
    }
   }
  },
+ "eligibility_criterion": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "criterion_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "item_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "name",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "label",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "description",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "identifier",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "category_code",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "category_decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "category_version",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "text",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "0",
+    "name": "order_index",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "created_at",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_eligibility_criterion_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
+   "sqlite_autoindex_eligibility_criterion_1": {
+    "columns": [
+     "soa_id",
+     "criterion_uid"
+    ],
+    "unique": 1
+   },
+   "sqlite_autoindex_eligibility_criterion_2": {
+    "columns": [
+     "soa_id",
+     "item_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
+ "eligibility_criterion_audit": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "eligibility_criterion_id",
+    "notnull": 0,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "action",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "before_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "after_json",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "performed_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_eligibility_criterion_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
+ },
+ "embedded_copy_uid": {
+  "columns": [
+   {
+    "default": null,
+    "name": "id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "owner_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "slot",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "source_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "copy_uid",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_embedded_copy_uid_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   },
+   "sqlite_autoindex_embedded_copy_uid_1": {
+    "columns": [
+     "soa_id",
+     "owner_uid",
+     "slot",
+     "source_uid"
+    ],
+    "unique": 1
+   },
+   "sqlite_autoindex_embedded_copy_uid_2": {
+    "columns": [
+     "soa_id",
+     "copy_uid"
+    ],
+    "unique": 1
+   }
+  }
+ },
  "endpoint": {
   "columns": [
    {
@@ -4606,6 +4861,55 @@
     "notnull": 0,
     "pk": 0,
     "type": "INT"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_text",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_value",
+    "notnull": 0,
+    "pk": 0,
+    "type": "REAL"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_unit_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_unit_decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_unit_version",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "0",
+    "name": "planned_duration_will_vary",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "planned_duration_reason",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
    }
   ],
   "indexes": {
@@ -4748,6 +5052,76 @@
     "notnull": 0,
     "pk": 0,
     "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "intervention_model_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "intervention_model_decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "intervention_model_version",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_sex",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_age_min",
+    "notnull": 0,
+    "pk": 0,
+    "type": "REAL"
+   },
+   {
+    "default": null,
+    "name": "planned_age_max",
+    "notnull": 0,
+    "pk": 0,
+    "type": "REAL"
+   },
+   {
+    "default": null,
+    "name": "planned_age_unit_code",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_age_unit_decode",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "planned_age_unit_version",
+    "notnull": 0,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "0",
+    "name": "planned_age_is_approximate",
+    "notnull": 1,
+    "pk": 0,
+    "type": "INTEGER"
    }
   ],
   "indexes": {
@@ -6503,6 +6877,60 @@
   ],
   "indexes": {
    "idx_visit_audit_soa": {
+    "columns": [
+     "soa_id"
+    ],
+    "unique": 0
+   }
+  }
+ },
+ "wizard_state": {
+  "columns": [
+   {
+    "default": null,
+    "name": "soa_id",
+    "notnull": 0,
+    "pk": 1,
+    "type": "INTEGER"
+   },
+   {
+    "default": null,
+    "name": "current_step",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "'[]'",
+    "name": "completed_steps",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": "'draft'",
+    "name": "status",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "created_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   },
+   {
+    "default": null,
+    "name": "updated_at",
+    "notnull": 1,
+    "pk": 0,
+    "type": "TEXT"
+   }
+  ],
+  "indexes": {
+   "idx_wizard_state_soa": {
     "columns": [
      "soa_id"
     ],

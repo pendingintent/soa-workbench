@@ -229,12 +229,19 @@ def test_download_tdd_tv_with_data():
 
 
 def test_download_tdd_tv_visitdy_and_arm():
-    """TV JSON populates VISITDY from timing and ARMCD/ARM from instance linkage."""
+    """TV VISITDY comes from the Timing label; ARMCD/ARM stay null.
+
+    The visit belongs to the only arm, so visits do not differ by arm
+    and SDTMIG leaves ARMCD and ARM null.
+    """
     r = client.post("/soa", json={"name": "TDD TV VISITDY+ARM Test"})
     soa_id = r.json()["id"]
 
-    # Create a timing record with ISO 8601 duration value
-    t_r = client.post(f"/soa/{soa_id}/timings", json={"name": "Day 1", "value": "P1D"})
+    # VISITDY maps from Timing/@label, not the ISO 8601 value.
+    t_r = client.post(
+        f"/soa/{soa_id}/timings",
+        json={"name": "Screening timing", "label": "Day 1", "value": "P7D"},
+    )
     timing_id = t_r.json()["id"]
 
     # Create a visit and link it to the timing via scheduledAtId
@@ -277,5 +284,5 @@ def test_download_tdd_tv_visitdy_and_arm():
     assert rec["DOMAIN"] == "TV"
     assert rec["VISIT"] == "Screening"
     assert rec["VISITDY"] == 1
-    assert rec["ARMCD"] == "TrtArm"
-    assert rec["ARM"] == "TrtArm"  # falls back to arm.name when no description set
+    assert rec["ARMCD"] == ""
+    assert rec["ARM"] == ""

@@ -1,6 +1,6 @@
 from .errors import MALFORMED_JSON_ERRORS, REMOTE_PAYLOAD_ERRORS
 import sqlite3
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 import json
 import logging
 import os
@@ -119,6 +119,13 @@ def iso_duration_to_days(iso_duration: str) -> float:
     if not iso_duration:
         return None
 
+    # A leading "-" (e.g. -P14D, before the anchor visit) negates the
+    # whole duration; the regex itself only matches the unsigned part.
+    sign = 1
+    if iso_duration.startswith("-"):
+        sign = -1
+        iso_duration = iso_duration[1:]
+
     m = _ISO_DURATION_RE.match(iso_duration)
     if not m:
         return None
@@ -134,12 +141,41 @@ def iso_duration_to_days(iso_duration: str) -> float:
     days += parts["minutes"] / (24.0 * 60.0)
     days += parts["seconds"] / (24.0 * 3600.0)
 
-    return days
+    return sign * days
+
+
+def format_study_day(days: Optional[float]) -> str:
+    """Format a day count for the matrix's Study Day row.
+
+    Whole days show without a decimal (-14.0 -> "-14", 0.0 -> "0").
+    A part day, from an hour or minute duration, keeps up to two
+    decimals (1.5 -> "1.5"). None (no timing) gives "".
+    """
+    if days is None:
+        return ""
+    if float(days).is_integer():
+        return str(int(days))
+    return f"{days:.2f}".rstrip("0").rstrip(".")
 
 
 def _nz(s: Optional[str]) -> Optional[str]:
     s = (s or "").strip()
     return s or None
+
+
+async def read_form_fields(request: Any, names: Iterable[str]) -> Dict[str, str]:
+    """Return the named fields the posted form actually sent.
+
+    Use this instead of ``Form(None)`` parameters on edit routes whose
+    update function reads ``None`` as "keep the current value".
+    FastAPI turns an empty form value into ``None``, so with
+    ``Form(None)`` choosing a "-- Select ... --" option or blanking a
+    field could never clear it. Here a field sent empty comes back as
+    ``""`` (the update then stores NULL) and a field not sent is
+    absent from the result (the update leaves it unchanged).
+    """
+    form = await request.form()
+    return {name: str(form[name]) for name in names if name in form}
 
 
 def get_cdisc_api_key():
@@ -390,7 +426,11 @@ def get_epoch_parent_package_href_cached() -> str | None:
 
 
 def _next_uid_from_counter(
-    cur: Any, soa_id: int, prefix: str, seed_fn: Callable[[], int]
+    cur: Any,
+    soa_id: int,
+    prefix: str,
+    seed_fn: Callable[[], int],
+    resync: bool = False,
 ) -> str:
     """Return the next `{prefix}{N}` UID for this SoA from the durable
     uid_counter table, never reusing a freed number. Lazily seeds the
@@ -398,6 +438,12 @@ def _next_uid_from_counter(
     scan), so a SoA that already has UIDs picks up where its current
     numbering left off. Assumes `cur` is a sqlite cursor within an
     open transaction.
+
+    With `resync`, every call also runs seed_fn() and skips past any
+    number already in use. Use it for prefixes whose rows other
+    writers can create without this counter (legacy migrations,
+    restored snapshots), so the counter can never fall behind and
+    hand out a UID that already exists.
     """
     cur.execute(
         "SELECT next_n FROM uid_counter WHERE soa_id=? AND prefix=?",
@@ -412,6 +458,8 @@ def _next_uid_from_counter(
         )
         return f"{prefix}{n}"
     n = row[0]
+    if resync:
+        n = max(n, seed_fn() + 1)
     cur.execute(
         "UPDATE uid_counter SET next_n=? WHERE soa_id=? AND prefix=?",
         (n + 1, soa_id, prefix),
@@ -792,6 +840,75 @@ def get_next_study_identifier_uid(cur: Any, soa_id: int) -> str:
     return _next_uid_from_counter(cur, soa_id, "StudyIdentifier_", _seed)
 
 
+def _max_embedded_copy_suffix(cur: Any, soa_id: int, prefix: str) -> int:
+    """Max `{prefix}N` among the embedded copy uids of a SoA, so the
+    allocators that own a prefix never hand out a copy's uid."""
+    cur.execute(
+        "SELECT copy_uid FROM embedded_copy_uid WHERE soa_id=? AND copy_uid LIKE ?",
+        (soa_id, f"{prefix}%"),
+    )
+    return _max_numeric_suffix(cur.fetchall(), prefix)
+
+
+def _max_uid_in_audit(cur: Any, soa_id: int, table: str, col: str, prefix: str) -> int:
+    """Max `{prefix}N` recorded in an audit table's before/after JSON,
+    so a deleted row's uid is never reissued."""
+    best = 0
+    cur.execute(
+        f"SELECT before_json, after_json FROM {table} WHERE soa_id=?", (soa_id,)
+    )
+    for row in cur.fetchall():
+        for raw in row:
+            if not raw:
+                continue
+            try:
+                uid = json.loads(raw).get(col)
+            except MALFORMED_JSON_ERRORS:
+                continue
+            best = max(best, _max_numeric_suffix([(uid,)], prefix))
+    return best
+
+
+def get_next_transition_rule_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique TransitionRule_N for the given SOA."""
+    prefix = "TransitionRule_"
+
+    def _seed() -> int:
+        cur.execute(
+            "SELECT transition_rule_uid FROM transition_rule WHERE soa_id=?",
+            (soa_id,),
+        )
+        return max(
+            _max_numeric_suffix(cur.fetchall(), prefix),
+            _max_uid_in_audit(
+                cur, soa_id, "transition_rule_audit", "transition_rule_uid", prefix
+            ),
+            _max_embedded_copy_suffix(cur, soa_id, prefix),
+        )
+
+    return _next_uid_from_counter(cur, soa_id, prefix, _seed, resync=True)
+
+
+def get_next_geographic_scope_uid(cur: Any, soa_id: int) -> str:
+    """Compute next unique GeographicScope_N for the given SOA."""
+    prefix = "GeographicScope_"
+
+    def _seed() -> int:
+        cur.execute(
+            "SELECT scope_uid FROM amendment_geographic_scope WHERE soa_id=?",
+            (soa_id,),
+        )
+        return max(
+            _max_numeric_suffix(cur.fetchall(), prefix),
+            _max_uid_in_audit(
+                cur, soa_id, "amendment_geographic_scope_audit", "scope_uid", prefix
+            ),
+            _max_embedded_copy_suffix(cur, soa_id, prefix),
+        )
+
+    return _next_uid_from_counter(cur, soa_id, prefix, _seed, resync=True)
+
+
 # Helper function to generate new alias_code_uid value
 def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique AliasCode_N for the given SOA."""
@@ -802,9 +919,12 @@ def get_next_alias_code_uid(cur: Any, soa_id: int) -> str:
             " WHERE soa_id=? AND alias_code_uid LIKE 'AliasCode_%'",
             (soa_id,),
         )
-        return _max_suffix(cur.fetchall())
+        return max(
+            _max_suffix(cur.fetchall()),
+            _max_embedded_copy_suffix(cur, soa_id, "AliasCode_"),
+        )
 
-    return _next_uid_from_counter(cur, soa_id, "AliasCode_", _seed)
+    return _next_uid_from_counter(cur, soa_id, "AliasCode_", _seed, resync=True)
 
 
 # Helper function to generate new code_uid value
@@ -818,9 +938,12 @@ def get_next_code_uid(cur: Any, soa_id: int) -> str:
             " SELECT code_uid FROM code WHERE soa_id=? AND code_uid LIKE 'Code_%'",
             (soa_id, soa_id),
         )
-        return _max_suffix(cur.fetchall())
+        return max(
+            _max_suffix(cur.fetchall()),
+            _max_embedded_copy_suffix(cur, soa_id, "Code_"),
+        )
 
-    return _next_uid_from_counter(cur, soa_id, "Code_", _seed)
+    return _next_uid_from_counter(cur, soa_id, "Code_", _seed, resync=True)
 
 
 def get_next_biomedical_concept_property_uid(cur: Any, soa_id: int) -> str:
@@ -858,8 +981,10 @@ def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
     """Compute next unique ExtensionAttribute_N for the given SOA.
 
     Scans activity_concept_dss, activity_concept_crf,
-    soa_tool_extension, and activity_grouping_extension to ensure the
-    seeded counter does not collide with any existing EA UID.
+    soa_tool_extension, and activity_grouping_extension. Resyncs on
+    every call: rollback and legacy data write these uids without the
+    counter, and USDM requires every id in a document to be unique.
+    Call once per uid; never derive further uids by adding to N.
     """
 
     def _seed() -> int:
@@ -892,7 +1017,57 @@ def get_next_extension_attribute_uid(cur: Any, soa_id: int) -> str:
         )
         return _max_suffix(cur.fetchall())
 
-    return _next_uid_from_counter(cur, soa_id, "ExtensionAttribute_", _seed)
+    return _next_uid_from_counter(
+        cur, soa_id, "ExtensionAttribute_", _seed, resync=True
+    )
+
+
+# Every column holding an ExtensionAttribute_N uid, in keep-first
+# order for dedupe_extension_attribute_uids. DSS and CRF rows come
+# first because freeze diffs compare their uids; the tool and
+# BC-grouping extensions are regenerated metadata.
+EXTENSION_ATTRIBUTE_UID_HOLDERS = (
+    ("activity_concept_dss", "extension_attribute_uid"),
+    ("activity_concept_crf", "extension_attribute_uid"),
+    ("activity_grouping_extension", "ea_outer_uid"),
+    ("activity_grouping_extension", "ea_scheme_uid"),
+    ("activity_grouping_extension", "ea_value_uid"),
+    ("soa_tool_extension", "ea_outer_uid"),
+    ("soa_tool_extension", "ea_name_uid"),
+    ("soa_tool_extension", "ea_version_uid"),
+    ("soa_tool_extension", "ea_date_uid"),
+)
+
+
+def dedupe_extension_attribute_uids(cur: Any, soa_id: Optional[int] = None) -> int:
+    """Give every ExtensionAttribute_N uid a single holder.
+
+    When a uid is held more than once within a SoA, the first holder
+    in EXTENSION_ATTRIBUTE_UID_HOLDERS order (lowest row id within a
+    column) keeps it and every other holder gets a fresh uid from the
+    counter. Scoped to soa_id when given, else every SoA. Returns the
+    number of uids reassigned.
+    """
+    where = " AND soa_id=?" if soa_id is not None else ""
+    args = (soa_id,) if soa_id is not None else ()
+    holders: Dict[tuple, list] = {}
+    for table, col in EXTENSION_ATTRIBUTE_UID_HOLDERS:
+        cur.execute(
+            f"SELECT soa_id, {col}, id FROM {table}"
+            f" WHERE {col} IS NOT NULL AND {col} != ''{where} ORDER BY id",
+            args,
+        )
+        for row_soa, uid, row_id in cur.fetchall():
+            holders.setdefault((row_soa, uid), []).append((table, col, row_id))
+    reassigned = 0
+    for (row_soa, _uid), held_by in holders.items():
+        for table, col, row_id in held_by[1:]:
+            cur.execute(
+                f"UPDATE {table} SET {col}=? WHERE id=?",
+                (get_next_extension_attribute_uid(cur, row_soa), row_id),
+            )
+            reassigned += 1
+    return reassigned
 
 
 def get_next_extension_class_uid(cur: Any, soa_id: int) -> str:
@@ -915,7 +1090,7 @@ def get_next_extension_class_uid(cur: Any, soa_id: int) -> str:
         )
         return _max_suffix(cur.fetchall())
 
-    return _next_uid_from_counter(cur, soa_id, "ExtensionClass_", _seed)
+    return _next_uid_from_counter(cur, soa_id, "ExtensionClass_", _seed, resync=True)
 
 
 def get_next_concept_uid(cur: Any, soa_id: int) -> str:
@@ -2023,3 +2198,148 @@ def load_contact_mode_options(force: bool = False) -> List[dict[str, str]]:
     return _load_codelist_options(
         _contact_mode_cache, ENCOUNTER_CONTACT_MODE_CODELIST, force
     )
+
+
+# Allocators for the entities that can be embedded under several
+# owners in the USDM output (see get_embedded_copy_uid).
+_EMBEDDED_COPY_ALLOCATORS: Dict[str, Callable[[Any, int], str]] = {
+    "TransitionRule_": get_next_transition_rule_uid,
+    "GeographicScope_": get_next_geographic_scope_uid,
+    "Code_": get_next_code_uid,
+    "AliasCode_": get_next_alias_code_uid,
+}
+
+
+def get_embedded_copy_uid(
+    cur: Any,
+    soa_id: int,
+    owner_uid: str,
+    slot: str,
+    source_uid: str,
+    claim: bool = False,
+) -> str:
+    """Return the uid of source_uid as embedded under owner_uid.slot.
+
+    The workbench stores one TransitionRule or GeographicScope row that
+    several owners use, but USDM embeds a copy under each owner and
+    needs every id in the document to be unique. One embedding uses
+    the stored uid; every other one gets its own {Entity}_N uid,
+    allocated once and persisted in embedded_copy_uid so it is the
+    same in every export.
+
+    With claim, the owner takes the stored uid itself unless another
+    owner has already claimed it. Claims are persisted too, so the
+    stored uid stays with the first owner that took it.
+    """
+    cur.execute(
+        "SELECT copy_uid FROM embedded_copy_uid"
+        " WHERE soa_id=? AND owner_uid=? AND slot=? AND source_uid=?",
+        (soa_id, owner_uid, slot, source_uid),
+    )
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    copy_uid = None
+    if claim:
+        cur.execute(
+            "SELECT 1 FROM embedded_copy_uid WHERE soa_id=? AND copy_uid=?",
+            (soa_id, source_uid),
+        )
+        if cur.fetchone() is None:
+            copy_uid = source_uid
+    if copy_uid is None:
+        prefix = source_uid.rsplit("_", 1)[0] + "_"
+        allocator = _EMBEDDED_COPY_ALLOCATORS.get(prefix)
+        if allocator is None:
+            raise ValueError(f"No uid allocator for embedded copy {source_uid!r}")
+        copy_uid = allocator(cur, soa_id)
+    cur.execute(
+        "INSERT INTO embedded_copy_uid"
+        " (soa_id, owner_uid, slot, source_uid, copy_uid) VALUES (?,?,?,?,?)",
+        (soa_id, owner_uid, slot, source_uid, copy_uid),
+    )
+    return copy_uid
+
+
+def embed_with_owned_ids(
+    cur: Any,
+    soa_id: int,
+    owner_uid: str,
+    slot: str,
+    obj: Optional[Dict[str, Any]],
+    claim: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Return obj as embedded under owner_uid.slot, with every nested
+    USDM id replaced by that owner's uid for it (get_embedded_copy_uid).
+    When the owner claims the stored uid of obj, obj is returned as is.
+    """
+    if not obj:
+        return obj
+    top = get_embedded_copy_uid(cur, soa_id, owner_uid, slot, obj["id"], claim)
+    if top == obj["id"]:
+        return obj
+
+    def _copy(node: Any) -> Any:
+        if isinstance(node, list):
+            return [_copy(v) for v in node]
+        if not isinstance(node, dict):
+            return node
+        out = {k: _copy(v) for k, v in node.items()}
+        if node.get("id") and node.get("instanceType"):
+            out["id"] = (
+                top
+                if node is obj
+                else get_embedded_copy_uid(cur, soa_id, owner_uid, slot, node["id"])
+            )
+        return out
+
+    return _copy(obj)
+
+
+# USDM v4 StudyRole code (codelist C215480) for "Sponsor".
+SPONSOR_ROLE_CODE = "C70793"
+
+
+def sponsor_org_uid(cur: Any, soa_id: int) -> str:
+    """Return the organization_uid of the study sponsor, or ''.
+
+    USDM v4 identifies the sponsor by role, not organization type:
+    DDF00172 scopes the sponsor study identifier to "the organization
+    for the sponsor study role", DDF00201 allows exactly one sponsor
+    role and DDF00202 gives it exactly one organization. So the
+    sponsor is the single organization of the role coded C70793.
+
+    Returns '' when there is no sponsor role, or when its organization
+    list does not name exactly one organization of this study; the
+    USDM validator then reports the gap (DDF00201/DDF00202).
+    """
+    cur.execute(
+        "SELECT r.role_uid, r.organization_ids FROM role r"
+        " JOIN code c ON c.code_uid = r.code_uid AND c.soa_id = r.soa_id"
+        " WHERE r.soa_id = ? AND c.code = ?"
+        " ORDER BY r.order_index, r.id",
+        (soa_id, SPONSOR_ROLE_CODE),
+    )
+    roles = cur.fetchall()
+    if not roles:
+        return ""
+    if len(roles) > 1:
+        logger.warning(
+            "SOA %s has %d sponsor roles (DDF00201); using %s",
+            soa_id,
+            len(roles),
+            roles[0][0],
+        )
+    role_uid, raw_org_ids = roles[0]
+    try:
+        org_ids = json.loads(raw_org_ids) if raw_org_ids else []
+    except (TypeError, ValueError):
+        logger.warning("Sponsor role %s has malformed organization_ids", role_uid)
+        return ""
+    if len(org_ids) != 1:
+        return ""
+    cur.execute(
+        "SELECT 1 FROM organization WHERE soa_id = ? AND organization_uid = ?",
+        (soa_id, org_ids[0]),
+    )
+    return org_ids[0] if cur.fetchone() else ""

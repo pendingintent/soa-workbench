@@ -68,6 +68,32 @@ _DATASET_KEY_SEQUENCES = {
 }
 
 
+def _has_sponsor_role(study_version: dict) -> bool:
+    """True if the study version has a sponsor role with an organization.
+
+    USDM v4: "Sponsor" (C70793) is a StudyRole code, not an
+    Organization type, so TS SPONSOR is driven by the role.
+    """
+    return any(
+        ((role.get("code") or {}).get("code") == "C70793")
+        and bool(role.get("organizationIds"))
+        for role in (study_version.get("roles") or [])
+    )
+
+
+def _planned_age_bound_present(population: dict, bound: str) -> bool:
+    """True if the population or a cohort has a value for ``bound``.
+
+    ``bound`` is "minValue" or "maxValue". A bound may be null: the
+    workbench exports a planned age bound recorded as n/a as null
+    (USDM v4.1 allows a one-sided Range).
+    """
+    ages = [population.get("plannedAge")] + [
+        cohort.get("plannedAge") for cohort in (population.get("cohorts") or [])
+    ]
+    return any(((age or {}).get(bound) or {}).get("value") is not None for age in ages)
+
+
 class USDMDefineJSONProcessor:
     """
     Processes USDM JSON files and generates Define-JSON structure.
@@ -897,13 +923,7 @@ class USDMDefineJSONProcessor:
         _pop = self.studyDesignData.get("population") or {}
 
         # AGEMIN
-        if (_pop.get("plannedAge") or {}).get("minValue", {}).get(
-            "value"
-        ) is not None or any(
-            (cohort.get("plannedAge") or {}).get("minValue", {}).get("value")
-            is not None
-            for cohort in (_pop.get("cohorts") or [])
-        ):
+        if _planned_age_bound_present(_pop, "minValue"):
             tsparmcd_entry = {
                 "dataType": "text",
                 "length": 200,
@@ -926,13 +946,7 @@ class USDMDefineJSONProcessor:
             self.vlm_lookup["TSPARMCD"].append(tsparmcd_entry)
 
         # AGEMAX
-        if (_pop.get("plannedAge") or {}).get("maxValue", {}).get(
-            "value"
-        ) is not None or any(
-            (cohort.get("plannedAge") or {}).get("maxValue", {}).get("value")
-            is not None
-            for cohort in (_pop.get("cohorts") or [])
-        ):
+        if _planned_age_bound_present(_pop, "maxValue"):
             tsparmcd_entry = {
                 "dataType": "text",
                 "length": 200,
@@ -2010,10 +2024,7 @@ class USDMDefineJSONProcessor:
             self.vlm_lookup["TSPARMCD"].append(tsparmcd_entry)
 
         # SPONSOR
-        if any(
-            (organization.get("type") or {}).get("code", "") == "C70793"
-            for organization in (self.study_version_data.get("organizations") or [])
-        ):
+        if _has_sponsor_role(self.study_version_data):
             tsparmcd_entry = {
                 "dataType": "text",
                 "length": 200,

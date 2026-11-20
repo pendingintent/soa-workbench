@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Eligibility Criteria for Study: {% if study_label %}{{ study_label }}{% else %}{{ study_name }}{% endif %}</h2>
+
+<div class="am-mb-12">
+  <a href="/ui/soa/{{ soa_id }}/edit" class="am-back-link">&larr; Return to Edit Page</a>
+</div>
+
+<hr class="fz-section-divider" />
+
+<div class="fz-create-card fz-create-card-full">
+  <h3>Create Eligibility Criterion</h3>
+  {% if error %}<p class="am-required">{{ error }}</p>{% endif %}
+  <form method="post" action="/ui/soa/{{ soa_id }}/eligibility_criteria/create" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label">Name <span class="am-required">*</span></label>
+      <input name="name" value="{{ form.name or '' }}" placeholder="e.g. INCL01 (used as IETESTCD, max 8 characters)" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Identifier <span class="am-required">*</span></label>
+      <input name="identifier" value="{{ form.identifier or '' }}" placeholder="Protocol number, e.g. I1" required class="fz-version-input" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Category <span class="am-required">*</span></label>
+      <select name="category_code" required class="fz-version-input">
+        <option value="" disabled {% if not form.category_code %}selected{% endif %}>-- Select Category --</option>
+        {% for opt in category_options %}
+        <option value="{{ opt.code }}" {% if form.category_code == opt.code %}selected{% endif %}>{{ opt.decode }} ({{ opt.code }})</option>
+        {% endfor %}
+      </select>
+      {% if not category_options %}
+      <small class="am-color-subtle">Codelist {{ codelist }} could not be loaded from the CDISC Library.</small>
+      {% endif %}
+    </div>
+    <div class="am-field">
+      <label class="am-field-label">Label</label>
+      <input name="label" value="{{ form.label or '' }}" placeholder="Short test name (used as IETEST)" class="fz-version-input" />
+    </div>
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Text <span class="am-required">*</span></label>
+      <textarea name="text" rows="3" required placeholder="Criterion text as written in the protocol (plain text)" class="am-textarea">{{ form.text or '' }}</textarea>
+    </div>
+    <div class="am-field am-field-span">
+      <label class="am-field-label">Description</label>
+      <input name="description" value="{{ form.description or '' }}" placeholder="Description (optional)" class="fz-version-input" />
+    </div>
+    <button type="submit" class="am-btn am-btn-info">Create Criterion</button>
+  </form>
+</div>
+
+<h3 class="fz-section-heading">Eligibility Criteria ({{ criteria|length }})</h3>
+
+<table class="fz-table">
+  <tr class="fz-thead-row">
+    <th>Order</th>
+    <th>UID</th>
+    <th>Identifier</th>
+    <th>Name</th>
+    <th>Label</th>
+    <th>Category</th>
+    <th>Text</th>
+    <th>Save</th>
+    <th>Delete</th>
+  </tr>
+  {% for c in criteria %}
+  <tr>
+    <td class="am-td-center">
+      <form method="post" action="/ui/soa/{{ soa_id }}/eligibility_criteria/{{ c.id }}/move_up" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-slate am-btn-xs" {% if loop.first %}disabled{% endif %} title="Move up">&uarr;</button>
+      </form>
+      <form method="post" action="/ui/soa/{{ soa_id }}/eligibility_criteria/{{ c.id }}/move_down" class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-slate am-btn-xs" {% if loop.last %}disabled{% endif %} title="Move down">&darr;</button>
+      </form>
+    </td>
+    <form method="post" action="/ui/soa/{{ soa_id }}/eligibility_criteria/{{ c.id }}/update">
+      <td class="fz-td-version"><span class="obj-uid">{{ c.criterion_uid }}</span></td>
+      <td><input name="identifier" value="{{ c.identifier }}" required class="am-input-compact" /></td>
+      <td><input name="name" value="{{ c.name }}" required class="am-input-compact" /></td>
+      <td><input name="label" value="{{ c.label or '' }}" placeholder="Label" class="am-input-compact" /></td>
+      <td>
+        <select name="category_code" class="am-select-compact">
+          {% for opt in category_options %}
+          <option value="{{ opt.code }}" {% if opt.code == c.category_code %}selected{% endif %}>{{ opt.decode }}</option>
+          {% else %}
+          <option value="{{ c.category_code }}" selected>{{ c.category_decode }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td><textarea name="text" rows="2" required class="am-textarea">{{ c.text }}</textarea></td>
+      <td><button type="submit" class="am-btn am-btn-slate am-btn-sm">Save</button></td>
+    </form>
+    <td>
+      <form method="post" action="/ui/soa/{{ soa_id }}/eligibility_criteria/{{ c.id }}/delete"
+            onsubmit="return confirm('Delete {{ c.identifier }} ({{ c.criterion_uid }})?');"
+            class="fz-inline-form">
+        <button type="submit" class="am-btn am-btn-danger am-btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr class="fz-empty-row"><td colspan="9">No eligibility criteria yet.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

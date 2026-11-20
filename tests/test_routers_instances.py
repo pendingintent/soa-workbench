@@ -272,3 +272,90 @@ def test_update_nonexistent_instance():
 
     resp = client.patch(f"/soa/{soa_id}/instances/999", json={"label": "New"})
     assert resp.status_code == 404
+
+
+def _instance_with_epoch(name):
+    soa_id = client.post("/soa", json={"name": name}).json()["id"]
+    created = client.post(
+        f"/soa/{soa_id}/instances",
+        json={
+            "name": "V1",
+            "label": "Visit 1",
+            "encounter_uid": "Encounter_1",
+            "epoch_uid": "StudyEpoch_1",
+            "member_of_timeline": "ScheduleTimeline_1",
+        },
+    ).json()
+    return soa_id, created["id"]
+
+
+def _row_form(**overrides):
+    """The fields the study timing page's instance row posts."""
+    form = {
+        "name": "V1",
+        "label": "Visit 1",
+        "description": "",
+        "default_condition_uid": "",
+        "epoch_uid": "StudyEpoch_1",
+        "timeline_exit_id": "",
+        "encounter_uid": "Encounter_1",
+        "member_of_timeline": "ScheduleTimeline_1",
+    }
+    form.update(overrides)
+    return form
+
+
+def _instance(soa_id, instance_id):
+    rows = client.get(f"/soa/{soa_id}/instances").json()
+    return next(r for r in rows if r["id"] == instance_id)
+
+
+def test_ui_update_clears_epoch_when_none_selected():
+    """Choosing the empty '-- Select Epoch --' option unsets the epoch."""
+    soa_id, instance_id = _instance_with_epoch("Clear Epoch UI")
+    assert _instance(soa_id, instance_id)["epoch_uid"] == "StudyEpoch_1"
+
+    resp = client.post(
+        f"/ui/soa/{soa_id}/instances/{instance_id}/update",
+        data=_row_form(epoch_uid=""),
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+
+    after = _instance(soa_id, instance_id)
+    assert after["epoch_uid"] is None
+    # The rest of the row is kept.
+    assert after["encounter_uid"] == "Encounter_1"
+    assert after["member_of_timeline"] == "ScheduleTimeline_1"
+
+
+def test_ui_update_clears_other_blanked_fields():
+    """Blanking a text field or another select on the row unsets it too."""
+    soa_id, instance_id = _instance_with_epoch("Clear Fields UI")
+    client.post(
+        f"/ui/soa/{soa_id}/instances/{instance_id}/update",
+        data=_row_form(description="Some text"),
+    )
+    assert _instance(soa_id, instance_id)["description"] == "Some text"
+
+    client.post(
+        f"/ui/soa/{soa_id}/instances/{instance_id}/update",
+        data=_row_form(description="", encounter_uid=""),
+    )
+    after = _instance(soa_id, instance_id)
+    assert after["description"] is None
+    assert after["encounter_uid"] is None
+    assert after["epoch_uid"] == "StudyEpoch_1"
+
+
+def test_ui_update_keeps_fields_the_form_did_not_send():
+    """A post without a field leaves that field unchanged."""
+    soa_id, instance_id = _instance_with_epoch("Partial Form UI")
+    client.post(
+        f"/ui/soa/{soa_id}/instances/{instance_id}/update",
+        data={"label": "Renamed"},
+    )
+    after = _instance(soa_id, instance_id)
+    assert after["label"] == "Renamed"
+    assert after["epoch_uid"] == "StudyEpoch_1"
+    assert after["encounter_uid"] == "Encounter_1"

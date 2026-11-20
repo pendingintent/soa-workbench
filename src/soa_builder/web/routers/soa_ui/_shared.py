@@ -70,68 +70,25 @@ from ...services.matrix import _render_epoch_th
 from ...templating import templates
 
 router = APIRouter()
-_SOA_CASCADE_TABLES = [
-    "matrix_cells",
-    "activity_concept",
-    "activity_concept_dss",
-    "activity_surrogate",
-    "activity_audit",
-    "activity",
-    "alias_code",
-    "amendment_geographic_scope",
-    "amendment_geographic_scope_audit",
-    "amendment_governance_date",
-    "amendment_governance_date_audit",
-    "amendment_subject_enrollment",
-    "amendment_subject_enrollment_audit",
-    "arm_audit",
-    "arm",
-    "bcp_response_code",
-    "biomedical_concept_property",
-    "biomedical_concept_surrogate_audit",
-    "biomedical_concept_surrogate",
-    "biomedical_concept_audit",
-    "biomedical_concept",
-    "code_association",
-    "code",
-    "condition_assignment",
-    "decision_instances",
-    "document_content_reference_audit",
-    "document_content_reference",
-    "element_audit",
-    "element",
-    "endpoint_audit",
-    "endpoint",
-    "epoch_audit",
-    "epoch",
-    "footnote_audit",
-    "footnote",
-    "governance_date_geographic_scope",
-    "instance_audit",
-    "instances",
-    "objective_audit",
-    "objective",
-    "reorder_audit",
-    "rollback_audit",
-    "schedule_timelines_audit",
-    "schedule_timelines",
-    "soa_freeze",
-    "study_amendment_impact_audit",
-    "study_amendment_impact",
-    "study_amendment_reason_audit",
-    "study_amendment_reason",
-    "study_amendment_audit",
-    "study_amendment",
-    "study_cell_audit",
-    "study_cell",
-    "study_change_audit",
-    "study_change",
-    "timing_audit",
-    "timing",
-    "transition_rule_audit",
-    "transition_rule",
-    "visit_audit",
-    "visit",
-]
+
+
+def _soa_scoped_tables(cur) -> list:
+    """Every table with a soa_id column, discovered from the schema.
+
+    Deleting a study clears all of them, including audit, freeze and
+    legacy tables, so a table added later can never keep rows of a
+    deleted study (a hand-kept list used to miss new tables).
+    """
+    cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+        " AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    )
+    tables = []
+    for (name,) in cur.fetchall():
+        cur.execute(f"PRAGMA table_info({name})")
+        if any(row[1] == "soa_id" for row in cur.fetchall()):
+            tables.append(name)
+    return tables
+
 
 logger = logging.getLogger("soa_builder.concepts")

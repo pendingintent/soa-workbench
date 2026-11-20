@@ -23,8 +23,8 @@ def _new_soa(name: str) -> int:
 def _create_org(soa_id: int, **kwargs) -> dict:
     body = {
         "name": "Test Org",
-        "type_concept_id": "C70793",
-        "type_preferred_term": "Sponsor",
+        "type_concept_id": "C54149",
+        "type_preferred_term": "Drug Company",
         "type_version": "2022-09-30",
     }
     body.update(kwargs)
@@ -111,8 +111,8 @@ def test_usdm_organizations_in_output():
             name="CDISC",
             identifier="12345",
             identifier_scheme="DUNS",
-            type_concept_id="C70793",
-            type_preferred_term="Sponsor",
+            type_concept_id="C54149",
+            type_preferred_term="Drug Company",
         )
     resp = client.get(f"/soa/{soa_id}/usdm_json/full")
     assert resp.status_code == 200
@@ -124,8 +124,8 @@ def test_usdm_organizations_in_output():
     assert org["identifier"] == "12345"
     assert org["identifierScheme"] == "DUNS"
     assert org["instanceType"] == "Organization"
-    assert org["type"]["code"] == "C70793"
-    assert org["type"]["decode"] == "Sponsor"
+    assert org["type"]["code"] == "C54149"
+    assert org["type"]["decode"] == "Drug Company"
     assert org["type"]["codeSystem"] == "http://www.cdisc.org"
     assert org["type"]["codeSystemVersion"] == "2022-09-30"
     assert org["legalAddress"] is None

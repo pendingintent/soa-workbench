@@ -1,4 +1,12 @@
-<div id="organizations-section">
+{% set org_type_codes = org_type_options | map(attribute='code') | list %}
+<div id="organizations-section"
+     hx-on::before-swap="if (event.detail.xhr.status === 422) { event.detail.shouldSwap = true; event.detail.isError = false; }">
+  {% if organizations_error %}
+  <div class="am-api-notice am-api-notice-error" role="alert">
+    <span class="am-api-notice-icon" aria-hidden="true">&#9888;</span>
+    <span>{{ organizations_error }}</span>
+  </div>
+  {% endif %}
   <table class="fz-table">
     <tr class="fz-thead-row">
       <th>UID</th>
@@ -28,6 +36,14 @@
         <select name="type_code" class="am-select-compact"
                 onchange="syncOrgTypeDecode(this)">
           <option value="">— none —</option>
+          {% if o.type_code_value and o.type_code_value not in org_type_codes %}
+          {# Stored type not in the loaded codelist: keep it selectable
+             so saving the row does not wipe it. #}
+          <option value="{{ o.type_code_value }}"
+                  data-decode="{{ o.type_decode | e }}" selected>
+            {{ o.type_decode or o.type_code_value }}{% if org_type_codes %} (not in {{ org_type_codelist }}){% endif %}
+          </option>
+          {% endif %}
           {% for opt in org_type_options %}
           <option value="{{ opt.code }}" data-decode="{{ opt.label | e }}"
             {% if opt.code == o.type_code_value %}selected{% endif %}>
@@ -37,6 +53,12 @@
         </select>
         <input type="hidden" name="type_decode"
                value="{{ o.type_decode or '' }}" />
+        {% if org_type_codes and o.type_code_value and o.type_code_value not in org_type_codes %}
+        <span class="am-text-muted am-fz-78"
+              title="DDF00200 (error): an organization type must come from the organization type codelist ({{ org_type_codelist }}). Choose a type from the list.">
+          &#9888; DDF00200
+        </span>
+        {% endif %}
       </td>
       <td>
         <input name="identifier_scheme" value="{{ o.identifier_scheme or '' }}"

@@ -16,6 +16,7 @@ from ..utils import (
     get_latest_ddf_ct_href,
     get_next_code_uid,
     soa_exists,
+    SPONSOR_ROLE_CODE,
 )
 
 router = APIRouter(prefix="/soa/{soa_id}")
@@ -210,6 +211,7 @@ def create_role(soa_id: int, body: dict):
     cur = conn.cursor()
     try:
         _assert_no_role_org_person_org_conflict(cur, soa_id, org_ids, person_uids)
+        _assert_sponsor_role_rules(cur, soa_id, type_concept_id, org_ids)
         code_uid = None
         if type_concept_id:
             code_uid = _insert_role_code(
@@ -301,7 +303,9 @@ def delete_role(soa_id: int, role_id: int):
 # ---------------------------------------------------------------------------
 
 
-def _partial_response(request: Request, soa_id: int) -> HTMLResponse:
+def _partial_response(
+    request: Request, soa_id: int, error: str = "", status_code: int = 200
+) -> HTMLResponse:
     from .organizations import _list_organizations
     from .persons import _list_persons
 
@@ -318,7 +322,9 @@ def _partial_response(request: Request, soa_id: int) -> HTMLResponse:
             "role_type_options": role_type_options,
             "organizations": organizations,
             "persons": persons,
+            "roles_error": error,
         },
+        status_code=status_code,
     )
 
 
@@ -345,6 +351,43 @@ def _delete_person_assignments(cur, soa_id: int, role_id: int) -> None:
         "DELETE FROM role_person WHERE soa_id=? AND role_id=?",
         (soa_id, role_id),
     )
+
+
+def _assert_sponsor_role_rules(
+    cur,
+    soa_id: int,
+    role_code: str,
+    org_ids: list,
+    role_id: Optional[int] = None,
+) -> None:
+    """Raise 422 if a sponsor role would break USDM v4 rules.
+
+    DDF00201: exactly one study role with a code of sponsor.
+    DDF00202: the sponsor study role points to exactly one
+    organization. ``role_id`` is the role being updated, which does
+    not count as a second sponsor role.
+    """
+    if (role_code or "").strip() != SPONSOR_ROLE_CODE:
+        return
+    if len(org_ids) != 1:
+        raise HTTPException(
+            422,
+            "DDF00202: the sponsor role must point to exactly one"
+            f" organization (got {len(org_ids)})",
+        )
+    cur.execute(
+        "SELECT r.name FROM role r"
+        " JOIN code c ON c.code_uid = r.code_uid AND c.soa_id = r.soa_id"
+        " WHERE r.soa_id = ? AND c.code = ? AND r.id IS NOT ?",
+        (soa_id, SPONSOR_ROLE_CODE, role_id),
+    )
+    existing = cur.fetchone()
+    if existing:
+        raise HTTPException(
+            422,
+            f"DDF00201: the study already has a sponsor role"
+            f" ({existing[0]}); only one is allowed",
+        )
 
 
 def _assert_no_role_org_person_org_conflict(
@@ -401,6 +444,7 @@ def ui_roles_add(
     cur = conn.cursor()
     try:
         _assert_no_role_org_person_org_conflict(cur, soa_id, org_ids, clean_person_uids)
+        _assert_sponsor_role_rules(cur, soa_id, role_type_code, org_ids)
         code_uid = None
         if role_type_code.strip():
             code_uid = _insert_role_code(
@@ -437,6 +481,13 @@ def ui_roles_add(
         role_id = cur.lastrowid
         _assign_persons_to_role(cur, soa_id, role_id, person_uids)
         conn.commit()
+    except HTTPException as exc:
+        # Validation failed before any write: show it in the section.
+        conn.rollback()
+        conn.close()
+        return _partial_response(
+            request, soa_id, error=exc.detail, status_code=exc.status_code
+        )
     except Exception:
         conn.rollback()
         conn.close()
@@ -536,6 +587,7 @@ def ui_roles_update(
     # Validate before any writes
     try:
         _assert_no_role_org_person_org_conflict(cur, soa_id, org_ids, clean_person_uids)
+        _assert_sponsor_role_rules(cur, soa_id, role_type_code, org_ids, role_id=rid)
 
         # Replace role type code record
         _delete_code(cur, soa_id, old_code_uid)
@@ -571,6 +623,13 @@ def ui_roles_update(
         _assign_persons_to_role(cur, soa_id, rid, clean_person_uids)
 
         conn.commit()
+    except HTTPException as exc:
+        # Validation failed before any write: show it in the section.
+        conn.rollback()
+        conn.close()
+        return _partial_response(
+            request, soa_id, error=exc.detail, status_code=exc.status_code
+        )
     except Exception:
         conn.rollback()
         conn.close()

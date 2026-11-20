@@ -20,6 +20,7 @@ from .capture import (
     _capture_biomedical_concepts,
     _capture_code_associations,
     _capture_decision_instances,
+    _capture_eligibility_criteria,
     _capture_encounters_full,
     _capture_endpoints,
     _capture_extension_attributes,
@@ -201,6 +202,7 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
     schedule_timelines = _capture_schedule_timelines(cur, soa_id)
     instances = _capture_instances(cur, soa_id)
     decision_instances = _capture_decision_instances(cur, soa_id)
+    eligibility_criteria = _capture_eligibility_criteria(cur, soa_id)
     bc_surrogates = _capture_bc_surrogates(cur, soa_id)
     biomedical_concepts = _capture_biomedical_concepts(cur, soa_id)
     bc_properties = _capture_bc_properties(cur, soa_id)
@@ -231,6 +233,7 @@ def _create_freeze(soa_id: int, version_label: Optional[str]):
         "schedule_timelines": schedule_timelines,
         "instances": instances,
         "decision_instances": decision_instances,
+        "eligibility_criteria": eligibility_criteria,
         "bc_surrogates": bc_surrogates,
         "biomedical_concepts": biomedical_concepts,
         "bc_properties": bc_properties,

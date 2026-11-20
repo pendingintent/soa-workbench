@@ -1,7 +1,8 @@
 {% extends 'base.html' %}
+{% from "_usdm_help.html" import help_panel %}
 {% block content %}
 <h2>Editing SoA for {% if study_label %}{{ study_label }}{% else %}{{ study_id }}{% endif %}</h2>
-<div class="study-meta-card">
+<div id="study-meta" class="study-meta-card">
   <h3>Study Metadata</h3>
   <form method="post" action="/ui/soa/{{ soa_id }}/update_meta" class="am-grid-2">
     <div class="am-field">
@@ -35,7 +36,19 @@
     <label class="am-field-label">Study Titles</label>
   </div>
   {% include "study_titles_partial.html" %}
+  <hr class="am-hr-divider" />
+  <div class="am-field">
+    <label class="am-field-label">Study Design</label>
+  </div>
+  <div hx-get="/ui/soa/{{ soa_id }}/intervention_model" hx-trigger="load" hx-swap="outerHTML"></div>
+  <hr class="am-hr-divider" />
+  <div class="am-field">
+    <label class="am-field-label">Study Population</label>
+  </div>
+  <div hx-get="/ui/soa/{{ soa_id }}/population" hx-trigger="load" hx-swap="outerHTML"></div>
 </div>
+
+{% include "_setup_checklist.html" %}
 
 <div id="modal-host"></div>
 <div class="concepts-global-refresh am-concepts-refresh-row" style="gap:10px;">
@@ -58,6 +71,7 @@
     {% with instances=instances_crud, study_name=study_name, hide_return_link=true %}
     <details id="edit-instances-section" open class="collapsible">
       <summary>Scheduled Instances ({{ instances_crud|length }})</summary>
+      {{ help_panel('instance') }}
       {% include '_instances_section.html' %}
     </details>
     {% endwith %}
@@ -96,7 +110,8 @@
   
 </div>
 
-<hr />
+<hr id="matrix" />
+{{ help_panel('matrix') }}
 <!-- Timeline Selector-->
 {% if timelines and timelines|length > 0 %}
 <div class="timeline-selector">

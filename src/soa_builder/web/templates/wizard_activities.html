@@ -1,0 +1,59 @@
+{% extends 'wizard_base.html' %}
+{#- Activities: add rows, then tick which encounter columns each one
+    happens at. The grid posts every ticked "instance:activity" pair;
+    the router treats it as the full desired state. -#}
+{% block step %}
+<div class="fz-create-card fz-create-card-full">
+  <h3>Add an activity</h3>
+  <form method="post" action="/ui/wizard/{{ soa_id }}/activities" class="fz-form-2row">
+    <div class="am-field">
+      <label class="am-field-label" for="wz-name">Name <span class="am-required">*</span></label>
+      <input id="wz-name" name="name" required class="fz-version-input"
+             value="{{ form.name }}" placeholder="e.g. Informed Consent, Vital Signs, ECG" />
+    </div>
+    <div class="am-field">
+      <label class="am-field-label" for="wz-label">Label</label>
+      <input id="wz-label" name="label" class="fz-version-input" value="{{ form.label }}" placeholder="Optional" />
+    </div>
+    <button type="submit" name="action" value="add" class="am-btn am-btn-info">Add activity</button>
+  </form>
+</div>
+
+<h3 class="fz-section-heading">Schedule: when does each activity happen?</h3>
+<form method="post" action="/ui/wizard/{{ soa_id }}/activities">
+  <input type="hidden" name="grid" value="1" />
+  {% if activities and instances %}
+  <p class="am-hint">Tick a box to schedule the activity at that encounter. This builds the Schedule of Activities matrix.</p>
+  <div class="am-wizard-matrix-wrap">
+  <table class="fz-table am-wizard-grid">
+    <tr class="fz-thead-row">
+      <th scope="col">Activity</th>
+      {% for inst in instances %}
+      <th scope="col">{{ inst.name }}{% if inst.encounter_label %}<br /><small>{{ inst.encounter_label }}</small>{% endif %}</th>
+      {% endfor %}
+    </tr>
+    {% for a in activities %}
+    <tr>
+      <th scope="row">{{ a.name }}</th>
+      {% for inst in instances %}
+      <td class="am-wizard-cell">
+        <input type="checkbox" name="cell" value="{{ inst.id }}:{{ a.id }}"
+               aria-label="{{ a.name }} at {{ inst.name }}"
+               {% if (inst.id, a.id) in cells %}checked{% endif %} />
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  <div class="am-wizard-nav">
+    <button type="submit" name="action" value="save" class="am-btn am-btn-info am-btn-sm">Save schedule</button>
+  </div>
+  {% elif not instances %}
+  <p class="am-empty-note">Add encounters in the previous step to get matrix columns.</p>
+  {% else %}
+  <p class="am-empty-note">Add an activity above to start the schedule.</p>
+  {% endif %}
+  {% include '_wizard_nav.html' %}
+</form>
+{% endblock %}

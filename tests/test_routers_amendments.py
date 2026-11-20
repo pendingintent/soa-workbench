@@ -714,8 +714,14 @@ def test_enrollment_with_scope_ref_appears_in_usdm_json(_mock):
     assert e["instanceType"] == "SubjectEnrollment"
     assert e["quantity"]["value"] == 50.0
     assert e["quantity"]["unit"] is None
-    assert e["forGeographicScope"] is not None
-    assert e["forGeographicScope"]["id"] == scope_uid
+    # USDM embeds a copy of the amendment's scope here, with its own
+    # id (every id in a document must be unique) and the same content.
+    own = amendments[0]["geographicScopes"][0]
+    copy = e["forGeographicScope"]
+    assert own["id"] == scope_uid
+    assert copy["id"].startswith("GeographicScope_") and copy["id"] != scope_uid
+    assert copy["type"]["code"] == own["type"]["code"]
+    assert copy["type"]["id"] != own["type"]["id"]
 
 
 @patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")
@@ -813,7 +819,12 @@ def test_governance_date_with_scope_appears_in_usdm_json(_mock):
     assert d["dateValue"] == "2025-06-01"
     assert d["type"]["code"] == "C99GD"
     assert len(d["geographicScopes"]) == 1
-    assert d["geographicScopes"][0]["id"] == scope_uid
+    # An embedded copy of the amendment's scope, with its own id.
+    own = amendments[0]["geographicScopes"][0]
+    copy = d["geographicScopes"][0]
+    assert own["id"] == scope_uid
+    assert copy["id"].startswith("GeographicScope_") and copy["id"] != scope_uid
+    assert copy["type"]["code"] == own["type"]["code"]
 
 
 @patch(_SLUG_PATCH, return_value="ddfct-2024-01-01")

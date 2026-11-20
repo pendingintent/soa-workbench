@@ -15,6 +15,7 @@ import logging
 from typing import List, Dict, Any
 
 from soa_builder.web.db import _connect
+from soa_builder.web.utils import get_next_extension_attribute_uid
 
 logger = logging.getLogger("usdm.generate_extension_attributes")
 
@@ -57,24 +58,8 @@ def populate_extension_attributes(soa_id: int) -> None:
         ids = [r[0] for r in cur.fetchall()]
         if not ids:
             return
-        cur.execute(
-            "SELECT extension_attribute_uid FROM activity_concept_dss"
-            " WHERE soa_id=?"
-            " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'"
-            " UNION ALL"
-            " SELECT extension_attribute_uid FROM activity_concept_crf"
-            " WHERE soa_id=?"
-            " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'",
-            (soa_id, soa_id),
-        )
-        existing = [r[0] for r in cur.fetchall() if r[0]]
-        try:
-            next_n = max(int(x.split("_")[1]) for x in existing) + 1
-        except (ValueError, IndexError):
-            next_n = len(existing) + 1
         for row_id in ids:
-            ea_uid = f"ExtensionAttribute_{next_n}"
-            next_n += 1
+            ea_uid = get_next_extension_attribute_uid(cur, soa_id)
             cur.execute(
                 "UPDATE activity_concept_dss"
                 " SET extension_attribute_uid=?"
@@ -95,9 +80,9 @@ def populate_crf_extension_attributes(soa_id: int) -> None:
     that don't yet have one.
 
     Idempotent: rows with a non-NULL, non-empty
-    ``extension_attribute_uid`` are skipped. The counter spans both
-    ``activity_concept_dss`` and ``activity_concept_crf`` to keep UIDs
-    globally unique within a study.
+    ``extension_attribute_uid`` are skipped. UIDs come from the shared
+    ExtensionAttribute counter, so they never collide with DSS, tool
+    or BC-grouping extension UIDs.
     """
     conn = _connect()
     cur = conn.cursor()
@@ -113,24 +98,8 @@ def populate_crf_extension_attributes(soa_id: int) -> None:
         ids = [r[0] for r in cur.fetchall()]
         if not ids:
             return
-        cur.execute(
-            "SELECT extension_attribute_uid FROM activity_concept_dss"
-            " WHERE soa_id=?"
-            " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'"
-            " UNION ALL"
-            " SELECT extension_attribute_uid FROM activity_concept_crf"
-            " WHERE soa_id=?"
-            " AND extension_attribute_uid LIKE 'ExtensionAttribute_%'",
-            (soa_id, soa_id),
-        )
-        existing = [r[0] for r in cur.fetchall() if r[0]]
-        try:
-            next_n = max(int(x.split("_")[1]) for x in existing) + 1
-        except (ValueError, IndexError):
-            next_n = len(existing) + 1
         for row_id in ids:
-            ea_uid = f"ExtensionAttribute_{next_n}"
-            next_n += 1
+            ea_uid = get_next_extension_attribute_uid(cur, soa_id)
             cur.execute(
                 "UPDATE activity_concept_crf"
                 " SET extension_attribute_uid=?"

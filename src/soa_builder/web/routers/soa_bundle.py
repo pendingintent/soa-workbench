@@ -1,14 +1,28 @@
-import sqlite3
+"""Export a SoA as a self-contained JSON bundle and import it back.
+
+A bundle carries every piece of study content for one SoA, so it can
+be moved to another workbench or duplicated. It never carries audit
+history or freezes: those describe how this copy of the study evolved,
+not the study itself.
+
+Every table with a ``soa_id`` column must be in ``_EXPORT_TABLES``,
+in ``_NEVER_EXPORTED``, or end in ``_AUDIT_SUFFIX``;
+``tests/test_soa_bundle_policy.py`` enforces this, and also that every
+integer ``*_id`` column of an exported table is remapped on import.
+"""
+
 import io
 import json
 import logging
+import sqlite3
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 
 from ..db import _connect
+from ..utils import dedupe_extension_attribute_uids
 
 router = APIRouter()
 ui_router = APIRouter()
@@ -16,13 +30,15 @@ logger = logging.getLogger("soa_builder.web.routers.soa_bundle")
 
 _FORMAT_VERSION = "1.0"
 
-# All soa_id-scoped data tables, in safe import order
+# Every soa_id-scoped table a bundle carries, in import order: a table
+# whose integer ids are remapped (see _ID_REMAPS) comes after its parent.
 _EXPORT_TABLES = [
     "code",
     "alias_code",
     "code_association",
     "epoch",
     "arm",
+    "timing",
     "visit",
     "activity",
     "element",
@@ -31,7 +47,6 @@ _EXPORT_TABLES = [
     "instances",
     "decision_instances",
     "condition_assignment",
-    "timing",
     "transition_rule",
     "matrix_cells",
     "biomedical_concept",
@@ -40,12 +55,27 @@ _EXPORT_TABLES = [
     "biomedical_concept_surrogate",
     "activity_concept",
     "activity_concept_dss",
+    "activity_concept_crf",
     "activity_surrogate",
+    "activity_grouping_extension",
     "objective",
     "endpoint",
+    "study_intervention",
+    "study_intervention_code",
+    "element_intervention",
+    "estimand",
+    "estimand_intervention",
+    "estimand_variable",
+    "intercurrent_event",
+    "indication",
+    "indication_code",
+    "eligibility_criterion",
+    "study_identifier",
     "study_title",
     "organization",
     "role",
+    "person",
+    "role_person",
     "footnote",
     "study_amendment",
     "study_amendment_reason",
@@ -56,7 +86,71 @@ _EXPORT_TABLES = [
     "amendment_governance_date",
     "governance_date_geographic_scope",
     "amendment_subject_enrollment",
+    "soa_tool_extension",
+    "embedded_copy_uid",
+    "uid_counter",
 ]
+
+# soa_id-scoped tables a bundle must never carry.
+_NEVER_EXPORTED = {
+    "soa_freeze": "freeze snapshots are version history, not study content",
+    "wizard_state": "UI onboarding progress of this copy of the study",
+}
+# Every ``*_audit`` table is never exported either: audit history
+# belongs to the workbench copy it was recorded in.
+_AUDIT_SUFFIX = "_audit"
+
+# Columns stripped from every exported row. freeze_id points into
+# soa_freeze, which is never exported.
+_STRIPPED_COLUMNS = frozenset({"freeze_id"})
+
+# Values set on import for NOT NULL columns stripped from the export.
+# freeze_id 0 means "imported, no associated freeze".
+_IMPORT_DEFAULTS: Dict[str, Dict[str, Any]] = {
+    "study_amendment": {"freeze_id": 0},
+}
+
+# soa row columns that describe the database row, not the study.
+_EXCLUDED_SOA_COLUMNS = {
+    "id": "assigned by the importing database",
+    "created_at": "set to the import time",
+    "migrated_bcp_truncate": "one-off migration bookkeeping",
+}
+
+# What to do with a row whose referenced parent id is not in the bundle.
+_DROP = "drop"  # the row is meaningless without its parent
+_NULL = "null"  # the reference is optional; keep the row, clear it
+
+# Columns that hold another exported table's integer row id. Row ids
+# are reassigned on import, so these are rewritten to the new ids:
+# {table: {column: (parent_table, on_missing)}}.
+_ID_REMAPS: Dict[str, Dict[str, Tuple[str, str]]] = {
+    "visit": {
+        "epoch_id": ("epoch", _NULL),
+        # TEXT column holding timing.id
+        "scheduledAtId": ("timing", _NULL),
+    },
+    "matrix_cells": {
+        "visit_id": ("visit", _DROP),
+        "activity_id": ("activity", _DROP),
+        "instance_id": ("instances", _DROP),
+    },
+    "activity_concept": {"activity_id": ("activity", _DROP)},
+    "activity_concept_dss": {"activity_id": ("activity", _DROP)},
+    "activity_concept_crf": {"activity_id": ("activity", _DROP)},
+    "study_intervention_code": {
+        "intervention_id": ("study_intervention", _DROP),
+    },
+    "element_intervention": {"element_id": ("element", _DROP)},
+    "estimand_intervention": {"estimand_id": ("estimand", _DROP)},
+    "estimand_variable": {"estimand_id": ("estimand", _DROP)},
+    "intercurrent_event": {"estimand_id": ("estimand", _DROP)},
+    "indication_code": {"indication_id": ("indication", _DROP)},
+    "role_person": {
+        "role_id": ("role", _DROP),
+        "person_id": ("person", _DROP),
+    },
+}
 
 
 def _table_exists(cur, table: str) -> bool:
@@ -67,86 +161,57 @@ def _table_exists(cur, table: str) -> bool:
     return cur.fetchone() is not None
 
 
+def _table_columns(cur, table: str) -> List[str]:
+    cur.execute(f"PRAGMA table_info({table})")
+    return [row[1] for row in cur.fetchall()]
+
+
 def _export_table(cur, table: str, soa_id: int) -> List[Dict[str, Any]]:
-    """Return all rows from table as list of column dicts."""
+    """Return all rows of table for soa_id, minus stripped columns."""
     if not _table_exists(cur, table):
         return []
-    cur.execute(f"PRAGMA table_info({table})")
-    cols = [row[1] for row in cur.fetchall()]
-    cur.execute(f"SELECT * FROM {table} WHERE soa_id=?", (soa_id,))
-    return [dict(zip(cols, row)) for row in cur.fetchall()]
+    cols = _table_columns(cur, table)
+    keep = [i for i, c in enumerate(cols) if c not in _STRIPPED_COLUMNS]
+    # Ordered by id: generators list rows by id, and import assigns
+    # new ids in bundle order.
+    order = "id" if "id" in cols else "rowid"
+    cur.execute(f"SELECT * FROM {table} WHERE soa_id=? ORDER BY {order}", (soa_id,))
+    return [{cols[i]: row[i] for i in keep} for row in cur.fetchall()]
 
 
 def _export_soa_bundle(soa_id: int) -> Dict[str, Any]:
     conn = _connect()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT name, study_id, study_label, study_description FROM soa WHERE id=?",
-        (soa_id,),
-    )
-    row = cur.fetchone()
-    if not row:
+    try:
+        cur = conn.cursor()
+        cols = _table_columns(cur, "soa")
+        cur.execute("SELECT * FROM soa WHERE id=?", (soa_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "SOA not found")
+        soa_meta = {
+            col: val for col, val in zip(cols, row) if col not in _EXCLUDED_SOA_COLUMNS
+        }
+        bundle: Dict[str, Any] = {
+            "format_version": _FORMAT_VERSION,
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "soa": soa_meta,
+        }
+        for table in _EXPORT_TABLES:
+            bundle[table] = _export_table(cur, table, soa_id)
+        return bundle
+    finally:
         conn.close()
-        raise HTTPException(404, "SOA not found")
-    bundle: Dict[str, Any] = {
-        "format_version": _FORMAT_VERSION,
-        "exported_at": datetime.now(timezone.utc).isoformat(),
-        "soa": {
-            "name": row[0],
-            "study_id": row[1],
-            "study_label": row[2],
-            "study_description": row[3],
-        },
-    }
-    for table in _EXPORT_TABLES:
-        bundle[table] = _export_table(cur, table, soa_id)
-    conn.close()
-    return bundle
 
 
-def _insert_and_map(
-    cur,
-    table: str,
-    rows: List[Dict[str, Any]],
-    new_soa_id: int,
-    extra_skip: Optional[set] = None,
-    col_overrides: Optional[Dict[str, Any]] = None,
-) -> Dict[int, int]:
-    """Insert rows into table; return {old_id: new_id} mapping."""
-    id_map: Dict[int, int] = {}
-    if not rows or not _table_exists(cur, table):
-        return id_map
-    skip = {"id", "soa_id"} | (extra_skip or set())
-    col_names = [c for c in rows[0].keys() if c not in skip]
-    placeholders = ",".join(["?"] * len(col_names))
-    cols_sql = ",".join(col_names)
-    for row in rows:
-        values = []
-        for col in col_names:
-            if col_overrides and col in col_overrides:
-                values.append(col_overrides[col])
-            else:
-                values.append(row.get(col))
-        cur.execute(
-            f"INSERT INTO {table} (soa_id,{cols_sql}) VALUES (?,{placeholders})",
-            [new_soa_id] + values,
-        )
-        old_id = row.get("id")
-        if old_id is not None:
-            id_map[old_id] = cur.lastrowid
-    return id_map
-
-
-def _import_bc_properties_and_response_codes(
-    cur, bundle: Dict[str, Any], new_soa_id: int
-) -> None:
-    """Insert BCP + RC rows from a bundle with referential integrity.
+def _filter_bc_property_rows(
+    bundle: Dict[str, Any],
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Return (property rows, response code rows) safe to import.
 
     Keeps only properties whose parent BC exists in the bundle and only
     response codes whose parent property survives, deduping RCs that
-    resolve to the same code on the same property. This prevents a corrupt
-    bundle from re-introducing the orphaned/duplicate rows this migration
-    is meant to eliminate.
+    resolve to the same code on the same property. This prevents a
+    corrupt bundle from re-introducing orphaned or duplicate rows.
     """
     bc_uids = {
         r.get("biomedical_concept_uid") for r in bundle.get("biomedical_concept", [])
@@ -181,9 +246,112 @@ def _import_bc_properties_and_response_codes(
             continue
         seen.add(key)
         rc_rows.append(r)
+    return bcp_rows, rc_rows
 
-    _insert_and_map(cur, "biomedical_concept_property", bcp_rows, new_soa_id)
-    _insert_and_map(cur, "bcp_response_code", rc_rows, new_soa_id)
+
+def _as_row_id(value: Any) -> Optional[int]:
+    """Parse a stored row id (INTEGER, or TEXT like scheduledAtId)."""
+    if isinstance(value, int):
+        return value
+    try:
+        return int(str(value).strip())
+    except ValueError:
+        return None
+
+
+def _remap_row(
+    table: str,
+    values: Dict[str, Any],
+    id_maps: Dict[str, Dict[int, int]],
+) -> bool:
+    """Rewrite values' parent row ids in place; False to drop the row."""
+    for col, (parent, on_missing) in _ID_REMAPS.get(table, {}).items():
+        old = values.get(col)
+        if old is None or old == "":
+            continue
+        old_id = _as_row_id(old)
+        new_id = id_maps.get(parent, {}).get(old_id) if old_id is not None else None
+        if new_id is None:
+            if on_missing == _DROP:
+                return False
+            values[col] = None
+        else:
+            values[col] = str(new_id) if isinstance(old, str) else new_id
+    return True
+
+
+def _import_table(
+    cur,
+    table: str,
+    rows: List[Dict[str, Any]],
+    new_soa_id: int,
+    id_maps: Dict[str, Dict[int, int]],
+) -> Dict[int, int]:
+    """Insert rows into table under new_soa_id; return {old_id: new_id}."""
+    id_map: Dict[int, int] = {}
+    if not rows or not _table_exists(cur, table):
+        return id_map
+    target_cols = set(_table_columns(cur, table)) - {"id", "soa_id"}
+    defaults = {
+        col: val
+        for col, val in _IMPORT_DEFAULTS.get(table, {}).items()
+        if col in target_cols
+    }
+    dropped = 0
+    # Insert in original id order so new ids keep the row order.
+    # Bundles exported before rows were ordered may list them
+    # differently.
+    ordered = sorted(rows, key=lambda r: _as_row_id(r.get("id")) or 0)
+    for row in ordered:
+        values = {c: v for c, v in row.items() if c in target_cols}
+        if not _remap_row(table, values, id_maps):
+            dropped += 1
+            continue
+        values.update(defaults)
+        cols = ["soa_id", *values]
+        cur.execute(
+            f"INSERT INTO {table} ({','.join(cols)}) "
+            f"VALUES ({','.join('?' * len(cols))})",
+            [new_soa_id, *values.values()],
+        )
+        old_id = row.get("id")
+        if old_id is not None:
+            id_map[old_id] = cur.lastrowid
+    if dropped:
+        logger.warning(
+            "Bundle import: dropped %d %s row(s) whose parent is not in the bundle",
+            dropped,
+            table,
+        )
+    return id_map
+
+
+def _insert_soa_row(cur, soa_meta: Dict[str, Any], soa_name: str) -> int:
+    """Insert the soa row from bundle metadata; return its new id."""
+    soa_cols = set(_table_columns(cur, "soa")) - set(_EXCLUDED_SOA_COLUMNS)
+    values = {k: v for k, v in soa_meta.items() if k in soa_cols}
+    values["name"] = soa_name
+    values["created_at"] = datetime.now(timezone.utc).isoformat()
+
+    def _insert() -> int:
+        cols = list(values)
+        cur.execute(
+            f"INSERT INTO soa ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",
+            list(values.values()),
+        )
+        return cur.lastrowid
+
+    try:
+        return _insert()
+    except sqlite3.IntegrityError:
+        if values.get("study_id") is None:
+            raise
+        # study_id conflict — import without it; user can set it later
+        logger.info(
+            "study_id %r already taken; imported with study_id=NULL",
+            values.pop("study_id"),
+        )
+        return _insert()
 
 
 def _import_soa_bundle(
@@ -196,210 +364,29 @@ def _import_soa_bundle(
         )
     soa_meta = bundle.get("soa", {})
     soa_name = (name or soa_meta.get("name") or "Imported SOA").strip()
-    now = datetime.now(timezone.utc).isoformat()
+
+    bcp_rows, rc_rows = _filter_bc_property_rows(bundle)
+    filtered = {
+        "biomedical_concept_property": bcp_rows,
+        "bcp_response_code": rc_rows,
+    }
 
     conn = _connect()
-    cur = conn.cursor()
     try:
-        study_id = soa_meta.get("study_id")
-        try:
-            cur.execute(
-                "INSERT INTO soa "
-                "(name, created_at, study_id, study_label, study_description) "
-                "VALUES (?,?,?,?,?)",
-                (
-                    soa_name,
-                    now,
-                    study_id,
-                    soa_meta.get("study_label"),
-                    soa_meta.get("study_description"),
-                ),
-            )
-        except sqlite3.Error:
-            # study_id conflict — import without it; user can set it later
-            cur.execute(
-                "INSERT INTO soa "
-                "(name, created_at, study_label, study_description) "
-                "VALUES (?,?,?,?)",
-                (
-                    soa_name,
-                    now,
-                    soa_meta.get("study_label"),
-                    soa_meta.get("study_description"),
-                ),
-            )
-            logger.info(
-                "study_id %r already taken; imported with study_id=NULL",
-                study_id,
-            )
-        new_soa_id = cur.lastrowid
-
-        # Tables with only string-UID foreign keys — insert directly
-        for table in [
-            "code",
-            "alias_code",
-            "code_association",
-            "arm",
-            "element",
-            "study_cell",
-            "schedule_timelines",
-            "decision_instances",
-            "condition_assignment",
-            "timing",
-            "transition_rule",
-            "biomedical_concept",
-            "biomedical_concept_surrogate",
-            "activity_surrogate",
-            "objective",
-            "endpoint",
-            "study_title",
-            "organization",
-            "role",
-            "footnote",
-            "study_amendment_reason",
-            "study_amendment_impact",
-            "study_change",
-            "document_content_reference",
-            "amendment_geographic_scope",
-            "amendment_governance_date",
-            "governance_date_geographic_scope",
-            "amendment_subject_enrollment",
-        ]:
-            _insert_and_map(cur, table, bundle.get(table, []), new_soa_id)
-
-        # biomedical_concept_property + bcp_response_code: import with
-        # referential-integrity filtering so a corrupt bundle (orphaned or
-        # duplicate rows) cannot propagate. Drop BCPs whose parent BC is
-        # absent, RCs whose parent BCP is absent, and duplicate RCs that
-        # resolve to the same code on the same property.
-        _import_bc_properties_and_response_codes(cur, bundle, new_soa_id)
-
-        # study_amendment: freeze_id references soa_freeze which is not
-        # imported; use 0 as sentinel for "imported, no associated freeze"
-        _insert_and_map(
-            cur,
-            "study_amendment",
-            bundle.get("study_amendment", []),
-            new_soa_id,
-            col_overrides={"freeze_id": 0},
-        )
-
-        # epoch: build id map for visit.epoch_id remapping
-        epoch_id_map = _insert_and_map(
-            cur, "epoch", bundle.get("epoch", []), new_soa_id
-        )
-
-        # visit: remap epoch_id, build visit_id_map
-        visit_rows = bundle.get("visit", [])
-        visit_id_map: Dict[int, int] = {}
-        if visit_rows and _table_exists(cur, "visit"):
-            skip_v = {"id", "soa_id", "epoch_id"}
-            col_names_v = [c for c in visit_rows[0].keys() if c not in skip_v]
-            placeholders_v = ",".join(["?"] * len(col_names_v))
-            cols_sql_v = ",".join(col_names_v)
-            for row in visit_rows:
-                new_epoch_id = epoch_id_map.get(row.get("epoch_id"))
-                values = [row.get(c) for c in col_names_v]
-                cur.execute(
-                    f"INSERT INTO visit (soa_id,epoch_id,{cols_sql_v}) "
-                    f"VALUES (?,?,{placeholders_v})",
-                    [new_soa_id, new_epoch_id] + values,
-                )
-                old_id = row.get("id")
-                if old_id is not None:
-                    visit_id_map[old_id] = cur.lastrowid
-
-        # activity: build activity_id_map
-        activity_id_map = _insert_and_map(
-            cur, "activity", bundle.get("activity", []), new_soa_id
-        )
-
-        # instances: build instance_id_map (timeline_id is a string UID)
-        instance_id_map = _insert_and_map(
-            cur, "instances", bundle.get("instances", []), new_soa_id
-        )
-
-        # matrix_cells: remap visit_id, activity_id, instance_id
-        cell_rows = bundle.get("matrix_cells", [])
-        if cell_rows and _table_exists(cur, "matrix_cells"):
-            has_superscript = "superscript" in cell_rows[0]
-            for row in cell_rows:
-                new_visit_id = visit_id_map.get(row.get("visit_id"))
-                new_act_id = activity_id_map.get(row.get("activity_id"))
-                old_inst_id = row.get("instance_id")
-                new_inst_id = (
-                    instance_id_map.get(old_inst_id)
-                    if old_inst_id is not None
-                    else None
-                )
-                if has_superscript:
-                    cur.execute(
-                        "INSERT INTO matrix_cells "
-                        "(soa_id,visit_id,activity_id,instance_id,"
-                        "status,superscript) VALUES (?,?,?,?,?,?)",
-                        (
-                            new_soa_id,
-                            new_visit_id,
-                            new_act_id,
-                            new_inst_id,
-                            row.get("status", ""),
-                            row.get("superscript"),
-                        ),
-                    )
-                else:
-                    cur.execute(
-                        "INSERT INTO matrix_cells "
-                        "(soa_id,visit_id,activity_id,instance_id,status) "
-                        "VALUES (?,?,?,?,?)",
-                        (
-                            new_soa_id,
-                            new_visit_id,
-                            new_act_id,
-                            new_inst_id,
-                            row.get("status", ""),
-                        ),
-                    )
-
-        # activity_concept: remap activity_id
-        ac_rows = bundle.get("activity_concept", [])
-        if ac_rows and _table_exists(cur, "activity_concept"):
-            skip_ac = {"id", "soa_id", "activity_id"}
-            col_names_ac = [c for c in ac_rows[0].keys() if c not in skip_ac]
-            placeholders_ac = ",".join(["?"] * len(col_names_ac))
-            cols_sql_ac = ",".join(col_names_ac)
-            for row in ac_rows:
-                new_act_id = activity_id_map.get(row.get("activity_id"))
-                values = [row.get(c) for c in col_names_ac]
-                cur.execute(
-                    f"INSERT INTO activity_concept "
-                    f"(soa_id,activity_id,{cols_sql_ac}) "
-                    f"VALUES (?,?,{placeholders_ac})",
-                    [new_soa_id, new_act_id] + values,
-                )
-
-        # activity_concept_dss: remap activity_id
-        acd_rows = bundle.get("activity_concept_dss", [])
-        if acd_rows and _table_exists(cur, "activity_concept_dss"):
-            skip_acd = {"id", "soa_id", "activity_id"}
-            col_names_acd = [c for c in acd_rows[0].keys() if c not in skip_acd]
-            placeholders_acd = ",".join(["?"] * len(col_names_acd))
-            cols_sql_acd = ",".join(col_names_acd)
-            for row in acd_rows:
-                new_act_id = activity_id_map.get(row.get("activity_id"))
-                values = [row.get(c) for c in col_names_acd]
-                cur.execute(
-                    f"INSERT INTO activity_concept_dss "
-                    f"(soa_id,activity_id,{cols_sql_acd}) "
-                    f"VALUES (?,?,{placeholders_acd})",
-                    [new_soa_id, new_act_id] + values,
-                )
-
+        cur = conn.cursor()
+        new_soa_id = _insert_soa_row(cur, soa_meta, soa_name)
+        id_maps: Dict[str, Dict[int, int]] = {}
+        for table in _EXPORT_TABLES:
+            rows = filtered.get(table, bundle.get(table) or [])
+            id_maps[table] = _import_table(cur, table, rows, new_soa_id, id_maps)
+        # Bundles exported before the uid fix can hold duplicates.
+        dedupe_extension_attribute_uids(cur, new_soa_id)
         conn.commit()
-    except Exception:
+    except (sqlite3.Error, HTTPException):
         conn.rollback()
-        conn.close()
         raise
-    conn.close()
+    finally:
+        conn.close()
     return {"soa_id": new_soa_id, "name": soa_name}
 
 

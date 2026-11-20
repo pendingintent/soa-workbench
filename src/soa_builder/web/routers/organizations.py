@@ -23,6 +23,7 @@ logger = logging.getLogger("soa_builder.web.routers.organizations")
 templates = Jinja2Templates(
     directory=os.path.join(os.path.dirname(__file__), "..", "templates")
 )
+templates.env.globals["org_type_codelist"] = ORGANIZATION_TYPE_CODELIST
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +67,12 @@ def _next_org_uid(cur, soa_id: int) -> str:
 
 
 def _get_org_type_options() -> list:
-    """Return [{code, label}] for DDF CT codelist C215480, alpha sorted."""
+    """Return [{code, label}] for the organization type codelist.
+
+    Terms come from the CDISC Library DDF CT package, filtered to
+    ``ORGANIZATION_TYPE_CODELIST`` (C188724 by default), alpha sorted.
+    Empty when the Library CT is unavailable.
+    """
     payload = get_ddf_ct_rows()
     rows = payload.get("rows") or []
     options = [
@@ -80,6 +86,35 @@ def _get_org_type_options() -> list:
         if r.get("codelist_code") == ORGANIZATION_TYPE_CODELIST and r.get("code")
     ]
     return sorted(options, key=lambda o: o["label"].lower())
+
+
+def _assert_org_type_allowed(type_code: str, current_code: str = "") -> None:
+    """Raise 422 if ``type_code`` is not an organization type (DDF00200).
+
+    DDF00200 requires Organization.type to come from the organization
+    type codelist. An empty code, or the organization's unchanged
+    ``current_code`` (types stored before this check existed), is
+    allowed. When the Library CT is unavailable there is nothing to
+    check against, so the check is skipped with a warning.
+    """
+    type_code = (type_code or "").strip()
+    if not type_code or type_code == (current_code or ""):
+        return
+    allowed = {o["code"] for o in _get_org_type_options()}
+    if not allowed:
+        logger.warning(
+            "Organization type codelist %s unavailable from the CDISC"
+            " Library; not checking type %s",
+            ORGANIZATION_TYPE_CODELIST,
+            type_code,
+        )
+        return
+    if type_code not in allowed:
+        raise HTTPException(
+            422,
+            f"DDF00200: {type_code} is not an organization type"
+            f" (codelist {ORGANIZATION_TYPE_CODELIST})",
+        )
 
 
 def _get_countries_options() -> list:
@@ -248,6 +283,8 @@ def create_organization(soa_id: int, body: dict):
         else []
     )
 
+    _assert_org_type_allowed(type_concept_id)
+
     conn = _connect()
     cur = conn.cursor()
     try:
@@ -362,7 +399,9 @@ def delete_organization(soa_id: int, org_id: int):
 # ---------------------------------------------------------------------------
 
 
-def _partial_response(request: Request, soa_id: int) -> HTMLResponse:
+def _partial_response(
+    request: Request, soa_id: int, error: str = "", status_code: int = 200
+) -> HTMLResponse:
     from .roles import _get_role_type_options, _list_roles
     from .persons import _list_persons
 
@@ -380,7 +419,9 @@ def _partial_response(request: Request, soa_id: int) -> HTMLResponse:
             "roles": roles,
             "role_type_options": _get_role_type_options(),
             "persons": persons,
+            "organizations_error": error,
         },
+        status_code=status_code,
     )
 
 
@@ -413,6 +454,12 @@ def ui_organizations_add(
         raise HTTPException(400, "name is required")
 
     lines = [ln for ln in addr_lines.splitlines() if ln.strip()]
+    try:
+        _assert_org_type_allowed(type_code)
+    except HTTPException as exc:
+        return _partial_response(
+            request, soa_id, error=exc.detail, status_code=exc.status_code
+        )
     type_version = _ddf_ct_version()
 
     conn = _connect()
@@ -570,14 +617,33 @@ def ui_organizations_update(
     (oid, org_uid, old_name, old_type_uid, old_country_uid) = row
     before = {"organization_uid": org_uid, "name": old_name}
 
-    # Replace type code record
-    _delete_code(cur, soa_id, old_type_uid)
-    new_type_uid = None
-    if type_code.strip():
-        version = _ddf_ct_version()
-        new_type_uid = _insert_type_code(
-            cur, soa_id, type_code.strip(), type_decode.strip(), version
+    old_type_code = ""
+    if old_type_uid:
+        cur.execute(
+            "SELECT code FROM code WHERE soa_id=? AND code_uid=?",
+            (soa_id, old_type_uid),
         )
+        found = cur.fetchone()
+        old_type_code = (found[0] or "") if found else ""
+    try:
+        _assert_org_type_allowed(type_code, current_code=old_type_code)
+    except HTTPException as exc:
+        conn.close()
+        return _partial_response(
+            request, soa_id, error=exc.detail, status_code=exc.status_code
+        )
+
+    # Replace the type code record only when the type changed, so an
+    # unchanged type keeps its decode and CT version.
+    new_type_uid = old_type_uid
+    if type_code.strip() != old_type_code:
+        _delete_code(cur, soa_id, old_type_uid)
+        new_type_uid = None
+        if type_code.strip():
+            version = _ddf_ct_version()
+            new_type_uid = _insert_type_code(
+                cur, soa_id, type_code.strip(), type_decode.strip(), version
+            )
 
     # Replace country code record
     _delete_code(cur, soa_id, old_country_uid)
