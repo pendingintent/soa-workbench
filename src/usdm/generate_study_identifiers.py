@@ -35,14 +35,17 @@ def _find_sponsor_org_uid(cur: Any, soa_id: int) -> str:
 def build_usdm_study_identifiers(soa_id: int) -> List[Dict[str, Any]]:
     """Return list of StudyIdentifier dicts for the USDM output.
 
-    USDM requires exactly one StudyIdentifier whose scopeId references
-    a Clinical Study Sponsor organization (C70793).
+    A study version may carry several identifiers (1..*), each scoped
+    to its own organization. DDF00172 requires exactly one whose
+    scopeId references the Clinical Study Sponsor organization
+    (C70793).
 
-    - When no study_identifier rows exist: falls back to a single entry
-      derived from soa.study_id, with scopeId set to the sponsor org UID.
-    - When rows exist: uses them as-is. If none carry the sponsor org as
-      scopeId, the first identifier's scopeId is overridden in the output
-      (not persisted) so the USDM document is always valid.
+    - No study_identifier rows: a single entry derived from
+      soa.study_id, scoped to the sponsor org.
+    - Rows exist: emitted as stored, in order_index order. A stored
+      scopeId is never rewritten. If none is sponsor-scoped and
+      soa.study_id is set, a sponsor identifier derived from it is
+      appended (output only, not persisted).
     """
     conn = _connect()
     cur = conn.cursor()
@@ -81,11 +84,27 @@ def build_usdm_study_identifiers(soa_id: int) -> List[Dict[str, Any]]:
         for row in rows
     ]
 
-    # Enforce: at least one identifier must reference the sponsor org.
-    # If none do, override the first one's scopeId in the output only.
-    if sponsor_uid:
-        has_sponsor_link = any(si["scopeId"] == sponsor_uid for si in identifiers)
-        if not has_sponsor_link:
-            identifiers[0]["scopeId"] = sponsor_uid
+    if sponsor_uid and not any(si["scopeId"] == sponsor_uid for si in identifiers):
+        study_id = _get_soa_metadata(soa_id)["study_id"]
+        if study_id:
+            identifiers.append(
+                {
+                    "id": f"StudyIdentifier_{_max_uid_number(rows) + 1}",
+                    "extensionAttributes": [],
+                    "text": study_id,
+                    "scopeId": sponsor_uid,
+                    "instanceType": "StudyIdentifier",
+                }
+            )
 
     return identifiers
+
+
+def _max_uid_number(rows: List[Any]) -> int:
+    """Highest N among StudyIdentifier_N uids in ``rows`` (0 if none)."""
+    numbers = [
+        int(uid.rsplit("_", 1)[-1])
+        for uid, *_ in rows
+        if uid.rsplit("_", 1)[-1].isdigit()
+    ]
+    return max(numbers, default=0)
