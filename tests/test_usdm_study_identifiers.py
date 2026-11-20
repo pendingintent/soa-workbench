@@ -2,9 +2,10 @@
 
 A study version may hold several identifiers (1..*), each scoped to
 its own organization. DDF00172 needs exactly one sponsor-scoped
-identifier. The generator must never rewrite a stored identifier's
-scopeId to make that hold: an NCT number scoped to ClinicalTrials.gov
-must stay scoped to ClinicalTrials.gov.
+identifier: one scoped to the organization of the sponsor StudyRole.
+The generator must never rewrite a stored identifier's scopeId to
+make that hold: an NCT number scoped to ClinicalTrials.gov must stay
+scoped to ClinicalTrials.gov.
 """
 
 from fastapi.testclient import TestClient
@@ -16,9 +17,11 @@ from usdm.generate_study_identifiers import build_usdm_study_identifiers
 client = TestClient(app)
 
 
-def _soa(name: str, study_id: str, identifiers: list) -> int:
-    """Create an SoA with a sponsor org (Organization_1), a registry
-    org (Organization_2) and the given (text, scope_org_uid) rows."""
+def _soa(name: str, study_id: str, identifiers: list, sponsor_role: bool = True) -> int:
+    """Create an SoA with a pharmaceutical company (Organization_1), a
+    registry org (Organization_2) and the given (text, scope_org_uid)
+    rows. With ``sponsor_role``, a sponsor StudyRole points at
+    Organization_1; otherwise Organization_1 is only *typed* C70793."""
     soa_id = client.post("/soa", json={"name": name}).json()["id"]
     conn = _connect()
     try:
@@ -27,8 +30,20 @@ def _soa(name: str, study_id: str, identifiers: list) -> int:
         cur.executemany(
             "INSERT INTO code (soa_id, code_uid, code, code_system)"
             " VALUES (?, ?, ?, 'http://www.cdisc.org')",
-            [(soa_id, "Code_901", "C70793"), (soa_id, "Code_902", "C93453")],
+            [
+                (soa_id, "Code_901", "C54149" if sponsor_role else "C70793"),
+                (soa_id, "Code_902", "C93453"),
+                (soa_id, "Code_903", "C70793"),
+            ],
         )
+        if sponsor_role:
+            cur.execute(
+                "INSERT INTO role (soa_id, role_uid, name, code_uid,"
+                " organization_ids, order_index)"
+                " VALUES (?, 'StudyRole_1', 'Sponsor', 'Code_903',"
+                " '[\"Organization_1\"]', 1)",
+                (soa_id,),
+            )
         cur.executemany(
             "INSERT INTO organization"
             " (soa_id, organization_uid, name, type_code_uid, order_index)"
@@ -107,3 +122,24 @@ def test_no_rows_falls_back_to_study_id():
     assert len(result) == 1
     assert result[0]["text"] == "SI-EMPTY"
     assert result[0]["scopeId"] == "Organization_1"
+
+
+def test_org_typed_sponsor_without_sponsor_role_is_not_sponsor():
+    # USDM v4: the sponsor comes from the sponsor StudyRole only.
+    soa_id = _soa(
+        "USDM SI typed sponsor no role",
+        "SI-TYPEDONLY",
+        [("NCT00000001", "Organization_2")],
+        sponsor_role=False,
+    )
+    # No sponsor role, so no sponsor identifier is derived for the
+    # org that is merely typed C70793.
+    result = build_usdm_study_identifiers(soa_id)
+    assert _scopes(result) == {"NCT00000001": "Organization_2"}
+
+
+def test_no_rows_and_no_sponsor_role_leaves_scope_empty():
+    soa_id = _soa("USDM SI empty no role", "SI-EMPTYNOROLE", [], sponsor_role=False)
+    result = build_usdm_study_identifiers(soa_id)
+    assert result[0]["text"] == "SI-EMPTYNOROLE"
+    assert result[0]["scopeId"] == ""

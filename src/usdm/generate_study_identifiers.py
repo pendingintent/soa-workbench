@@ -4,32 +4,8 @@
 from typing import Any, Dict, List
 
 from soa_builder.web.db import _connect
+from soa_builder.web.utils import sponsor_org_uid
 from usdm.usdm_utils import _get_soa_metadata
-
-# NCIt code for "Clinical Study Sponsor" (C70793)
-_SPONSOR_CODE = "C70793"
-
-
-_SPONSOR_CODE_SYSTEM = "http://www.cdisc.org"
-
-
-def _find_sponsor_org_uid(cur: Any, soa_id: int) -> str:
-    """Return organization_uid of the first Clinical Study Sponsor, or ''.
-
-    Matches DDF00005: type.code = C70793 AND
-    type.codeSystem = http://www.cdisc.org
-    """
-    cur.execute(
-        "SELECT o.organization_uid"
-        " FROM organization o"
-        " LEFT JOIN code c"
-        "   ON c.code_uid = o.type_code_uid AND c.soa_id = o.soa_id"
-        " WHERE o.soa_id = ? AND c.code = ? AND c.code_system = ?"
-        " ORDER BY o.order_index, o.id LIMIT 1",
-        (soa_id, _SPONSOR_CODE, _SPONSOR_CODE_SYSTEM),
-    )
-    row = cur.fetchone()
-    return row[0] if row else ""
 
 
 def build_usdm_study_identifiers(soa_id: int) -> List[Dict[str, Any]]:
@@ -37,8 +13,8 @@ def build_usdm_study_identifiers(soa_id: int) -> List[Dict[str, Any]]:
 
     A study version may carry several identifiers (1..*), each scoped
     to its own organization. DDF00172 requires exactly one whose
-    scopeId references the Clinical Study Sponsor organization
-    (C70793).
+    scopeId is the organization of the sponsor StudyRole (see
+    ``sponsor_org_uid``).
 
     - No study_identifier rows: a single entry derived from
       soa.study_id, scoped to the sponsor org.
@@ -50,7 +26,7 @@ def build_usdm_study_identifiers(soa_id: int) -> List[Dict[str, Any]]:
     conn = _connect()
     cur = conn.cursor()
 
-    sponsor_uid = _find_sponsor_org_uid(cur, soa_id)
+    sponsor_uid = sponsor_org_uid(cur, soa_id)
 
     cur.execute(
         "SELECT study_identifier_uid, text, scope_org_uid"

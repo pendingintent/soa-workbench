@@ -4,7 +4,8 @@ A study version may carry several StudyIdentifiers (USDM
 StudyVersion.studyIdentifiers is 1..*). The router enforces the
 USDM v4 CORE rules on entry:
 
-- DDF00172 (ERROR): exactly one sponsor-scoped identifier
+- DDF00172 (ERROR): exactly one sponsor-scoped identifier, i.e. one
+  scoped to the organization of the sponsor StudyRole
 - DDF00173 (ERROR): text unique within an organization's scope
 - DDF00174 (WARNING): one identifier per organization expected;
   allowed, but flagged
@@ -16,8 +17,12 @@ from soa_builder.web.app import app
 
 client = TestClient(app)
 
-_SPONSOR = ("C70793", "Clinical Study Sponsor")
+# _SPONSOR is not an org type: USDM v4 identifies the sponsor by the
+# sponsor StudyRole (code C70793), so _new_org creates that role.
+_SPONSOR = "sponsor-role"
+_PHARMA = ("C54149", "Pharmaceutical Company")
 _REGISTRY = ("C93453", "Study Registry")
+_TYPED_SPONSOR = ("C70793", "Sponsor")  # role code misused as org type
 
 
 def _new_soa(name: str) -> int:
@@ -26,7 +31,13 @@ def _new_soa(name: str) -> int:
 
 
 def _new_org(soa_id: int, name: str, org_type: tuple = _REGISTRY) -> str:
-    """Create an organization and return its organization_uid."""
+    """Create an organization and return its organization_uid.
+
+    With ``org_type=_SPONSOR`` the organization is a pharmaceutical
+    company that the study's sponsor StudyRole points to.
+    """
+    sponsor = org_type == _SPONSOR
+    org_type = _PHARMA if sponsor else org_type
     r = client.post(
         f"/soa/{soa_id}/organizations",
         json={
@@ -37,7 +48,20 @@ def _new_org(soa_id: int, name: str, org_type: tuple = _REGISTRY) -> str:
         },
     )
     assert r.status_code == 201
-    return r.json()["organization_uid"]
+    org_uid = r.json()["organization_uid"]
+    if sponsor:
+        role = client.post(
+            f"/soa/{soa_id}/roles",
+            json={
+                "name": "Sponsor",
+                "type_concept_id": "C70793",
+                "type_preferred_term": "Sponsor",
+                "type_version": "2025-09-26",
+                "organization_ids": [org_uid],
+            },
+        )
+        assert role.status_code == 201, role.text
+    return org_uid
 
 
 def _create(soa_id: int, text: str, org_uid: str):
@@ -141,11 +165,21 @@ def test_second_sponsor_identifier_rejected():
     # DDF00172: exactly one sponsor study identifier.
     soa_id = _new_soa("SI Second Sponsor")
     sponsor = _new_org(soa_id, "Sponsor Inc.", _SPONSOR)
-    other_sponsor = _new_org(soa_id, "Co-Sponsor", _SPONSOR)
     assert _create(soa_id, "PROTO-001", sponsor).status_code == 201
-    resp = _create(soa_id, "PROTO-002", other_sponsor)
+    resp = _create(soa_id, "PROTO-002", sponsor)
     assert resp.status_code == 409
     assert "DDF00172" in resp.json()["detail"]
+
+
+def test_org_typed_sponsor_without_role_is_not_sponsor():
+    # Without a sponsor StudyRole, an org typed C70793 is an ordinary
+    # scope: a second identifier only warns (DDF00174).
+    soa_id = _new_soa("SI Typed Sponsor No Role")
+    org = _new_org(soa_id, "Sponsor Inc.", _TYPED_SPONSOR)
+    assert _create(soa_id, "PROTO-001", org).status_code == 201
+    resp = _create(soa_id, "PROTO-002", org)
+    assert resp.status_code == 201
+    assert any("DDF00174" in w for w in resp.json()["warnings"])
 
 
 def test_duplicate_text_in_same_org_rejected():

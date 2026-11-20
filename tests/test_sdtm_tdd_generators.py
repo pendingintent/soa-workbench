@@ -58,10 +58,24 @@ def _insert_design(cur, soa_id: int, arm_specific_visit: bool) -> None:
     # soa.study_id is unique across studies.
     cur.execute("UPDATE soa SET study_id=? WHERE id=?", (f"NCT{soa_id:08d}", soa_id))
 
-    # Sponsor organization (C70793) and a registry organization.
+    # A pharmaceutical company that holds the sponsor StudyRole
+    # (USDM v4: the sponsor is identified by role, not org type) and
+    # a registry organization.
     cur.execute(
         "INSERT INTO code (soa_id, code_uid, code, code_system)"
-        " VALUES (?, 'Code_901', 'C70793', 'http://www.cdisc.org')",
+        " VALUES (?, 'Code_901', 'C54149', 'http://www.cdisc.org')",
+        (soa_id,),
+    )
+    cur.execute(
+        "INSERT INTO code (soa_id, code_uid, code, code_system)"
+        " VALUES (?, 'Code_903', 'C70793', 'http://www.cdisc.org')",
+        (soa_id,),
+    )
+    cur.execute(
+        "INSERT INTO role (soa_id, role_uid, name, code_uid,"
+        " organization_ids, order_index)"
+        " VALUES (?, 'StudyRole_1', 'Sponsor', 'Code_903',"
+        " '[\"Organization_2\"]', 1)",
         (soa_id,),
     )
     cur.execute(
