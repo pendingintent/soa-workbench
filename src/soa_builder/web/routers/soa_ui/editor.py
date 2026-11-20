@@ -310,7 +310,7 @@ def ui_edit(request: Request, soa_id: int):
     )
     from ...routers.study_identifiers import (
         _list_identifiers as _list_study_identifiers,
-        _list_orgs as _list_identifier_orgs,
+        _list_scope_orgs as _list_identifier_orgs,
     )
 
     study_titles = _list_titles(soa_id)

@@ -2294,3 +2294,52 @@ def embed_with_owned_ids(
         return out
 
     return _copy(obj)
+
+
+# USDM v4 StudyRole code (codelist C215480) for "Sponsor".
+SPONSOR_ROLE_CODE = "C70793"
+
+
+def sponsor_org_uid(cur: Any, soa_id: int) -> str:
+    """Return the organization_uid of the study sponsor, or ''.
+
+    USDM v4 identifies the sponsor by role, not organization type:
+    DDF00172 scopes the sponsor study identifier to "the organization
+    for the sponsor study role", DDF00201 allows exactly one sponsor
+    role and DDF00202 gives it exactly one organization. So the
+    sponsor is the single organization of the role coded C70793.
+
+    Returns '' when there is no sponsor role, or when its organization
+    list does not name exactly one organization of this study; the
+    USDM validator then reports the gap (DDF00201/DDF00202).
+    """
+    cur.execute(
+        "SELECT r.role_uid, r.organization_ids FROM role r"
+        " JOIN code c ON c.code_uid = r.code_uid AND c.soa_id = r.soa_id"
+        " WHERE r.soa_id = ? AND c.code = ?"
+        " ORDER BY r.order_index, r.id",
+        (soa_id, SPONSOR_ROLE_CODE),
+    )
+    roles = cur.fetchall()
+    if not roles:
+        return ""
+    if len(roles) > 1:
+        logger.warning(
+            "SOA %s has %d sponsor roles (DDF00201); using %s",
+            soa_id,
+            len(roles),
+            roles[0][0],
+        )
+    role_uid, raw_org_ids = roles[0]
+    try:
+        org_ids = json.loads(raw_org_ids) if raw_org_ids else []
+    except (TypeError, ValueError):
+        logger.warning("Sponsor role %s has malformed organization_ids", role_uid)
+        return ""
+    if len(org_ids) != 1:
+        return ""
+    cur.execute(
+        "SELECT 1 FROM organization WHERE soa_id = ? AND organization_uid = ?",
+        (soa_id, org_ids[0]),
+    )
+    return org_ids[0] if cur.fetchone() else ""
