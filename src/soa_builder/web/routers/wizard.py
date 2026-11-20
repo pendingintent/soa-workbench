@@ -647,7 +647,9 @@ def _concept_action_response(
         )
     if error:
         return _render(request, soa_id, step, error, 400)
-    return _redirect(f"/ui/wizard/{soa_id}/{step.key}#wz-concept-row-{activity['id']}")
+    return _redirect(
+        f"/ui/wizard/{int(soa_id)}/{step.key}#wz-concept-row-{activity['id']}"
+    )
 
 
 # --- routes -----------------------------------------------------------
@@ -689,7 +691,7 @@ def ui_wizard_create(
         return _render(request, None, step, str(exc), 400, form)
     next_key = _neighbour(FIRST_STEP, 1)
     save_wizard_state(soa_id, next_key, [FIRST_STEP])
-    return _redirect(f"/ui/wizard/{soa_id}/{next_key}")
+    return _redirect(f"/ui/wizard/{int(soa_id)}/{next_key}")
 
 
 @router.get("/ui/wizard/{soa_id}", response_class=HTMLResponse)
@@ -701,7 +703,7 @@ def ui_wizard_resume(soa_id: int):
     step_key = state["current_step"]
     if step_key not in STEPS_BY_KEY:
         step_key = FIRST_STEP
-    return _redirect(f"/ui/wizard/{soa_id}/{step_key}")
+    return _redirect(f"/ui/wizard/{int(soa_id)}/{step_key}")
 
 
 @router.post("/ui/wizard/{soa_id}/finish", response_class=HTMLResponse)
@@ -724,7 +726,7 @@ def ui_wizard_finish(request: Request, soa_id: int):
         state["completed_steps"] + [review.key],
         STATUS_COMPLETE,
     )
-    return _redirect(f"/ui/soa/{soa_id}/edit")
+    return _redirect(f"/ui/soa/{int(soa_id)}/edit")
 
 
 @router.get("/ui/wizard/{soa_id}/{step_key}", response_class=HTMLResponse)
@@ -780,11 +782,11 @@ def ui_wizard_step_post(
     if action == "back":
         prev_key = _neighbour(step.key, -1)
         save_wizard_state(soa_id, prev_key, completed, status)
-        return _redirect(f"/ui/wizard/{soa_id}/{prev_key}")
+        return _redirect(f"/ui/wizard/{int(soa_id)}/{prev_key}")
     if action == "skip":
         next_key = _neighbour(step.key, 1)
         save_wizard_state(soa_id, next_key, completed, status)
-        return _redirect(f"/ui/wizard/{soa_id}/{next_key}")
+        return _redirect(f"/ui/wizard/{int(soa_id)}/{next_key}")
 
     try:
         if action == "add":
@@ -801,7 +803,7 @@ def ui_wizard_step_post(
         return _render(request, soa_id, step, str(exc.detail), 400, form)
 
     if action in ("add", "save"):
-        return _redirect(f"/ui/wizard/{soa_id}/{step.key}")
+        return _redirect(f"/ui/wizard/{int(soa_id)}/{step.key}")
 
     # continue
     if not _step_is_satisfied(soa_id, step):
@@ -816,4 +818,4 @@ def ui_wizard_step_post(
         )
     next_key = _neighbour(step.key, 1)
     save_wizard_state(soa_id, next_key, completed + [step.key], status)
-    return _redirect(f"/ui/wizard/{soa_id}/{next_key}")
+    return _redirect(f"/ui/wizard/{int(soa_id)}/{next_key}")

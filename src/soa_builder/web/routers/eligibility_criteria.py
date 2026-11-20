@@ -355,7 +355,9 @@ def _page(request: Request, soa_id: int, error: str = "", form: dict = None):
 
 
 def _back(soa_id: int) -> RedirectResponse:
-    return RedirectResponse(f"/ui/soa/{soa_id}/eligibility_criteria", status_code=303)
+    return RedirectResponse(
+        f"/ui/soa/{int(soa_id)}/eligibility_criteria", status_code=303
+    )
 
 
 @router.get(

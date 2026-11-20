@@ -391,13 +391,15 @@ def test_ui_add_second_sponsor_shows_error():
 
 def test_ui_lists_all_organizations_with_sponsor_first():
     soa_id = _new_soa("SI UI All Orgs")
-    _new_org(soa_id, "ClinicalTrials.gov")
+    # Plain names: CodeQL reads a host-like string in an `in` check
+    # as URL sanitization (py/incomplete-url-substring-sanitization).
+    _new_org(soa_id, "Trial Registry")
     _new_org(soa_id, "Sponsor Inc.", _SPONSOR)
     resp = _ui_add(soa_id, "", "")
     text = resp.text
-    assert "ClinicalTrials.gov" in text
+    assert "Trial Registry" in text
     assert "Sponsor Inc." in text
-    assert text.index("Sponsor Inc.") < text.index("ClinicalTrials.gov")
+    assert text.index("Sponsor Inc.") < text.index("Trial Registry")
 
 
 def test_ui_flags_org_with_more_than_one_identifier():
